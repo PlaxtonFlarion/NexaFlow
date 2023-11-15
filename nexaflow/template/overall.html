@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Information</title>
+    <style>
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255,255,255,0.8);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        .bar {
+            background-color: #3498db;
+            height: 80px;
+            width: 20px;
+            margin: 0 2px;
+            animation: wave 0.6s infinite alternate;
+        }
+        .bar:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+        .bar:nth-child(3) {
+            animation-delay: 0.2s;
+        }
+        .bar:nth-child(4) {
+            animation-delay: 0.3s;
+        }
+        .bar:nth-child(5) {
+            animation-delay: 0.4s;
+        }
+        @keyframes wave {
+            to {
+                height: 40px;
+            }
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
+
+        .header {
+            background-color: #333;
+            color: #fff;
+            padding: 20px;
+            text-align: center;
+            font-size: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.8);
+        }
+
+        .info-box {
+            border: 1px solid #ccc;
+            padding: 10px 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            background-color: #f9f9f9;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+        }
+        .info-box-main {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .case {
+            display: flex;
+            margin-left: 20px;
+        }
+        .case h3 {
+            color: #333;
+        }
+
+        .case-other {
+            display: flex;
+            align-items: center;
+        }
+
+        .cost-div {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .cost, .cost-avg {
+            padding: 5px 10px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        .cost {
+            margin-left: 20px;
+            background-color: rgb(18, 227, 225);
+        }
+
+        .cost-avg {
+            margin-right: 20px;
+            font-size: 24px;
+            background-color: rgb(212, 249, 24);
+        }
+        .cost:hover, .cost-avg:hover {
+            cursor: grab;
+        }
+        .cost:hover {
+            color: #ffffff;
+            background-color: #0ba9ed;
+            transition: color 0.5s, background-color 0.5s ease;
+        }
+        .cost-avg:hover {
+            background-color: #e8d20c;
+            transition: background-color 0.5s ease;
+        }
+
+        .copy {
+            margin-right: 20px;
+            cursor: pointer;
+            padding: 5px 30px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 16px;
+            background: rgb(23, 212, 255);
+        }
+        .copy:hover {
+            background: rgb(255, 236, 88);
+            transition: background 0.5s ease;
+        }
+        .copy:active {
+            transform: scale(0.9);
+        }
+
+        .link {
+            margin-right: 20px;
+            padding: 5px 30px;
+            border-radius: 10px;
+            color: #161515;
+            text-decoration: none;
+            font-weight: bold;
+            background: rgb(23, 212, 255);
+        }
+        .link:hover {
+            background: rgb(255, 236, 88);
+            transition: background 0.5s ease;
+        }
+        .link:active {
+            transform: scale(0.9);
+        }
+        .link:visited {
+            color: #ff2222;
+        }
+
+        #notification {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 15px;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            border-radius: 5px;
+        }
+
+        .line {
+            border: 2px solid #b5b6b7;
+        }
+
+        .done {
+            background-color: rgb(212, 249, 24);
+        }
+        .complete {
+            background: linear-gradient(to bottom, #005aa7, #fffde4);
+        }
+        .finish {
+            opacity: 0.5;
+            background-color: #fc8e8e;
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <div class="loading">
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+    </div>
+
+    <div class="header">
+        <h1>Information</h1>
+        <p>{{ report_time }}</p>
+    </div>
+
+    {% for total in total_list %}
+    <div class="info-box">
+        <div class="info-box-main">
+            <div class="case">
+                <h3>{{ total.case }}</h3>
+            </div>
+
+            <div class="case-other">
+                <p><span class="cost-avg">{{ total.avg }}</span></p>
+                <button class="copy">Copy</button>
+                <a class="link" href="{{ total.href }}" target="_blank">View More Details ...</a>
+            </div>
+        </div>
+
+        <hr class="line">
+
+        <div class="cost-div">
+            {% for cost in total.cost_list %}
+            <p><span class="cost">{{ cost }}</span></p>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+
+    <div id="notification">数据已复制到剪贴板</div>
+
+    <script>
+        function showLoadingAnimation() {
+            const loading = document.querySelector('.loading');
+            loading.style.display = 'flex';
+
+            setTimeout(() => {
+                loading.style.display = 'none';
+            }, 1000);
+        }
+
+        document.querySelectorAll('.copy').forEach(copyButton => {
+            copyButton.addEventListener('click', (e) => {
+                let btn = e.target;
+                let link = btn.parentElement.querySelector('.link');
+                if (btn.classList.contains('done')) {
+                    btn.classList.remove('done');
+                    link.classList.remove('done');
+                    btn.textContent = 'Copy';
+                } else {
+                    btn.classList.add('done');
+                    link.classList.add('done');
+                    btn.textContent = 'Done';
+                }
+
+                let infoBox = e.currentTarget.closest('.info-box');
+                let title = infoBox.querySelector('.info-box .case h3')
+                let allCost = infoBox.querySelectorAll('.cost');
+                if(infoBox.classList.contains('complete')) {
+                    infoBox.classList.remove('complete');
+                    title.style.color = '#333';
+                    allCost.forEach(cost => {cost.classList.remove('finish');});
+                } else {
+                    infoBox.classList.add('complete');
+                    title.style.color = '#b9b9b9';
+                    let toCopy = '';
+                    allCost.forEach(cost => {
+                        toCopy += cost.textContent + '\t';
+                        cost.classList.add('finish');
+                    });
+                    copyRes(toCopy);
+                }
+            });
+        });
+
+        document.addEventListener("DOMContentLoaded", function() {
+            showLoadingAnimation();
+        });
+
+        function copyRes(content) {
+            navigator.clipboard.writeText(content).then(function() {
+                console.log('Data successfully copied to clipboard!');
+                const notification = document.getElementById('notification');
+                notification.style.display = 'block';
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 1000);
+            }).catch(err => {
+                console.error('Unable to copy data to clipboard:', err);
+            });
+        }
+    </script>
+
+</body>
+
+</html>

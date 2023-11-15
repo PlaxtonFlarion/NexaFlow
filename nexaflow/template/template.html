@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <title>阶段耗时测试</title>
+
+    <style>
+        /* 加载动画 */
+        #loading {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(10px);
+            z-index: 9999;
+        }
+        .spinner-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        .spinner {
+            border: 20px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 20px solid #deff07;
+            width: 200px;
+            height: 200px;
+            position: absolute;
+            animation: spin 1s linear infinite;
+        }
+        .loading-text {
+            font-size: 16px;
+            font-weight: bold;
+            transform: translate(-50%, -50%);
+        }
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* 背景粒子特效 */
+        #canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            background: linear-gradient(to top, #ada996, #f2f2f2, #dbdbdb, #eaeaea);
+        }
+
+        /* 定义滚动条的宽度 */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        /* 定义滚动条轨道的样式 */
+        ::-webkit-scrollbar-track {
+            box-shadow: inset 0 0 5px grey;
+            border-radius: 10px;
+        }
+        /* 定义滚动滑块的样式 */
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        /* 当滑块被鼠标悬停或点击时，改变颜色 */
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* 结果标签容器 */
+        .result-container {
+            display: flex;
+            align-items: center;
+            margin: 10px;
+        }
+        /* 结果标签 */
+        .effect-on::before, .effect-on::after {
+            display: block;
+        }
+        .effect-off::before, .effect-off::after {
+            display: none;
+        }
+        .time-difference.effect-off {
+            border: 1px solid #e2e5e9;
+            background-color: #e2e5e9;
+            pointer-events: none;
+        }
+        .time-difference:hover {
+            padding: 5px 5px;
+            border: 1px solid #e1b100;
+            background-color: #e1b100;
+            transition: background-color 0.3s;
+        }
+        .time-difference:active {
+            transform: scale(0.95);
+        }
+        .time-difference:hover::before, .time-difference:hover::after {
+            background-color: #2a2626;  /* 增加对比 */
+            transition: background-color 0.3s; /* 平滑过渡效果 */
+        }
+        .time-difference {
+            position: relative;
+            width: 120px;
+            padding: 5px 20px;
+            border-radius: 10px;
+            border: 1px solid #d2e100;
+            background-color: #d2e100;
+            color: #2a2626;
+            cursor: pointer;
+            outline: none;
+            overflow: hidden;
+            font-weight: bold;
+        }
+        .time-difference::before, .time-difference::after {
+            content: "";
+            position: absolute;
+            width: 10%;
+            height: 2px;
+            background-color: #fff;  /* 这是线条的颜色 */
+            transition: all 0.5s;
+        }
+        .time-difference::before {
+            top: 0;
+            left: 0;
+            transform: translateY(-100%);
+            animation: topLine 1s infinite;
+        }
+        .time-difference::after {
+            bottom: 0;
+            right: 0;
+            transform: translateY(100%);
+            animation: bottomLine 1s infinite;
+        }
+        @keyframes topLine {
+            0%, 100% {
+                left: 0;
+                top: 0;
+                transform: translateY(-100%);
+            }
+            25% {
+                left: 100%;
+                top: 0;
+                transform: translateX(100%);
+            }
+            50% {
+                left: 100%;
+                top: 100%;
+                transform: translateY(100%);
+            }
+            75% {
+                left: 0;
+                top: 100%;
+                transform: translateX(-100%);
+            }
+        }
+        @keyframes bottomLine {
+            0%, 100% {
+                right: 0;
+                bottom: 0;
+                transform: translateY(100%);
+            }
+            25% {
+                right: 100%;
+                bottom: 0;
+                transform: translateX(-100%);
+            }
+            50% {
+                right: 100%;
+                bottom: 100%;
+                transform: translateY(-100%);
+            }
+            75% {
+                right: 0;
+                bottom: 100%;
+                transform: translateX(100%);
+            }
+        }
+
+        /* 标题 */
+        .h1-container {
+            display: flex;
+            justify-content: center;
+            letter-spacing: 1px;
+            border-bottom: 2px solid #888;
+        }
+        h1 {
+            font-size: 42px;
+            color: rgb(90, 90, 90);
+            padding: 10px 20px;
+            border: 2px solid #8c8c8c;
+            border-radius: 10px;
+            box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.3);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            display: inline-block;
+            margin: 20px;
+            text-transform: uppercase;
+            transition: all 0.3s ease-in-out;
+        }
+        h1:hover {
+            background-image: linear-gradient(to top, #f3e7e9 0%, #e3eeff 99%, #e3eeff 100%);
+            cursor: grab;
+        }
+
+        /* 主容器 */
+        .container {
+            position: relative;
+            max-width: 90%;
+            background-color: hsla(0, 100%, 100%, 0);
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px; /* 内边距 */
+            overflow: hidden; /* 隐藏溢出的内容，以保持圆角效果 */
+        }
+        /* 一组图片的容器 */
+        .image-container {
+            display: flex;
+            flex-wrap: no-wrap;
+            overflow-x: auto;
+            margin: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        /* 一张图片的容器 */
+        .image-box {
+            width: 100%;
+            border-radius: 10px;
+            flex: 0 0 calc(12.5% - 20px);
+            margin: 10px;
+            text-align: center;
+        }
+        .image-box:hover {
+            transform: scale(1.01);
+            box-shadow: 0px 0px 10px 5px rgba(233, 177, 10, 0.8);
+            transition: transform 0.3s ease, box-shadow 0.5s ease;
+        }
+        .image-box img {
+            width: 90%;
+            margin: 5px;
+            height: auto;
+            border-radius: 10px;
+        }
+        .image-box img:hover {
+            transform: scale(1.01);
+            box-shadow: 0px 0px 2px 0px rgba(0, 0, 0, 0.8);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: zoom-in;
+        }
+        .image-box img:active {
+            transform: scale(0.95);
+        }
+        .info {
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+            margin: 5px;
+            color: #eb4d4b;
+        }
+
+        /* 图片被选择 */
+        .selected {
+            transform: scale(1.01);
+            box-shadow: 0px 0px 10px 0px rgba(228, 63, 36, 0.6);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .selected:hover {
+            transform: scale(1.02);
+            box-shadow: 0px 0px 15px 0px rgba(228, 63, 36, 0.8);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        /* 标记标签 */
+        .mark-button {
+            border: none;
+            font-size: 12px;
+            padding: 1px 40px;
+            cursor: pointer;
+            background-color: #2481e4;
+            color: white;
+            border-radius: 10px;
+            transition: background-color 0.3s ease;
+        }
+        .mark-button:hover {
+            padding: 1px 35px;
+            background-color: #e9b10a;
+            transition: padding 0.5s ease, background-color 0.5s ease;
+        }
+        .mark-button:active {
+            transform: scale(0.95);
+        }
+        .marked {
+            background-color: #e43f24;
+            transition: background-color 0.3s ease;
+        }
+
+        /* 灯箱查看器 */
+        #lightbox {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        #lightbox.show {
+            display: flex;
+            opacity: 1;
+            transform: scale(1);
+        }
+        .content {
+            position: relative;
+            width: 95%;
+            height: 95%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            background: transparent;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.2);
+            overflow: auto;
+            padding: 20px;
+        }
+        .nav-button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 10px;
+            background-color: #17a2b8;
+            color: white;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .nav-button:hover {
+            cursor: pointer;
+            background-color: #0056b3;
+        }
+        .nav-button:active {
+            transform: scale(0.95);
+        }
+        .nav-button:disabled {
+            background-color: #CCCCCC;
+            color: #666666;
+        }
+        #close, #reselect {
+            cursor: pointer;
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 10px;
+            background-color: #ffdb6f;
+            color: black;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        #close:hover, #reselect:hover {
+            background-color: #ffefbf;
+        }
+        #close:active, #reselect:active {
+            transform: scale(0.95);
+        }
+        #close:disabled, #reselect:disabled {
+            background-color: #CCCCCC;
+            color: #666666;
+        }
+        #img-info {
+            width: 20%;
+            margin-bottom: 20px;
+            background-color: #f8f3df;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: background-color 0.3s;
+            color: #f2620bcc;
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+        }
+        #img-info:hover {
+            background-color: #ffec99;
+            transition: background-color 0.3s ease;
+        }
+        #lightbox-img, #light {
+            max-width: 60%;
+            max-height: 60%;
+            object-fit: contain;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        #lightbox-img:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        #lightbox-img:active {
+            transform: scale(1);
+        }
+        #lightbox-img.box-selected {
+            box-shadow: 0px 0px 20px 1px rgba(242, 98, 11, 0.8);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        #thumbnails {
+            display: flex;
+            overflow-x: auto;
+            overflow-y: hidden;
+            width: 100%;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+        }
+        .thumbnail {
+            flex: none;
+            margin: 5.5px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        .thumbnail:hover {
+            transform: scale(1.05);
+            transition: transform 0.3s ease;
+        }
+        .thumbnail.active {
+            transform: scale(1.05);
+            box-shadow: 0px 0px 10px 1px rgba(242, 242, 11, 0.8);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .thumb-selected {
+            transform: scale(1.05);
+            box-shadow: 0px 0px 10px 1px rgba(242, 98, 11, 0.8);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .thumbnail.thumb-selected.active {
+            opacity: 0.5;
+            transform: scale(1.05);
+            box-shadow: 0px 0px 10px 1px rgba(17, 217, 241, 0.8);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        /* 警告提示框 */
+        .alert {
+            display: none;
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        .alert-btn {
+            padding: 1px 8px;
+            border-radius: 10px;
+            background-color: #a3e20d;
+        }
+        .alert-btn:hover {
+            background-color: #e2dc0d;
+            transition: background-color 0.3s ease;
+        }
+        .alert-btn:active {
+            transform: scale(0.95);
+        }
+        .alert-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            border-radius: 10px;
+            background-color: #fff;
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.2);
+        }
+        .alert-message {
+            margin-right: 10px;
+        }
+
+        /* toast提示框 */
+        .toast {
+            visibility: hidden; /* 默认隐藏 */
+            padding: 10px 20px;
+            background-color: #4e72b8;
+            color: white;
+            position: fixed; /* 固定位置，这样不会影响其他元素 */
+            bottom: 50%; /* 从底部开始的位置 */
+            left: 50%; /* 居中显示 */
+            transform: translateX(-50%); /* 用于水平居中 */
+            border-radius: 30px;
+            transition: visibility 0.5s, opacity 0.5s linear;
+        }
+        .toast.show {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* 选项标签 */
+        .options {
+            display: flex;
+            margin: 10px;
+            align-items: center;
+        }
+        .option-one, .option-two {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;  /* 按钮之间的间距 */
+        }
+        .all-copy, .all-reselect, .quick-reselect, .ex-info, .proto-link {
+            margin: 10px;
+            padding: 1px 20px;
+            border: none;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        .all-copy, .all-reselect, .quick-reselect {
+            background: linear-gradient(to left, #007991, #00eaa3);
+        }
+        .ex-info, .proto-link {
+            background: linear-gradient(to right, #56ccf2, #2f80ed);
+        }
+        .all-copy:hover, .all-reselect:hover, .quick-reselect:hover, .ex-info:hover, .proto-link:hover {
+            background: linear-gradient(to left, #00eaa3, #007991);
+            transition: all 0.3s;
+        }
+        .ex-info:hover, .proto-link:hover {
+            background: linear-gradient(to right, #2f80ed, #56ccf2);
+            transition: all 0.3s;
+        }
+        .proto-link:hover {
+            text-decoration: none;
+            color: white;
+        }
+        .all-copy:active, .all-reselect:active, .quick-reselect:active, .ex-info:active, .proto-link:active {
+            transform: scale(0.95);
+        }
+        .proto-link:visited {
+            color: #616161;
+        }
+
+        .box-res {
+            width: 8%;
+            margin: 5px;
+            font-weight: bold;
+            padding: 1px 5px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(to top, #dce35b, #45b649);
+        }
+        .box-res:last-child {
+            cursor: copy;
+        }
+        .box-res:last-child:hover {
+            background: linear-gradient(to top, #f79d00, #64f38c);
+        }
+        .box-res:last-child:active {
+            transform: scale(0.95);
+        }
+        .box-res p{
+            color: #8e44ad;
+            margin: 5px;
+            text-align: center;
+        }
+    </style>
+
+</head>
+<body>
+    <!--加载动画-->
+    <div id="loading">
+        <div class="spinner-container">
+            <div class="spinner"></div>
+            <div class="loading-text">Loading...</div>
+        </div>
+    </div>
+
+    <!--背景动画-->
+    <canvas id="canvas"></canvas>
+
+    <!--图片选择-->
+    <div class="container">
+        <div class="h1-container">
+            <h1 class="text-center">{{ title }}</h1>
+        </div>
+        {% for res in images_list %}
+        <div class="image-container" data-query="{{ res.query }}" data-start="{{ res.stage.start }}" data-end="{{ res.stage.end }}">
+            {% for image in res.image_list %}
+            <div class="image-box {{ 'selected' if (image.frames_id| int) == res.stage.start or (image.frames_id| int) == res.stage.end else '' }}" style="display: {{ 'none' if (image.frames_id| int) != res.stage.start and (image.frames_id| int) != res.stage.end else '' }}">
+                <img src="{{ image.src }}" class="img-fluid" alt="Image" data-frame="{{ image.frames_id }}" data-timestamp="{{ image.timestamp }}">
+                <button class="mark-button {{ 'marked' if (image.frames_id| int) == res.stage.start or (image.frames_id| int) == res.stage.end else '' }}">标记</button>
+                <div class="info">
+                    <span>{{ image.frames_id }} - {{ image.timestamp }}</span>
+                </div>
+            </div>
+            {% endfor %}
+
+            <!--结果-->
+            <div class="result-container">
+                <button id="timeDifference{{ loop.index }}" class="time-difference">{{ res.stage.cost }}</button>
+            </div>
+
+            <!--选项-->
+            <div class="options">
+                <div class="option-one">
+                    <button class="all-copy">全部复制</button>
+                    <button class="all-reselect">全部重选</button>
+                    <button class="quick-reselect">快速重选</button>
+                </div>
+                <div class="option-two">
+                    <button class="ex-info">额外帧</button>
+                    <a href="{{ res.proto }}" target="_blank" class="proto-link">全部帧</a>
+                </div>
+            </div>
+
+            <!--额外帧-->
+            <div class="extra" style="display: none;">
+                <div class="extra-container">
+                    {% for extra in res.extra_list %}
+                    <div class="extra-image">
+                        <img src="{{ extra.src }}" class="img-extra" alt="extraImage">
+                        <p>{{ extra.idx }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+        {% endfor %}
+    </div>
+
+    <!--灯箱查看器-->
+    <div id="lightbox">
+        <div class="content">
+            <button id="prev" class="nav-button" style="position: absolute; left: 0;">上一张</button>
+            <div id="img-info">
+                <span id="frame-id"></span>
+                <span id="timestamp"></span>
+            </div>
+            <img id="lightbox-img" src="" alt="Image" data-frame="" data-timestamp="">
+            <div id="thumbnails"></div>
+            <button id="next"  class="nav-button" style="position: absolute; right: 0;">下一张</button>
+            <button id="close" style="position: absolute; top: 0; right: 0;">关闭</button>
+            <button id="reselect" style="position: absolute; top: 0; left: 0;">重选</button>
+            <div class="box-res" style="position: absolute; top: 18%; left: 0;">
+                <p id="box-diff1">0 -> 0</p>
+            </div>
+            <div class="box-res" style="position: absolute; top: 25%; left: 0;">
+                <p id="box-diff2">0.00000</p>
+            </div>
+        </div>
+    </div>
+
+    <!--警告提示框-->
+    <div id="custom-alert" class="alert">
+        <div class="alert-content">
+            <span class="alert-message"></span>
+            <button class="alert-btn" onclick="closeAlert()">确定</button>
+        </div>
+    </div>
+
+    <!--复制提示框-->
+    <div id="toast" class="toast"></div>
+
+    <!--主页图片选择器-->
+    <script>
+        var containers = document.querySelectorAll('.image-container');
+        var markButtons = document.querySelectorAll(".mark-button");
+
+        containers.forEach((container, idx) => {
+            container.querySelectorAll('.mark-button').forEach(markButton => {
+                markButton.addEventListener('click', function(e) {
+                    var target = e.target;
+                    var parent = target.parentElement;
+                    var frameId = Number(parent.querySelector('img').getAttribute('data-frame'));
+                    var frame = Number(parent.querySelector('img').getAttribute('data-timestamp'));
+
+                    if (target.classList.contains('marked')) {
+                        target.classList.remove('marked');
+                        parent.classList.remove('selected');
+                    } else {
+                        var markedInContainer = container.querySelectorAll('.marked');
+                        if (markedInContainer.length < 2) {
+                            target.classList.add('marked');
+                            parent.classList.add('selected');
+                        } else {
+                            showAlert('已经选择了两个标记，请先取消一个标记再进行操作！');
+                            return;
+                        }
+                    }
+
+                    // 获取所有的结果标签
+                    var resContainers = Array.from(document.querySelectorAll('.result-container'));
+                    var resultDivs = Array.from(document.querySelectorAll('.time-difference'));
+                    // 重新获取选中的元素
+                    selectedInContainer = container.querySelectorAll('.selected');
+                    let allImages = Array.from(containers[idx].querySelectorAll('.image-box img'));
+                    let options = Array.from(document.querySelectorAll('.options'));
+
+                    // 如果选中的标记少于两个，清空结果显示
+                    if (selectedInContainer.length === 1) {
+                        resultDivs[idx].textContent = '0.00000';
+                        resultDivs[idx].classList.remove('effect-on');
+                        resultDivs[idx].classList.add('effect-off');
+                        options[idx].style.display = 'none';
+
+                    // 如果选中的标记等于0，隐藏对应容器的所有选项标签
+                    } else if (selectedInContainer.length === 0) {
+                        resultDivs[idx].classList.remove('effect-on');
+                        resultDivs[idx].classList.add('effect-off');
+                        resContainers[idx].style.display = 'none';
+                        options[idx].style.display = 'none';
+                        // 显示该容器的所有图片
+                        allImages.forEach(image => {
+                            if (image.parentElement.style.display === 'none') {
+                                image.parentElement.style.display = '';
+                            }
+                        });
+
+                    // 如果有两个选中的元素，获取它们的帧数据并计算差值
+                    } else if (selectedInContainer.length === 2) {
+                        resultDivs[idx].classList.add('effect-on');
+                        resultDivs[idx].classList.remove('effect-off');
+                        options[idx].style.display = 'flex';
+                        allImages.forEach(image => {
+                            if (!image.parentElement.classList.contains('selected')) {
+                                image.parentElement.style.display = 'none';
+                            }
+                        });
+
+                        var timestamp1 = Number(selectedInContainer[0].querySelector('img').getAttribute('data-timestamp'));
+                        var timestamp2 = Number(selectedInContainer[1].querySelector('img').getAttribute('data-timestamp'));
+                        var diff = Math.abs(timestamp2 - timestamp1);
+                        diff = diff.toFixed(5);
+                        resultDivs[idx].textContent = diff;
+                        resContainers[idx].style.display = 'flex';
+                    }
+                });
+            });
+        });
+
+        // 快速重选
+        var quickButton = document.querySelectorAll('.quick-reselect');
+        quickButton.forEach((quick, idx) => {
+            quick.addEventListener('click', function(e) {
+                let resContainers = Array.from(document.querySelectorAll('.result-container'));
+                let timeDiffs = Array.from(document.querySelectorAll('.time-difference'));
+                let options = Array.from(document.querySelectorAll('.options'));
+                resContainers[idx].style.display = 'none';
+                timeDiffs[idx].textContent = '0.00000';
+                timeDiffs[idx].classList.remove('effect-on');
+                timeDiffs[idx].classList.add('effect-off');
+                options[idx].style.display = 'none';
+                setBoxDiff('0 -> 0', '0.00000', 'none');
+
+                let quickParent = e.currentTarget.closest('.image-container');
+                marked = quickParent.querySelectorAll('.marked');
+                marked.forEach(mark => {mark.classList.remove('marked')});
+                selected = quickParent.querySelectorAll('.selected');
+                selected.forEach(select => {select.classList.remove('selected')});
+
+                boxImage = quickParent.querySelectorAll('.image-box');
+                boxImage.forEach(box => {box.style.display = ''});
+                images = Array.from(quickParent.querySelectorAll('.image-box img'));
+                diffIndex = idx;  // 获取当前容器的索引
+                currentImageIndex = 0;  // 获取当前图片的索引
+                let firstImage = images[0];
+
+                openLightbox();
+                lightboxImg.src = firstImage.src;
+                lightboxImg.dataset.frame = firstImage.dataset.frame;
+                lightboxImg.dataset.timestamp = firstImage.dataset.timestamp;
+                frameIdSpan.textContent = '帧编号: ' + firstImage.dataset.frame;
+                timestampSpan.textContent = '时间戳: ' + firstImage.dataset.timestamp;
+
+                originalImage = firstImage;  // 获取原始图片的信息
+                updateButtonStatus();  // 更新前后按钮的状态
+                boxVision();  // 更新主图显示状态
+                updateThumbnails();  // 更新缩略图
+                scrollToActive(); // 滚动条自动跟随
+            });
+        });
+
+        // 设置灯箱结果
+        function setBoxDiff(diff1, diff2, vision) {
+            let boxDiff1 = document.querySelector('#box-diff1');
+            let boxDiff2 = document.querySelector('#box-diff2');
+            boxDiff1.textContent = diff1;
+            boxDiff1.parentElement.style.display = vision;
+            boxDiff2.textContent = diff2;
+            boxDiff2.parentElement.style.display = vision;
+        }
+
+        // 灯箱结果标签的点击事件
+        var boxRes = document.querySelectorAll('.box-res:last-child');
+        boxRes.forEach((res, idx) => {
+            res.addEventListener('click', function(e) {
+                resp = res.querySelector('p');
+                let rawContent = resp.textContent;
+                // 尝试将内容转换为数字并保留小数点后五位
+                let numberContent = parseFloat(rawContent);
+                if (!isNaN(numberContent)) {
+                    rawContent = numberContent.toFixed(5);
+                }
+                // 去除换行、空白等格式
+                let cleanContent = rawContent.trim().replace(/\s+/g, ' ');
+                copyArea(cleanContent);
+                toastDisplay('已复制:' + ' ' + cleanContent);
+            });
+        });
+    </script>
+
+    <!--灯箱查看器-->
+    <script>
+        var lightbox = document.getElementById('lightbox');
+        var lightboxImg = document.getElementById('lightbox-img');
+        var frameIdSpan = document.getElementById('frame-id');
+        var timestampSpan = document.getElementById('timestamp');
+        var prevButton = document.getElementById('prev');
+        var nextButton = document.getElementById('next');
+        var closeButton = document.getElementById('close');
+        var reselectButton = document.getElementById('reselect');
+
+        var imageContainers = Array.from(document.querySelectorAll('.image-container'));
+        var images = [];
+        var currentImageIndex = 0;
+        var originalImage;
+        var diffIndex;
+
+        // 打开灯箱
+        function openLightbox() {
+            document.getElementById('lightbox').classList.add('show');
+            window.addEventListener('keydown', keyListener); // 启用键盘监听
+        }
+
+        // 关闭灯箱
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('show');
+            window.removeEventListener('keydown', keyListener); // 停止键盘监听
+        }
+
+        // 监听每个容器的图片点击事件
+        imageContainers.forEach((imageContainer, containerIndex) => {
+            var currentImages = Array.from(imageContainer.querySelectorAll('.image-box img'));
+            currentImages.forEach((image, index) => {
+                image.addEventListener('click', function(e) {
+                    openLightbox();
+                    lightboxImg.src = e.target.src;
+                    lightboxImg.dataset.frame = e.target.dataset.frame;
+                    lightboxImg.dataset.timestamp = e.target.dataset.timestamp;
+                    frameIdSpan.textContent = '帧编号: ' + e.target.dataset.frame;
+                    timestampSpan.textContent = '时间戳: ' + e.target.dataset.timestamp;
+                    diffIndex = containerIndex;  // 获取当前容器的索引
+                    currentImageIndex = index;  // 获取当前图片的索引
+
+                    let selectedImage = Array.from(imageContainer.querySelectorAll('.selected'));
+                    if (selectedImage.length === 1) {
+                        images = currentImages.filter(img => img.parentElement.style.display === '');
+                        currentImageIndex = images.indexOf(e.target);
+                        setBoxDiff('0 -> 0', '0.00000', 'none');
+
+                    } else if (selectedImage.length === 2) {
+                        images = currentImages.filter(img => img.parentElement.style.display === '');
+                        currentImageIndex = images.indexOf(e.target);
+                        let frame1 = Number(selectedImage[0].querySelector('img').getAttribute('data-frame'));
+                        let frame2 = Number(selectedImage[1].querySelector('img').getAttribute('data-frame'));
+                        let timestamp1 = Number(selectedImage[0].querySelector('img').getAttribute('data-timestamp'));
+                        let timestamp2 = Number(selectedImage[1].querySelector('img').getAttribute('data-timestamp'));
+                        let diff = Math.abs(timestamp2 - timestamp1);
+                        diff = diff.toFixed(5);
+                        setBoxDiff(frame1 + ' -> ' + frame2, diff, '');
+
+                    } else {
+                        images = currentImages;
+                        setBoxDiff('0 -> 0', '0.00000', 'none');
+                    }
+
+                    originalImage = e.target;  // 获取原始图片的信息
+                    updateButtonStatus();  // 更新前后按钮的状态
+                    boxVision();  // 更新主图显示状态
+                    updateThumbnails();  // 更新缩略图
+                    scrollToActive(); // 滚动条自动跟随
+                });
+            });
+        });
+
+        // 灯箱-更新缩略图
+        function updateThumbnails() {
+            let thumbnailsDiv = document.getElementById('thumbnails');
+            thumbnailsDiv.innerHTML = ''; // 清空现有的缩略图
+
+            images.forEach((image, index) => {
+                let thumbnail = document.createElement('img');
+                thumbnail.src = image.src;
+                thumbnail.classList.add('thumbnail');
+                if (index === currentImageIndex) {
+                    thumbnail.classList.add('active'); // 标记当前显示的图片
+                }
+                if (image.parentElement.classList.contains('selected')) {
+                    thumbnail.classList.add('thumb-selected'); // 标记当前选定的图片
+                }
+
+                thumbnail.addEventListener('click', function(e) {
+                    // 点击缩略图时更新大图
+                    lightboxImg.src = image.src;
+                    frameIdSpan.textContent = '帧编号: ' + image.dataset.frame;
+                    timestampSpan.textContent = '时间戳: ' + image.dataset.timestamp;
+                    currentImageIndex = index;
+                    originalImage = image;
+                    updateButtonStatus();
+                    boxVision();
+                });
+                thumbnailsDiv.appendChild(thumbnail);
+            });
+        }
+
+        // 更新主图
+        function updateImage() {
+            let image = images[currentImageIndex];
+            lightboxImg.src = image.src;
+            lightboxImg.dataset.frame = image.dataset.frame;
+            lightboxImg.dataset.timestamp = image.dataset.timestamp;
+            frameIdSpan.textContent = '帧编号: ' + image.dataset.frame;
+            timestampSpan.textContent = '时间戳: ' + image.dataset.timestamp;
+            originalImage = image;
+            updateButtonStatus();
+            boxVision();
+        }
+
+        // 灯箱-更新按钮状态
+        function updateButtonStatus() {
+            prevButton.disabled = currentImageIndex === 0;
+            nextButton.disabled = currentImageIndex === images.length - 1;
+            updateThumbnails(); // 在更新按钮状态时调用缩略图更新函数
+        }
+
+        // 灯箱-更新主图标记效果
+        function boxVision () {
+            let boxImg = document.getElementById('lightbox-img');
+            if (originalImage.parentElement.classList.contains('selected')) {
+                boxImg.classList.add('box-selected');
+            } else {
+                boxImg.classList.remove('box-selected');
+            }
+        }
+
+        // 灯箱-上一张标签
+        prevButton.addEventListener('click', function() {
+            if (currentImageIndex > 0) {
+                currentImageIndex--;
+                updateImage();
+                scrollToActive();
+            }
+        });
+
+        // 灯箱-下一张标签
+        nextButton.addEventListener('click', function() {
+            if (currentImageIndex < images.length - 1) {
+                currentImageIndex++;
+                updateImage();
+                scrollToActive();
+            }
+        });
+
+        // 灯箱-关闭标签
+        closeButton.addEventListener('click', function() {
+            closeLightbox();
+        });
+
+        // 灯箱-重选标签
+        reselectButton.addEventListener('click', function(e) {
+            let imageContainer = document.querySelectorAll('.image-container');
+            let container = imageContainer[diffIndex]
+            let markButton = container.querySelectorAll('.image-box button');
+            markButton.forEach(mark => {
+                mark.classList.remove('marked');
+                mark.parentElement.classList.remove('selected');
+                mark.parentElement.style.display = '';
+            });
+
+            setBoxDiff('0 -> 0', '0.00000', 'none');
+
+            let resultDivs = Array.from(document.querySelectorAll('.time-difference'));
+            let resContainers = Array.from(document.querySelectorAll('.result-container'));
+            let options = Array.from(document.querySelectorAll('.options'));
+            resultDivs[diffIndex].textContent = '0.00000';
+            resultDivs[diffIndex].classList.remove('effect-on');
+            resultDivs[diffIndex].classList.add('effect-off');
+            resContainers[diffIndex].style.display = 'none';
+            options[diffIndex].style.display = 'none';
+
+            let allThumb = Array.from(document.querySelectorAll('.thumb-selected'));
+            allThumb.forEach(thumb => {
+                thumb.classList.remove('thumb-selected')
+            });
+
+            images = Array.from(container.querySelectorAll('.image-box img'));
+            let thumbs = Array.from(document.querySelectorAll('.thumbnail'));
+            thumbs.forEach(thumb => {thumb.style.display = ''});
+            updateIndex();
+            updateThumbnails();
+            scrollToActive();
+            updateButtonStatus();
+
+            let boxImg = document.getElementById('lightbox-img');
+            boxImg.classList.remove('box-selected');
+        });
+
+        // 灯箱-缩略图滚动条自动跟随
+        function scrollToActive() {
+            let thumbnailsDiv = document.getElementById('thumbnails');
+            let thumbnails = thumbnailsDiv.querySelectorAll('.thumbnail');
+            let activeThumbnail = thumbnails[currentImageIndex];
+
+            let thumbnailStart = activeThumbnail.offsetLeft;
+            let thumbnailEnd = thumbnailStart + activeThumbnail.offsetWidth;
+
+            let viewStart = thumbnailsDiv.scrollLeft;
+            let viewEnd = viewStart + thumbnailsDiv.offsetWidth;
+
+            // 判断当前图片是否为可视区域最左侧的第二张
+            let isSecondVisibleThumbnail = currentImageIndex === 1 && thumbnailStart >= viewStart && thumbnailEnd <= viewEnd;
+            // 缩略图位于视图之外的左侧
+            if (thumbnailStart < viewStart && !isSecondVisibleThumbnail) {
+                // 让第二张图片出现在可视区域的最左侧
+                thumbnailsDiv.scrollLeft = thumbnailStart - thumbnails[0].offsetWidth;
+            // 如果缩略图在右侧，看不见
+            } else if (thumbnailEnd > viewEnd) {
+                thumbnailsDiv.scrollLeft = thumbnailEnd - thumbnailsDiv.offsetWidth;
+            }
+            // 如果缩略图完全在视图中，则不进行滚动
+        }
+
+        // 灯箱-主图点击事件
+        lightboxImg.addEventListener('click', function(e) {
+            clacTimeCost();
+        });
+
+        function clacTimeCost() {
+            let parentImg = originalImage.parentElement;
+            let buttons = Array.from(parentImg.querySelectorAll('button'));
+            let thumbActive = document.querySelector('.thumbnail.active');
+
+            if (parentImg.classList.contains('selected')) {
+                lightboxImg.classList.remove('box-selected');
+                parentImg.classList.remove('selected');
+                buttons.forEach(button => button.classList.remove('marked'));
+                thumbActive.classList.remove('thumb-selected');
+
+            } else {
+                let resImg =  Array.from(parentImg.parentElement.querySelectorAll('.marked'));
+                if (resImg.length < 2) {
+                    lightboxImg.classList.add('box-selected');
+                    parentImg.classList.add('selected');
+                    buttons.forEach(button => button.classList.add('marked'));
+                    thumbActive.classList.add('thumb-selected');
+                } else {
+                    showAlert('已经选择了两个标记，请先取消一个标记再进行操作！');
+                    return;
+                }
+            }
+
+            let resContainers = Array.from(document.querySelectorAll('.result-container'));
+            let resDivs = Array.from(document.querySelectorAll('.time-difference'));
+            let resMark = parentImg.parentElement.querySelectorAll('.marked');
+            let allImages = Array.from(imageContainers[diffIndex].querySelectorAll('.image-box img'));
+            let options = Array.from(document.querySelectorAll('.options'));
+
+            if (resMark.length === 1) {
+                resDivs[diffIndex].textContent = '0.00000';
+                resDivs[diffIndex].classList.remove('effect-on');
+                resDivs[diffIndex].classList.add('effect-off');
+                options[diffIndex].style.display = 'none';
+                setBoxDiff('0 -> 0', '0.00000', 'none');
+
+            } else if (resMark.length === 0) {
+                allImages.forEach(image => {image.parentElement.style.display = ''});
+                resDivs[diffIndex].classList.remove('effect-on');
+                resDivs[diffIndex].classList.add('effect-off');
+                resContainers[diffIndex].style.display = 'none';
+                options[diffIndex].style.display = 'none';
+                setBoxDiff('0 -> 0', '0.00000', 'none');
+
+                images = allImages;
+                let thumbs = Array.from(document.querySelectorAll('.thumbnail'));
+                thumbs.forEach(thumb => {thumb.style.display = ''});
+                updateIndex();
+                updateThumbnails();
+                scrollToActive();
+                updateButtonStatus();
+
+            } else if (resMark.length === 2) {
+                allImages.forEach(image => {
+                    if (image.parentElement.classList.contains('selected')) {
+                        image.parentElement.style.display = '';
+                    } else {
+                        image.parentElement.style.display = 'none';
+                    }
+                });
+                let frame1 = Number(resMark[0].parentElement.querySelector('img').getAttribute('data-frame'));
+                let frame2 = Number(resMark[1].parentElement.querySelector('img').getAttribute('data-frame'));
+                let timestamp1 = Number(resMark[0].parentElement.querySelector('img').getAttribute('data-timestamp'));
+                let timestamp2 = Number(resMark[1].parentElement.querySelector('img').getAttribute('data-timestamp'));
+                let diff = Math.abs(timestamp2 - timestamp1);
+                diff = diff.toFixed(5);
+                setBoxDiff(frame1 + ' -> ' + frame2, diff, '');
+                resDivs[diffIndex].textContent = diff;
+                resDivs[diffIndex].classList.add('effect-on');
+                resDivs[diffIndex].classList.remove('effect-off');
+                options[diffIndex].style.display = 'flex';
+                resContainers[diffIndex].style.display = 'flex';
+
+                images = allImages;
+                images = allImages.filter(img => img.parentElement.style.display === '');
+                updateIndex();
+                updateThumbnails();
+                scrollToActive();
+                updateButtonStatus();
+            }
+        }
+
+        // 找出当前点击图片在新的 images 数组中的索引
+        function updateIndex() {
+            let originalIndex = originalImage.getAttribute('data-frame');
+            for (let i = 0; i < images.length; i++) {
+                if (images[i].getAttribute('data-frame') === originalIndex) {
+                    currentImageIndex = i;
+                }
+            }
+        }
+    </script>
+
+    <!--复制提示框-->
+    <script>
+        // 开启警告提示框
+        function showAlert(message) {
+            document.getElementById('custom-alert').style.display = 'block';
+            document.querySelector('.alert-message').innerText = message;
+        }
+
+        // 关闭警告提示框
+        function closeAlert() {
+            document.getElementById('custom-alert').style.display = 'none';
+        }
+
+        // toast提示框
+        function toastDisplay(text) {
+            let toast = document.getElementById('toast');
+                toast.textContent = text;
+                toast.classList.add('show');
+                setTimeout(function() {
+                    toast.classList.remove('show');
+            }, 2000);
+        }
+
+        // 复制区域
+        function copyArea(content) {
+            let textarea = document.createElement('textarea');
+            textarea.textContent = content;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+        }
+
+        // 页面加载事件
+        window.addEventListener('load', function() {
+            // 页面加载完毕后等待1秒再关闭等待动画
+            setTimeout(function() {
+                const loading = document.getElementById('loading');
+                loading.style.display = 'none';
+            }, 1000);
+            // 页面加载完毕后，将滚动条置于最左侧
+            let containers = document.querySelectorAll('.image-container');
+            for (var i = 0; i < containers.length; i++) {
+                containers[i].scrollLeft = 0;
+            }
+        });
+
+        // 页面加载完毕后，先计算结果
+        document.addEventListener("DOMContentLoaded", function() {
+            const imageContainers = document.querySelectorAll('.image-container');
+            imageContainers.forEach((container, index) => {
+                const startFrame = parseInt(container.getAttribute('data-start'));
+                const endFrame = parseInt(container.getAttribute('data-end'));
+                const startImage = container.querySelector(`img[data-frame="${startFrame}"]`);
+                const endImage = container.querySelector(`img[data-frame="${endFrame}"]`);
+
+                if (startImage && endImage) {
+                    const startTime = parseFloat(startImage.getAttribute('data-timestamp'));
+                    const endTime = parseFloat(endImage.getAttribute('data-timestamp'));
+
+                    const difference = endTime - startTime;
+                    const resContainers = Array.from(document.querySelectorAll('.result-container'));
+                    const timeDivs = Array.from(document.querySelectorAll('.time-difference'));
+                    timeDivs[index].textContent = difference.toFixed(5);
+                    timeDivs[index].classList.add('effect-on');
+                    resContainers[index].style.display = 'flex';
+                } else {
+                    timeDivs[index].classList.add('effect-off');
+                }
+            });
+        });
+
+        // 结果标签，点击后复制
+        var singleCopy = Array.from(document.querySelectorAll('.result-container button'));
+        singleCopy.forEach(single => {
+            single.addEventListener('click', function(e) {
+                let rawContent = single.textContent;
+                // 尝试将内容转换为数字并保留小数点后五位
+                let numberContent = parseFloat(rawContent);
+                if (!isNaN(numberContent)) {
+                    rawContent = numberContent.toFixed(5);
+                }
+                // 去除换行、空白等格式
+                let cleanContent = rawContent.trim().replace(/\s+/g, ' ');
+                copyArea(cleanContent);
+                toastDisplay('已复制:' + ' ' + cleanContent);
+            });
+        });
+
+        // 全部复制按钮
+        var copyDivs = Array.from(document.querySelectorAll('.all-copy'));
+        copyDivs.forEach(copy => {
+            copy.addEventListener('click', function(e) {
+                let resDivs = Array.from(document.querySelectorAll('.time-difference'));
+                let textToCopy = '';
+                resDivs.forEach(res => {
+                    if (res.classList.contains('effect-on')) {
+                        let rawContent = res.textContent;
+                        // 去除空格、换行和其他空白字符
+                        rawContent = rawContent.replace(/\s+/g, '');
+                        let numberContent = parseFloat(rawContent);
+                        if (!isNaN(numberContent)) {
+                            rawContent = numberContent.toFixed(5);
+                        }
+                        textToCopy += rawContent + '\t';
+                    }
+                });
+                copyArea(textToCopy);
+                toastDisplay('已复制全部结果');
+            });
+        });
+
+        // 全部重选按钮
+        var againDivs = Array.from(document.querySelectorAll('.all-reselect'));
+        againDivs.forEach((again, index) => {
+            again.addEventListener('click', function(e) {
+                let resMarked = document.querySelectorAll('.marked');
+                resMarked.forEach(marked => {
+                    marked.classList.remove('marked');
+                })
+                let resSelected = document.querySelectorAll('.selected');
+                resSelected.forEach(selected => {
+                    selected.classList.remove('selected');
+                })
+                let allImageBox = document.querySelectorAll('.image-container .image-box');
+                allImageBox.forEach(imageBox => {
+                    imageBox.style.display = '';
+                });
+                let resContainers = Array.from(document.querySelectorAll('.result-container'));
+                resContainers.forEach(res => {
+                    res.style.display = 'none'
+                });
+                let timeDiff = Array.from(document.querySelectorAll('.time-difference'));
+                timeDiff.forEach(diff => {
+                    diff.textContent = '0.00000';
+                    diff.classList.remove('effect-on');
+                    diff.classList.add('effect-off');
+                });
+                let options = Array.from(document.querySelectorAll('.options'));
+                options.forEach(option => {
+                    option.style.display = 'none';
+                });
+                setBoxDiff('0 -> 0', '0.00000', 'none');
+            });
+        });
+
+        // 额外信息标签
+        var extraBtn = Array.from(document.querySelectorAll('.ex-info'));
+        extraBtn.forEach((ex, index) => {
+            ex.addEventListener('click', function(e) {
+                const newWindow = window.open('', '_blank');
+                // 获取当前点击的按钮的父容器
+                const parentContainer = e.currentTarget.closest('.image-container');
+                // 在父容器内找到 extra 内容，获取原有内容，并进行复制
+                const originalContent = parentContainer.querySelector('.extra').cloneNode(true);
+                // 添加样式
+                const styles = `
+                    <style>
+                        .loader-wrapper {
+                            position: fixed;
+                            top: 0;
+                            left: 0;
+                            width: 100%;
+                            height: 100%;
+                            z-index: 9999;
+                            background-color: rgba(255, 255, 255, 0.9);
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                        }
+                        .loader {
+                            border: 30px solid #f3f3f3;
+                            border-top: 30px solid #3498db;
+                            border-radius: 50%;
+                            width: 200px;
+                            height: 200px;
+                            animation: spin 1s linear infinite;
+                        }
+                        @keyframes spin {
+                            0% { transform: rotate(0deg); }
+                            100% { transform: rotate(360deg); }
+                        }
+
+                        .extra-container {
+                            display: flex;
+                            flex-wrap: wrap;
+                            justify-content: space-around;
+                            border: 1px solid #ccc;
+                            padding: 16px;
+                            margin: 16px;
+                            border-radius: 8px;
+                            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+                            transition: all 0.3s ease;
+                        }
+                        .extra-container:hover {
+                            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+                        }
+                        .extra-image {
+                            flex-basis: calc(100% / 6 - 20px);
+                            margin: 10px;
+                            text-align: center;
+                        }
+                        .img-extra {
+                            max-width: 100%;
+                            border-radius: 4px;
+                        }
+                        .img-extra:hover {
+                            cursor: zoom-in;
+                            transform: scale(1.03); /* 鼠标悬浮时的放大效果 */
+                            transition: transform 0.3s ease; /* 平滑过渡效果 */
+                        }
+                        .img-extra:active {
+                            transform: scale(0.98);
+                        }
+                        p {
+                            margin-top: 12px;
+                            font-size: 20px;
+                            font-weight: bold;
+                            color: #0d96a7;
+                        }
+
+                        .zoomed-in {
+                            position: fixed;
+                            top: 50%;
+                            left: 50%;
+                            transform: translate(-50%, -50%);
+                            z-index: 9999;
+                            max-width: 80%;
+                            max-height: 80%;
+                            cursor: zoom-in;
+                        }
+                        .zoomed-in:hover {
+                            cursor: crosshair;
+                            box-shadow: 0px 0px 100px rgba(255,192,203,0.5);
+                            transition: box-shadow 0.5s ease;
+                        }
+
+                        .overlay {
+                            position: fixed;
+                            top: 0;
+                            left: 0;
+                            width: 100%;
+                            height: 100%;
+                            background: rgba(0, 0, 0, 0.3);
+                            z-index: 9998;
+                            backdrop-filter: blur(30px);
+                        }
+                    </style>
+                `;
+
+                // 创建一个新的 <script> 元素
+                const scriptElement = newWindow.document.createElement('script');
+                // 添加JS代码到新的 <script> 元素
+                scriptElement.textContent = `
+                    document.addEventListener('click', function(e) {
+                        if (e.target.classList.contains('img-extra')) {
+                            // 创建覆盖层
+                            const overlay = document.createElement('div');
+                            overlay.classList.add('overlay');
+
+                            // 创建放大的图片
+                            const zoomedImage = document.createElement('img');
+                            zoomedImage.src = e.target.src;
+                            zoomedImage.classList.add('zoomed-in');
+                            zoomedImage.style.zIndex = "9999";  // 确保z-index高于overlay
+
+                            // 点击放大图片或覆盖层移除它们
+                            zoomedImage.addEventListener('click', function() {
+                                document.body.removeChild(zoomedImage);
+                                document.body.removeChild(overlay);
+                            });
+
+                            overlay.addEventListener('click', function() {
+                                document.body.removeChild(zoomedImage);
+                                document.body.removeChild(overlay);
+                            });
+
+                            // 将覆盖层和放大的图片添加到页面
+                            document.body.appendChild(overlay);
+                            document.body.appendChild(zoomedImage);
+                        }
+                    });
+
+                    // 监听load事件来隐藏加载动画
+                    window.addEventListener('load', () => {
+                        const loaderWrapper = document.querySelector('.loader-wrapper');
+                        if (loaderWrapper) {
+                            setTimeout(() => {
+                                loaderWrapper.style.opacity = "0";
+                                loaderWrapper.style.transition = "opacity 0.3s ease";
+                                setTimeout(() => {
+                                    loaderWrapper.style.display = "none";
+                                }, 500);
+                            }, 1000);
+                        }
+                    });
+                `;
+
+                // 修改复制内容的可见性
+                originalContent.style.display = 'block';
+                // 将复制内容转换为HTML字符串
+                const htmlString = originalContent.outerHTML;
+                // 将修改后的内容写入新窗口
+                newWindow.document.write(styles + htmlString);
+                // 将新的 <script> 元素添加到新窗口的 <body>
+                newWindow.document.body.appendChild(scriptElement);
+
+                // 创建加载遮罩，创建加载动画
+                const loaderWrapper = newWindow.document.createElement('div');
+                loaderWrapper.className = 'loader-wrapper';
+                const loader = newWindow.document.createElement('div');
+                loader.className = 'loader';
+                // 将加载动画添加到遮罩中，将遮罩添加到页面的body中
+                loaderWrapper.appendChild(loader);
+                newWindow.document.body.appendChild(loaderWrapper);
+
+                newWindow.document.close();
+            });
+
+            // 点击放大图片，再次点击并退出
+            let extraImg = Array.from(document.querySelectorAll('.img-extra'));
+            extraImg.forEach((ex, index) => {
+                ex.addEventListener('click', function(e) {
+                    // 创建一个新的 img 元素并设置属性
+                    const zoomedImage = document.createElement('img');
+                    zoomedImage.src = e.target.src;
+                    zoomedImage.classList.add('zoomed-in');
+                    // 添加点击事件以退出放大效果
+                    zoomedImage.addEventListener('click', function() {
+                        document.body.removeChild(zoomedImage);
+                    });
+                    // 将新的 img 元素添加到 body
+                    document.body.appendChild(zoomedImage);
+                });
+            });
+        });
+    </script>
+
+    <!--灯箱内的键盘事件-->
+    <script>
+        function keyListener(event) {
+            switch (event.key) {
+                case "ArrowLeft":
+                    // 左箭头键被按下时执行的代码
+                    if (currentImageIndex > 0) {
+                        currentImageIndex--;
+                        updateImage();
+                        scrollToActive();
+                    }
+                    break;
+                case "ArrowRight":
+                    // 右箭头键被按下时执行的代码
+                    if (currentImageIndex < images.length - 1) {
+                        currentImageIndex++;
+                        updateImage();
+                        scrollToActive();
+                    }
+                    break;
+                case "Enter":
+                    // 回车键被按下时执行的代码
+                    clacTimeCost();
+                    break;
+                case "Escape":
+                    // Escape键被按下时执行的代码
+                    closeLightbox();
+                    break;
+            }
+        }
+    </script>
+
+    <!--背景动画-->
+    <script>
+        let canvas, ctx, particles, particlePool;
+
+        window.addEventListener('DOMContentLoaded', function() {
+            init();
+        });
+
+        function init() {
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            particles = [];
+            particlePool = [];
+
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            window.addEventListener('scroll', resizeCanvas);
+
+            loop();
+        }
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.velX = Math.random() * 0.5 - 0.25;
+                this.velY = Math.random() * 0.5 - 0.25;
+                this.size = Math.random() * 5 + 2;
+                this.life = 500;
+                this.color = `hsla(${Math.random() * 360}, 100%, 50%, 1)`;
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            update() {
+                this.x += this.velX;
+                this.y += this.velY;
+                this.life--;
+                if (this.size > 0.2) this.size -= 0.05;
+            }
+        }
+
+        function createParticle(x, y) {
+            const particle = particlePool.pop() || new Particle(x, y);
+            particle.x = x;
+            particle.y = y;
+            particle.life = 500;
+            particle.size = Math.random() * 5 + 2;
+            particles.push(particle);
+        }
+
+        function loop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (Math.random() < 0.3) {
+                createParticle(Math.random() * canvas.width, Math.random() * canvas.height);
+            }
+
+            particles.forEach((particle, index) => {
+                particle.draw();
+                particle.update();
+
+                if (particle.life <= 0) {
+                    particlePool.push(particles.splice(index, 1)[0]);
+                }
+            });
+
+            requestAnimationFrame(loop);
+        }
+    </script>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js "></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js "></script>
+</body>
+</html>
