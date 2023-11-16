@@ -10,7 +10,7 @@ from nexaflow.skills.report import Report
 async def task(folder: str) -> str:
 
     async with Alynex() as alynex:
-        for video in alynex.only_video(folder):
+        for video in await alynex.only_video(folder):
             alynex.report.set_title(video.title)
             for path in video.sheet:
                 alynex.report.set_query(os.path.basename(path).split(".")[0])

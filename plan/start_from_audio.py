@@ -10,7 +10,7 @@ async def multi_audio_task(serial: str, application: str, activity: str):
     alynex = Alynex()
 
     device = manage.operate_device(serial)
-    for query, audio in alynex.player.load_all_audio():
+    for query, audio in await alynex.player.load_all_audio():
         alynex.report.set_title(query)
         for _ in range(5):
             alynex.report.set_query(query)

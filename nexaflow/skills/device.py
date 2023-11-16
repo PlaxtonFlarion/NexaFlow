@@ -189,7 +189,7 @@ class Device(Terminal):
         return result.strip()
 
     async def ask_force_filter(self, package: str) -> None:
-        current_screen = self.current_activity()
+        current_screen = await self.ask_current_activity()
         if package not in current_screen:
             screen = current_screen.split("/")[0] if "/" in current_screen else current_screen
             await self.ask_force_stop(screen)

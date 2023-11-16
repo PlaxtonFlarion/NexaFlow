@@ -13,14 +13,14 @@ class Terminal(object):
                 *cmd,
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
+            stdout, stderr = await events.communicate()
         except KeyboardInterrupt:
             logger.info("Stop with CTRL_C_EVENT ...")
             events = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
-
-        stdout, stderr = await events.communicate()
+            stdout, stderr = await events.communicate()
 
         if stdout:
             return stdout.decode(encoding="UTF-8", errors="ignore").strip()
@@ -59,14 +59,14 @@ class Terminal(object):
                 cmd,
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
+            stdout, stderr = await events.communicate()
         except KeyboardInterrupt:
             logger.info("Stop with CTRL_C_EVENT ...")
             events = await asyncio.create_subprocess_exec(
                 cmd,
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
-
-        stdout, stderr = await events.communicate()
+            stdout, stderr = await events.communicate()
 
         if stdout:
             return stdout.decode(encoding="UTF-8", errors="ignore").strip()

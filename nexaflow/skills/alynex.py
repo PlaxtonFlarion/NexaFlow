@@ -85,7 +85,7 @@ class Alynex(object):
         return self.__filmer
 
     @staticmethod
-    def only_video(folder: str) -> List:
+    async def only_video(folder: str) -> List:
 
         class Entry(object):
 
@@ -108,12 +108,6 @@ class Alynex(object):
 
         @staticmethod
         def train_model() -> None:
-            """
-            :1: scrcpy --no-audio --record file.mp4
-            :2: ffmpeg -i file.mp4 -t 5 model.mp4
-            :3: ffmpeg -i file.mp4 -t 5 -c copy model.mp4
-            :4: ffmpeg -i file.mp4 -ss 00:00:00 -t 00:00:05 -c copy model.mp4
-            """
             # 将视频切分成帧
             video = VideoObject(VIDEOS, fps=60)
             # 新建帧，计算视频总共有多少帧，每帧多少ms

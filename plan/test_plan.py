@@ -1,4 +1,3 @@
-import asyncio
 from nexaflow.skills.alynex import Alynex
 from nexaflow.skills.device import Device
 
@@ -43,9 +42,8 @@ class TestPlan(object):
         query = "讲个笑话"
         self.__alynex.report.set_title(query)
         for i in range(1):
-            print(self.__alynex.report.video_path)
             self.__alynex.report.set_query(f"{i + 1}_{query}")
-            self.__alynex.framix.crop_hook(0, 0.3, 1, 0.7)
+            await self.__alynex.framix.crop_hook(0, 0.3, 1, 0.7)
             await self.__alynex.analyzer()
         await self.__alynex.report.create_report()
 
