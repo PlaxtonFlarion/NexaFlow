@@ -3,6 +3,7 @@ import sys
 import signal
 import asyncio
 import threading
+import time
 from asyncio.subprocess import Process
 from subprocess import Popen
 from loguru import logger
@@ -24,12 +25,8 @@ class Record(object):
     def record_event(self) -> threading.Event:
         return self.__record_event
 
-    @record_event.setter
-    def record_event(self, value):
-        self.__record_event = value
-
     @property
-    def connection(self):
+    def connection(self) -> Popen:
         return self.__connection
 
     @connection.setter
@@ -45,7 +42,7 @@ class Record(object):
         self.__transports = value
 
     @property
-    def input_task(self):
+    def input_task(self) -> Optional[asyncio.Task]:
         return self.__input_task
 
     @input_task.setter
@@ -53,7 +50,7 @@ class Record(object):
         self.__input_task = value
 
     @property
-    def error_task(self):
+    def error_task(self) -> Optional[asyncio.Task]:
         return self.__error_task
 
     @error_task.setter
@@ -89,7 +86,7 @@ class Record(object):
         if serial:
             cmd.insert(1, "-s")
             cmd.insert(2, serial)
-        self.transports, self.input_task, self.error_task = Terminal.cmd_link(*cmd)
+        self.transports, self.input_task, self.error_task = await Terminal.cmd_link(*cmd)
         if self.transports:
             self.__record_event.set()
             await asyncio.sleep(1)
