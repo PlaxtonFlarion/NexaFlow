@@ -16,7 +16,7 @@ class Player(object):
             os.makedirs(AUDIO_DIRS, exist_ok=True)
 
     @staticmethod
-    async def load_all_audio() -> List[Tuple[str, str]]:
+    def load_all_audio() -> List[Tuple[str, str]]:
         audio_list = []
         for audio_file in os.listdir(AUDIO_DIRS):
             if ".mp3" in audio_file or ".wav" in audio_file:
@@ -27,7 +27,7 @@ class Player(object):
         return audio_list
 
     @staticmethod
-    async def load_audio(audio_name: str) -> Tuple[str, str]:
+    def load_audio(audio_name: str) -> Tuple[str, str]:
         query, audio = "", ""
         for audio_file in os.listdir(AUDIO_DIRS):
             if audio_name in audio_file:
@@ -37,7 +37,7 @@ class Player(object):
         return query, audio
 
     @staticmethod
-    async def play_audio(audio: str, volume: float = 1.0):
+    def play_audio(audio: str, volume: float = 1.0):
         if os.path.isfile(audio):
             pygame.mixer.music.load(audio)
             pygame.mixer.music.set_volume(volume)

@@ -174,9 +174,9 @@ class VideoObject(object):
         for frame_id, (timestamp, _) in enumerate(vid.iter_frames(with_times=True)):
             if frame_id >= len(frame_data):
                 break
-            frame_id_real = frame_id + 1
+            # frame_id_real = frame_id + 1
             if not frame_data[frame_id].timestamp:
-                logger.debug(f"fix frame {frame_id_real}'s timestamp: {timestamp}")
+                # logger.debug(f"fix frame {frame_id_real}'s timestamp: {timestamp}")
                 frame_data[frame_id].timestamp = timestamp
             pbar.update(1)
         pbar.close()
@@ -188,9 +188,9 @@ class VideoObject(object):
         for frame_id, (timestamp, _) in enumerate(vid.iter_frames(with_times=True)):
             if frame_id >= len(frame_data):
                 break
-            frame_id_real = frame_id + 1
+            # frame_id_real = frame_id + 1
             if not frame_data[frame_id].timestamp:
-                logger.debug(f"fix frame {frame_id_real}'s timestamp: {timestamp}")
+                # logger.debug(f"fix frame {frame_id_real}'s timestamp: {timestamp}")
                 frame_data[frame_id].timestamp = timestamp
 
     def clean_frames(self):

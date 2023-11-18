@@ -40,38 +40,40 @@ class Switch(object):
         ]
         await Terminal.cmd_line(*cmd)
 
-    async def video_tailor(self, src: str, start: str = "00:00:00", end: str = "00:00:05") -> None:
+    async def video_tailor(self, src: str, dst: str, start: str = "00:00:00", end: str = "00:00:05") -> None:
         """
         截取视频
         :param src: 原视频路径
+        :param dst: 新视频路径
         :param start: 开始
         :param end: 结束
         """
         before = os.path.basename(src).split(".")[0]
         after = os.path.basename(src).split(".")[-1]
-        dst = os.path.join(
-            os.path.dirname(src),
+        target = os.path.join(
+            dst,
             f"{before}_{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.{after}"
         )
-        cmd = [self.__ffmpeg, "-i", src, "-ss", start, "-t", end, "-c", "copy", dst]
+        cmd = [self.__ffmpeg, "-i", src, "-ss", start, "-t", end, "-c", "copy", target]
         await Terminal.cmd_line(*cmd)
 
-    async def video_cutter(self, src: str, start: str = "00:00:00", end: str = "00:00:05") -> None:
+    async def video_cutter(self, src: str, dst: str, start: str = "00:00:00", end: str = "00:00:05") -> None:
         """
         流式截取视频
         :param src: 原视频路径
+        :param dst: 新视频路径
         :param start: 开始
         :param end: 结束
         """
         before = os.path.basename(src).split(".")[0]
         after = os.path.basename(src).split(".")[-1]
-        dst = os.path.join(
-            os.path.dirname(src),
+        target = os.path.join(
+            dst,
             f"{before}_{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.{after}"
         )
         cmd = [
             self.__ffmpeg, "-i", src, "-ss", start, "-t", end, "-vf", "fps=60",
-            "-c:v", "libx264", "-crf", "18", "-c:a", "copy", dst
+            "-c:v", "libx264", "-crf", "18", "-c:a", "copy", target
         ]
         await Terminal.cmd_line(*cmd)
 

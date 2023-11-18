@@ -1,5 +1,6 @@
 import os
 import cv2
+import random
 import asyncio
 import aiofiles
 from loguru import logger
@@ -54,10 +55,10 @@ class Alynex(object):
 
     __repr__ = __str__
 
-    async def __aenter__(self):
+    def __enter__(self):
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb):
         pass
 
     @property
@@ -85,7 +86,7 @@ class Alynex(object):
         return self.__filmer
 
     @staticmethod
-    async def only_video(folder: str) -> List:
+    def only_video(folder: str) -> List:
 
         class Entry(object):
 
@@ -148,7 +149,7 @@ class Alynex(object):
         def __init__(self):
             self.framix_list: List["BaseHook"] = []
 
-        async def crop_hook(
+        def crop_hook(
                 self,
                 x: Union[int | float], y: Union[int | float],
                 x_size: Union[int | float], y_size: Union[int | float]
@@ -157,7 +158,7 @@ class Alynex(object):
             hook = CropHook((y_size, x_size), (y, x))
             self.framix_list.append(hook)
 
-        async def omit_hook(
+        def omit_hook(
                 self,
                 x: Union[int | float], y: Union[int | float],
                 x_size: Union[int | float], y_size: Union[int | float]
@@ -166,7 +167,7 @@ class Alynex(object):
             hook = OmitHook((y_size, x_size), (y, x))
             self.framix_list.append(hook)
 
-        async def pixel_wizard(
+        def pixel_wizard(
                 self,
                 video: "VideoObject",
                 model: str,
@@ -232,25 +233,24 @@ class Alynex(object):
 
         __repr__ = __str__
 
-    async def analyzer(
-            self, boost: bool = True, color: bool = True, shift: bool = False, **kwargs
+    def analyzer(
+            self, boost: bool = True, color: bool = True, focus: bool = False, **kwargs
     ) -> "Alynex._Review":
         """
         智能分类帧数据
-        :param boost: 快速分析
-        :param color: 彩色帧
-        :param shift: 转换视频格式和帧率
-        :param kwargs: 分析配置
+        :param boost: 跳帧模式
+        :param color: 彩色模式
+        :param focus: 转换视频
+        :param kwargs: 视频分析配置
         :return: 分析结果
         """
 
-        async def ini():
-            self.block = kwargs.get("block", 6)
-            self.threshold = kwargs.get("threshold", 0.97)
-            self.offset = kwargs.get("threshold", 3)
-            self.compress_rate = kwargs.get("compress_rate", 0.5)
-            self.window_size = kwargs.get("window_size", 1)
-            self.window_coefficient = kwargs.get("window_coefficient", 2)
+        self.block = kwargs.get("block", 6)
+        self.threshold = kwargs.get("threshold", 0.97)
+        self.offset = kwargs.get("threshold", 3)
+        self.compress_rate = kwargs.get("compress_rate", 0.5)
+        self.window_size = kwargs.get("window_size", 1)
+        self.window_coefficient = kwargs.get("window_coefficient", 2)
 
         async def validate():
             return next(
@@ -259,31 +259,31 @@ class Alynex(object):
                 None
             )
 
-        async def exchange():
+        async def frame_flip():
             screen_record, screen_tag = await validate()
             if not screen_record:
                 logger.error(f"{screen_tag} 不是一个标准的mp4视频文件，或视频文件已损坏 ...")
                 return None
             logger.info(f"{screen_tag} 可正常播放，准备加载视频 ...")
-            if shift:
-                change_record = screen_record.split('.')[0] + ".mp4"
+            if focus:
+                change_record = (
+                        screen_record.split('.')[0] + "_" +
+                        str(random.randint(100, 999)) + ".mp4"
+                )
                 await self.ffmpeg.video_change(screen_record, change_record)
                 logger.info(f"视频转换完成: {change_record}")
                 os.remove(screen_record)
                 logger.info(f"移除旧的视频: {screen_record}")
             else:
                 change_record = screen_record
-            return change_record
 
-        async def loading():
-            change_record = await exchange()
             video = VideoObject(change_record)
             task, hued = video.load_frames(color)
             return video, task, hued
 
-        async def intelligence():
-            (video, task, hued), *_ = await asyncio.gather(loading(), ini())
-            classify = await self.framix.pixel_wizard(video, MODELS, self.report.extra_path)
+        async def frame_flow():
+            video, task, hued = await frame_flip()
+            classify = self.framix.pixel_wizard(video, MODELS, self.report.extra_path)
             important_frames: List["SingleClassifierResult"] = classify.get_important_frame_list()
 
             pbar = toolbox.show_progress(classify.get_length(), 50, "Faster   ")
@@ -307,10 +307,6 @@ class Alynex(object):
                     pbar.update(1)
                 pbar.close()
 
-            frames = await color_mode(video, task, hued, frames_list)
-            return classify, frames_list, frames
-
-        async def color_mode(video, task, hued, frames_list):
             if color:
                 video.hued_data = tuple(hued.result())
                 logger.info(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
@@ -318,9 +314,10 @@ class Alynex(object):
                 frames = [video.hued_data[frame.frame_id - 1] for frame in frames_list]
             else:
                 frames = [frame for frame in frames_list]
-            return frames
 
-        async def sort_frames(classify, frames_list):
+            return classify, frames_list, frames
+
+        async def frame_flick(classify, frames_list):
             start_frame = classify.get_not_stable_stage_range()[0][1]
             end_frame = classify.get_not_stable_stage_range()[-1][-1]
             if start_frame.frame_id == end_frame.frame_id:
@@ -331,7 +328,7 @@ class Alynex(object):
             before, after, final = f"{start_frame.timestamp:.5f}", f"{end_frame.timestamp:.5f}", f"{time_cost:.5f}"
             logger.info(f"图像分类结果: [开始帧: {before}] [结束帧: {after}] [总耗时: {final}]")
 
-            original_inform = await self.report.draw(
+            original_inform = self.report.draw(
                 classifier_result=classify,
                 proto_path=self.report.proto_path,
                 target_size=Alynex.target_size
@@ -347,10 +344,10 @@ class Alynex(object):
                 "extra": self.report.extra_path,
                 "proto": original_inform
             }
-            await self.report.load(result)
+            self.report.load(result)
             return before, after, final
 
-        async def keep_images(frame: Union[SingleClassifierResult | Frame]):
+        async def frame_forge(frame: Union[SingleClassifierResult | Frame]):
             short_timestamp = format(round(frame.timestamp, 5), ".5f")
             pic_name = f"{frame.frame_id}_{short_timestamp}.png"
             pic_path = os.path.join(self.report.frame_path, pic_name)
@@ -358,21 +355,16 @@ class Alynex(object):
             async with aiofiles.open(pic_path, "wb") as file:
                 await file.write(codec.tobytes())
 
-        async def well_done():
-            classify, frames_list, frames = await intelligence()
+        async def analytics():
+            classify, frames_list, frames = await frame_flow()
             result, *_ = await asyncio.gather(
-                sort_frames(classify, frames_list),
-                *(keep_images(frame) for frame in frames)
+                frame_flick(classify, frames_list),
+                *(frame_forge(frame) for frame in frames)
             )
             return result
 
-        # loop = asyncio.get_event_loop()
-        # start, end, cost = loop.run_until_complete(well_done())
-        try:
-            start, end, cost = await well_done()
-        except asyncio.exceptions.CancelledError:
-            start, end, cost = await well_done()
-
+        loop = asyncio.get_event_loop()
+        start, end, cost = loop.run_until_complete(analytics())
         return Alynex._Review(start, end, cost)
 
 

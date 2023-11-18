@@ -34,10 +34,6 @@ class Report(object):
         if not self.__initialized:
             self.__initialized = True
 
-            self.LABEL_STABLE: str = "稳定阶段"
-            self.LABEL_UNSTABLE: str = "不稳定阶段"
-            self.LABEL_UNSPECIFIC: str = "不明阶段"
-
             self.clock: Any = lambda: time.strftime("%Y%m%d%H%M%S")
 
             self.title: str = ""
@@ -81,12 +77,12 @@ class Report(object):
         os.makedirs(self.extra_path, exist_ok=True)
         logger.info(f"{self.query} Start ... {'-' * 60}")
 
-    async def load(self, inform: Optional[Dict[str, Union[str | Dict]]]) -> None:
+    def load(self, inform: Optional[Dict[str, Union[str | Dict]]]) -> None:
         if inform:
             self.range_list.append(inform)
         logger.info(f"{self.query} End ... {'-' * 60}\n")
 
-    async def create_report(self) -> None:
+    def create_report(self) -> None:
 
         async def handler_inform(result):
             handler_list = []
@@ -173,11 +169,10 @@ class Report(object):
             self.range_list.clear()
             logger.info(f"{'=' * 45} {self.title} {'=' * 45}\n\n")
 
-        # loop = asyncio.get_event_loop()
-        # loop.run_until_complete(handler_start())
-        await handler_start()
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(handler_start())
 
-    async def create_total_report(self) -> None:
+    def create_total_report(self) -> None:
         loader = FileSystemLoader(os.path.join(Constants.NEXA, "template"))
         environment = Environment(loader=loader)
         template = environment.get_template("overall.html")
@@ -248,13 +243,18 @@ class Report(object):
             f.write(html)
             logger.debug(f"合并汇总报告: {total_html_path}\n\n")
 
-    async def draw(
-        self,
+    @staticmethod
+    def draw(
         classifier_result: "ClassifierResult",
         proto_path: str,
         compress_rate: float = None,
         target_size: Tuple[int, int] = None,
+        boost_mode: bool = False,
     ) -> str:
+
+        label_stable: str = "稳定阶段"
+        label_unstable: str = "不稳定阶段"
+        label_unspecific: str = "不明阶段"
 
         thumbnail_list: List[Dict[str, str]] = list()
         extra_dict: Dict[str, str] = dict()
@@ -264,41 +264,87 @@ class Report(object):
 
         offset = classifier_result.get_offset()
         stage_range = classifier_result.get_stage_range()
-        for cur_index in range(len(stage_range)):
-            each_range = stage_range[cur_index]
-            middle = each_range[len(each_range) // 2]
 
-            if middle.is_stable():
-                label = self.LABEL_STABLE
-            elif middle.stage == constants.UNKNOWN_STAGE_FLAG:
-                label = self.LABEL_UNSPECIFIC
-            else:
-                label = self.LABEL_UNSTABLE
+        if boost_mode:
+            for cur_index in range(len(stage_range)):
+                each = stage_range[cur_index]
+                middle = each[len(each) // 2]
+                image_list = []
+                if middle.is_stable():
+                    label = label_stable
+                    image = toolbox.compress_frame(
+                        middle.get_data(), compress_rate=compress_rate
+                    )
+                    frame = {
+                        "frame_id": middle.frame_id,
+                        "timestamp": f"{middle.timestamp:.5f}",
+                        "image": toolbox.np2b64str(image)
+                    }
+                    image_list.append(frame)
+                else:
+                    if middle.stage == constants.UNKNOWN_STAGE_FLAG:
+                        label = label_unspecific
+                    else:
+                        label = label_unstable
 
-            if cur_index + 1 < len(stage_range):
-                range_for_display = [*each_range, stage_range[cur_index + 1][0]]
-            else:
-                range_for_display = each_range
+                    if cur_index + 1 < len(stage_range):
+                        new_each = [*each, stage_range[cur_index + 1][0]]
+                    else:
+                        new_each = each
 
-            image_list = []
-            for i in range_for_display:
-                image = toolbox.compress_frame(
-                    i.get_data(), compress_rate=compress_rate, target_size=target_size
-                )
-                frame = {
-                    "frame_id": i.frame_id,
-                    "timestamp": f"{i.timestamp:.5f}",
-                    "image": toolbox.np2b64str(image)
-                }
-                image_list.append(frame)
+                    for i in new_each:
+                        image = toolbox.compress_frame(
+                            i.get_data(), compress_rate=compress_rate, target_size=target_size
+                        )
+                        frame = {
+                            "frame_id": i.frame_id,
+                            "timestamp": f"{i.timestamp:.5f}",
+                            "image": toolbox.np2b64str(image)
+                        }
+                        image_list.append(frame)
 
-            first, last = each_range[0], each_range[-1]
-            title = (f"{label} 区间 {first.frame_id}({first.timestamp:.5f}) - "
-                     f"{last.frame_id}({last.timestamp + offset:.5f}): 耗时: "
-                     f"{last.timestamp - first.timestamp + offset:.5f} 分类: "
-                     f"{first.stage}")
+                first, last = each[0], each[-1]
+                title = (f"{label} 区间 {first.frame_id}({first.timestamp:.5f}) - "
+                         f"{last.frame_id}({last.timestamp + offset:.5f}): 耗时: "
+                         f"{last.timestamp - first.timestamp + offset:.5f} 分类: "
+                         f"{first.stage}")
+                thumbnail_list.append({title: image_list})
+        else:
+            for cur_index in range(len(stage_range)):
+                each_range = stage_range[cur_index]
+                middle = each_range[len(each_range) // 2]
 
-            thumbnail_list.append({title: image_list})
+                if middle.is_stable():
+                    label = label_stable
+                elif middle.stage == constants.UNKNOWN_STAGE_FLAG:
+                    label = label_unspecific
+                else:
+                    label = label_unstable
+
+                if cur_index + 1 < len(stage_range):
+                    range_for_display = [*each_range, stage_range[cur_index + 1][0]]
+                else:
+                    range_for_display = each_range
+
+                image_list = []
+                for i in range_for_display:
+                    image = toolbox.compress_frame(
+                        i.get_data(), compress_rate=compress_rate, target_size=target_size
+                    )
+                    frame = {
+                        "frame_id": i.frame_id,
+                        "timestamp": f"{i.timestamp:.5f}",
+                        "image": toolbox.np2b64str(image)
+                    }
+                    image_list.append(frame)
+
+                first, last = each_range[0], each_range[-1]
+                title = (f"{label} 区间 {first.frame_id}({first.timestamp:.5f}) - "
+                         f"{last.frame_id}({last.timestamp + offset:.5f}): 耗时: "
+                         f"{last.timestamp - first.timestamp + offset:.5f} 分类: "
+                         f"{first.stage}")
+
+                thumbnail_list.append({title: image_list})
 
         cost_dict = classifier_result.calc_changing_cost()
         timestamp = toolbox.get_timestamp_str()
