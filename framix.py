@@ -19,13 +19,14 @@ logger.add(sys.stderr, format=FORMAT, level="INFO")
 
 async def help_document():
     print(
-        """Command line framix [Option] [Parameter]\nV1.0.0 Released:[Nov 18, 2023] 
+        f"""Command line framix [Option] [Parameter]\nV1.0.0 Released:[Nov 18, 2023] 
 
-        [Option]  :  [Parameter]
-        -i        :  [必选]视频文件路径
-        -t        :  [可选]测试报告路径
-        -f        :  [可选]自动跳帧模式
-        -s        :  [可选]自动调整视频
+        [Option]    :  [Parameter]
+        {'-' * 50}
+        -i --input  :  [必选]视频文件路径
+        -b --boost  :  [可选]自动跳帧模式
+        -f --focus  :  [可选]自动调整视频
+        {'-' * 50}
         """
     )
     for i in range(10):
@@ -35,12 +36,13 @@ async def help_document():
 
 
 async def parse_cmd():
-    parser = ArgumentParser(description="Command Line Arguments Analysis")
+    parser = ArgumentParser(description="Command Line Arguments Framix")
 
-    parser.add_argument('-i', type=str, help='视频文件路径')
-    parser.add_argument('-t', type=str, help='测试报告路径')
-    parser.add_argument('-f', action="store_true", help='跳帧模式')
-    parser.add_argument('-s', action="store_true", help='调整视频')
+    parser.add_argument('-i', '--input', type=str, help='视频文件路径')
+    parser.add_argument('-b', '--boost', action='store_true', help='跳帧模式')
+    parser.add_argument('-f', '--focus', action='store_true', help='调整视频')
+    parser.add_argument('-c', '--crop', type=str, help='(x, y, x_size, y_size)')
+    parser.add_argument('-o', '--omit', type=str, help='(x, y, x_size, y_size)')
 
     return parser.parse_args()
 
@@ -51,23 +53,23 @@ async def initialization():
         sys.exit(1)
 
     cmd_lines = await parse_cmd()
-    vision_path = cmd_lines.i
-    report_path = cmd_lines.t
+    vision_path = cmd_lines.input
 
     if not vision_path:
         await help_document()
         sys.exit(1)
-
     if not os.path.exists(vision_path):
         os.makedirs(vision_path, exist_ok=True)
 
-    if report_path:
-        os.makedirs(report_path, exist_ok=True)
+    boost = cmd_lines.boost
+    focus = cmd_lines.focus
+    crop = cmd_lines.crop
+    omit = cmd_lines.omit
 
-    return vision_path, report_path, cmd_lines.f, cmd_lines.s
+    return vision_path, boost, focus
 
 
-async def analyzer(vision_path: str, report_path: str, boost: bool, focus: bool):
+async def analyzer(vision_path: str, boost: bool, focus: bool):
     screen_tag = os.path.basename(vision_path)
     screen_cap = cv2.VideoCapture(vision_path)
     if not screen_cap:
@@ -85,19 +87,13 @@ async def analyzer(vision_path: str, report_path: str, boost: bool, focus: bool)
     window_coefficient = 2
     target_size = (350, 700)
 
+    job_path = os.path.dirname(os.path.abspath(__file__))
     if getattr(sys, 'frozen', False):
-        model_path = os.path.join(os.path.dirname(sys.executable), "model", "model.h5")
-        if report_path:
-            proto_path = report_path
-        else:
-            proto_path = os.path.join(os.path.dirname(sys.executable))
+        model_path = os.path.join(getattr(sys, '_MEIPASS', job_path), "model", "model.h5")
+        proto_path = os.path.join(os.path.dirname(sys.executable))
     else:
-        job_path = os.path.dirname(os.path.abspath(__file__))
         model_path = os.path.join(job_path, "model", "model.h5")
-        if report_path:
-            proto_path = report_path
-        else:
-            proto_path = os.path.join(job_path, "report")
+        proto_path = os.path.join(job_path, "report")
 
     logger.info(f"{screen_tag} 可正常播放，准备加载视频 ...")
 
@@ -106,8 +102,8 @@ async def analyzer(vision_path: str, report_path: str, boost: bool, focus: bool)
         logger.info(f"转换视频开启 ...")
         await Switch().video_change(vision_path, change_record)
         logger.info(f"视频转换完成: {change_record}")
-        # os.remove(vision_path)
-        # logger.info(f"移除旧的视频: {vision_path}")
+        os.remove(vision_path)
+        logger.info(f"移除旧的视频: {vision_path}")
     else:
         logger.info(f"转换视频关闭 ...")
         change_record = vision_path
@@ -156,11 +152,8 @@ async def analyzer(vision_path: str, report_path: str, boost: bool, focus: bool)
 
 
 async def main():
-    vision_path, report_path, boost, focus = await initialization()
-    await analyzer(
-        vision_path=vision_path, report_path=report_path,
-        boost=boost, focus=focus
-    )
+    vision_path, boost, focus = await initialization()
+    await analyzer(vision_path, boost, focus)
 
 
 if __name__ == '__main__':

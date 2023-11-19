@@ -273,7 +273,7 @@ class Report(object):
                 if middle.is_stable():
                     label = label_stable
                     image = toolbox.compress_frame(
-                        middle.get_data(), compress_rate=compress_rate
+                        middle.get_data(), compress_rate=compress_rate, target_size=target_size
                     )
                     frame = {
                         "frame_id": middle.frame_id,
