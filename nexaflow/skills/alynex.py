@@ -315,14 +315,15 @@ class Alynex(object):
             else:
                 frames = [frame for frame in frames_list]
 
-            return classify, frames_list, frames
+            return classify, frames
 
-        async def frame_flick(classify, frames_list):
-            start_frame = classify.get_not_stable_stage_range()[0][1]
-            end_frame = classify.get_not_stable_stage_range()[-1][-1]
-            if start_frame.frame_id == end_frame.frame_id:
-                start_frame = frames_list[0]
-                end_frame = frames_list[-1]
+        async def frame_flick(classify):
+            try:
+                start_frame = classify.get_not_stable_stage_range()[0][1]
+                end_frame = classify.get_not_stable_stage_range()[-1][-1]
+            except AssertionError:
+                start_frame = classify.get_important_frame_list()[0]
+                end_frame = classify.get_important_frame_list()[-1]
 
             time_cost = end_frame.timestamp - start_frame.timestamp
             before, after, final = f"{start_frame.timestamp:.5f}", f"{end_frame.timestamp:.5f}", f"{time_cost:.5f}"
@@ -356,9 +357,9 @@ class Alynex(object):
                 await file.write(codec.tobytes())
 
         async def analytics():
-            classify, frames_list, frames = await frame_flow()
+            classify, frames = await frame_flow()
             result, *_ = await asyncio.gather(
-                frame_flick(classify, frames_list),
+                frame_flick(classify),
                 *(frame_forge(frame) for frame in frames)
             )
             return result

@@ -250,6 +250,7 @@ class Report(object):
         compress_rate: float = None,
         target_size: Tuple[int, int] = None,
         boost_mode: bool = False,
+        framix_template: str = None
     ) -> str:
 
         label_stable: str = "稳定阶段"
@@ -262,8 +263,10 @@ class Report(object):
         if not compress_rate:
             compress_rate = 0.2
 
-        offset = classifier_result.get_offset()
-        stage_range = classifier_result.get_stage_range()
+        try:
+            stage_range = classifier_result.get_stage_range()
+        except AssertionError:
+            stage_range = [classifier_result.data]
 
         if boost_mode:
             for cur_index in range(len(stage_range)):
@@ -304,10 +307,10 @@ class Report(object):
                         image_list.append(frame)
 
                 first, last = each[0], each[-1]
-                title = (f"{label} 区间 {first.frame_id}({first.timestamp:.5f}) - "
-                         f"{last.frame_id}({last.timestamp + offset:.5f}): 耗时: "
-                         f"{last.timestamp - first.timestamp + offset:.5f} 分类: "
-                         f"{first.stage}")
+                title = (f"{label} "
+                         f"区间: {first.frame_id}({first.timestamp:.5f}) - {last.frame_id}({last.timestamp:.5f}) "
+                         f"耗时: {last.timestamp - first.timestamp:.5f} "
+                         f"分类: {first.stage}")
                 thumbnail_list.append({title: image_list})
         else:
             for cur_index in range(len(stage_range)):
@@ -339,11 +342,10 @@ class Report(object):
                     image_list.append(frame)
 
                 first, last = each_range[0], each_range[-1]
-                title = (f"{label} 区间 {first.frame_id}({first.timestamp:.5f}) - "
-                         f"{last.frame_id}({last.timestamp + offset:.5f}): 耗时: "
-                         f"{last.timestamp - first.timestamp + offset:.5f} 分类: "
-                         f"{first.stage}")
-
+                title = (f"{label} "
+                         f"区间: {first.frame_id}({first.timestamp:.5f}) - {last.frame_id}({last.timestamp:.5f}) "
+                         f"耗时: {last.timestamp - first.timestamp:.5f} "
+                         f"分类: {first.stage}")
                 thumbnail_list.append({title: image_list})
 
         cost_dict = classifier_result.calc_changing_cost()
@@ -360,7 +362,11 @@ class Report(object):
                 template_file = t.read()
             return template_file
 
-        template = Template(get_template())
+        if framix_template:
+            template = Template(framix_template)
+        else:
+            template = Template(get_template())
+
         template_content = template.render(
             thumbnail_list=thumbnail_list,
             extras=extra_dict,

@@ -102,19 +102,11 @@ class Terminal(object):
     @staticmethod
     def cmd_oneshot(cmd: list[str]):
         logger.debug(" ".join(cmd))
-        try:
-            transports = subprocess.run(
-                cmd,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                text=True, encoding="utf-8", bufsize=1
-            )
-        except KeyboardInterrupt:
-            logger.info("Stop with CTRL_C_EVENT ...")
-            transports = subprocess.run(
-                cmd,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                text=True, encoding="utf-8", bufsize=1
-            )
+        transports = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True
+        )
 
         if transports.returncode != 0:
             return transports.stderr

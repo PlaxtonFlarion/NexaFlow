@@ -41,6 +41,11 @@ class Record(object):
         self.__record_event.clear()
         self.__connection = None
 
+        try:
+            Terminal.cmd_oneshot(["taskkill", "/im", "scrcpy.exe"])
+        except KeyboardInterrupt:
+            logger.info("Stop with Ctrl_C_Event ...")
+
 
 if __name__ == '__main__':
     pass
