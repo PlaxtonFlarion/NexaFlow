@@ -210,6 +210,7 @@ async def analysis(boost, omits, model_path, template_path, proto_path):
                 
                 1. header your_report_title [生成一个新标题文件夹]
                 2. serial                   [重新选择已连接的设备]
+                3. \\d+                     [任意数字代表录制时长]
                 """
             )
         else:
