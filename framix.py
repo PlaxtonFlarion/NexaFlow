@@ -63,47 +63,162 @@ async def parse_cmd():
     return parser.parse_args()
 
 
+async def check_device():
+
+    class Phone(object):
+
+        def __init__(self, *args):
+            self.serial, self.brand, self.version, *_ = args
+
+        def __str__(self):
+            return f"<Phone Brand=[{self.brand}] Version=[{self.version}] Serial=[{self.serial}]>"
+
+        __repr__ = __str__
+
+    async def check(serial):
+        basic = f"adb -s {serial} wait-for-usb-device shell getprop"
+        brand, version = await asyncio.gather(
+            Terminal.cmd_line_shell(f"{basic} ro.product.brand"),
+            Terminal.cmd_line_shell(f"{basic} ro.build.version.release")
+        )
+        return Phone(serial, brand, version)
+
+    while True:
+        devices = await Terminal.cmd_line_shell(f"adb devices")
+        if len(device_list := [i.split()[0] for i in devices.split("\n")[1:]]) == 1:
+            return await check(device_list[0])
+        elif len(device_list) > 1:
+            device_dict = {}
+            tasks = [check(serial) for serial in device_list]
+            result = await asyncio.gather(*tasks)
+            for idx, cur in enumerate(result):
+                device_dict.update({str(idx + 1): cur})
+                print(f"{idx + 1} : {cur}")
+            while True:
+                try:
+                    return device_dict[input("请输入编号选择一台设备: ")]
+                except KeyError:
+                    logger.error(f"没有该序号,请重新选择 ...")
+                    await asyncio.sleep(0.1)
+        else:
+            logger.warning(f"设备未连接,等待设备连接 ...")
+            await asyncio.sleep(3)
+
+    # while True:
+    #     device = await Terminal.cmd_line_shell(f"adb devices")
+    #     if len(device_list := [i.split()[0] for i in device.split("\n")[1:]]) == 1:
+    #         return device_list[0]
+    #     elif len(device_list) > 1:
+    #         device_dict = {}
+    #         logger.warning(f"连接了多台设备 {device_list}")
+    #         await asyncio.sleep(0.1)
+    #         for index, device in enumerate(device_list):
+    #             device_dict.update({str(index + 1): device})
+    #             print(f"{index + 1} : <Device Serial=[{device}]>")
+    #         while True:
+    #             try:
+    #                 return device_dict[input("请输入编号选择一台设备: ")]
+    #             except KeyError:
+    #                 logger.error(f"没有该序号,请重新选择 ...")
+    #                 await asyncio.sleep(0.1)
+    #     else:
+    #         logger.warning(f"设备未连接,等待设备连接 ...")
+    #         await asyncio.sleep(3)
+
+
 async def analysis(boost, omits, model_path, template_path, proto_path):
+
+    cellphone = None
+    done_event = asyncio.Event()
+    stop_event = asyncio.Event()
 
     async def timepiece(amount):
         await asyncio.sleep(1)
         for i in range(amount):
+            if stop_event.is_set() and i + 1 != amount:
+                logger.warning("主动停止 ...")
+                break
             logger.warning(f"剩余时间 -> {amount - i:02} 秒 {'----' * (amount - i)}")
             await asyncio.sleep(1)
         logger.warning(f"剩余时间 -> 00 秒")
+
+    async def input_stream(transports):
+        async for line in transports.stdout:
+            logger.info(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
+            if "Killing the server" in stream or "Recording complete" in stream:
+                stop_event.set()
+                done_event.set()
+                break
+
+    async def error_stream(transports):
+        async for line in transports.stderr:
+            logger.error(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
+            if "Could not find any ADB device" in stream or "Server connection failed" in stream:
+                stop_event.set()
+                break
 
     async def start():
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_video = f"{os.path.join(temp_dir, 'screen')}.mkv"
             cmd = [
-                "scrcpy", "--no-audio", "--video-bit-rate", "8M", "--max-fps", "60", "--record",
+                "scrcpy", "-s", cellphone.serial, "--no-audio",
+                "--video-bit-rate", "8M", "--max-fps", "60", "--record",
                 temp_video
             ]
-            await Terminal.cmd_link(*cmd)
+            transports = await Terminal.cmd_link(*cmd)
+            asyncio.create_task(input_stream(transports))
+            asyncio.create_task(error_stream(transports))
             await asyncio.sleep(1)
-            await asyncio.sleep(timer_mode)
+            await timepiece(timer_mode)
             await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
-            await analyzer(
-                temp_video, boost=boost, focus=True, omits=omits,
-                model_path=model_path, template_path=template_path, proto_path=proto_path
-            )
+            if done_event.is_set():
+                await analyzer(
+                    temp_video, boost=boost, omits=omits,
+                    model_path=model_path, template_path=template_path, proto_path=proto_path
+                )
+            else:
+                logger.error("录制视频失败,请重新录制视频 ...")
 
     if not os.path.exists(proto_path):
         os.makedirs(proto_path)
+    cellphone = await check_device()
 
     while True:
         try:
-            action = input("*-* 按 Enter 开始 *-*  ")
-            if action:
-                timer_mode = 3 if int(action) < 3 else int(action)
+            await asyncio.sleep(0.1)
+            if action := input(f"{f'{cellphone}' if cellphone else ''} *-* 按 Enter 开始 *-*  "):
+                if "header" in action:
+                    if match := re.search(r"(?<=header).*", action):
+                        src_path = f"Framix_{time.strftime('%Y%m%d%H%M%S')}"
+                        if title := match.group().strip():
+                            new_path = f"{src_path}_{title}"
+                        else:
+                            new_path = f"{src_path}_{random.randint(100, 999)}"
+                        proto_path = os.path.join(os.path.dirname(proto_path), new_path)
+                        os.makedirs(proto_path)
+                        logger.success(f"已生成新目录: {proto_path}")
+                    continue
+                if "serial" in action:
+                    cellphone = await check_device()
+                    continue
+                timer_mode = 5 if int(action) < 5 else int(action)
             else:
-                timer_mode = 6
+                timer_mode = 5
         except ValueError:
-            logger.warning("录制时间是一个整数,且不能少于 3 秒 ...")
-        else:
-            await asyncio.gather(
-                start(), timepiece(timer_mode)
+            logger.warning(
+                """可选输入项
+                
+                1. header your_report_title [生成一个新标题文件夹]
+                2. serial                   [重新选择已连接的设备]
+                """
             )
+        else:
+            await start()
+            if not done_event.is_set():
+                cellphone = await check_device()
+        finally:
+            done_event.clear()
+            stop_event.clear()
 
 
 async def painting():
@@ -230,12 +345,13 @@ async def main():
         await help_document()
         sys.exit(1)
 
-    job_path = os.path.dirname(os.path.abspath(__file__))
-    if getattr(sys, 'frozen', False):
-        model_path = os.path.join(getattr(sys, '_MEIPASS', job_path), "framix_source", "model.h5")
-        template_path = os.path.join(getattr(sys, '_MEIPASS', job_path), "framix_source", "extra.html")
-        proto_path = os.path.join(os.path.dirname(sys.executable), f"Framix_{time.strftime('%Y%m%d%H%M%S')}")
+    if "exe" in sys.argv[0]:
+        job_path = os.path.dirname(sys.argv[0])
+        model_path = os.path.join(job_path, "framix.source", "mold", "model.h5")
+        template_path = os.path.join(job_path, "framix.source", "page", "extra.html")
+        proto_path = os.path.join(job_path, f"Framix_{time.strftime('%Y%m%d%H%M%S')}")
     else:
+        job_path = os.path.dirname(__file__)
         model_path = os.path.join(job_path, "model", "model.h5")
         template_path = os.path.join(Constants.NEXA, "template", "extra.html")
         proto_path = os.path.join(job_path, "report")
@@ -277,4 +393,4 @@ if __name__ == '__main__':
         loop = asyncio.get_event_loop()
         loop.run_until_complete(main())
     except KeyboardInterrupt:
-        os.kill(os.getpid(), signal.CTRL_C_EVENT)
+        os.kill(os.getpid(), signal.CTRL_BREAK_EVENT)
