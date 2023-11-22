@@ -82,7 +82,7 @@ class Report(object):
             self.range_list.append(inform)
         logger.info(f"{self.query} End ... {'-' * 60}\n")
 
-    def create_report(self) -> None:
+    def create_report(self, loader_loc: Optional[str] = None) -> None:
 
         async def handler_inform(result):
             handler_list = []
@@ -141,8 +141,10 @@ class Report(object):
             tasks = [handler_inform(result) for result in self.range_list]
             results = await asyncio.gather(*tasks)
             images_list = [ele for res in results for ele in res]
-
-            loader = FileSystemLoader(os.path.join(Constants.NEXA, "template"))
+            if loader_loc:
+                loader = FileSystemLoader(loader_loc)
+            else:
+                loader = FileSystemLoader(os.path.join(Constants.NEXA, "template"))
             environment = Environment(loader=loader)
             template = environment.get_template("template.html")
 
@@ -172,8 +174,11 @@ class Report(object):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(handler_start())
 
-    def create_total_report(self) -> None:
-        loader = FileSystemLoader(os.path.join(Constants.NEXA, "template"))
+    def create_total_report(self, loader_loc: Optional[str] = None) -> None:
+        if loader_loc:
+            loader = FileSystemLoader(loader_loc)
+        else:
+            loader = FileSystemLoader(os.path.join(Constants.NEXA, "template"))
         environment = Environment(loader=loader)
         template = environment.get_template("overall.html")
         report_time = time.strftime('%Y.%m.%d %H:%M:%S')

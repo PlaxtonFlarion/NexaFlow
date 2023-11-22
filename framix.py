@@ -5,14 +5,19 @@ import cv2
 import time
 import signal
 import random
+import shutil
 import asyncio
 import tempfile
 import warnings
 from loguru import logger
+from multiprocessing import Pool
 from argparse import ArgumentParser
 from PIL import Image, ImageDraw, ImageFont
+from nexaflow import toolbox
+from nexaflow.classifier.base import SingleClassifierResult
 from nexaflow.constants import Constants
 from nexaflow.hook import OmitHook
+from nexaflow.skills.alynex import Alynex
 from nexaflow.terminal import Terminal
 from nexaflow.video import VideoObject
 from nexaflow.skills.report import Report
@@ -20,9 +25,6 @@ from nexaflow.skills.switch import Switch
 from nexaflow.cutter.cutter import VideoCutter
 from nexaflow.classifier.keras_classifier import KerasClassifier
 
-FORMAT: str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>"
-logger.remove(0)
-logger.add(sys.stderr, format=FORMAT, level="INFO")
 warnings.filterwarnings("ignore")
 
 
@@ -30,18 +32,13 @@ async def help_document():
     print(
         f"""Command line framix [Option] [Parameter]\nV1.0.0 Released:[Nov 18, 2023] 
 
-        [Option]    :  [Parameter]
-        {'-' * 50}
-        -i --input  :  视频文件路径
-        {'-' * 36}
+        [Major]     :  [Parameter]         
         -f --flick  :  录制分析模式        
-        {'-' * 36}
+        -a --alone  :  单独录制视频
         -p --paint  :  绘制分割线条
-        {'-' * 36}
-        -b --boost  :  自动跳帧模式
-        {'-' * 36}
-        -o --omits  :  忽略分析区域
-        {'-' * 50}
+        -i --input  :  视频文件路径
+        [Minor]
+        -o --omits  :  忽略分析区域 [组合使用]
         """
     )
     await asyncio.sleep(1)
@@ -54,10 +51,10 @@ async def help_document():
 async def parse_cmd():
     parser = ArgumentParser(description="Command Line Arguments Framix")
 
-    parser.add_argument('-i', '--input', type=str, help='视频文件路径')
     parser.add_argument('-f', '--flick', action='store_true', help='录制分析模式')
+    parser.add_argument('-a', '--alone', action='store_true', help='单独录制视频')
     parser.add_argument('-p', '--paint', action='store_true', help='绘制分割线条')
-    parser.add_argument('-b', '--boost', action='store_true', help='自动跳帧模式')
+    parser.add_argument('-i', '--input', type=str, help='视频文件路径')
     parser.add_argument('-o', '--omits', action='append', help='忽略分析区域 (x, y, x_size, y_size)')
 
     return parser.parse_args()
@@ -126,7 +123,7 @@ async def check_device():
     #         await asyncio.sleep(3)
 
 
-async def analysis(boost, omits, model_path, template_path, proto_path):
+async def analysis(r, alone, omits, model_path, template_path, major_path, total_path):
 
     cellphone = None
     done_event = asyncio.Event()
@@ -158,12 +155,35 @@ async def analysis(boost, omits, model_path, template_path, proto_path):
                 break
 
     async def start():
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_video = f"{os.path.join(temp_dir, 'screen')}.mkv"
+        # 只录制视频
+        if alone:
             cmd = [
                 "scrcpy", "-s", cellphone.serial, "--no-audio",
                 "--video-bit-rate", "8M", "--max-fps", "60", "--record",
-                temp_video
+                temp_video := f"{os.path.join(r.query_path, 'screen')}_"
+                              f"{time.strftime('%Y%m%d%H%M%S')}_"
+                              f"{random.randint(100, 999)}.mkv"
+            ]
+            transports = await Terminal.cmd_link(*cmd)
+            asyncio.create_task(input_stream(transports))
+            asyncio.create_task(error_stream(transports))
+            await asyncio.sleep(1)
+            await timepiece(timer_mode)
+            await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
+            if done_event.is_set():
+                logger.success(f"视频录制成功: {temp_video}")
+            else:
+                os.remove(temp_video)
+                logger.error("录制视频失败,请重新录制视频 ...")
+        # 录制视频后立刻分析视频帧
+        else:
+            r.set_query(time.strftime('%Y%m%d%H%M%S'))
+            cmd = [
+                "scrcpy", "-s", cellphone.serial, "--no-audio",
+                "--video-bit-rate", "8M", "--max-fps", "60", "--record",
+                temp_video := f"{os.path.join(r.video_path, 'screen')}_"
+                              f"{time.strftime('%Y%m%d%H%M%S')}_"
+                              f"{random.randint(100, 999)}.mkv"
             ]
             transports = await Terminal.cmd_link(*cmd)
             asyncio.create_task(input_stream(transports))
@@ -173,15 +193,15 @@ async def analysis(boost, omits, model_path, template_path, proto_path):
             await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
             if done_event.is_set():
                 await analyzer(
-                    temp_video, boost=boost, omits=omits,
-                    model_path=model_path, template_path=template_path, proto_path=proto_path
+                    r, temp_video, omits=omits,
+                    model_path=model_path, template_path=template_path
                 )
             else:
+                os.remove(temp_video)
                 logger.error("录制视频失败,请重新录制视频 ...")
 
-    if not os.path.exists(proto_path):
-        os.makedirs(proto_path)
     cellphone = await check_device()
+    r.set_title(f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}")
 
     while True:
         try:
@@ -189,14 +209,14 @@ async def analysis(boost, omits, model_path, template_path, proto_path):
             if action := input(f"{f'{cellphone}' if cellphone else ''} *-* 按 Enter 开始 *-*  "):
                 if "header" in action:
                     if match := re.search(r"(?<=header).*", action):
-                        src_path = f"Framix_{time.strftime('%Y%m%d%H%M%S')}"
+                        src_title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}"
                         if title := match.group().strip():
-                            new_path = f"{src_path}_{title}"
+                            new_title = f"{src_title}_{title}_{random.randint(100, 999)}"
                         else:
-                            new_path = f"{src_path}_{random.randint(100, 999)}"
-                        proto_path = os.path.join(os.path.dirname(proto_path), new_path)
-                        os.makedirs(proto_path)
-                        logger.success(f"已生成新目录: {proto_path}")
+                            new_title = f"{src_title}_{os.getpid()}_{random.randint(100, 999)}"
+                        r.set_title(new_title)
+                        logger.success(f"生成新标题: {new_title}")
+                        await asyncio.to_thread(r.create_report, major_path)
                     continue
                 if "serial" in action:
                     cellphone = await check_device()
@@ -258,10 +278,9 @@ async def painting():
     await Terminal.cmd_line_shell(f"adb wait-for-usb-device shell rm {image_folder}/{image}")
 
 
-async def analyzer(vision_path: str, boost: bool, **kwargs):
+async def analyzer(r, vision_path: str, **kwargs):
     model_path = kwargs["model_path"]
     template_path = kwargs["template_path"]
-    proto_path = kwargs["proto_path"]
 
     screen_tag = os.path.basename(vision_path)
     screen_cap = cv2.VideoCapture(vision_path)
@@ -314,9 +333,41 @@ async def analyzer(vision_path: str, boost: bool, **kwargs):
         offset=offset
     )
 
+    files = os.listdir(r.extra_path)
+    files.sort(key=lambda n: int(n.split("(")[0]))
+    total_images = len(files)
+    interval = total_images // 11 if total_images > 12 else 1
+    for index, file in enumerate(files):
+        if index % interval != 0:
+            os.remove(
+                os.path.join(r.extra_path, file)
+            )
+
+    draws = os.listdir(r.extra_path)
+    for draw in draws:
+        toolbox.draw_line(
+            os.path.join(r.extra_path, draw)
+        )
+
     cl = KerasClassifier(target_size=target_size)
     cl.load_model(model_path)
     classify = cl.classify(video=video, valid_range=stable, keep_data=True)
+
+    important_frames: list["SingleClassifierResult"] = classify.get_important_frame_list()
+
+    pbar = toolbox.show_progress(classify.get_length(), 50, "Faster   ")
+    frames_list = [previous := important_frames[0]]
+    pbar.update(1)
+    for current in important_frames[1:]:
+        frames_list.append(current)
+        pbar.update(1)
+        frames_diff = current.frame_id - previous.frame_id
+        if not previous.is_stable() and not current.is_stable() and frames_diff > 1:
+            for specially in classify.data[previous.frame_id: current.frame_id - 1]:
+                frames_list.append(specially)
+                pbar.update(1)
+        previous = current
+    pbar.close()
 
     try:
         start_frame = classify.get_not_stable_stage_range()[0][1]
@@ -329,16 +380,49 @@ async def analyzer(vision_path: str, boost: bool, **kwargs):
     before, after, final = f"{start_frame.timestamp:.5f}", f"{end_frame.timestamp:.5f}", f"{time_cost:.5f}"
     logger.info(f"图像分类结果: [开始帧: {before}] [结束帧: {after}] [总耗时: {final}]")
 
-    logger.info("跳帧模式开启 ...") if boost else logger.info("跳帧模式关闭 ...")
     with open(template_path, encoding="utf-8") as t:
         template_file = t.read()
-        Report.draw(
-            classifier_result=classify,
-            proto_path=proto_path,
-            target_size=target_size,
-            boost_mode=boost,
-            framix_template=template_file
-        )
+    original_inform = r.draw(
+        classifier_result=classify,
+        proto_path=r.proto_path,
+        target_size=target_size,
+        framix_template=template_file
+    )
+    result = {
+        "query": r.query,
+        "stage": {
+            "start": start_frame.frame_id,
+            "end": end_frame.frame_id,
+            "cost": f"{time_cost:.5f}"
+        },
+        "frame": r.frame_path,
+        "extra": r.extra_path,
+        "proto": original_inform
+    }
+    r.load(result)
+
+
+def quick_task(folder):
+    alynex = Alynex()
+    for video in alynex.only_video(folder):
+        alynex.report.set_title(video.title)
+        for path in video.sheet:
+            alynex.report.set_query(os.path.basename(path).split(".")[0])
+            shutil.copy(path, alynex.report.video_path)
+            alynex.analyzer()
+        alynex.report.create_report()
+    alynex.report.create_total_report()
+    return alynex.report.total_path
+
+
+def quick_mode(data):
+    start_time = time.time()
+
+    with Pool(len(data)) as pool:
+        results = pool.map(quick_task, data)
+
+    Report.merge_report(results)
+    print(f"Total Time Cost: {(time.time() - start_time):.2f} 秒")
 
 
 async def main():
@@ -346,16 +430,20 @@ async def main():
         await help_document()
         sys.exit(1)
 
-    if "exe" in sys.argv[0]:
+    if ".exe" in os.path.basename(sys.argv[0]):
+        r = Report()
         job_path = os.path.dirname(sys.argv[0])
         model_path = os.path.join(job_path, "framix.source", "mold", "model.h5")
+        total_path = os.path.join(job_path, "framix.source", "page", "overall.html")
+        major_path = os.path.join(job_path, "framix.source", "page", "template.html")
         template_path = os.path.join(job_path, "framix.source", "page", "extra.html")
-        proto_path = os.path.join(job_path, f"Framix_{time.strftime('%Y%m%d%H%M%S')}")
     else:
+        r = Report()
         job_path = os.path.dirname(__file__)
         model_path = os.path.join(job_path, "model", "model.h5")
+        total_path = os.path.join(Constants.NEXA, "template", "overall.html")
+        major_path = os.path.join(Constants.NEXA, "template", "template.html")
         template_path = os.path.join(Constants.NEXA, "template", "extra.html")
-        proto_path = os.path.join(job_path, "report")
 
     cmd_lines = await parse_cmd()
     omits = []
@@ -372,8 +460,14 @@ async def main():
 
     if cmd_lines.flick:
         await analysis(
-            cmd_lines.boost, omits, model_path, template_path, proto_path
+            r, cmd_lines.alone, omits, model_path, template_path, major_path, total_path
         )
+        sys.exit(1)
+    elif cmd_lines.alone:
+        await analysis(
+            r, cmd_lines.alone, omits, model_path, template_path, major_path, total_path
+        )
+        sys.exit(1)
     elif cmd_lines.paint:
         await painting()
         sys.exit(1)
@@ -383,10 +477,15 @@ async def main():
         await help_document()
         sys.exit(1)
 
+    r.set_title(f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}")
+    r.set_query(f"{time.strftime('%Y%m%d%H%M%S')}")
     await analyzer(
-        vision_path, cmd_lines.boost, omits=omits,
-        model_path=model_path, template_path=template_path, proto_path=proto_path
+        r, vision_path, omits=omits,
+        model_path=model_path, template_path=template_path
     )
+    await asyncio.to_thread(r.create_report, major_path)
+    await asyncio.to_thread(r.create_total_report, total_path)
+    sys.exit(1)
 
 
 if __name__ == '__main__':
