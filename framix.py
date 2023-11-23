@@ -284,14 +284,14 @@ async def analyzer(r: Report, vision_path: str, **kwargs):
     window_coefficient = 2
     target_size = (350, 700)
 
-    logger.info(f"{screen_tag} 可正常播放，准备加载视频 ...")
-    change_record = vision_path.split('.')[0] + "_" + ".mp4"
-    await Switch().video_change(vision_path, change_record)
-    logger.info(f"视频转换完成: {change_record}")
-    os.remove(vision_path)
-    logger.info(f"移除旧的视频: {vision_path}")
+    # logger.info(f"{screen_tag} 可正常播放，准备加载视频 ...")
+    # change_record = vision_path.split('.')[0] + ".mp4"
+    # await Switch().video_change(vision_path, change_record)
+    # logger.info(f"视频转换完成: {change_record}")
+    # os.remove(vision_path)
+    # logger.info(f"移除旧的视频: {vision_path}")
 
-    video = VideoObject(change_record)
+    video = VideoObject(vision_path)
     task, hued = video.load_frames(color)
 
     cutter = VideoCutter(
@@ -437,30 +437,6 @@ def alone_task(folder: str):
     ]
 
 
-def quick_task(folder: str, model_path, proto_path, omits: list):
-    logger.warning(folder)
-    r = Report()
-    for video in alone_task(folder):
-        r.set_title(video.title)
-        for path in video.sheet:
-            r.set_query(os.path.basename(path).split(".")[0])
-            shutil.copy(path, r.video_path)
-            # if len(omits) > 0:
-            #     for hook in omits:
-            #         alynex.framix.omit_hook(*hook)
-            looper = asyncio.new_event_loop()
-            asyncio.set_event_loop(looper)
-            looper.run_until_complete(analyzer(
-                r, path,
-                omits=omits,
-                model_path=model_path,
-                proto_path=proto_path
-            ))
-        r.create_report()
-    r.create_total_report()
-    return r.total_path
-
-
 async def main():
     if len(sys.argv) == 1:
         await help_document()
@@ -494,10 +470,6 @@ async def main():
 
     if cmd_lines.whole and len(cmd_lines.whole) > 0:
         start_time = time.time()
-        with Pool(len(cmd_lines.whole)) as pool:
-            args = [(whole, model_path, proto_path, omits) for whole in cmd_lines.whole]
-            results = pool.starmap(quick_task, args)
-        Report.merge_report(results)
         print(f"Total Time Cost: {(time.time() - start_time):.2f} 秒")
         sys.exit(1)
     elif cmd_lines.flick:

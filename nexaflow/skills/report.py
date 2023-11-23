@@ -91,7 +91,7 @@ class Report(object):
             self.range_list.append(inform)
         logger.info(f"{self.query} End ... {'-' * 60}\n")
 
-    def create_report(self, loader_loc: Optional[str] = None) -> None:
+    def create_report(self) -> None:
 
         async def handler_inform(result):
             handler_list = []
@@ -150,10 +150,7 @@ class Report(object):
             tasks = [handler_inform(result) for result in self.range_list]
             results = await asyncio.gather(*tasks)
             images_list = [ele for res in results for ele in res]
-            if loader_loc:
-                loader = FileSystemLoader(loader_loc)
-            else:
-                loader = FileSystemLoader(os.path.join(Constants.NEXA, "template"))
+            loader = FileSystemLoader(os.path.join(Constants.NEXA, "template"))
             environment = Environment(loader=loader)
             template = environment.get_template("template.html")
 
@@ -183,11 +180,8 @@ class Report(object):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(handler_start())
 
-    def create_total_report(self, loader_loc: Optional[str] = None) -> None:
-        if loader_loc:
-            loader = FileSystemLoader(loader_loc)
-        else:
-            loader = FileSystemLoader(os.path.join(Constants.NEXA, "template"))
+    def create_total_report(self) -> None:
+        loader = FileSystemLoader(os.path.join(Constants.NEXA, "template"))
         environment = Environment(loader=loader)
         template = environment.get_template("overall.html")
         report_time = time.strftime('%Y.%m.%d %H:%M:%S')
@@ -200,7 +194,7 @@ class Report(object):
         self.total_list.clear()
 
     @staticmethod
-    async def ask_create_report(template, title, total_path, query_path, range_list):
+    async def ask_create_report(major_loc, title, total_path, query_path, range_list):
 
         async def handler_inform(result):
             handler_list = []
@@ -260,7 +254,11 @@ class Report(object):
             results = await asyncio.gather(*tasks)
             images_list = [ele for res in results for ele in res]
 
-            html = template.render(title=title, images_list=images_list)
+            major_loader = FileSystemLoader(major_loc)
+            major_environment = Environment(loader=major_loader)
+            major_template = major_environment.get_template("template.html")
+
+            html = major_template.render(title=title, images_list=images_list)
             report_html = os.path.join(query_path, f"{title}.html")
             with open(file=report_html, mode="w", encoding="utf-8") as f:
                 f.write(html)
@@ -285,12 +283,9 @@ class Report(object):
         return await handler_start()
 
     @staticmethod
-    async def ask_create_total_report(file_name: str, loader_major_loc: str, loader_total_loc: str):
+    async def ask_create_total_report(file_name: str, major_loc: str, loader_total_loc: str):
         report_time = time.strftime('%Y.%m.%d %H:%M:%S')
 
-        major_loader = FileSystemLoader(loader_major_loc)
-        major_environment = Environment(loader=major_loader)
-        major_template = major_environment.get_template("template.html")
         with open(file=os.path.join(file_name, "Nexa_Recovery", "nexaflow.log"), mode="r", encoding="utf-8") as f:
             match_list = re.findall(r"(?<=Restore: ).*}", f.read())
             range_list = [json.loads(file.replace("'", '"')) for file in match_list if file]
@@ -300,7 +295,7 @@ class Report(object):
                 grouped_dict[parts].append(part)
 
         tasks = [
-            Report.ask_create_report(major_template, title, total_path, query_path, range_list)
+            Report.ask_create_report(major_loc, title, total_path, query_path, range_list)
             for (title, total_path, query_path), range_list in grouped_dict.items()
         ]
         merge_result = await asyncio.gather(*tasks)
