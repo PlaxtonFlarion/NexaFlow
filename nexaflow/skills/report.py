@@ -7,6 +7,7 @@ import shutil
 import asyncio
 import threading
 from loguru import logger
+from collections import defaultdict
 from typing import Dict, List, Any, Tuple, Optional, Union
 from jinja2 import Template, Environment, FileSystemLoader
 from nexaflow import constants, toolbox
@@ -46,8 +47,16 @@ class Report(object):
             self.range_list: list[dict] = []
             self.total_list: list[dict] = []
 
-            self.total_path = "/Users/acekeppel/PycharmProjects/NexaFlow/report/Nexa_20230822223025/Nexa_Collection"
-            # self.total_path = os.path.join(REPORT, f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection")
+            # self.total_path = "/Users/acekeppel/PycharmProjects/NexaFlow/report/Nexa_20230822223025/Nexa_Collection"
+            if ".exe" in os.path.basename(sys.argv[0]):
+                self.total_path = os.path.join(
+                    os.path.dirname(sys.argv[0]), f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection"
+                )
+            else:
+                self.total_path = os.path.join(
+                    REPORT, f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection"
+                )
+
             self.reset_path = os.path.join(os.path.dirname(self.total_path), "Nexa_Recovery")
             os.makedirs(self.total_path, exist_ok=True)
             os.makedirs(self.reset_path, exist_ok=True)
@@ -67,8 +76,8 @@ class Report(object):
         logger.info(f"{'=' * 45} {self.title} {'=' * 45}\n")
 
     def set_query(self, query: str) -> None:
-        self.query = query
-        # self.query = query + "_" + self.clock()
+        # self.query = query
+        self.query = query + "_" + self.clock()
         self.video_path = os.path.join(self.query_path, self.query, "video")
         self.frame_path = os.path.join(self.query_path, self.query, "frame")
         self.extra_path = os.path.join(self.query_path, self.query, "extra")
@@ -189,6 +198,123 @@ class Report(object):
             f.write(html)
             logger.info(f"生成汇总报告: {total_html_path}\n\n")
         self.total_list.clear()
+
+    @staticmethod
+    async def ask_create_report(template, title, total_path, query_path, range_list):
+
+        async def handler_inform(result):
+            handler_list = []
+            query = result.get("query", "TimeCost")
+            stage = result.get("stage", {"start": 1, "end": 2, "cost": "0.00000"})
+            frame = result.get("frame", "")
+            extra = result.get("extra", "")
+            proto = result.get("proto", "")
+
+            async def handler_frame():
+                handler_image_list = []
+                for image in os.listdir(frame):
+                    image_src = os.path.join(query, "frame", image)
+                    image_ids = re.search(r"\d+(?=_)", image).group()
+                    timestamp = float(re.search(r"(?<=_).+(?=\.)", image).group())
+                    handler_image_list.append(
+                        {
+                            "src": image_src,
+                            "frames_id": image_ids,
+                            "timestamp": f"{timestamp:.5f}"
+                        }
+                    )
+                handler_image_list.sort(key=lambda x: int(x["frames_id"]))
+                return handler_image_list
+
+            async def handler_extra():
+                handler_extra_list = []
+                for ex in os.listdir(extra):
+                    extra_src = os.path.join(query, "extra", ex)
+                    extra_idx = ex.split("(")[0]
+                    handler_extra_list.append(
+                        {
+                            "src": extra_src,
+                            "idx": extra_idx
+                        }
+                    )
+                handler_extra_list.sort(key=lambda x: int(x["idx"].split("(")[0]))
+                return handler_extra_list
+
+            image_list, extra_list = await asyncio.gather(
+                handler_frame(), handler_extra()
+            )
+
+            handler_list.append(
+                {
+                    "query": query,
+                    "stage": stage,
+                    "image_list": image_list,
+                    "extra_list": extra_list,
+                    "proto": os.path.join(query, os.path.basename(proto))
+                }
+            )
+            return handler_list
+
+        async def handler_start():
+            tasks = [handler_inform(result) for result in range_list]
+            results = await asyncio.gather(*tasks)
+            images_list = [ele for res in results for ele in res]
+
+            html = template.render(title=title, images_list=images_list)
+            report_html = os.path.join(query_path, f"{title}.html")
+            with open(file=report_html, mode="w", encoding="utf-8") as f:
+                f.write(html)
+                logger.info(f"生成聚合报告: {report_html}")
+
+            cost_list = [cost['stage']['cost'] for cost in images_list]
+            href_path = os.path.join(
+                os.path.basename(total_path),
+                title,
+                os.path.basename(report_html)
+            )
+            single = {
+                "case": title,
+                "cost_list": cost_list,
+                "avg": f"{sum(map(float, cost_list)) / len(cost_list):.5f}",
+                "href": href_path
+            }
+            logger.info("Recovery: " + json.dumps(single, ensure_ascii=False))
+            logger.info(f"{'=' * 45} {title} {'=' * 45}\n\n")
+            return single
+
+        return await handler_start()
+
+    @staticmethod
+    async def ask_create_total_report(file_name: str, loader_major_loc: str, loader_total_loc: str):
+        report_time = time.strftime('%Y.%m.%d %H:%M:%S')
+
+        major_loader = FileSystemLoader(loader_major_loc)
+        major_environment = Environment(loader=major_loader)
+        major_template = major_environment.get_template("template.html")
+        with open(file=os.path.join(file_name, "Nexa_Recovery", "nexaflow.log"), mode="r", encoding="utf-8") as f:
+            match_list = re.findall(r"(?<=Restore: ).*}", f.read())
+            range_list = [json.loads(file.replace("'", '"')) for file in match_list if file]
+            grouped_dict = defaultdict(list)
+            for part in range_list:
+                parts = part.pop("title"), part.pop("total_path"), part.pop("query_path")
+                grouped_dict[parts].append(part)
+
+        tasks = [
+            Report.ask_create_report(major_template, title, total_path, query_path, range_list)
+            for (title, total_path, query_path), range_list in grouped_dict.items()
+        ]
+        merge_result = await asyncio.gather(*tasks)
+        total_list = [merge for merge in merge_result]
+
+        total_loader = FileSystemLoader(loader_total_loc)
+        total_environment = Environment(loader=total_loader)
+        total_template = total_environment.get_template("overall.html")
+
+        html = total_template.render(report_time=report_time, total_list=total_list)
+        total_html = os.path.join(file_name, "NexaFlow.html")
+        with open(file=total_html, mode="w", encoding="utf-8") as f:
+            f.write(html)
+            logger.debug(f"生成汇总报告: {total_html}")
 
     @staticmethod
     def reset_report(file_name: str) -> None:
