@@ -27,7 +27,7 @@ from nexaflow.classifier.keras_classifier import KerasClassifier
 warnings.filterwarnings("ignore")
 
 
-async def help_document():
+def help_document():
     print(
         f"""Command line framix [Option] [Parameter]\nV1.0.0 Released:[Nov 18, 2023] 
        
@@ -43,14 +43,9 @@ async def help_document():
         -o --omits  :  忽略分析区域
         """
     )
-    await asyncio.sleep(1)
-    for i in range(10):
-        print(f"{10 - i:02} 秒后退出 {'++' * (10 - i)}")
-        await asyncio.sleep(1)
-    print(f"00 秒后退出")
 
 
-async def parse_cmd():
+def parse_cmd():
     parser = ArgumentParser(description="Command Line Arguments Framix")
 
     parser.add_argument('-f', '--flick', action='store_true', help='录制分析模式')
@@ -72,7 +67,7 @@ async def check_device():
             self.serial, self.brand, self.version, *_ = args
 
         def __str__(self):
-            return f"<Phone Brand=[{self.brand}] Version=[{self.version}] Serial=[{self.serial}]>"
+            return f"<Phone [{self.brand}] [OS{self.version}] [{self.serial}]>"
 
         __repr__ = __str__
 
@@ -89,6 +84,7 @@ async def check_device():
         if len(device_list := [i.split()[0] for i in devices.split("\n")[1:]]) == 1:
             return await check(device_list[0])
         elif len(device_list) > 1:
+            logger.warning(f"已连接多台设备 {device_list}")
             device_dict = {}
             tasks = [check(serial) for serial in device_list]
             result = await asyncio.gather(*tasks)
@@ -106,7 +102,7 @@ async def check_device():
             await asyncio.sleep(3)
 
 
-async def analysis(r, alone, omits, model_path, total_path, major_path, proto_path):
+async def analysis(r, alone, omits, model_path, proto_path):
 
     cellphone = None
     done_event = asyncio.Event()
@@ -140,7 +136,7 @@ async def analysis(r, alone, omits, model_path, total_path, major_path, proto_pa
     async def start():
         # 只录制视频
         if alone:
-            if os.path.exists(r.query_path):
+            if not os.path.exists(r.query_path):
                 os.makedirs(r.query_path)
             cmd = [
                 "scrcpy", "-s", cellphone.serial, "--no-audio",
@@ -161,7 +157,7 @@ async def analysis(r, alone, omits, model_path, total_path, major_path, proto_pa
                 logger.error("录制视频失败,请重新录制视频 ...")
         # 录制视频后立刻分析视频帧
         else:
-            r.set_query("")
+            r.set_query(f"{random.randint(10, 99)}")
             cmd = [
                 "scrcpy", "-s", cellphone.serial, "--no-audio",
                 "--video-bit-rate", "8M", "--max-fps", "60", "--record",
@@ -185,13 +181,16 @@ async def analysis(r, alone, omits, model_path, total_path, major_path, proto_pa
                 logger.error("录制视频失败,请重新录制视频 ...")
 
     cellphone = await check_device()
+    r.total_path = os.path.join(
+        os.path.dirname(sys.argv[0]), f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
+    )
     r.set_title(f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}")
 
     while True:
         try:
             await asyncio.sleep(0.1)
             if action := input(f"{f'{cellphone}' if cellphone else ''} *-* 按 Enter 开始 *-*  "):
-                if "header" in action:
+                if action.strip() == "header":
                     if match := re.search(r"(?<=header).*", action):
                         src_title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}"
                         if title := match.group().strip():
@@ -200,7 +199,7 @@ async def analysis(r, alone, omits, model_path, total_path, major_path, proto_pa
                             new_title = f"{src_title}_{random.randint(100, 999)}"
                         r.set_title(new_title)
                     continue
-                if "serial" in action:
+                if action.strip() == "serial":
                     cellphone = await check_device()
                     continue
                 timer_mode = 5 if int(action) < 5 else int(action)
@@ -225,14 +224,15 @@ async def analysis(r, alone, omits, model_path, total_path, major_path, proto_pa
 
 
 async def painting():
+    cellphone = await check_device()
     image_folder = "/sdcard/Pictures/Shots"
     image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_" + "Shot.png"
-    await Terminal.cmd_line_shell(f"adb wait-for-usb-device shell mkdir -p {image_folder}")
-    await Terminal.cmd_line_shell(f"adb wait-for-usb-device shell screencap -p {image_folder}/{image}")
+    await Terminal.cmd_line_shell(f"adb -s {cellphone.serial} wait-for-usb-device shell mkdir -p {image_folder}")
+    await Terminal.cmd_line_shell(f"adb -s {cellphone.serial} wait-for-usb-device shell screencap -p {image_folder}/{image}")
 
     with tempfile.TemporaryDirectory() as temp_dir:
         image_save_path = os.path.join(temp_dir, image)
-        await Terminal.cmd_line_shell(f"adb wait-for-usb-device pull {image_folder}/{image} {image_save_path}")
+        await Terminal.cmd_line_shell(f"adb -s {cellphone.serial} wait-for-usb-device pull {image_folder}/{image} {image_save_path}")
 
         image = Image.open(image_save_path)
         image = image.convert("RGB")
@@ -257,7 +257,7 @@ async def painting():
             draw.text((x_text_start, y_line - text_height // 2), text, fill=(255, 182, 193), font=font)
 
         resized.show()
-    await Terminal.cmd_line_shell(f"adb wait-for-usb-device shell rm {image_folder}/{image}")
+    await Terminal.cmd_line_shell(f"adb -s {cellphone.serial} wait-for-usb-device shell rm {image_folder}/{image}")
 
 
 async def analyzer(r: Report, vision_path: str, **kwargs):
@@ -291,6 +291,7 @@ async def analyzer(r: Report, vision_path: str, **kwargs):
     # os.remove(vision_path)
     # logger.info(f"移除旧的视频: {vision_path}")
 
+    # TODO change_record
     video = VideoObject(vision_path)
     task, hued = video.load_frames(color)
 
@@ -439,7 +440,7 @@ def alone_task(folder: str):
 
 async def main():
     if len(sys.argv) == 1:
-        await help_document()
+        help_document()
         sys.exit(1)
 
     if ".exe" in os.path.basename(sys.argv[0]):
@@ -455,7 +456,7 @@ async def main():
         major_path = os.path.join(Constants.NEXA, "template")
         proto_path = os.path.join(Constants.NEXA, "template", "extra.html")
 
-    cmd_lines = await parse_cmd()
+    cmd_lines = parse_cmd()
     omits = []
     if cmd_lines.omits and len(cmd_lines.omits) > 0:
         for hook in cmd_lines.omits:
@@ -474,12 +475,12 @@ async def main():
         sys.exit(1)
     elif cmd_lines.flick:
         await analysis(
-            Report(), cmd_lines.alone, omits, model_path, total_path, major_path, proto_path
+            Report(), cmd_lines.alone, omits, model_path, proto_path
         )
         sys.exit(1)
     elif cmd_lines.alone:
         await analysis(
-            Report(), cmd_lines.alone, omits, model_path, total_path, major_path, proto_path
+            Report(), cmd_lines.alone, omits, model_path, proto_path
         )
         sys.exit(1)
     elif cmd_lines.paint:
@@ -492,7 +493,7 @@ async def main():
     elif cmd_lines.input:
         r = Report()
         r.set_title(f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}")
-        r.set_query("")
+        r.set_query(f"{random.randint(10, 99)}")
         await analyzer(
             r, cmd_lines.input, omits=omits,
             model_path=model_path, proto_path=proto_path
@@ -500,7 +501,7 @@ async def main():
         await r.ask_create_report(major_path, r.title, r.total_path, r.query_path, r.range_list)
         sys.exit(1)
     else:
-        await help_document()
+        help_document()
         sys.exit(1)
 
 
@@ -509,4 +510,4 @@ if __name__ == '__main__':
         loop = asyncio.get_event_loop()
         loop.run_until_complete(main())
     except KeyboardInterrupt:
-        os.kill(os.getpid(), signal.CTRL_BREAK_EVENT)
+        sys.exit(1)

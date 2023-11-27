@@ -1,5 +1,6 @@
 import os
 import cv2
+import sys
 import math
 import time
 import random
@@ -11,7 +12,6 @@ from tqdm import tqdm
 from loguru import logger
 from findit import FindIt
 from base64 import b64encode
-from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 from skimage.feature import hog, local_binary_pattern
 from skimage.metrics import structural_similarity as origin_compare_ssim
@@ -321,15 +321,20 @@ def match_template_with_path(
     return match_template_with_object(template_object, target, **kwargs)
 
 
-def show_progress(total: int, color: int, title: str = "Loading  ") -> tqdm:
+def show_progress(total: int, color: int, title: str) -> tqdm:
     """https://www.ditig.com/256-colors-cheat-sheet"""
     colors = {"start": f"\033[38;5;{color}m", "end": "\033[0m"}
-    bar_format = "{l_bar}%{bar}%|{n_fmt:5}/{total_fmt:5} [耗时: {elapsed}, 剩余: {remaining}]"
+    bar_format = "{l_bar}%{bar}%|{n_fmt:5}/{total_fmt:5}"
     colored_bar_format = f"{colors['start']}{bar_format}{colors['end']}"
+    if sys.stdout.isatty():
+        columns, _ = os.get_terminal_size(0)
+    else:
+        columns = 150
+    progress_bar_length = int(columns * 0.8)
     progress_bar = tqdm(
         total=total,
-        position=0, ncols=150, leave=True, bar_format=colored_bar_format,
-        desc=str(datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + " : " + title)
+        position=0, ncols=progress_bar_length, leave=True, bar_format=colored_bar_format,
+        desc=": " + title + "   "
     )
     return progress_bar
 

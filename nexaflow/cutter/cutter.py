@@ -177,7 +177,7 @@ class VideoCutter(object):
                 )
             )
 
-        pbar = toolbox.show_progress(window.frame_total, 174, "Cutter   ")
+        pbar = toolbox.show_progress(window.frame_total, 174, "Cutter")
         while True:
             technique()
             pbar.update(1)

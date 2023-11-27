@@ -1,8 +1,8 @@
 import os
 import re
 import sys
-import time
 import json
+import time
 import shutil
 import asyncio
 import threading
@@ -15,7 +15,7 @@ from nexaflow.constants import Constants
 from nexaflow.classifier.base import ClassifierResult
 
 REPORT: str = os.path.join(Constants.WORK, "report")
-FORMAT: str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>"
+FORMAT: str = "| <level>{level: <8}</level> | <level>{message}</level>"
 
 
 class Report(object):
@@ -47,15 +47,8 @@ class Report(object):
             self.range_list: list[dict] = []
             self.total_list: list[dict] = []
 
-            # self.total_path = "/Users/acekeppel/PycharmProjects/NexaFlow/report/Nexa_20230822223025/Nexa_Collection"
-            if ".exe" in os.path.basename(sys.argv[0]):
-                self.total_path = os.path.join(
-                    os.path.dirname(sys.argv[0]), f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection"
-                )
-            else:
-                self.total_path = os.path.join(
-                    REPORT, f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection"
-                )
+            self.total_path = "/Users/acekeppel/PycharmProjects/NexaFlow/report/Nexa_20230822223025/Nexa_Collection"
+            # self.total_path = os.path.join(REPORT, f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection")
 
             self.reset_path = os.path.join(os.path.dirname(self.total_path), "Nexa_Recovery")
             os.makedirs(self.total_path, exist_ok=True)
@@ -76,8 +69,8 @@ class Report(object):
         logger.info(f"{'=' * 45} {self.title} {'=' * 45}\n")
 
     def set_query(self, query: str) -> None:
-        # self.query = query
-        self.query = query + "_" + self.clock()
+        self.query = query
+        # self.query = query + "_" + self.clock()
         self.video_path = os.path.join(self.query_path, self.query, "video")
         self.frame_path = os.path.join(self.query_path, self.query, "frame")
         self.extra_path = os.path.join(self.query_path, self.query, "extra")
@@ -309,14 +302,10 @@ class Report(object):
         total_html = os.path.join(file_name, "NexaFlow.html")
         with open(file=total_html, mode="w", encoding="utf-8") as f:
             f.write(html)
-            logger.debug(f"生成汇总报告: {total_html}")
+            logger.info(f"生成汇总报告: {total_html}")
 
     @staticmethod
     def reset_report(file_name: str) -> None:
-        """
-        重新生成汇总报告
-        :param file_name: 文件名: Nexa_2023082223025
-        """
         loader = FileSystemLoader(os.path.join(Constants.NEXA, "template"))
         environment = Environment(loader=loader)
         template = environment.get_template("overall.html")
@@ -337,10 +326,6 @@ class Report(object):
 
     @staticmethod
     def merge_report(merge_list: List[str]) -> None:
-        """
-        合并汇总报告
-        :param merge_list: ["/report/Nexa_20230822223025/Nexa_Collection"]
-        """
         merge_path = os.path.join(
             os.path.dirname(os.path.dirname(merge_list[0])),
             "Merge_Nexa_" + time.strftime("%Y%m%d%H%M%S"),

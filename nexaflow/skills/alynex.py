@@ -286,7 +286,7 @@ class Alynex(object):
             classify = self.framix.pixel_wizard(video, MODELS, self.report.extra_path)
             important_frames: List["SingleClassifierResult"] = classify.get_important_frame_list()
 
-            pbar = toolbox.show_progress(classify.get_length(), 50, "Faster   ")
+            pbar = toolbox.show_progress(classify.get_length(), 50, "Faster")
             frames_list = []
             if boost:
                 frames_list.append(previous := important_frames[0])
