@@ -48,7 +48,8 @@ class Report(object):
             self.range_list: list[dict] = []
             self.total_list: list[dict] = []
 
-            self.total_path = os.path.join(REPORT, f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection")
+            self.total_path = "/Users/acekeppel/PycharmProjects/NexaFlow/report/Nexa_20230822223025"
+            # self.total_path = os.path.join(REPORT, f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection")
 
             self.reset_path = os.path.join(os.path.dirname(self.total_path), "Nexa_Recovery")
             os.makedirs(self.total_path, exist_ok=True)
@@ -69,7 +70,8 @@ class Report(object):
         logger.info(f"{'=' * 36} {self.title} {'=' * 36}\n")
 
     def set_query(self, query: str) -> None:
-        self.query = query + "_" + self.clock()
+        self.query = query
+        # self.query = query + "_" + self.clock()
         self.video_path = os.path.join(self.query_path, self.query, "video")
         self.frame_path = os.path.join(self.query_path, self.query, "frame")
         self.extra_path = os.path.join(self.query_path, self.query, "extra")

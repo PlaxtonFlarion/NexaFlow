@@ -3,6 +3,8 @@ from nexaflow.skills.device import Manage
 
 
 if __name__ == '__main__':
+    # pip freeze > requirements.txt
+    # pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade tensorflow
     # pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
     manage = Manage()
     device = manage.Phone
