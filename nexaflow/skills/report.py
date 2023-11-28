@@ -15,7 +15,8 @@ from nexaflow.constants import Constants
 from nexaflow.classifier.base import ClassifierResult
 
 REPORT: str = os.path.join(Constants.WORK, "report")
-FORMAT: str = "| <level>{level: <8}</level> | <level>{message}</level>"
+C_FORMAT: str = "| <level>{level: <8}</level> | <level>{message}</level>"
+L_FORMAT: str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>"
 
 
 class Report(object):
@@ -47,8 +48,7 @@ class Report(object):
             self.range_list: list[dict] = []
             self.total_list: list[dict] = []
 
-            self.total_path = "/Users/acekeppel/PycharmProjects/NexaFlow/report/Nexa_20230822223025/Nexa_Collection"
-            # self.total_path = os.path.join(REPORT, f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection")
+            self.total_path = os.path.join(REPORT, f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection")
 
             self.reset_path = os.path.join(os.path.dirname(self.total_path), "Nexa_Recovery")
             os.makedirs(self.total_path, exist_ok=True)
@@ -56,8 +56,8 @@ class Report(object):
 
             logger.remove(0)
             log_papers = os.path.join(self.reset_path, "nexaflow.log")
-            logger.add(sys.stderr, format=FORMAT, level="INFO")
-            logger.add(log_papers, format=FORMAT, level="INFO")
+            logger.add(sys.stderr, format=C_FORMAT, level="INFO")
+            logger.add(log_papers, format=L_FORMAT, level="DEBUG")
 
     @property
     def proto_path(self) -> str:
@@ -66,11 +66,10 @@ class Report(object):
     def set_title(self, title: str) -> None:
         self.title = title
         self.query_path = os.path.join(self.total_path, self.title)
-        logger.info(f"{'=' * 45} {self.title} {'=' * 45}\n")
+        logger.info(f"{'=' * 36} {self.title} {'=' * 36}\n")
 
     def set_query(self, query: str) -> None:
-        self.query = query
-        # self.query = query + "_" + self.clock()
+        self.query = query + "_" + self.clock()
         self.video_path = os.path.join(self.query_path, self.query, "video")
         self.frame_path = os.path.join(self.query_path, self.query, "frame")
         self.extra_path = os.path.join(self.query_path, self.query, "extra")
@@ -168,7 +167,7 @@ class Report(object):
             logger.info("Recovery: " + json.dumps(single, ensure_ascii=False))
             self.total_list.append(single)
             self.range_list.clear()
-            logger.info(f"{'=' * 45} {self.title} {'=' * 45}\n\n")
+            logger.info(f"{'=' * 36} {self.title} {'=' * 36}\n\n")
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(handler_start())
@@ -270,7 +269,7 @@ class Report(object):
                 "href": href_path
             }
             logger.info("Recovery: " + json.dumps(single, ensure_ascii=False))
-            logger.info(f"{'=' * 45} {title} {'=' * 45}\n\n")
+            logger.info(f"{'=' * 36} {title} {'=' * 36}\n\n")
             return single
 
         return await handler_start()
@@ -322,7 +321,7 @@ class Report(object):
         total_html_path = os.path.join(REPORT, file_name, "NexaFlow.html")
         with open(file=total_html_path, mode="w", encoding="utf-8") as f:
             f.write(html)
-            logger.debug(f"生成汇总报告: {total_html_path}\n\n")
+            logger.info(f"生成汇总报告: {total_html_path}\n\n")
 
     @staticmethod
     def merge_report(merge_list: List[str]) -> None:
@@ -352,7 +351,7 @@ class Report(object):
         total_html_path = os.path.join(os.path.dirname(merge_path), "NexaFlow.html")
         with open(file=total_html_path, mode="w", encoding="utf-8") as f:
             f.write(html)
-            logger.debug(f"合并汇总报告: {total_html_path}\n\n")
+            logger.info(f"合并汇总报告: {total_html_path}\n\n")
 
     @staticmethod
     def draw(

@@ -327,7 +327,10 @@ def show_progress(total: int, color: int, title: str) -> tqdm:
     bar_format = "{l_bar}%{bar}%|{n_fmt:5}/{total_fmt:5}"
     colored_bar_format = f"{colors['start']}{bar_format}{colors['end']}"
     if sys.stdout.isatty():
-        columns, _ = os.get_terminal_size(0)
+        try:
+            columns, _ = os.get_terminal_size(0)
+        except OSError:
+            columns = 150
     else:
         columns = 150
     progress_bar_length = int(columns * 0.8)
