@@ -23,7 +23,7 @@ def multi_video_task(folder: str) -> str:
 
 if __name__ == '__main__':
     Constants.initial_logger()
-    data = ["202301", "202302"]
+    data = ["group_0001", "group_0002"]
     start_time = time.time()
 
     with Pool(len(data)) as pool:

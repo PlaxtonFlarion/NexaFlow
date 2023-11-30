@@ -16,8 +16,6 @@ except ImportError:
     raise ImportError("KerasClassifier requires tensorflow. install it first.")
 
 from keras import backend
-# from keras.optimizers import Adam
-from keras.optimizers.legacy import Adam
 from keras.models import Sequential
 from keras.layers import Conv2D, MaxPooling2D
 from keras.layers import Dropout, Flatten, Dense
@@ -73,6 +71,7 @@ class KerasClassifier(BaseModelClassifier):
             )
         # assert model data is not empty
         assert self._model, "model is empty"
+        print(self._model.summary())
         self._model.save_weights(model_path)
 
     def load_model(self, model_path: str, overwrite: bool = None):
@@ -123,8 +122,7 @@ class KerasClassifier(BaseModelClassifier):
         model.add(Dropout(0.5))
         model.add(Dense(self.MODEL_DENSE, activation='softmax'))
 
-        opt = Adam(learning_rate=0.0001)
-        model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+        model.compile(optimizer="adam", loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
         # logger.info("Keras model created")
         logger.info("Keras神经网络引擎加载完成，开始分析图像 ...")
