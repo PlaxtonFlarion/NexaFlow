@@ -16,9 +16,9 @@ class TestPlan(object):
     def test_01(self):
         """讲个笑话"""
         query, audio = self.__alynex.player.load_audio("讲个笑话")
-        self.__alynex.report.set_title(query)
+        self.__alynex.report.title(query)
         for _ in range(self.looper):
-            self.__alynex.report.set_query(query)
+            self.__alynex.report.query(query)
             self.__device.ask_swipe_unlock()
             self.__alynex.record.start_record(
                 self.__alynex.report.video_path,
@@ -40,9 +40,9 @@ class TestPlan(object):
 
     def test_02(self):
         query = "讲个笑话"
-        self.__alynex.report.set_title(query)
+        self.__alynex.report.title = query
         for i in range(1):
-            self.__alynex.report.set_query(f"{i + 1}_{query}")
+            self.__alynex.report.query = f"{i + 1}_{query}"
             self.__alynex.framix.crop_hook(0, 0.1, 1, 0.9)
             self.__alynex.analyzer()
         self.__alynex.report.create_report()

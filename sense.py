@@ -8,9 +8,9 @@ table = Table(
     show_header=True, show_lines=True
 )
 
-table.add_column("选项", justify="center", width=20)
-table.add_column("参数", justify="center", width=20)
-table.add_column("说明", justify="center", width=20)
+table.add_column("选项", justify="center", width=22)
+table.add_column("参数", justify="center", width=22)
+table.add_column("说明", justify="center", width=22)
 
 table.add_row(
     "[bold #FFDC00]--flick[/bold #FFDC00]   [bold]-f[/bold]", "[bold #7FDBFF]N/A[/bold #7FDBFF]", "[bold #39CCCC]录制分析视频帧[/bold #39CCCC]"
@@ -40,12 +40,12 @@ table.add_row(
     "[bold #FFDC00]--omits[/bold #FFDC00]   [bold]-o[/bold]", "[bold #7FDBFF]x,y,x_size,y_size[/bold #7FDBFF]", "[bold #39CCCC]忽略坐标位置[/bold #39CCCC]"
 )
 nexaflow_logo = """
-███╗   ██╗███████╗██╗  ██╗ █████╗  ███████╗██╗      ██████╗ ██╗    ██╗
-██╔██╗ ██║██╔════╝╚██╗██╔╝██╔══██╗ ██╔════╝██║     ██╔═══██╗██║    ██║
-██║╚██╗██║█████╗   ╚███╔╝ ███████║ █████╗  ██║     ██║   ██║██║ █╗ ██║
-██║ ╚████║██╔══╝   ██╔██╗ ██╔══██║ ██╔══╝  ██║     ██║   ██║██║███╗██║
-██║  ╚███║███████╗██╔╝ ██╗██║  ██║ ██║     ███████╗╚██████╔╝╚███╔███╔╝
-╚═╝   ╚══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═╝     ╚══════╝ ╚═════╝  ╚══╝╚══╝
+███╗   ██╗███████╗██╗  ██╗ █████╗ ███████╗██╗      ██████╗ ██╗    ██╗
+██╔██╗ ██║██╔════╝╚██╗██╔╝██╔══██╗██╔════╝██║     ██╔═══██╗██║    ██║
+██║╚██╗██║█████╗   ╚███╔╝ ███████║█████╗  ██║     ██║   ██║██║ █╗ ██║
+██║ ╚████║██╔══╝   ██╔██╗ ██╔══██║██╔══╝  ██║     ██║   ██║██║███╗██║
+██║  ╚███║███████╗██╔╝ ██╗██║  ██║██║     ███████╗╚██████╔╝╚███╔███╔╝
+╚═╝   ╚══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚══════╝ ╚═════╝  ╚══╝╚══╝
 """
 console.print(nexaflow_logo)
 console.print(table)

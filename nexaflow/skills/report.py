@@ -1,6 +1,5 @@
 import os
 import re
-import sys
 import json
 import time
 import shutil
@@ -15,8 +14,7 @@ from nexaflow.constants import Constants
 from nexaflow.classifier.base import ClassifierResult
 
 REPORT: str = os.path.join(Constants.WORK, "report")
-C_FORMAT: str = "| <level>{level: <8}</level> | <level>{message}</level>"
-L_FORMAT: str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>"
+FORMAT: str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>"
 
 
 class Report(object):
@@ -24,22 +22,24 @@ class Report(object):
     __lock: threading.Lock = threading.Lock()
     __initialized: bool = False
     __instance = None
+    __init_var = None
 
-    def __new__(cls):
+    def __new__(cls, *args, **kwargs):
         if cls.__instance is None:
             with cls.__lock:
                 if cls.__instance is None:
                     cls.__instance = super(Report, cls).__new__(cls)
+                    cls.__init_var = (args, kwargs)
         return cls.__instance
 
-    def __init__(self):
+    def __init__(self, total_path: Optional[str] = None):
         if not self.__initialized:
             self.__initialized = True
 
             self.clock: Any = lambda: time.strftime("%Y%m%d%H%M%S")
 
-            self.title: str = ""
-            self.query: str = ""
+            self.__title: str = ""
+            self.__query: str = ""
             self.query_path: str = ""
             self.video_path: str = ""
             self.frame_path: str = ""
@@ -48,29 +48,44 @@ class Report(object):
             self.range_list: list[dict] = []
             self.total_list: list[dict] = []
 
-            self.total_path = "/Users/acekeppel/PycharmProjects/NexaFlow/report/Nexa_20230822223025"
-            # self.total_path = os.path.join(REPORT, f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection")
+            if total_path:
+                self.total_path = total_path
+            else:
+                self.total_path = "/Users/acekeppel/PycharmProjects/NexaFlow/report/Nexa_20230822223025"
+                # self.total_path = os.path.join(REPORT, f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection")
 
             self.reset_path = os.path.join(os.path.dirname(self.total_path), "Nexa_Recovery")
             os.makedirs(self.total_path, exist_ok=True)
             os.makedirs(self.reset_path, exist_ok=True)
 
-            logger.remove(0)
             log_papers = os.path.join(self.reset_path, "nexaflow.log")
-            logger.add(sys.stderr, format=C_FORMAT, level="INFO")
-            logger.add(log_papers, format=L_FORMAT, level="DEBUG")
+            logger.add(log_papers, format=FORMAT, level="DEBUG")
 
     @property
     def proto_path(self) -> str:
         return os.path.join(self.query_path, self.query)
 
-    def set_title(self, title: str) -> None:
-        self.title = title
+    @property
+    def title(self):
+        return self.__title
+
+    @title.setter
+    def title(self, title: str):
+        self.__title = title
         self.query_path = os.path.join(self.total_path, self.title)
         logger.info(f"{'=' * 36} {self.title} {'=' * 36}\n")
 
-    def set_query(self, query: str) -> None:
-        self.query = query
+    @title.deleter
+    def title(self):
+        del self.__title
+
+    @property
+    def query(self):
+        return self.__query
+
+    @query.setter
+    def query(self, query: str):
+        self.__query = query
         # self.query = query + "_" + self.clock()
         self.video_path = os.path.join(self.query_path, self.query, "video")
         self.frame_path = os.path.join(self.query_path, self.query, "frame")
@@ -79,6 +94,10 @@ class Report(object):
         os.makedirs(self.frame_path, exist_ok=True)
         os.makedirs(self.extra_path, exist_ok=True)
         logger.info(f"{self.query} Start ... {'-' * 60}")
+
+    @query.deleter
+    def query(self):
+        del self.__query
 
     def load(self, inform: Optional[Dict[str, Union[str | Dict]]]) -> None:
         if inform:

@@ -1,4 +1,6 @@
 import os
+import sys
+from loguru import logger
 
 
 CHARSET = r"utf-8"
@@ -18,6 +20,12 @@ class Constants(object):
 
     NEXA = os.path.dirname(os.path.abspath(__file__))
     WORK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    FORMAT: str = "| <level>{level: <8}</level> | <level>{message}</level>"
+
+    @classmethod
+    def initial_logger(cls, log_level: str = "INFO"):
+        logger.remove(0)
+        logger.add(sys.stderr, format=cls.FORMAT, level=log_level.upper())
 
 
 if __name__ == '__main__':

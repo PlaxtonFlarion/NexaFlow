@@ -1,4 +1,5 @@
 import time
+from nexaflow.constants import Constants
 from nexaflow.skills.device import Manage
 from nexaflow.skills.alynex import Alynex
 
@@ -9,14 +10,15 @@ def multi_audio_task():
     application: str = ""
     activity: str = ""
 
+    Constants.initial_logger()
     manage = Manage()
     alynex = Alynex()
 
     device = manage.operate_device("")
     for query, audio in alynex.player.load_all_audio():
-        alynex.report.set_title(query)
+        alynex.report.title = query
         for _ in range(5):
-            alynex.report.set_query(query)
+            alynex.report.query = query
             device.ask_swipe_unlock()
             alynex.record.start_record(
                 alynex.report.video_path,
