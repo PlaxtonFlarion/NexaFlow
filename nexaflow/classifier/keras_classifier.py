@@ -128,7 +128,7 @@ class KerasClassifier(BaseModelClassifier):
         logger.info("Keras神经网络引擎加载完成，开始分析图像 ...")
         return model
 
-    def train(self, data_path: str = None, *_, **__):
+    def train(self, data_path: str = None, final_model_path: str = None, *_, **__):
 
         def _data_verify(p: str):
             p = pathlib.Path(p)
@@ -183,7 +183,7 @@ class KerasClassifier(BaseModelClassifier):
 
         # 模型检查点
         model_checkpoint = ModelCheckpoint(
-            os.path.join(os.path.dirname(data_path), "model.h5"),
+            final_model_path,
             monitor='val_loss',
             save_best_only=True,
             verbose=1
@@ -205,6 +205,7 @@ class KerasClassifier(BaseModelClassifier):
             callbacks=[early_stopping, model_checkpoint, reduce_lr]  # 新增：回调列表
         )
 
+        print(self._model.summary())
         logger.debug("train finished")
 
     def predict(self, pic_path: str, *args, **kwargs) -> str:

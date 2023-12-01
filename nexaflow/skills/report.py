@@ -32,7 +32,7 @@ class Report(object):
                     cls.__init_var = (args, kwargs)
         return cls.__instance
 
-    def __init__(self, total_path: Optional[str] = None):
+    def __init__(self, total_path: Optional[str] = None, write_log: bool = True):
         if not self.__initialized:
             self.__initialized = True
 
@@ -53,13 +53,13 @@ class Report(object):
             else:
                 self.total_path = "/Users/acekeppel/PycharmProjects/NexaFlow/report/Nexa_20230822223025"
                 # self.total_path = os.path.join(REPORT, f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection")
-
-            self.reset_path = os.path.join(os.path.dirname(self.total_path), "Nexa_Recovery")
             os.makedirs(self.total_path, exist_ok=True)
-            os.makedirs(self.reset_path, exist_ok=True)
 
-            log_papers = os.path.join(self.reset_path, "nexaflow.log")
-            logger.add(log_papers, format=FORMAT, level="DEBUG")
+            if write_log:
+                self.reset_path = os.path.join(os.path.dirname(self.total_path), "Nexa_Recovery")
+                os.makedirs(self.reset_path, exist_ok=True)
+                log_papers = os.path.join(self.reset_path, "nexaflow.log")
+                logger.add(log_papers, format=FORMAT, level="DEBUG")
 
     @property
     def proto_path(self) -> str:
@@ -86,7 +86,7 @@ class Report(object):
     @query.setter
     def query(self, query: str):
         self.__query = query
-        # self.query = query + "_" + self.clock()
+        # self.__query = query + "_" + self.clock()
         self.video_path = os.path.join(self.query_path, self.query, "video")
         self.frame_path = os.path.join(self.query_path, self.query, "frame")
         self.extra_path = os.path.join(self.query_path, self.query, "extra")
@@ -185,7 +185,7 @@ class Report(object):
                 "avg": f"{sum(map(float, cost_list)) / len(cost_list):.5f}",
                 "href": href_path
             }
-            logger.info("Recovery: " + json.dumps(single, ensure_ascii=False))
+            logger.debug("Recovery: " + json.dumps(single, ensure_ascii=False))
             self.total_list.append(single)
             self.range_list.clear()
             logger.info(f"{'=' * 36} {self.title} {'=' * 36}\n\n")
@@ -289,7 +289,7 @@ class Report(object):
                 "avg": f"{sum(map(float, cost_list)) / len(cost_list):.5f}",
                 "href": href_path
             }
-            logger.info("Recovery: " + json.dumps(single, ensure_ascii=False))
+            logger.debug("Recovery: " + json.dumps(single, ensure_ascii=False))
             logger.info(f"{'=' * 36} {title} {'=' * 36}\n\n")
             return single
 

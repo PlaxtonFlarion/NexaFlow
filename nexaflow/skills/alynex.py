@@ -141,7 +141,7 @@ class Alynex(object):
         def build_model() -> None:
             # 从分类后的图片构建模型
             cl = KerasClassifier(target_size=Alynex.target_size)
-            cl.train(STABLE)
+            cl.train(STABLE, MODELS)
             cl.save_model(MODELS, overwrite=True)
 
     class _Framix(object):
@@ -324,6 +324,10 @@ class Alynex(object):
             except AssertionError:
                 start_frame = classify.get_important_frame_list()[0]
                 end_frame = classify.get_important_frame_list()[-1]
+
+            if start_frame == end_frame:
+                start_frame = classify.data[0]
+                end_frame = classify.data[-1]
 
             time_cost = end_frame.timestamp - start_frame.timestamp
             before, after, final = f"{start_frame.timestamp:.5f}", f"{end_frame.timestamp:.5f}", f"{time_cost:.5f}"
