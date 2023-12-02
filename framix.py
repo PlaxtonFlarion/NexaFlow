@@ -62,10 +62,10 @@ def help_document():
         "[bold #FFDC00]--input[/bold #FFDC00]  [bold]-i[/bold]", "[bold #7FDBFF]视频文件[/bold #7FDBFF]", "[bold #FFAFAF]多次[/bold #FFAFAF]", "[bold #D7FF00]支持[/bold #D7FF00]", "[bold #39CCCC]分析单个视频[/bold #39CCCC]"
     )
     table_major.add_row(
-        "[bold #FFDC00]--whole[/bold #FFDC00]  [bold]-w[/bold]", "[bold #7FDBFF]集合文件夹[/bold #7FDBFF]", "[bold #FFAFAF]多次[/bold #FFAFAF]", "[bold #D7FF00]支持[/bold #D7FF00]", "[bold #39CCCC]分析全部视频[/bold #39CCCC]"
+        "[bold #FFDC00]--whole[/bold #FFDC00]  [bold]-w[/bold]", "[bold #7FDBFF]视频集合[/bold #7FDBFF]", "[bold #FFAFAF]多次[/bold #FFAFAF]", "[bold #D7FF00]支持[/bold #D7FF00]", "[bold #39CCCC]分析全部视频[/bold #39CCCC]"
     )
     table_major.add_row(
-        "[bold #FFDC00]--merge[/bold #FFDC00]  [bold]-m[/bold]", "[bold #7FDBFF]集合文件夹[/bold #7FDBFF]", "[bold #FFAFAF]多次[/bold #FFAFAF]", "", "[bold #39CCCC]聚合报告[/bold #39CCCC]"
+        "[bold #FFDC00]--merge[/bold #FFDC00]  [bold]-m[/bold]", "[bold #7FDBFF]报告集合[/bold #7FDBFF]", "[bold #FFAFAF]多次[/bold #FFAFAF]", "", "[bold #39CCCC]聚合报告[/bold #39CCCC]"
     )
     table_major.add_row(
         "[bold #FFDC00]--datum[/bold #FFDC00]  [bold]-d[/bold]", "[bold #7FDBFF]视频文件[/bold #7FDBFF]", "[bold #FFAFAF]多次[/bold #FFAFAF]", "", "[bold #39CCCC]归类图片文件[/bold #39CCCC]"
@@ -124,14 +124,14 @@ def help_option():
 def parse_cmd():
     parser = ArgumentParser(description="Command Line Arguments Framix")
 
-    parser.add_argument('-f', '--flick', action='store_true', help='录制分析模式')
-    parser.add_argument('-a', '--alone', action='store_true', help='单独录制视频')
+    parser.add_argument('-f', '--flick', action='store_true', help='录制分析视频帧')
+    parser.add_argument('-a', '--alone', action='store_true', help='录制视频')
     parser.add_argument('-p', '--paint', action='store_true', help='绘制分割线条')
-    parser.add_argument('-i', '--input', action='append', help='单独分析视频')
+    parser.add_argument('-i', '--input', action='append', help='分析单个视频')
     parser.add_argument('-w', '--whole', action='append', help='分析全部视频')
-    parser.add_argument('-m', '--merge', action='append', help='聚合测试报告')
-    parser.add_argument('-d', '--datum', action='append', help='归类模型')
-    parser.add_argument('-t', '--train', action='append', help='训练模型')
+    parser.add_argument('-m', '--merge', action='append', help='聚合报告')
+    parser.add_argument('-d', '--datum', action='append', help='归类图片文件')
+    parser.add_argument('-t', '--train', action='append', help='训练模型文件')
 
     parser.add_argument('-b', '--boost', action='store_true', help='快速模式')
     parser.add_argument('-c', '--color', action='store_true', help='彩色模式')
