@@ -10,9 +10,10 @@ import tempfile
 import aiofiles
 from typing import Union
 from loguru import logger
-from rich.table import Table
 from multiprocessing import Pool
+from rich.table import Table
 from rich.console import Console
+from rich.progress import Progress
 from argparse import ArgumentParser
 from PIL import Image, ImageDraw, ImageFont
 from nexaflow import toolbox
@@ -106,8 +107,11 @@ def help_document():
     console.print(nexaflow_logo)
     console.print(table_major)
     console.print(table_minor)
-    for _ in range(10):
-        time.sleep(1)
+    with Progress() as progress:
+        task = progress.add_task("[bold #FFFFD7]Framix Terminal Command.", total=100)
+        while not progress.finished:
+            progress.update(task, advance=1)
+            time.sleep(0.1)
 
 
 def help_option():
@@ -166,7 +170,7 @@ async def check_device():
             self.serial, self.brand, self.version, *_ = args
 
         def __str__(self):
-            return f"<Phone [{self.brand}] [OS{self.version}] [{self.serial}]>"
+            return f"<Phone brand={self.brand} version=OS{self.version} serial={self.serial}>"
 
         __repr__ = __str__
 
@@ -311,7 +315,8 @@ async def analysis(alone: bool):
     while True:
         try:
             await asyncio.sleep(0.1)
-            if action := input(f"{f'{cellphone}' if cellphone else ''}  *-* 按 Enter 开始 *-*  "):
+            console.print(f"[bold #00FFAF]Connect:[/bold #00FFAF] {cellphone}")
+            if action := input("\033[0;32m*-* 按 Enter 开始 *-*\033[0m  "):
                 if "header" in action.strip():
                     if match := re.search(r"(?<=header\s).*", action):
                         if match.group().strip():

@@ -15,13 +15,7 @@ try:
 except ImportError:
     raise ImportError("KerasClassifier requires tensorflow. install it first.")
 
-from keras import backend
-from keras.models import Sequential
-from keras.layers import Conv2D, MaxPooling2D
-from keras.layers import Dropout, Flatten, Dense
-from keras.layers import BatchNormalization, LeakyReLU
-from keras.preprocessing.image import ImageDataGenerator
-from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+from tensorflow import keras
 
 
 class KerasClassifier(BaseModelClassifier):
@@ -43,7 +37,7 @@ class KerasClassifier(BaseModelClassifier):
         super(KerasClassifier, self).__init__(*_, **__)
 
         # 模型
-        self._model: typing.Optional[Sequential] = None
+        self._model: typing.Optional[keras.Sequential] = None
         # 配置
         self.score_threshold: float = score_threshold or 0.0
         self.data_size: typing.Sequence[int] = data_size or (200, 200)
@@ -87,40 +81,40 @@ class KerasClassifier(BaseModelClassifier):
         self._model = self.create_model()
         self._model.load_weights(model_path)
 
-    def create_model(self) -> Sequential:
+    def create_model(self) -> keras.Sequential:
         # logger.info(f"creating Keras sequential model")
         logger.info("Keras神经网络引擎创建图像分析模型 ...")
-        if backend.image_data_format() == "channels_first":
+        if keras.backend.image_data_format() == "channels_first":
             input_shape = (1, *self.data_size)
         else:
             input_shape = (*self.data_size, 1)
 
-        model = Sequential()
+        model = keras.Sequential()
 
-        model.add(Conv2D(32, (3, 3), padding='same', input_shape=input_shape))
-        model.add(BatchNormalization())
-        model.add(LeakyReLU(alpha=0.1))
-        model.add(MaxPooling2D(pool_size=(2, 2)))
-        model.add(Dropout(0.25))
+        model.add(keras.layers.Conv2D(32, (3, 3), padding='same', input_shape=input_shape))
+        model.add(keras.layers.BatchNormalization())
+        model.add(keras.layers.LeakyReLU(alpha=0.1))
+        model.add(keras.layers.MaxPooling2D(pool_size=(2, 2)))
+        model.add(keras.layers.Dropout(0.25))
 
-        model.add(Conv2D(64, (3, 3), padding='same'))
-        model.add(BatchNormalization())
-        model.add(LeakyReLU(alpha=0.1))
-        model.add(MaxPooling2D(pool_size=(2, 2)))
-        model.add(Dropout(0.25))
+        model.add(keras.layers.Conv2D(64, (3, 3), padding='same'))
+        model.add(keras.layers.BatchNormalization())
+        model.add(keras.layers.LeakyReLU(alpha=0.1))
+        model.add(keras.layers.MaxPooling2D(pool_size=(2, 2)))
+        model.add(keras.layers.Dropout(0.25))
 
-        model.add(Conv2D(128, (3, 3), padding='same'))
-        model.add(BatchNormalization())
-        model.add(LeakyReLU(alpha=0.1))
-        model.add(MaxPooling2D(pool_size=(2, 2)))
-        model.add(Dropout(0.25))
+        model.add(keras.layers.Conv2D(128, (3, 3), padding='same'))
+        model.add(keras.layers.BatchNormalization())
+        model.add(keras.layers.LeakyReLU(alpha=0.1))
+        model.add(keras.layers.MaxPooling2D(pool_size=(2, 2)))
+        model.add(keras.layers.Dropout(0.25))
 
-        model.add(Flatten())
-        model.add(Dense(256))
-        model.add(BatchNormalization())
-        model.add(LeakyReLU(alpha=0.1))
-        model.add(Dropout(0.5))
-        model.add(Dense(self.MODEL_DENSE, activation='softmax'))
+        model.add(keras.layers.Flatten())
+        model.add(keras.layers.Dense(256))
+        model.add(keras.layers.BatchNormalization())
+        model.add(keras.layers.LeakyReLU(alpha=0.1))
+        model.add(keras.layers.Dropout(0.5))
+        model.add(keras.layers.Dense(self.MODEL_DENSE, activation='softmax'))
 
         model.compile(optimizer="adam", loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
@@ -148,7 +142,7 @@ class KerasClassifier(BaseModelClassifier):
         if not self._model:
             self._model = self.create_model()
 
-        datagen = ImageDataGenerator(
+        datagen = keras.preprocessing.image.ImageDataGenerator(
             rescale=1.0 / 16,
             shear_range=0.2,
             zoom_range=0.2,
@@ -175,14 +169,14 @@ class KerasClassifier(BaseModelClassifier):
         )
 
         # 早停
-        early_stopping = EarlyStopping(
+        early_stopping = keras.callbacks.EarlyStopping(
             monitor='val_loss',
             patience=10,
             verbose=1
         )
 
         # 模型检查点
-        model_checkpoint = ModelCheckpoint(
+        model_checkpoint = keras.callbacks.ModelCheckpoint(
             final_model_path,
             monitor='val_loss',
             save_best_only=True,
@@ -190,7 +184,7 @@ class KerasClassifier(BaseModelClassifier):
         )
 
         # 动态学习率调整
-        reduce_lr = ReduceLROnPlateau(
+        reduce_lr = keras.callbacks.ReduceLROnPlateau(
             monitor='val_loss',
             factor=0.2,
             patience=5,

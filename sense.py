@@ -1,5 +1,9 @@
+import os
+
 from rich.table import Table
 from rich.console import Console
+import time
+from rich.progress import Progress
 
 console = Console()
 
@@ -73,6 +77,17 @@ def help_document():
     console.print(nexaflow_logo)
     console.print(table_major)
     console.print(table_minor)
+
+
+a = "<Phone brand=Pixel version=OS14 serial=asdfghjkl>"
+console.print(f"[bold #00FFAF]Connect:[/bold #00FFAF] {a}", highlight=True)
+print("\033[0;32m*-* 按 Enter 开始 *-*\033[0m  ")
+help_document()
+with Progress() as progress:
+    task = progress.add_task("[bold #FFFFD7]Framix Terminal Command.", total=100)
+    while not progress.finished:
+        progress.update(task, advance=1)
+        time.sleep(0.1)
 
 
 
