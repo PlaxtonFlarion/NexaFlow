@@ -149,8 +149,6 @@ def only_video(folder: str):
             self.place = place
             self.sheet = sheet
 
-    folder = folder if os.path.basename(folder) == "Nexa_Collection" else os.path.join(folder, "Nexa_Collection")
-
     return [
         Entry(
             os.path.basename(root), root,
@@ -203,7 +201,7 @@ async def check_device():
             await asyncio.sleep(3)
 
 
-async def analysis(reporter, alone):
+async def analysis(alone: bool):
 
     cellphone = None
     head_event = asyncio.Event()
@@ -304,8 +302,10 @@ async def analysis(reporter, alone):
 
     cellphone = await check_device()
     if alone:
+        reporter = Report(initial_total_path, write_log=False)
         reporter.title = f"Record_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
     else:
+        reporter = Report(initial_total_path)
         reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
 
     while True:
@@ -367,13 +367,13 @@ async def analyzer(reporter: Report, vision_path: str, **kwargs):
     screen_cap.release()
 
     logger.info(f"{screen_tag} 可正常播放，准备加载视频 ...")
-    change_record = vision_path.split('.')[0] + ".mp4"
-    if change_record == vision_path:
-        change_record = os.path.join(os.path.dirname(vision_path), f"screen_{random.randint(100, 999)}.mp4")
+    change_record = os.path.join(
+        os.path.dirname(vision_path), f"screen_fps60_{random.randint(100, 999)}.mp4"
+    )
     await Switch().video_change(vision_path, change_record)
-    logger.info(f"视频转换完成: {change_record}")
+    logger.info(f"视频转换完成: {os.path.basename(change_record)}")
     os.remove(vision_path)
-    logger.info(f"移除旧的视频: {vision_path}")
+    logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
 
     video = VideoObject(change_record)
     task, hued = video.load_frames(True)
@@ -581,9 +581,10 @@ def multiple_folder_task(folder, *args):
         for path in video.sheet:
             reporter.query = os.path.basename(path).split(".")[0]
             shutil.copy(path, reporter.video_path)
+            new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
             looper.run_until_complete(
                 analyzer(
-                    reporter, path, boost=boost, color=color, omits=omits, model_path=model_path, proto_path=proto_path
+                    reporter, new_video_path, boost=boost, color=color, omits=omits, model_path=model_path, proto_path=proto_path
                 )
             )
     looper.run_until_complete(
@@ -650,10 +651,7 @@ def build_model(src):
 async def main():
     Constants.initial_logger()
     if cmd_lines.flick or cmd_lines.alone:
-        if cmd_lines.alone:
-            await analysis(Report(initial_total_path, write_log=False), cmd_lines.alone)
-        else:
-            await analysis(Report(initial_total_path), cmd_lines.alone)
+        await analysis(cmd_lines.alone)
     elif cmd_lines.paint:
         await painting()
     elif cmd_lines.merge and len(cmd_lines.merge) > 0:

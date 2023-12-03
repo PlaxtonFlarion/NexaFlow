@@ -266,14 +266,13 @@ class Alynex(object):
                 return None
             logger.info(f"{screen_tag} 可正常播放，准备加载视频 ...")
             if focus:
-                change_record = (
-                        screen_record.split('.')[0] + "_" +
-                        str(random.randint(100, 999)) + ".mp4"
+                change_record = os.path.join(
+                    os.path.dirname(screen_record), f"screen_fps60_{random.randint(100, 999)}.mp4"
                 )
                 await self.ffmpeg.video_change(screen_record, change_record)
-                logger.info(f"视频转换完成: {change_record}")
+                logger.info(f"视频转换完成: {os.path.basename(change_record)}")
                 os.remove(screen_record)
-                logger.info(f"移除旧的视频: {screen_record}")
+                logger.info(f"移除旧的视频: {os.path.basename(screen_record)}")
             else:
                 change_record = screen_record
 
