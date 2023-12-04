@@ -685,7 +685,7 @@ if __name__ == '__main__':
         initial_total_path = os.path.join(
             os.path.dirname(os.path.dirname(sys.argv[0])), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Collection"
         )
-    elif work_platform == "framix.py":
+    else:
         job_path = os.path.dirname(__file__)
         _model_path = os.path.join(job_path, "model", "model.h5")
         _total_path = os.path.join(Constants.NEXA, "template")
