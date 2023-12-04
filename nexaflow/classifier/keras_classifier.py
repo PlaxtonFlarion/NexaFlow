@@ -11,7 +11,7 @@ from nexaflow.classifier.base import BaseModelClassifier
 try:
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
     import tensorflow
-    tensorflow.get_logger().setLevel("ERROR")
+    tensorflow.autograph.set_verbosity(0)
 except ImportError:
     raise ImportError("KerasClassifier requires tensorflow. install it first.")
 

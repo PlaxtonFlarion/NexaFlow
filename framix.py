@@ -40,7 +40,7 @@ console: Console = Console()
 
 def help_document():
     table_major = Table(
-        title="[bold #FF851B]NexaFlow Framix Main Command Line[/bold #FF851B]",
+        title="[bold #FF851B]NexaFlow Framix Main Command Line",
         header_style="bold #FF851B", title_justify="center",
         show_header=True, show_lines=True
     )
@@ -51,32 +51,32 @@ def help_document():
     table_major.add_column("功能说明", justify="center", width=22)
 
     table_major.add_row(
-        "[bold #FFDC00]--flick[/bold #FFDC00]  [bold]-f[/bold]", "[bold #7FDBFF]布尔[/bold #7FDBFF]", "[bold #8A8A8A]一次[/bold #8A8A8A]", "[bold #D7FF00]支持[/bold #D7FF00]", "[bold #39CCCC]录制分析视频帧[/bold #39CCCC]"
+        "[bold #FFDC00]--flick", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #D7FF00]支持", "[bold #39CCCC]录制分析视频帧"
     )
     table_major.add_row(
-        "[bold #FFDC00]--alone[/bold #FFDC00]  [bold]-a[/bold]", "[bold #7FDBFF]布尔[/bold #7FDBFF]", "[bold #8A8A8A]一次[/bold #8A8A8A]", "", "[bold #39CCCC]录制视频[/bold #39CCCC]"
+        "[bold #FFDC00]--alone", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "", "[bold #39CCCC]录制视频"
     )
     table_major.add_row(
-        "[bold #FFDC00]--paint[/bold #FFDC00]  [bold]-p[/bold]", "[bold #7FDBFF]布尔[/bold #7FDBFF]", "[bold #8A8A8A]一次[/bold #8A8A8A]", "", "[bold #39CCCC]绘制分割线条[/bold #39CCCC]"
+        "[bold #FFDC00]--paint", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "", "[bold #39CCCC]绘制分割线条"
     )
     table_major.add_row(
-        "[bold #FFDC00]--input[/bold #FFDC00]  [bold]-i[/bold]", "[bold #7FDBFF]视频文件[/bold #7FDBFF]", "[bold #FFAFAF]多次[/bold #FFAFAF]", "[bold #D7FF00]支持[/bold #D7FF00]", "[bold #39CCCC]分析单个视频[/bold #39CCCC]"
+        "[bold #FFDC00]--input", "[bold #7FDBFF]视频文件", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]分析单个视频"
     )
     table_major.add_row(
-        "[bold #FFDC00]--whole[/bold #FFDC00]  [bold]-w[/bold]", "[bold #7FDBFF]视频集合[/bold #7FDBFF]", "[bold #FFAFAF]多次[/bold #FFAFAF]", "[bold #D7FF00]支持[/bold #D7FF00]", "[bold #39CCCC]分析全部视频[/bold #39CCCC]"
+        "[bold #FFDC00]--whole", "[bold #7FDBFF]视频集合", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]分析全部视频"
     )
     table_major.add_row(
-        "[bold #FFDC00]--merge[/bold #FFDC00]  [bold]-m[/bold]", "[bold #7FDBFF]报告集合[/bold #7FDBFF]", "[bold #FFAFAF]多次[/bold #FFAFAF]", "", "[bold #39CCCC]聚合报告[/bold #39CCCC]"
+        "[bold #FFDC00]--merge", "[bold #7FDBFF]报告集合", "[bold #FFAFAF]多次", "", "[bold #39CCCC]聚合报告"
     )
     table_major.add_row(
-        "[bold #FFDC00]--datum[/bold #FFDC00]  [bold]-d[/bold]", "[bold #7FDBFF]视频文件[/bold #7FDBFF]", "[bold #FFAFAF]多次[/bold #FFAFAF]", "", "[bold #39CCCC]归类图片文件[/bold #39CCCC]"
+        "[bold #FFDC00]--datum", "[bold #7FDBFF]视频文件", "[bold #FFAFAF]多次", "", "[bold #39CCCC]归类图片文件"
     )
     table_major.add_row(
-        "[bold #FFDC00]--train[/bold #FFDC00]  [bold]-t[/bold]", "[bold #7FDBFF]图片文件[/bold #7FDBFF]", "[bold #FFAFAF]多次[/bold #FFAFAF]", "", "[bold #39CCCC]训练模型文件[/bold #39CCCC]"
+        "[bold #FFDC00]--train", "[bold #7FDBFF]图片集合", "[bold #FFAFAF]多次", "", "[bold #39CCCC]训练模型文件"
     )
 
     table_minor = Table(
-        title="[bold #FF851B]NexaFlow Framix Extra Command Line[/bold #FF851B]",
+        title="[bold #FF851B]NexaFlow Framix Extra Command Line",
         header_style="bold #FF851B", title_justify="center",
         show_header=True, show_lines=True
     )
@@ -87,13 +87,13 @@ def help_document():
     table_minor.add_column("功能说明", justify="center", width=22)
 
     table_minor.add_row(
-        "[bold #FFDC00]--boost[/bold #FFDC00]  [bold]-b[/bold]", "[bold #7FDBFF]布尔[/bold #7FDBFF]", "[bold #8A8A8A]一次[/bold #8A8A8A]", "[bold #AFAFD7]关闭[/bold #AFAFD7]", "[bold #39CCCC]快速模式[/bold #39CCCC]"
+        "[bold #FFDC00]--boost", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]快速模式"
     )
     table_minor.add_row(
-        "[bold #FFDC00]--color[/bold #FFDC00]  [bold]-c[/bold]", "[bold #7FDBFF]布尔[/bold #7FDBFF]", "[bold #8A8A8A]一次[/bold #8A8A8A]", "[bold #AFAFD7]关闭[/bold #AFAFD7]", "[bold #39CCCC]彩色模式[/bold #39CCCC]"
+        "[bold #FFDC00]--color", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]彩色模式"
     )
     table_minor.add_row(
-        "[bold #FFDC00]--omits[/bold #FFDC00]  [bold]-o[/bold]", "[bold #7FDBFF]坐标[/bold #7FDBFF]", "[bold #FFAFAF]多次[/bold #FFAFAF]", "", "[bold #39CCCC]忽略区域[/bold #39CCCC]"
+        "[bold #FFDC00]--omits", "[bold #7FDBFF]坐标", "[bold #FFAFAF]多次", "", "[bold #39CCCC]忽略区域"
     )
 
     nexaflow_logo = """[bold #D0D0D0]
@@ -103,7 +103,7 @@ def help_document():
     ██║ ╚████║██╔══╝   ██╔██╗ ██╔══██║  ██╔══╝  ██║     ██║   ██║██║███╗██║
     ██║  ╚███║███████╗██╔╝ ██╗██║  ██║  ██║     ███████╗╚██████╔╝╚███╔███╔╝
     ╚═╝   ╚══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝  ╚═╝     ╚══════╝ ╚═════╝  ╚══╝╚══╝
-    [/bold #D0D0D0]"""
+    """
     console.print(nexaflow_logo)
     console.print(table_major)
     console.print(table_minor)
@@ -115,31 +115,31 @@ def help_document():
 
 
 def help_option():
-    table = Table(show_header=True, header_style="bold #D7FF00")
-    table.add_column("[bold]选项[/bold]", justify="center", width=22)
-    table.add_column("[bold]参数[/bold]", justify="center", width=22)
-    table.add_column("[bold]说明[/bold]", justify="center", width=22)
-    table.add_row("[bold #FFAFAF]header[/bold #FFAFAF]", "[bold #AFD7FF]标题名[/bold #AFD7FF]", "[bold #DADADA]生成一个新标题文件夹[/bold #DADADA]")
-    table.add_row("[bold #FFAFAF]serial[/bold #FFAFAF]", "[bold #AFD7FF]无参数[/bold #AFD7FF]", "[bold #DADADA]重新选择已连接的设备[/bold #DADADA]")
-    table.add_row("[bold #FFAFAF]******[/bold #FFAFAF]", "[bold #AFD7FF]无参数[/bold #AFD7FF]", "[bold #DADADA]任意数字代表录制时长[/bold #DADADA]")
+    table = Table(show_header=True, header_style="bold #D7FF00", show_lines=True)
+    table.add_column("选项", justify="center", width=12)
+    table.add_column("参数", justify="center", width=12)
+    table.add_column("说明", justify="center", width=44)
+    table.add_row("[bold #FFAFAF]header", "[bold #AFD7FF]标题名", "[bold #DADADA]生成一个新标题文件夹")
+    table.add_row("[bold #FFAFAF]serial", "", "[bold #DADADA]重新选择已连接的设备")
+    table.add_row("[bold #FFAFAF]******", "", "[bold #DADADA]任意数字代表录制时长")
     console.print(table)
 
 
 def parse_cmd():
     parser = ArgumentParser(description="Command Line Arguments Framix")
 
-    parser.add_argument('-f', '--flick', action='store_true', help='录制分析视频帧')
-    parser.add_argument('-a', '--alone', action='store_true', help='录制视频')
-    parser.add_argument('-p', '--paint', action='store_true', help='绘制分割线条')
-    parser.add_argument('-i', '--input', action='append', help='分析单个视频')
-    parser.add_argument('-w', '--whole', action='append', help='分析全部视频')
-    parser.add_argument('-m', '--merge', action='append', help='聚合报告')
-    parser.add_argument('-d', '--datum', action='append', help='归类图片文件')
-    parser.add_argument('-t', '--train', action='append', help='训练模型文件')
+    parser.add_argument('--flick', action='store_true', help='录制分析视频帧')
+    parser.add_argument('--alone', action='store_true', help='录制视频')
+    parser.add_argument('--paint', action='store_true', help='绘制分割线条')
+    parser.add_argument('--input', action='append', help='分析单个视频')
+    parser.add_argument('--whole', action='append', help='分析全部视频')
+    parser.add_argument('--merge', action='append', help='聚合报告')
+    parser.add_argument('--datum', action='append', help='归类图片文件')
+    parser.add_argument('--train', action='append', help='训练模型文件')
 
-    parser.add_argument('-b', '--boost', action='store_true', help='快速模式')
-    parser.add_argument('-c', '--color', action='store_true', help='彩色模式')
-    parser.add_argument('-o', '--omits', action='append', help='忽略区域')
+    parser.add_argument('--boost', action='store_true', help='快速模式')
+    parser.add_argument('--color', action='store_true', help='彩色模式')
+    parser.add_argument('--omits', action='append', help='忽略区域')
 
     return parser.parse_args()
 
@@ -552,8 +552,10 @@ async def painting():
 def single_video_task(input_video, *args):
     Constants.initial_logger()
     boost, color, omits, model_path, total_path, major_path, proto_path = args
-    new_total_path = os.path.join(os.path.dirname(
-        sys.argv[0]), f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
+    new_total_path = os.path.join(
+        os.path.dirname(
+            os.path.dirname(sys.argv[0])
+        ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
     ) if ".exe" in os.path.basename(sys.argv[0]) else None
     reporter = Report(new_total_path)
     reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
@@ -576,8 +578,10 @@ def single_video_task(input_video, *args):
 def multiple_folder_task(folder, *args):
     Constants.initial_logger()
     boost, color, omits, model_path, total_path, major_path, proto_path = args
-    new_total_path = os.path.join(os.path.dirname(
-        sys.argv[0]), f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
+    new_total_path = os.path.join(
+        os.path.dirname(
+            os.path.dirname(sys.argv[0])
+        ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
     ) if ".exe" in os.path.basename(sys.argv[0]) else None
     reporter = Report(new_total_path)
     looper = asyncio.get_event_loop()
@@ -678,7 +682,7 @@ if __name__ == '__main__':
         _major_path = os.path.join(job_path, "framix.source", "page")
         _proto_path = os.path.join(job_path, "framix.source", "page", "extra.html")
         initial_total_path = os.path.join(
-            os.path.dirname(sys.argv[0]), f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Collection"
+            os.path.dirname(os.path.dirname(sys.argv[0])), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Collection"
         )
     else:
         job_path = os.path.dirname(__file__)
