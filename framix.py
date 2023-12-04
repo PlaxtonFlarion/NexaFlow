@@ -675,7 +675,8 @@ if __name__ == '__main__':
         help_document()
         sys.exit(1)
 
-    if ".exe" in os.path.basename(sys.argv[0]):
+    work_platform = os.path.basename(sys.argv[0]).lower()
+    if work_platform == "framix.exe" or work_platform == "framix.bin":
         job_path = os.path.dirname(sys.argv[0])
         _model_path = os.path.join(job_path, "framix.source", "mold", "model.h5")
         _total_path = os.path.join(job_path, "framix.source", "page")
@@ -684,7 +685,7 @@ if __name__ == '__main__':
         initial_total_path = os.path.join(
             os.path.dirname(os.path.dirname(sys.argv[0])), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Collection"
         )
-    else:
+    elif work_platform == "framix.py":
         job_path = os.path.dirname(__file__)
         _model_path = os.path.join(job_path, "model", "model.h5")
         _total_path = os.path.join(Constants.NEXA, "template")
