@@ -3,6 +3,7 @@ import cv2
 import sys
 import math
 import time
+import shutil
 import random
 import typing
 import contextlib
@@ -328,7 +329,7 @@ def show_progress(total: int, color: int, title: str) -> tqdm:
     colored_bar_format = f"{colors['start']}{bar_format}{colors['end']}"
     if sys.stdout.isatty():
         try:
-            columns, _ = os.get_terminal_size(0)
+            columns, _ = shutil.get_terminal_size()
         except OSError:
             columns = 150
     else:

@@ -9,9 +9,8 @@ from nexaflow.video import VideoFrame
 from nexaflow.classifier.base import BaseModelClassifier
 
 try:
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
     import tensorflow
-    tensorflow.autograph.set_verbosity(0)
 except ImportError:
     raise ImportError("KerasClassifier requires tensorflow. install it first.")
 

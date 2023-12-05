@@ -12,6 +12,7 @@ from typing import Union
 from loguru import logger
 from multiprocessing import Pool
 from rich.table import Table
+from rich.prompt import Prompt
 from rich.console import Console
 from rich.progress import Progress
 from argparse import ArgumentParser
@@ -20,7 +21,6 @@ from nexaflow import toolbox
 from nexaflow.terminal import Terminal
 from nexaflow.video import VideoObject
 from nexaflow.skills.report import Report
-from nexaflow.skills.switch import Switch
 from nexaflow.constants import Constants
 from nexaflow.cutter.cutter import VideoCutter
 from nexaflow.hook import OmitHook, FrameSaveHook
@@ -144,6 +144,21 @@ def parse_cmd():
     return parser.parse_args()
 
 
+def compatible():
+    if sys.platform.lower() == "win32":
+        _adb = os.path.join(_tools_path, "windows", "platform-tools", "adb.exe")
+        _ffmpeg = os.path.join(_tools_path, "windows", "ffmpeg-6.1-full_build", "bin", "ffmpeg.exe")
+        _scrcpy = os.path.join(_tools_path, "windows", "scrcpy-win64-v2.2", "scrcpy.exe")
+    elif sys.platform.lower() == "darwin":
+        _adb = os.path.join(_tools_path, "mac", "platform-tools", "adb")
+        _ffmpeg = os.path.join(_tools_path, "mac", "ffmpeg-6.1", "ffmpeg")
+        _scrcpy = shutil.which("scrcpy")
+    else:
+        _adb, _ffmpeg, _scrcpy = "adb", "ffmpeg", "scrcpy"
+
+    return _adb, _ffmpeg, _scrcpy
+
+
 def only_video(folder: str):
 
     class Entry(object):
@@ -187,7 +202,7 @@ async def check_device():
         if len(device_list := [i.split()[0] for i in devices.split("\n")[1:]]) == 1:
             return await check(device_list[0])
         elif len(device_list) > 1:
-            logger.warning(f"已连接多台设备 {device_list}")
+            console.print(f"[bold yellow]已连接多台设备[/bold yellow] {device_list}")
             device_dict = {}
             tasks = [check(serial) for serial in device_list]
             result = await asyncio.gather(*tasks)
@@ -196,12 +211,12 @@ async def check_device():
                 logger.warning(f"{idx + 1} -> {cur}")
             while True:
                 try:
-                    return device_dict[input("请输入编号选择一台设备: ")]
+                    return device_dict[Prompt.ask("[bold #5FD7FF]请输入编号选择一台设备")]
                 except KeyError:
-                    logger.error(f"没有该序号,请重新选择 ...")
+                    console.print(f"[bold red]没有该序号,请重新选择 ...")
                     await asyncio.sleep(0.1)
         else:
-            logger.warning(f"设备未连接,等待设备连接 ...")
+            console.print(f"[bold yellow]设备未连接,等待设备连接 ...")
             await asyncio.sleep(3)
 
 
@@ -217,12 +232,14 @@ async def analysis(alone: bool):
         while True:
             if head_event.is_set():
                 for i in range(amount):
-                    if stop_event.is_set() and i + 1 != amount:
-                        logger.warning("主动停止 ...")
-                        break
+                    if stop_event.is_set() and i != amount:
+                        logger.warning(f"主动停止 ...")
+                        logger.warning(f"剩余时间 -> 00 秒")
+                        return
                     elif fail_event.is_set():
-                        logger.warning("意外停止 ...")
-                        break
+                        logger.warning(f"意外停止 ...")
+                        logger.warning(f"剩余时间 -> 00 秒")
+                        return
                     if amount - i <= 10:
                         logger.warning(f"剩余时间 -> {amount - i:02} 秒 {'----' * (amount - i)}")
                     else:
@@ -230,9 +247,9 @@ async def analysis(alone: bool):
                     await asyncio.sleep(1)
                 logger.warning(f"剩余时间 -> 00 秒")
             elif fail_event.is_set():
-                logger.warning("意外停止 ...")
+                logger.warning(f"意外停止 ...")
                 break
-            break
+            await asyncio.sleep(0.2)
 
     async def input_stream(transports):
         async for line in transports.stdout:
@@ -252,6 +269,7 @@ async def analysis(alone: bool):
                 break
 
     async def start():
+        await Terminal.cmd_line(adb, "wait-for-device")
         if alone:
             if not os.path.exists(reporter.query_path):
                 os.makedirs(reporter.query_path)
@@ -301,7 +319,6 @@ async def analysis(alone: bool):
                 elif fail_event.is_set():
                     break
                 await asyncio.sleep(0.2)
-            shutil.rmtree(reporter.query_path)
             logger.error("录制视频失败,请重新录制视频 ...")
 
     cellphone = await check_device()
@@ -314,9 +331,8 @@ async def analysis(alone: bool):
 
     while True:
         try:
-            await asyncio.sleep(0.1)
             console.print(f"[bold #00FFAF]Connect:[/bold #00FFAF] {cellphone}")
-            if action := input("\033[0;32m*-* 按 Enter 开始 *-*\033[0m  "):
+            if action := Prompt.ask("[bold #5FD7FF]<<<按 Enter 开始>>>", console=console):
                 if "header" in action.strip():
                     if match := re.search(r"(?<=header\s).*", action):
                         if match.group().strip():
@@ -360,22 +376,35 @@ async def analyzer(reporter: Report, vision_path: str, **kwargs):
     model_path = kwargs["model_path"]
     proto_path = kwargs["proto_path"]
 
-    if not os.path.isfile(vision_path):
-        return
+    screen_tag, screen_cap = None, None
 
-    screen_tag = os.path.basename(vision_path)
-    screen_cap = cv2.VideoCapture(vision_path)
-    if not screen_cap:
+    if os.path.isfile(vision_path):
+        screen = cv2.VideoCapture(vision_path)
+        if screen.isOpened():
+            screen_tag = os.path.basename(vision_path)
+            screen_cap = vision_path
+        screen.release()
+
+    elif os.path.isdir(vision_path):
+        if len(
+                file_list := [file for file in os.listdir(vision_path) if os.path.isfile(file)]
+        ) > 1 or len(file_list) == 1:
+            screen = cv2.VideoCapture(os.path.join(vision_path, file_list[0]))
+            if screen.isOpened():
+                screen_tag = os.path.basename(file_list[0])
+                screen_cap = os.path.join(vision_path, file_list[0])
+            screen.release()
+
+    if not screen_tag or not screen_cap:
         logger.error(f"{screen_tag} 不是一个标准的mp4视频文件，或视频文件已损坏 ...")
-        screen_cap.release()
         return
-    screen_cap.release()
 
     logger.info(f"{screen_tag} 可正常播放，准备加载视频 ...")
     change_record = os.path.join(
         os.path.dirname(vision_path), f"screen_fps60_{random.randint(100, 999)}.mp4"
     )
-    await Switch().video_change(vision_path, change_record)
+    cmd = [ffmpeg, "-i", vision_path, "-vf", "fps=60", "-c:v", "libx264", "-crf", "18", "-c:a", "copy", change_record]
+    await Terminal.cmd_line(*cmd)
     logger.info(f"视频转换完成: {os.path.basename(change_record)}")
     os.remove(vision_path)
     logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
@@ -552,11 +581,14 @@ async def painting():
 def single_video_task(input_video, *args):
     Constants.initial_logger()
     boost, color, omits, model_path, total_path, major_path, proto_path = args
-    new_total_path = os.path.join(
-        os.path.dirname(
-            os.path.dirname(sys.argv[0])
-        ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
-    ) if ".exe" in os.path.basename(sys.argv[0]) else None
+    if os.path.basename(sys.argv[0]).lower() == "framix.exe" or os.path.basename(sys.argv[0]).lower() == "framix.bin":
+        new_total_path = os.path.join(
+            os.path.dirname(
+                os.path.dirname(sys.argv[0])
+            ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
+        )
+    else:
+        new_total_path = None
     reporter = Report(new_total_path)
     reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
     reporter.query = f"{random.randint(10, 99)}"
@@ -578,11 +610,14 @@ def single_video_task(input_video, *args):
 def multiple_folder_task(folder, *args):
     Constants.initial_logger()
     boost, color, omits, model_path, total_path, major_path, proto_path = args
-    new_total_path = os.path.join(
-        os.path.dirname(
-            os.path.dirname(sys.argv[0])
-        ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
-    ) if ".exe" in os.path.basename(sys.argv[0]) else None
+    if os.path.basename(sys.argv[0]).lower() == "framix.exe" or os.path.basename(sys.argv[0]).lower() == "framix.bin":
+        new_total_path = os.path.join(
+            os.path.dirname(
+                os.path.dirname(sys.argv[0])
+            ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
+        )
+    else:
+        new_total_path = None
     reporter = Report(new_total_path)
     looper = asyncio.get_event_loop()
     for video in only_video(folder):
@@ -660,7 +695,12 @@ def build_model(src):
 async def main():
     Constants.initial_logger()
     if cmd_lines.flick or cmd_lines.alone:
-        await analysis(cmd_lines.alone)
+        if scrcpy:
+            await analysis(cmd_lines.alone)
+        else:
+            logger.warning("Install Scrcpy in Homebrew: brew install scrcpy ...")
+            logger.warning("Install Scrcpy in MacPorts: sudo port install scrcpy ...")
+            logger.warning("https://github.com/Genymobile/scrcpy/blob/master/doc/macos.md")
     elif cmd_lines.paint:
         await painting()
     elif cmd_lines.merge and len(cmd_lines.merge) > 0:
@@ -678,20 +718,24 @@ if __name__ == '__main__':
     work_platform = os.path.basename(sys.argv[0]).lower()
     if work_platform == "framix.exe" or work_platform == "framix.bin":
         job_path = os.path.dirname(sys.argv[0])
-        _model_path = os.path.join(job_path, "framix.source", "mold", "model.h5")
-        _total_path = os.path.join(job_path, "framix.source", "page")
-        _major_path = os.path.join(job_path, "framix.source", "page")
-        _proto_path = os.path.join(job_path, "framix.source", "page", "extra.html")
+        _tools_path = os.path.join(job_path, "framix.source", "tools")
+        _model_path = os.path.join(job_path, "framix.source", "molds", "model.h5")
+        _total_path = os.path.join(job_path, "framix.source", "pages")
+        _major_path = os.path.join(job_path, "framix.source", "pages")
+        _proto_path = os.path.join(job_path, "framix.source", "pages", "extra.html")
         initial_total_path = os.path.join(
             os.path.dirname(os.path.dirname(sys.argv[0])), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Collection"
         )
     else:
         job_path = os.path.dirname(__file__)
+        _tools_path = os.path.join(job_path, "tools")
         _model_path = os.path.join(job_path, "model", "model.h5")
         _total_path = os.path.join(Constants.NEXA, "template")
         _major_path = os.path.join(Constants.NEXA, "template")
         _proto_path = os.path.join(Constants.NEXA, "template", "extra.html")
         initial_total_path = None
+
+    adb, ffmpeg, scrcpy = compatible()
 
     cmd_lines = parse_cmd()
     _omits = []

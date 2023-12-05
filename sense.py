@@ -89,8 +89,8 @@ def help_option():
     console.print(table)
 
 
-action = Prompt.ask("[bold #00AF87]<<<按 Enter 开始>>>", console=console, default=5)
-console.print(action)
+# action = Prompt.ask("[bold #00AF87]<<<按 Enter 开始>>>", console=console, default=5)
+# console.print(action)
 # a = "<Phone brand=Pixel version=OS14 serial=asdfghjkl>"
 # console.print(f"[bold #00FFAF]Connect:[/bold #00FFAF] {a}", highlight=True)
 # print("\033[0;32m*-* 按 Enter 开始 *-*\033[0m  ")
