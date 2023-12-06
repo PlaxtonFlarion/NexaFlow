@@ -4,7 +4,7 @@ import random
 import asyncio
 import aiofiles
 from loguru import logger
-from typing import List, Union
+from typing import List, Union, Optional
 from nexaflow import toolbox
 from nexaflow.constants import Constants
 from nexaflow.skills.report import Report
@@ -25,6 +25,7 @@ MODELS: str = os.path.join(Constants.WORK, "model", "model.h5")
 class Alynex(object):
 
     target_size: tuple = (350, 700)
+    step: int = 1
     block: int = 6
     threshold: Union[int | float] = 0.97
     offset: int = 3
@@ -60,6 +61,9 @@ class Alynex(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
+
+    def __call__(self, boost: bool = True, color: bool = True, focus: bool = True, **kwargs):
+        return self.analyzer(boost, color, focus, **kwargs)
 
     @property
     def report(self) -> "Report":
@@ -235,7 +239,7 @@ class Alynex(object):
 
     def analyzer(
             self, boost: bool = True, color: bool = True, focus: bool = False, **kwargs
-    ) -> "Alynex._Review":
+    ) -> Optional["Alynex._Review"]:
         """
         智能分类帧数据
         :param boost: 跳帧模式
@@ -245,6 +249,7 @@ class Alynex(object):
         :return: 分析结果
         """
 
+        self.step = kwargs.get("step", 1)
         self.block = kwargs.get("block", 6)
         self.threshold = kwargs.get("threshold", 0.97)
         self.offset = kwargs.get("threshold", 3)
@@ -253,15 +258,27 @@ class Alynex(object):
         self.window_coefficient = kwargs.get("window_coefficient", 2)
 
         async def validate():
-            return next(
-                ((file_path, file) for file in os.listdir(self.report.video_path)
-                 if cv2.VideoCapture(file_path := os.path.join(self.report.video_path, file)).release() or True),
-                None
-            )
+            screen_tag, screen_cap = None, None
+            if os.path.isfile(self.report.video_path):
+                screen = cv2.VideoCapture(self.report.video_path)
+                if screen.isOpened():
+                    screen_tag = os.path.basename(self.report.video_path)
+                    screen_cap = self.report.video_path
+                screen.release()
+            elif os.path.isdir(self.report.video_path):
+                if len(
+                        file_list := [file for file in os.listdir(self.report.video_path) if os.path.isfile(file)]
+                ) > 1 or len(file_list) == 1:
+                    screen = cv2.VideoCapture(os.path.join(self.report.video_path, file_list[0]))
+                    if screen.isOpened():
+                        screen_tag = os.path.basename(file_list[0])
+                        screen_cap = os.path.join(self.report.video_path, file_list[0])
+                    screen.release()
+            return screen_tag, screen_cap
 
         async def frame_flip():
-            screen_record, screen_tag = await validate()
-            if not screen_record:
+            screen_tag, screen_record = await validate()
+            if not screen_record or not screen_tag:
                 logger.error(f"{screen_tag} 不是一个标准的mp4视频文件，或视频文件已损坏 ...")
                 return None
             logger.info(f"{screen_tag} 可正常播放，准备加载视频 ...")

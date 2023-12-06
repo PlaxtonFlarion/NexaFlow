@@ -8,6 +8,7 @@ import random
 import asyncio
 import tempfile
 import aiofiles
+import importlib
 from typing import Union
 from loguru import logger
 from multiprocessing import Pool
@@ -19,7 +20,6 @@ from argparse import ArgumentParser
 from PIL import Image, ImageDraw, ImageFont
 from nexaflow import toolbox
 from nexaflow.terminal import Terminal
-from nexaflow.video import VideoObject
 from nexaflow.skills.report import Report
 from nexaflow.constants import Constants
 from nexaflow.cutter.cutter import VideoCutter
@@ -141,6 +141,8 @@ def parse_cmd():
     parser.add_argument('--color', action='store_true', help='彩色模式')
     parser.add_argument('--omits', action='append', help='忽略区域')
 
+    parser.add_argument('--debug', action='store_true', help='调试模式')
+
     return parser.parse_args()
 
 
@@ -154,8 +156,9 @@ def compatible():
         _ffmpeg = os.path.join(_tools_path, "mac", "ffmpeg-6.1", "ffmpeg")
         _scrcpy = shutil.which("scrcpy")
     else:
-        _adb, _ffmpeg, _scrcpy = "adb", "ffmpeg", "scrcpy"
+        _adb, _ffmpeg, _scrcpy = shutil.which("adb"), shutil.which("ffmpeg"), shutil.which("scrcpy")
 
+    os.environ['IMAGEIO_FFMPEG_EXE'] = _ffmpeg
     return _adb, _ffmpeg, _scrcpy
 
 
@@ -190,15 +193,14 @@ async def check_device():
         __repr__ = __str__
 
     async def check(serial):
-        basic = f"adb -s {serial} wait-for-usb-device shell getprop"
         brand, version = await asyncio.gather(
-            Terminal.cmd_line_shell(f"{basic} ro.product.brand"),
-            Terminal.cmd_line_shell(f"{basic} ro.build.version.release")
+            Terminal.cmd_line(adb, "-s", serial, "wait-for-usb-device", "shell", "getprop", "ro.product.brand"),
+            Terminal.cmd_line(adb, "-s", serial, "wait-for-usb-device", "shell", "getprop", "ro.build.version.release")
         )
         return Phone(serial, brand, version)
 
     while True:
-        devices = await Terminal.cmd_line_shell(f"adb devices")
+        devices = await Terminal.cmd_line(adb, "devices")
         if len(device_list := [i.split()[0] for i in devices.split("\n")[1:]]) == 1:
             return await check(device_list[0])
         elif len(device_list) > 1:
@@ -545,12 +547,12 @@ async def painting():
     cellphone = await check_device()
     image_folder = "/sdcard/Pictures/Shots"
     image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_" + "Shot.png"
-    await Terminal.cmd_line_shell(f"adb -s {cellphone.serial} wait-for-usb-device shell mkdir -p {image_folder}")
-    await Terminal.cmd_line_shell(f"adb -s {cellphone.serial} wait-for-usb-device shell screencap -p {image_folder}/{image}")
+    await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "mkdir", "-p", image_folder)
+    await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "screencap", "-p", f"{image_folder}/{image}")
 
     with tempfile.TemporaryDirectory() as temp_dir:
         image_save_path = os.path.join(temp_dir, image)
-        await Terminal.cmd_line_shell(f"adb -s {cellphone.serial} wait-for-usb-device pull {image_folder}/{image} {image_save_path}")
+        await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "pull", f"{image_folder}/{image}", image_save_path)
 
         image = Image.open(image_save_path)
         image = image.convert("RGB")
@@ -575,7 +577,7 @@ async def painting():
             draw.text((x_text_start, y_line - text_height // 2), text, fill=(255, 182, 193), font=font)
 
         resized.show()
-    await Terminal.cmd_line_shell(f"adb -s {cellphone.serial} wait-for-usb-device shell rm {image_folder}/{image}")
+    await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "rm", f"{image_folder}/{image}")
 
 
 def single_video_task(input_video, *args):
@@ -693,7 +695,7 @@ def build_model(src):
 
 
 async def main():
-    Constants.initial_logger()
+    Constants.initial_logger(_debug)
     if cmd_lines.flick or cmd_lines.alone:
         if scrcpy:
             await analysis(cmd_lines.alone)
@@ -715,18 +717,18 @@ if __name__ == '__main__':
         help_document()
         sys.exit(1)
 
-    work_platform = os.path.basename(sys.argv[0]).lower()
-    if work_platform == "framix.exe" or work_platform == "framix.bin":
+    work_platform, exec_platform = os.path.basename(sys.argv[0]).lower(), ["framix.exe", "framix.bin", "framix"]
+    if work_platform in exec_platform:
         job_path = os.path.dirname(sys.argv[0])
-        _tools_path = os.path.join(job_path, "framix.source", "tools")
-        _model_path = os.path.join(job_path, "framix.source", "molds", "model.h5")
-        _total_path = os.path.join(job_path, "framix.source", "pages")
-        _major_path = os.path.join(job_path, "framix.source", "pages")
-        _proto_path = os.path.join(job_path, "framix.source", "pages", "extra.html")
+        _tools_path = os.path.join(job_path, "archivix", "tools")
+        _model_path = os.path.join(job_path, "archivix", "molds", "model.h5")
+        _total_path = os.path.join(job_path, "archivix", "pages")
+        _major_path = os.path.join(job_path, "archivix", "pages")
+        _proto_path = os.path.join(job_path, "archivix", "pages", "extra.html")
         initial_total_path = os.path.join(
             os.path.dirname(os.path.dirname(sys.argv[0])), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Collection"
         )
-    else:
+    elif work_platform == "framix.py":
         job_path = os.path.dirname(__file__)
         _tools_path = os.path.join(job_path, "tools")
         _model_path = os.path.join(job_path, "model", "model.h5")
@@ -734,8 +736,13 @@ if __name__ == '__main__':
         _major_path = os.path.join(Constants.NEXA, "template")
         _proto_path = os.path.join(Constants.NEXA, "template", "extra.html")
         initial_total_path = None
+    else:
+        console.print("[bold red]Only compatible with Windows and macOS platforms ...")
+        time.sleep(5)
+        sys.exit(1)
 
     adb, ffmpeg, scrcpy = compatible()
+    VideoObject = getattr(importlib.import_module("nexaflow.video"), "VideoObject")
 
     cmd_lines = parse_cmd()
     _omits = []
@@ -751,6 +758,7 @@ if __name__ == '__main__':
                 )
 
     _boost, _color = cmd_lines.boost, cmd_lines.color
+    _debug = "DEBUG" if cmd_lines.debug else "INFO"
 
     if cmd_lines.whole and len(cmd_lines.whole) > 0:
         members = len(cmd_lines.whole)
@@ -766,7 +774,7 @@ if __name__ == '__main__':
                     [(i, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path) for i in cmd_lines.whole]
                 )
             Report.merge_report(results)
-        sys.exit(1)
+        sys.exit(0)
     elif cmd_lines.input and len(cmd_lines.input) > 0:
         members = len(cmd_lines.input)
         if members == 1:
@@ -779,7 +787,7 @@ if __name__ == '__main__':
                     single_video_task,
                     [(i, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path) for i in cmd_lines.input]
                 )
-        sys.exit(1)
+        sys.exit(0)
     elif cmd_lines.datum and len(cmd_lines.datum) > 0:
         members = len(cmd_lines.datum)
         if members == 1:
@@ -787,7 +795,7 @@ if __name__ == '__main__':
         else:
             with Pool(members if members <= 6 else 6) as pool:
                 pool.map(train_model, cmd_lines.datum)
-        sys.exit(1)
+        sys.exit(0)
     elif cmd_lines.train and len(cmd_lines.train) > 0:
         members = len(cmd_lines.train)
         if members == 1:
@@ -795,11 +803,11 @@ if __name__ == '__main__':
         else:
             with Pool(members if members <= 6 else 6) as pool:
                 pool.map(build_model, cmd_lines.train)
-        sys.exit(1)
+        sys.exit(0)
     else:
         try:
             loop = asyncio.get_event_loop()
             loop.run_until_complete(main())
-            sys.exit(1)
+            sys.exit(0)
         except KeyboardInterrupt:
-            sys.exit(1)
+            sys.exit(0)
