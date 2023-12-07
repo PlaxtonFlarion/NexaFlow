@@ -1,30 +1,15 @@
 import os
-import re
 import sys
-import cv2
 import time
 import shutil
 import random
-import asyncio
-import tempfile
-import aiofiles
-import importlib
 from typing import Union
 from loguru import logger
-from multiprocessing import Pool
 from rich.table import Table
 from rich.prompt import Prompt
 from rich.console import Console
 from rich.progress import Progress
 from argparse import ArgumentParser
-from PIL import Image, ImageDraw, ImageFont
-from nexaflow import toolbox
-from nexaflow.terminal import Terminal
-from nexaflow.skills.report import Report
-from nexaflow.constants import Constants
-from nexaflow.cutter.cutter import VideoCutter
-from nexaflow.hook import OmitHook, FrameSaveHook
-from nexaflow.classifier.keras_classifier import KerasClassifier
 
 target_size: tuple = (350, 700)
 step: int = 1
@@ -158,8 +143,44 @@ def compatible():
     else:
         _adb, _ffmpeg, _scrcpy = shutil.which("adb"), shutil.which("ffmpeg"), shutil.which("scrcpy")
 
-    os.environ['IMAGEIO_FFMPEG_EXE'] = _ffmpeg
+    if _adb:
+        os.environ["PATH"] = os.path.dirname(_adb) + os.path.pathsep + os.environ.get("PATH", "")
+    if _ffmpeg:
+        os.environ["PATH"] = os.path.dirname(_ffmpeg) + os.path.pathsep + os.environ.get("PATH", "")
+    if _scrcpy:
+        os.environ["PATH"] = os.path.dirname(_scrcpy) + os.path.pathsep + os.environ.get("PATH", "")
+
     return _adb, _ffmpeg, _scrcpy
+
+
+def initial_env():
+    basename = os.path.basename(os.path.abspath(sys.argv[0])).lower()
+    if basename == "framix.exe":
+        new_total_path = os.path.join(
+            os.path.dirname(
+                os.path.dirname(os.path.abspath(sys.argv[0]))
+            ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
+        )
+    elif basename == "framix.bin":
+        new_total_path = os.path.join(
+            os.path.dirname(
+                os.path.dirname(
+                    sys.executable
+                )
+            ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
+        )
+    elif basename == "framix":
+        new_total_path = os.path.join(
+            os.path.dirname(
+                os.path.dirname(
+                    os.path.dirname(sys.executable)
+                )
+            ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
+        )
+    else:
+        new_total_path = None
+
+    return new_total_path
 
 
 def only_video(folder: str):
@@ -216,7 +237,6 @@ async def check_device():
                     return device_dict[Prompt.ask("[bold #5FD7FF]请输入编号选择一台设备")]
                 except KeyError:
                     console.print(f"[bold red]没有该序号,请重新选择 ...")
-                    await asyncio.sleep(0.1)
         else:
             console.print(f"[bold yellow]设备未连接,等待设备连接 ...")
             await asyncio.sleep(3)
@@ -371,7 +391,7 @@ async def analysis(alone: bool):
             fail_event.clear()
 
 
-async def analyzer(reporter: Report, vision_path: str, **kwargs):
+async def analyzer(reporter: "Report", vision_path: str, **kwargs):
     boost = kwargs.get("boost", True)
     color = kwargs.get("color", True)
     omits = kwargs.get("omits", [])
@@ -544,6 +564,9 @@ async def analyzer(reporter: Report, vision_path: str, **kwargs):
 
 
 async def painting():
+    import tempfile
+    from PIL import Image, ImageDraw, ImageFont
+
     cellphone = await check_device()
     image_folder = "/sdcard/Pictures/Shots"
     image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_" + "Shot.png"
@@ -583,15 +606,8 @@ async def painting():
 def single_video_task(input_video, *args):
     Constants.initial_logger()
     boost, color, omits, model_path, total_path, major_path, proto_path = args
-    if os.path.basename(sys.argv[0]).lower() == "framix.exe" or os.path.basename(sys.argv[0]).lower() == "framix.bin":
-        new_total_path = os.path.join(
-            os.path.dirname(
-                os.path.dirname(sys.argv[0])
-            ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
-        )
-    else:
-        new_total_path = None
-    reporter = Report(new_total_path)
+    new_total_path = initial_env()
+    reporter = Report(total_path=new_total_path)
     reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
     reporter.query = f"{random.randint(10, 99)}"
     new_video_path = os.path.join(reporter.video_path, os.path.basename(input_video))
@@ -612,15 +628,8 @@ def single_video_task(input_video, *args):
 def multiple_folder_task(folder, *args):
     Constants.initial_logger()
     boost, color, omits, model_path, total_path, major_path, proto_path = args
-    if os.path.basename(sys.argv[0]).lower() == "framix.exe" or os.path.basename(sys.argv[0]).lower() == "framix.bin":
-        new_total_path = os.path.join(
-            os.path.dirname(
-                os.path.dirname(sys.argv[0])
-            ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
-        )
-    else:
-        new_total_path = None
-    reporter = Report(new_total_path)
+    new_total_path = initial_env()
+    reporter = Report(total_path=new_total_path)
     looper = asyncio.get_event_loop()
     for video in only_video(folder):
         reporter.title = video.title
@@ -643,7 +652,8 @@ def multiple_folder_task(folder, *args):
 
 def train_model(video_file):
     Constants.initial_logger("DEBUG")
-    reporter = Report(write_log=False)
+    new_total_path = initial_env()
+    reporter = Report(total_path=new_total_path, write_log=False)
     reporter.title = f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
     if not os.path.exists(reporter.query_path):
         os.makedirs(reporter.query_path)
@@ -717,24 +727,48 @@ if __name__ == '__main__':
         help_document()
         sys.exit(1)
 
-    work_platform, exec_platform = os.path.basename(sys.argv[0]).lower(), ["framix.exe", "framix.bin", "framix"]
+    work_platform, exec_platform = os.path.basename(os.path.abspath(sys.argv[0])).lower(), ["framix.exe", "framix.bin", "framix"]
     if work_platform in exec_platform:
-        job_path = os.path.dirname(sys.argv[0])
+        if work_platform == "framix.exe":
+            job_path = os.path.dirname(os.path.abspath(sys.argv[0]))
+        else:
+            job_path = os.path.dirname(sys.executable)
         _tools_path = os.path.join(job_path, "archivix", "tools")
         _model_path = os.path.join(job_path, "archivix", "molds", "model.h5")
         _total_path = os.path.join(job_path, "archivix", "pages")
         _major_path = os.path.join(job_path, "archivix", "pages")
         _proto_path = os.path.join(job_path, "archivix", "pages", "extra.html")
-        initial_total_path = os.path.join(
-            os.path.dirname(os.path.dirname(sys.argv[0])), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Collection"
-        )
+        if work_platform == "framix.exe":
+            initial_total_path = os.path.join(
+                os.path.dirname(
+                    os.path.dirname(
+                        os.path.abspath(sys.argv[0])
+                    )
+                ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Collection"
+            )
+        elif work_platform == "framix.bin":
+            initial_total_path = os.path.join(
+                os.path.dirname(
+                    os.path.dirname(
+                        sys.executable
+                    )
+                ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Collection"
+            )
+        else:
+            initial_total_path = os.path.join(
+                os.path.dirname(
+                    os.path.dirname(
+                        os.path.dirname(sys.executable)
+                    )
+                ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Collection"
+            )
     elif work_platform == "framix.py":
-        job_path = os.path.dirname(__file__)
+        job_path = os.path.dirname(os.path.abspath(__file__))
         _tools_path = os.path.join(job_path, "tools")
         _model_path = os.path.join(job_path, "model", "model.h5")
-        _total_path = os.path.join(Constants.NEXA, "template")
-        _major_path = os.path.join(Constants.NEXA, "template")
-        _proto_path = os.path.join(Constants.NEXA, "template", "extra.html")
+        _total_path = os.path.join(job_path, "nexaflow", "template")
+        _major_path = os.path.join(job_path, "nexaflow", "template")
+        _proto_path = os.path.join(job_path, "nexaflow", "template", "extra.html")
         initial_total_path = None
     else:
         console.print("[bold red]Only compatible with Windows and macOS platforms ...")
@@ -742,7 +776,20 @@ if __name__ == '__main__':
         sys.exit(1)
 
     adb, ffmpeg, scrcpy = compatible()
-    VideoObject = getattr(importlib.import_module("nexaflow.video"), "VideoObject")
+
+    import re
+    import cv2
+    import asyncio
+    import aiofiles
+    from multiprocessing import Pool
+    from nexaflow import toolbox
+    from nexaflow.terminal import Terminal
+    from nexaflow.constants import Constants
+    from nexaflow.skills.report import Report
+    from nexaflow.video import VideoObject
+    from nexaflow.cutter.cutter import VideoCutter
+    from nexaflow.hook import OmitHook, FrameSaveHook
+    from nexaflow.classifier.keras_classifier import KerasClassifier
 
     cmd_lines = parse_cmd()
     _omits = []
@@ -767,7 +814,6 @@ if __name__ == '__main__':
                 cmd_lines.whole[0], _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path
             )
         else:
-            Constants.initial_logger()
             with Pool(members if members <= 6 else 6) as pool:
                 results = pool.starmap(
                     multiple_folder_task,
