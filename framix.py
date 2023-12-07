@@ -813,6 +813,7 @@ if __name__ == '__main__':
                 cmd_lines.whole[0], _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path
             )
         else:
+            Constants.initial_logger()
             with Pool(members if members <= 6 else 6) as pool:
                 results = pool.starmap(
                     multiple_folder_task,
