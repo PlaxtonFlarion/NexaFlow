@@ -1,8 +1,12 @@
 import os
+import re
+import cv2
 import sys
 import time
 import shutil
 import random
+import asyncio
+import aiofiles
 from typing import Union
 from loguru import logger
 from rich.table import Table
@@ -10,6 +14,15 @@ from rich.prompt import Prompt
 from rich.console import Console
 from rich.progress import Progress
 from argparse import ArgumentParser
+from multiprocessing import Pool
+from nexaflow import toolbox
+from nexaflow.terminal import Terminal
+from nexaflow.constants import Constants
+from nexaflow.skills.report import Report
+from nexaflow.video import VideoObject
+from nexaflow.cutter.cutter import VideoCutter
+from nexaflow.hook import OmitHook, FrameSaveHook
+from nexaflow.classifier.keras_classifier import KerasClassifier
 
 target_size: tuple = (350, 700)
 step: int = 1
@@ -425,7 +438,7 @@ async def analyzer(reporter: "Report", vision_path: str, **kwargs):
     change_record = os.path.join(
         os.path.dirname(vision_path), f"screen_fps60_{random.randint(100, 999)}.mp4"
     )
-    cmd = [ffmpeg, "-i", vision_path, "-vf", "fps=60", "-c:v", "libx264", "-crf", "18", "-c:a", "copy", change_record]
+    cmd = ["ffmpeg", "-i", vision_path, "-vf", "fps=60", "-c:v", "libx264", "-crf", "18", "-c:a", "copy", change_record]
     await Terminal.cmd_line(*cmd)
     logger.info(f"视频转换完成: {os.path.basename(change_record)}")
     os.remove(vision_path)
@@ -776,20 +789,6 @@ if __name__ == '__main__':
         sys.exit(1)
 
     adb, ffmpeg, scrcpy = compatible()
-
-    import re
-    import cv2
-    import asyncio
-    import aiofiles
-    from multiprocessing import Pool
-    from nexaflow import toolbox
-    from nexaflow.terminal import Terminal
-    from nexaflow.constants import Constants
-    from nexaflow.skills.report import Report
-    from nexaflow.video import VideoObject
-    from nexaflow.cutter.cutter import VideoCutter
-    from nexaflow.hook import OmitHook, FrameSaveHook
-    from nexaflow.classifier.keras_classifier import KerasClassifier
 
     cmd_lines = parse_cmd()
     _omits = []
