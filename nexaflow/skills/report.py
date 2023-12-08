@@ -11,7 +11,6 @@ from typing import Dict, List, Any, Tuple, Optional, Union
 from jinja2 import Template, Environment, FileSystemLoader
 from nexaflow import constants, toolbox
 from nexaflow.constants import Constants
-from nexaflow.classifier.base import ClassifierResult
 
 REPORT: str = os.path.join(Constants.WORK, "report")
 FORMAT: str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>"
@@ -376,7 +375,7 @@ class Report(object):
 
     @staticmethod
     def draw(
-        classifier_result: "ClassifierResult",
+        classifier_result,
         proto_path: str,
         compress_rate: float = None,
         target_size: Tuple[int, int] = None,

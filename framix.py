@@ -1,37 +1,27 @@
 import os
 import re
-import cv2
 import sys
 import time
 import shutil
 import random
 import asyncio
-import aiofiles
-from typing import Union
 from loguru import logger
 from rich.table import Table
 from rich.prompt import Prompt
 from rich.console import Console
 from rich.progress import Progress
-from argparse import ArgumentParser
-from multiprocessing import Pool
-from nexaflow import toolbox
 from nexaflow.terminal import Terminal
 from nexaflow.constants import Constants
 from nexaflow.skills.report import Report
-from nexaflow.video import VideoObject
-from nexaflow.cutter.cutter import VideoCutter
-from nexaflow.hook import OmitHook, FrameSaveHook
-from nexaflow.classifier.keras_classifier import KerasClassifier
 
-target_size: tuple = (350, 700)
-step: int = 1
-block: int = 6
-threshold: Union[int | float] = 0.97
-offset: int = 3
-compress_rate: float = 0.5
-window_size: int = 1
-window_coefficient: int = 2
+target_size = (350, 700)
+step = 1
+block = 6
+threshold = 0.97
+offset = 3
+compress_rate = 0.5
+window_size = 1
+window_coefficient = 2
 
 console: Console = Console()
 
@@ -163,6 +153,11 @@ def compatible():
     if _scrcpy:
         os.environ["PATH"] = os.path.dirname(_scrcpy) + os.path.pathsep + os.environ.get("PATH", "")
 
+    logger.debug(f"Path: {_adb}")
+    logger.debug(f"Path: {_ffmpeg}")
+    logger.debug(f"Path: {_scrcpy}")
+    for env in os.environ["PATH"].split(os.path.pathsep):
+        logger.debug(env)
     return _adb, _ffmpeg, _scrcpy
 
 
@@ -244,7 +239,7 @@ async def check_device():
             result = await asyncio.gather(*tasks)
             for idx, cur in enumerate(result):
                 device_dict.update({str(idx + 1): cur})
-                logger.warning(f"{idx + 1} -> {cur}")
+                console.print(f"[{idx + 1}] {cur}")
             while True:
                 try:
                     return device_dict[Prompt.ask("[bold #5FD7FF]请输入编号选择一台设备")]
@@ -405,6 +400,17 @@ async def analysis(alone: bool):
 
 
 async def analyzer(reporter: "Report", vision_path: str, **kwargs):
+    start_time = time.time()
+    logger.debug("模块开始加载 ...")
+    import cv2
+    import aiofiles
+    from nexaflow import toolbox
+    from nexaflow.video import VideoObject
+    from nexaflow.cutter.cutter import VideoCutter
+    from nexaflow.hook import OmitHook, FrameSaveHook
+    from nexaflow.classifier.keras_classifier import KerasClassifier
+    logger.debug(f"模块加载:{time.time() - start_time:.5f} 秒")
+
     boost = kwargs.get("boost", True)
     color = kwargs.get("color", True)
     omits = kwargs.get("omits", [])
@@ -438,14 +444,14 @@ async def analyzer(reporter: "Report", vision_path: str, **kwargs):
     change_record = os.path.join(
         os.path.dirname(vision_path), f"screen_fps60_{random.randint(100, 999)}.mp4"
     )
-    cmd = ["ffmpeg", "-i", vision_path, "-vf", "fps=60", "-c:v", "libx264", "-crf", "18", "-c:a", "copy", change_record]
+    cmd = [kwargs.get("ffmpeg_exe", "ffmpeg"), "-i", vision_path, "-vf", "fps=60", "-c:v", "libx264", "-crf", "18", "-c:a", "copy", change_record]
     await Terminal.cmd_line(*cmd)
     logger.info(f"视频转换完成: {os.path.basename(change_record)}")
     os.remove(vision_path)
     logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
 
     video = VideoObject(change_record)
-    task, hued = video.load_frames(True)
+    task, hued = video.load_frames(color)
 
     cutter = VideoCutter(
         step=step,
@@ -617,8 +623,8 @@ async def painting():
 
 
 def single_video_task(input_video, *args):
-    Constants.initial_logger()
-    boost, color, omits, model_path, total_path, major_path, proto_path = args
+    boost, color, omits, model_path, total_path, major_path, proto_path, ffmpeg_exe, level = args
+    Constants.initial_logger(level)
     new_total_path = initial_env()
     reporter = Report(total_path=new_total_path)
     reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
@@ -639,8 +645,8 @@ def single_video_task(input_video, *args):
 
 
 def multiple_folder_task(folder, *args):
-    Constants.initial_logger()
-    boost, color, omits, model_path, total_path, major_path, proto_path = args
+    boost, color, omits, model_path, total_path, major_path, proto_path, ffmpeg_exe, level = args
+    Constants.initial_logger(level)
     new_total_path = initial_env()
     reporter = Report(total_path=new_total_path)
     looper = asyncio.get_event_loop()
@@ -664,6 +670,9 @@ def multiple_folder_task(folder, *args):
 
 
 def train_model(video_file):
+    from nexaflow.video import VideoObject
+    from nexaflow.cutter.cutter import VideoCutter
+
     Constants.initial_logger("DEBUG")
     new_total_path = initial_env()
     reporter = Report(total_path=new_total_path, write_log=False)
@@ -700,6 +709,8 @@ def train_model(video_file):
 
 
 def build_model(src):
+    from nexaflow.classifier.keras_classifier import KerasClassifier
+
     Constants.initial_logger("DEBUG")
     if not re.search(r"Model_\d+_\d+", basic_path := os.path.basename(src)):
         if build_path := re.search(r"(?<=Nexa_)\d+_\d+", basic_path):
@@ -790,6 +801,9 @@ if __name__ == '__main__':
 
     adb, ffmpeg, scrcpy = compatible()
 
+    from argparse import ArgumentParser
+    from multiprocessing import Pool
+
     cmd_lines = parse_cmd()
     _omits = []
     if cmd_lines.omits and len(cmd_lines.omits) > 0:
@@ -810,14 +824,14 @@ if __name__ == '__main__':
         members = len(cmd_lines.whole)
         if members == 1:
             multiple_folder_task(
-                cmd_lines.whole[0], _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path
+                cmd_lines.whole[0], _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg, _debug
             )
         else:
             Constants.initial_logger()
             with Pool(members if members <= 6 else 6) as pool:
                 results = pool.starmap(
                     multiple_folder_task,
-                    [(i, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path) for i in cmd_lines.whole]
+                    [(i, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg, "ERROR") for i in cmd_lines.whole]
                 )
             Report.merge_report(results)
         sys.exit(0)
@@ -825,13 +839,13 @@ if __name__ == '__main__':
         members = len(cmd_lines.input)
         if members == 1:
             single_video_task(
-                cmd_lines.input[0], _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path
+                cmd_lines.input[0], _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg, _debug
             )
         else:
             with Pool(members if members <= 6 else 6) as pool:
                 pool.starmap(
                     single_video_task,
-                    [(i, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path) for i in cmd_lines.input]
+                    [(i, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg, "ERROR") for i in cmd_lines.input]
                 )
         sys.exit(0)
     elif cmd_lines.datum and len(cmd_lines.datum) > 0:
