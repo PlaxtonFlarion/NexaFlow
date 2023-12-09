@@ -304,7 +304,7 @@ async def analysis(alone: bool):
             if not os.path.exists(reporter.query_path):
                 os.makedirs(reporter.query_path)
             cmd = [
-                "scrcpy", "-s", cellphone.serial, "--no-audio",
+                scrcpy, "-s", cellphone.serial, "--no-audio",
                 "--video-bit-rate", "8M", "--max-fps", "60", "--record",
                 temp_video := f"{os.path.join(reporter.query_path, 'screen')}_"
                               f"{time.strftime('%Y%m%d%H%M%S')}_"
@@ -328,7 +328,7 @@ async def analysis(alone: bool):
         else:
             reporter.query = f"{random.randint(10, 99)}"
             cmd = [
-                "scrcpy", "-s", cellphone.serial, "--no-audio",
+                scrcpy, "-s", cellphone.serial, "--no-audio",
                 "--video-bit-rate", "8M", "--max-fps", "60", "--record",
                 temp_video := f"{os.path.join(reporter.video_path, 'screen')}_"
                               f"{time.strftime('%Y%m%d%H%M%S')}_"
@@ -634,7 +634,7 @@ def single_video_task(input_video, *args):
     looper = asyncio.get_event_loop()
     looper.run_until_complete(
         analyzer(
-            reporter, new_video_path, boost=boost, color=color, omits=omits, model_path=model_path, proto_path=proto_path
+            reporter, new_video_path, boost=boost, color=color, omits=omits, model_path=model_path, proto_path=proto_path, ffmpeg_exe=ffmpeg_exe
         )
     )
     looper.run_until_complete(
@@ -658,7 +658,7 @@ def multiple_folder_task(folder, *args):
             new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
             looper.run_until_complete(
                 analyzer(
-                    reporter, new_video_path, boost=boost, color=color, omits=omits, model_path=model_path, proto_path=proto_path
+                    reporter, new_video_path, boost=boost, color=color, omits=omits, model_path=model_path, proto_path=proto_path, ffmpeg_exe=ffmpeg_exe
                 )
             )
     looper.run_until_complete(
