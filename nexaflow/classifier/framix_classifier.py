@@ -1,7 +1,6 @@
 import os
 import sys
 import pathlib
-from loguru import logger
 from tensorflow import keras
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'

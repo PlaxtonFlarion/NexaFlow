@@ -1,10 +1,12 @@
 import os
 import re
 import sys
+import cv2
 import time
 import shutil
 import random
 import asyncio
+import aiofiles
 from loguru import logger
 from rich.table import Table
 from rich.prompt import Prompt
@@ -153,11 +155,11 @@ def compatible():
     if _scrcpy:
         os.environ["PATH"] = os.path.dirname(_scrcpy) + os.path.pathsep + os.environ.get("PATH", "")
 
-    logger.debug(f"Path: {_adb}")
-    logger.debug(f"Path: {_ffmpeg}")
-    logger.debug(f"Path: {_scrcpy}")
-    for env in os.environ["PATH"].split(os.path.pathsep):
-        logger.debug(env)
+    # logger.debug(f"Path: {_adb}")
+    # logger.debug(f"Path: {_ffmpeg}")
+    # logger.debug(f"Path: {_scrcpy}")
+    # for env in os.environ["PATH"].split(os.path.pathsep):
+    #     logger.debug(env)
     return _adb, _ffmpeg, _scrcpy
 
 
@@ -404,8 +406,6 @@ async def analysis(alone: bool):
 async def analyzer(reporter: "Report", vision_path: str, **kwargs):
     start_time = time.time()
     logger.debug("模块开始加载 ...")
-    import cv2
-    import aiofiles
     from nexaflow import toolbox
     from nexaflow.video import VideoObject
     from nexaflow.cutter.cutter import VideoCutter
@@ -675,11 +675,11 @@ def multiple_folder_task(folder, *args):
     return reporter.total_path
 
 
-def train_model(video_file):
+def train_model(video_file, level):
     from nexaflow.video import VideoObject
     from nexaflow.cutter.cutter import VideoCutter
 
-    Constants.initial_logger("DEBUG")
+    Constants.initial_logger(level)
     new_total_path = initial_env()
     reporter = Report(total_path=new_total_path, write_log=False)
     reporter.title = f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
@@ -714,24 +714,20 @@ def train_model(video_file):
     )
 
 
-def build_model(src, classifier):
-    Constants.initial_logger("DEBUG")
-    if interpreter := shutil.which("python"):
-        new_model_path = os.path.join(src, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
-        new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
-        final_model = os.path.join(new_model_path, new_model_name)
-        if not os.path.exists(new_model_path):
-            os.makedirs(new_model_path)
-        logger.info(f"开始训练模型 ...")
-        build_result = asyncio.run(
-            Terminal.cmd_line(interpreter, classifier, src, final_model)
-        )
-        print(build_result)
-        logger.info(f"模型训练完成 {new_model_name}")
-        logger.info(f"模型保存完成 {final_model}")
-    else:
-        logger.warning("模型训练需要在本地配置 Python 环境 ...")
-        logger.warning("https://www.python.org/downloads/")
+def build_model(src, level):
+    from nexaflow.classifier.framix_classifier import FramixClassifier
+
+    Constants.initial_logger(level)
+    new_model_path = os.path.join(src, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
+    new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
+    final_model = os.path.join(new_model_path, new_model_name)
+    if not os.path.exists(new_model_path):
+        os.makedirs(new_model_path)
+    logger.info(f"开始训练模型 ...")
+    fc = FramixClassifier()
+    fc(src, final_model)
+    logger.info(f"模型训练完成 {new_model_name}")
+    logger.info(f"模型保存完成 {final_model}")
 
 
 async def main():
@@ -811,7 +807,7 @@ if __name__ == '__main__':
                 cmd_lines.whole[0], _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg, _debug
             )
         else:
-            Constants.initial_logger()
+            Constants.initial_logger(_debug)
             with Pool(members if members <= 6 else 6) as pool:
                 results = pool.starmap(
                     multiple_folder_task,
@@ -835,18 +831,18 @@ if __name__ == '__main__':
     elif cmd_lines.train and len(cmd_lines.train) > 0:
         members = len(cmd_lines.train)
         if members == 1:
-            train_model(cmd_lines.train[0])
+            train_model(cmd_lines.train[0], _debug)
         else:
             with Pool(members if members <= 6 else 6) as pool:
-                pool.starmap(train_model, [(i, ) for i in cmd_lines.train])
+                pool.starmap(train_model, [(i, _debug) for i in cmd_lines.train])
         sys.exit(0)
     elif cmd_lines.build and len(cmd_lines.build) > 0:
         members = len(cmd_lines.build)
         if members == 1:
-            build_model(cmd_lines.build[0], _classifier)
+            build_model(cmd_lines.build[0], _debug)
         else:
             with Pool(members if members <= 6 else 6) as pool:
-                pool.starmap(build_model, [(i, _classifier) for i in cmd_lines.build])
+                pool.starmap(build_model, [(i, _debug) for i in cmd_lines.build])
         sys.exit(0)
     else:
         try:
