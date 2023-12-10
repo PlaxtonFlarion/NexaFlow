@@ -90,32 +90,24 @@ class KerasClassifier(BaseModelClassifier):
 
         model = keras.Sequential()
 
-        model.add(keras.layers.Conv2D(32, (3, 3), padding='same', input_shape=input_shape))
-        model.add(keras.layers.BatchNormalization())
-        model.add(keras.layers.LeakyReLU(alpha=0.1))
+        model.add(keras.layers.Conv2D(32, (3, 3), padding="same", input_shape=input_shape))
         model.add(keras.layers.MaxPooling2D(pool_size=(2, 2)))
         model.add(keras.layers.Dropout(0.25))
 
-        model.add(keras.layers.Conv2D(64, (3, 3), padding='same'))
-        model.add(keras.layers.BatchNormalization())
-        model.add(keras.layers.LeakyReLU(alpha=0.1))
+        model.add(keras.layers.Conv2D(64, (3, 3), padding="same"))
         model.add(keras.layers.MaxPooling2D(pool_size=(2, 2)))
         model.add(keras.layers.Dropout(0.25))
 
-        model.add(keras.layers.Conv2D(128, (3, 3), padding='same'))
-        model.add(keras.layers.BatchNormalization())
-        model.add(keras.layers.LeakyReLU(alpha=0.1))
+        model.add(keras.layers.Conv2D(128, (3, 3), padding="same"))
         model.add(keras.layers.MaxPooling2D(pool_size=(2, 2)))
         model.add(keras.layers.Dropout(0.25))
 
         model.add(keras.layers.Flatten())
-        model.add(keras.layers.Dense(256))
-        model.add(keras.layers.BatchNormalization())
-        model.add(keras.layers.LeakyReLU(alpha=0.1))
+        model.add(keras.layers.Dense(256, activation="relu"))
         model.add(keras.layers.Dropout(0.5))
-        model.add(keras.layers.Dense(self.MODEL_DENSE, activation='softmax'))
+        model.add(keras.layers.Dense(self.MODEL_DENSE, activation="softmax"))
 
-        model.compile(optimizer="adam", loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+        model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
 
         # logger.info("Keras model created")
         logger.info("Keras神经网络引擎加载完成，开始分析图像 ...")
@@ -145,8 +137,8 @@ class KerasClassifier(BaseModelClassifier):
             rescale=1.0 / 16,
             shear_range=0.2,
             zoom_range=0.2,
-            horizontal_flip=True,  # 水平翻转增强
-            validation_split=0.33
+            validation_split=0.33,
+            horizontal_flip=True  # 水平翻转增强
         )
 
         train_generator = datagen.flow_from_directory(
@@ -167,38 +159,12 @@ class KerasClassifier(BaseModelClassifier):
             subset="validation",
         )
 
-        # 早停
-        early_stopping = keras.callbacks.EarlyStopping(
-            monitor='val_loss',
-            patience=10,
-            verbose=1
-        )
-
-        # 模型检查点
-        model_checkpoint = keras.callbacks.ModelCheckpoint(
-            final_model_path,
-            monitor='val_loss',
-            save_best_only=True,
-            verbose=1
-        )
-
-        # 动态学习率调整
-        reduce_lr = keras.callbacks.ReduceLROnPlateau(
-            monitor='val_loss',
-            factor=0.2,
-            patience=5,
-            min_lr=1e-5,
-            verbose=1
-        )
-
         self._model.fit(
             train_generator,
             epochs=self.epochs,
             validation_data=validation_generator,
-            callbacks=[early_stopping, model_checkpoint, reduce_lr]  # 新增：回调列表
         )
 
-        print(self._model.summary())
         logger.debug("train finished")
 
     def predict(self, pic_path: str, *args, **kwargs) -> str:

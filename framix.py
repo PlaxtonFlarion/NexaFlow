@@ -57,10 +57,10 @@ def help_document():
         "[bold #FFDC00]--merge", "[bold #7FDBFF]报告集合", "[bold #FFAFAF]多次", "", "[bold #39CCCC]聚合报告"
     )
     table_major.add_row(
-        "[bold #FFDC00]--datum", "[bold #7FDBFF]视频文件", "[bold #FFAFAF]多次", "", "[bold #39CCCC]归类图片文件"
+        "[bold #FFDC00]--train", "[bold #7FDBFF]视频文件", "[bold #FFAFAF]多次", "", "[bold #39CCCC]归类图片文件"
     )
     table_major.add_row(
-        "[bold #FFDC00]--train", "[bold #7FDBFF]图片集合", "[bold #FFAFAF]多次", "", "[bold #39CCCC]训练模型文件"
+        "[bold #FFDC00]--build", "[bold #7FDBFF]图片集合", "[bold #FFAFAF]多次", "", "[bold #39CCCC]训练模型文件"
     )
 
     table_minor = Table(
@@ -122,8 +122,8 @@ def parse_cmd():
     parser.add_argument('--input', action='append', help='分析单个视频')
     parser.add_argument('--whole', action='append', help='分析全部视频')
     parser.add_argument('--merge', action='append', help='聚合报告')
-    parser.add_argument('--datum', action='append', help='归类图片文件')
-    parser.add_argument('--train', action='append', help='训练模型文件')
+    parser.add_argument('--train', action='append', help='归类图片文件')
+    parser.add_argument('--build', action='append', help='训练模型文件')
 
     parser.add_argument('--boost', action='store_true', help='快速模式')
     parser.add_argument('--color', action='store_true', help='彩色模式')
@@ -181,7 +181,9 @@ def initial_env():
         new_total_path = os.path.join(
             os.path.dirname(
                 os.path.dirname(
-                    os.path.dirname(sys.executable)
+                    os.path.dirname(
+                        os.path.dirname(sys.executable)
+                    )
                 )
             ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
         )
@@ -428,7 +430,11 @@ async def analyzer(reporter: "Report", vision_path: str, **kwargs):
 
     elif os.path.isdir(vision_path):
         if len(
-                file_list := [file for file in os.listdir(vision_path) if os.path.isfile(file)]
+                file_list := [
+                    file for file in os.listdir(vision_path) if os.path.isfile(
+                        os.path.join(vision_path, file)
+                    )
+                ]
         ) > 1 or len(file_list) == 1:
             screen = cv2.VideoCapture(os.path.join(vision_path, file_list[0]))
             if screen.isOpened():
@@ -708,24 +714,24 @@ def train_model(video_file):
     )
 
 
-def build_model(src):
-    from nexaflow.classifier.keras_classifier import KerasClassifier
-
+def build_model(src, classifier):
     Constants.initial_logger("DEBUG")
-    if not re.search(r"Model_\d+_\d+", basic_path := os.path.basename(src)):
-        if build_path := re.search(r"(?<=Nexa_)\d+_\d+", basic_path):
-            src = os.path.join(src, "Nexa_Collection", f"Model_{build_path.group()}")
-        else:
-            return
-
-    new_model_path = os.path.join(src, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
-    new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
-    final_model = os.path.join(new_model_path, new_model_name)
-    if not os.path.exists(new_model_path):
-        os.makedirs(new_model_path)
-    cl = KerasClassifier(target_size=target_size)
-    cl.train(src, final_model)
-    cl.save_model(final_model, overwrite=True)
+    if interpreter := shutil.which("python"):
+        new_model_path = os.path.join(src, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
+        new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
+        final_model = os.path.join(new_model_path, new_model_name)
+        if not os.path.exists(new_model_path):
+            os.makedirs(new_model_path)
+        logger.info(f"开始训练模型 ...")
+        build_result = asyncio.run(
+            Terminal.cmd_line(interpreter, classifier, src, final_model)
+        )
+        print(build_result)
+        logger.info(f"模型训练完成 {new_model_name}")
+        logger.info(f"模型保存完成 {final_model}")
+    else:
+        logger.warning("执行模型训练需要在本地配置 Python 环境 ...")
+        logger.warning("https://www.python.org/downloads/")
 
 
 async def main():
@@ -757,48 +763,26 @@ if __name__ == '__main__':
             job_path = os.path.dirname(os.path.abspath(sys.argv[0]))
         else:
             job_path = os.path.dirname(sys.executable)
+        _classifier = os.path.join(job_path, "archivix", "framix_classifier.py")
         _tools_path = os.path.join(job_path, "archivix", "tools")
         _model_path = os.path.join(job_path, "archivix", "molds", "model.h5")
         _total_path = os.path.join(job_path, "archivix", "pages")
         _major_path = os.path.join(job_path, "archivix", "pages")
         _proto_path = os.path.join(job_path, "archivix", "pages", "extra.html")
-        if work_platform == "framix.exe":
-            initial_total_path = os.path.join(
-                os.path.dirname(
-                    os.path.dirname(
-                        os.path.abspath(sys.argv[0])
-                    )
-                ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Collection"
-            )
-        elif work_platform == "framix.bin":
-            initial_total_path = os.path.join(
-                os.path.dirname(
-                    os.path.dirname(
-                        sys.executable
-                    )
-                ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Collection"
-            )
-        else:
-            initial_total_path = os.path.join(
-                os.path.dirname(
-                    os.path.dirname(
-                        os.path.dirname(sys.executable)
-                    )
-                ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Collection"
-            )
     elif work_platform == "framix.py":
         job_path = os.path.dirname(os.path.abspath(__file__))
-        _tools_path = os.path.join(job_path, "tools")
-        _model_path = os.path.join(job_path, "model", "model.h5")
-        _total_path = os.path.join(job_path, "nexaflow", "template")
-        _major_path = os.path.join(job_path, "nexaflow", "template")
-        _proto_path = os.path.join(job_path, "nexaflow", "template", "extra.html")
-        initial_total_path = None
+        _classifier = os.path.join(job_path, "archivix", "framix_classifier.py")
+        _tools_path = os.path.join(job_path, "archivix", "tools")
+        _model_path = os.path.join(job_path, "archivix", "molds", "model.h5")
+        _total_path = os.path.join(job_path, "archivix", "pages")
+        _major_path = os.path.join(job_path, "archivix", "pages")
+        _proto_path = os.path.join(job_path, "archivix", "pages", "extra.html")
     else:
         console.print("[bold red]Only compatible with Windows and macOS platforms ...")
         time.sleep(5)
         sys.exit(1)
 
+    initial_total_path = initial_env()
     adb, ffmpeg, scrcpy = compatible()
 
     from argparse import ArgumentParser
@@ -848,21 +832,21 @@ if __name__ == '__main__':
                     [(i, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg, "ERROR") for i in cmd_lines.input]
                 )
         sys.exit(0)
-    elif cmd_lines.datum and len(cmd_lines.datum) > 0:
-        members = len(cmd_lines.datum)
-        if members == 1:
-            train_model(cmd_lines.datum[0])
-        else:
-            with Pool(members if members <= 6 else 6) as pool:
-                pool.map(train_model, cmd_lines.datum)
-        sys.exit(0)
     elif cmd_lines.train and len(cmd_lines.train) > 0:
         members = len(cmd_lines.train)
         if members == 1:
-            build_model(cmd_lines.train[0])
+            train_model(cmd_lines.train[0])
         else:
             with Pool(members if members <= 6 else 6) as pool:
-                pool.map(build_model, cmd_lines.train)
+                pool.starmap(train_model, [(i, ) for i in cmd_lines.train])
+        sys.exit(0)
+    elif cmd_lines.build and len(cmd_lines.build) > 0:
+        members = len(cmd_lines.build)
+        if members == 1:
+            build_model(cmd_lines.build[0], _classifier)
+        else:
+            with Pool(members if members <= 6 else 6) as pool:
+                pool.starmap(build_model, [(i, _classifier) for i in cmd_lines.build])
         sys.exit(0)
     else:
         try:

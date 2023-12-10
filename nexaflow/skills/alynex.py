@@ -267,7 +267,11 @@ class Alynex(object):
                 screen.release()
             elif os.path.isdir(self.report.video_path):
                 if len(
-                        file_list := [file for file in os.listdir(self.report.video_path) if os.path.isfile(file)]
+                        file_list := [
+                            file for file in os.listdir(self.report.video_path) if os.path.isfile(
+                                os.path.join(self.report.video_path, file)
+                            )
+                        ]
                 ) > 1 or len(file_list) == 1:
                     screen = cv2.VideoCapture(os.path.join(self.report.video_path, file_list[0]))
                     if screen.isOpened():
