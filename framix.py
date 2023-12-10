@@ -730,7 +730,7 @@ def build_model(src, classifier):
         logger.info(f"模型训练完成 {new_model_name}")
         logger.info(f"模型保存完成 {final_model}")
     else:
-        logger.warning("执行模型训练需要在本地配置 Python 环境 ...")
+        logger.warning("模型训练需要在本地配置 Python 环境 ...")
         logger.warning("https://www.python.org/downloads/")
 
 
