@@ -15,6 +15,7 @@ from rich.progress import Progress
 from nexaflow.terminal import Terminal
 from nexaflow.constants import Constants
 from nexaflow.skills.report import Report
+from multiprocessing import Pool, freeze_support
 
 target_size = (350, 700)
 step = 1
@@ -319,7 +320,11 @@ async def analysis(alone: bool):
             asyncio.create_task(error_stream(transports))
             await asyncio.sleep(1)
             await timepiece(timer_mode)
-            await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
+            if sys.platform.strip().lower() == "win32":
+                await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
+            else:
+                transports.terminate()
+                await transports.wait()
             for _ in range(10):
                 if done_event.is_set():
                     logger.success(f"视频录制成功: {temp_video}")
@@ -343,7 +348,11 @@ async def analysis(alone: bool):
             asyncio.create_task(error_stream(transports))
             await asyncio.sleep(1)
             await timepiece(timer_mode)
-            await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
+            if sys.platform.strip().lower() == "win32":
+                await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
+            else:
+                transports.terminate()
+                await transports.wait()
             for _ in range(10):
                 if done_event.is_set():
                     await analyzer(
@@ -720,14 +729,8 @@ def build_model(src, level):
     Constants.initial_logger(level)
     new_model_path = os.path.join(src, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
     new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
-    final_model = os.path.join(new_model_path, new_model_name)
-    if not os.path.exists(new_model_path):
-        os.makedirs(new_model_path)
-    logger.info(f"开始训练模型 ...")
     fc = FramixClassifier()
-    fc(src, final_model)
-    logger.info(f"模型训练完成 {new_model_name}")
-    logger.info(f"模型保存完成 {final_model}")
+    fc(src, new_model_path, new_model_name, target_size)
 
 
 async def main():
@@ -753,6 +756,7 @@ if __name__ == '__main__':
         help_document()
         sys.exit(1)
 
+    freeze_support()
     work_platform, exec_platform = os.path.basename(os.path.abspath(sys.argv[0])).lower(), ["framix.exe", "framix.bin", "framix"]
     if work_platform in exec_platform:
         if work_platform == "framix.exe":
@@ -782,7 +786,6 @@ if __name__ == '__main__':
     adb, ffmpeg, scrcpy = compatible()
 
     from argparse import ArgumentParser
-    from multiprocessing import Pool
 
     cmd_lines = parse_cmd()
     _omits = []

@@ -1,6 +1,6 @@
 import os
-import sys
 import pathlib
+from loguru import logger
 from tensorflow import keras
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -63,6 +63,8 @@ class FramixClassifier(object):
         if not self.model:
             self.model = self.create_model()
 
+        logger.info("开始训练模型 ...")
+
         datagen = keras.preprocessing.image.ImageDataGenerator(
             rescale=1.0 / 16,
             shear_range=0.2,
@@ -95,25 +97,22 @@ class FramixClassifier(object):
             validation_data=validation_generator
         )
 
+        logger.info("模型训练完成 ...")
+
     def save_model(self, model_path: str):
-        assert self.model, "model is empty"
         self.model.save_weights(model_path, save_format="h5")
         self.model.summary()
-
-    def load_model(self, model_path: str, overwrite: bool = None):
-        if self.model and not overwrite:
-            raise RuntimeError(
-                f"model is not empty, you can set `overwrite` True to cover it"
-            )
-        self.model = self.create_model()
-        self.model.load_weights(model_path)
+        logger.info(f"模型保存完成 {model_path}")
 
     def __call__(self, *args, **kwargs):
-        src, dst = args
+        src, new_model_path, new_model_name, self.data_size = args
         self.train(src)
-        self.save_model(dst)
+        assert self.model, "model is empty"
+        final_model = os.path.join(new_model_path, new_model_name)
+        if not os.path.exists(new_model_path):
+            os.makedirs(new_model_path, exist_ok=True)
+        self.save_model(final_model)
 
 
 if __name__ == '__main__':
-    fc = FramixClassifier()
-    fc(sys.argv[1], sys.argv[2])
+    pass

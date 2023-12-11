@@ -145,7 +145,7 @@ class Alynex(object):
         def build_model() -> None:
             # 从分类后的图片构建模型
             cl = KerasClassifier(target_size=Alynex.target_size)
-            cl.train(STABLE, MODELS)
+            cl.train(STABLE)
             cl.save_model(MODELS, overwrite=True)
 
     class _Framix(object):

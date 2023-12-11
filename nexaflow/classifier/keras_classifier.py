@@ -113,7 +113,7 @@ class KerasClassifier(BaseModelClassifier):
         logger.info("Keras神经网络引擎加载完成，开始分析图像 ...")
         return model
 
-    def train(self, data_path: str = None, final_model_path: str = None, *_, **__):
+    def train(self, data_path: str = None, *_, **__):
 
         def _data_verify(p: str):
             p = pathlib.Path(p)
