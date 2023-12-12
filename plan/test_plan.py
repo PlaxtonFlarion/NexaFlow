@@ -41,7 +41,7 @@ class TestPlan(object):
     def test_02(self):
         query = "讲个笑话"
         self.__alynex.report.title = query
-        for i in range(1):
+        for i in range(3):
             self.__alynex.report.query = f"{i + 1}_{query}"
             self.__alynex.framix.crop_hook(0, 0.1, 1, 0.9)
             self.__alynex.analyzer()

@@ -654,7 +654,7 @@ def single_video_task(input_video, *args):
     )
     looper.run_until_complete(
         reporter.ask_create_total_report(
-            os.path.dirname(reporter.total_path), total_path, major_path
+            os.path.dirname(reporter.total_path), major_path, total_path
         )
     )
 
@@ -678,7 +678,7 @@ def multiple_folder_task(folder, *args):
             )
     looper.run_until_complete(
         reporter.ask_create_total_report(
-            os.path.dirname(reporter.total_path), total_path, major_path
+            os.path.dirname(reporter.total_path), major_path, total_path
         )
     )
     return reporter.total_path
@@ -816,7 +816,7 @@ if __name__ == '__main__':
                     multiple_folder_task,
                     [(i, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg, "ERROR") for i in cmd_lines.whole]
                 )
-            Report.merge_report(results)
+            Report.merge_report(results, _total_path)
         sys.exit(0)
     elif cmd_lines.input and len(cmd_lines.input) > 0:
         members = len(cmd_lines.input)

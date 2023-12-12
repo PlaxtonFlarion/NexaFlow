@@ -2,7 +2,6 @@ import os
 import cv2
 import random
 import asyncio
-import aiofiles
 from loguru import logger
 from typing import List, Union, Optional
 from nexaflow import toolbox
@@ -45,6 +44,7 @@ class Alynex(object):
         return (f"""
         <Alynex for NexaFlow
         Target Size: {self.target_size}
+        Step: {self.step}
         Block: {self.block}
         Threshold: {self.threshold}
         Offset: {self.offset}
@@ -257,7 +257,7 @@ class Alynex(object):
         self.window_size = kwargs.get("window_size", 1)
         self.window_coefficient = kwargs.get("window_coefficient", 2)
 
-        async def validate():
+        def validate():
             screen_tag, screen_cap = None, None
             if os.path.isfile(self.report.video_path):
                 screen = cv2.VideoCapture(self.report.video_path)
@@ -280,8 +280,8 @@ class Alynex(object):
                     screen.release()
             return screen_tag, screen_cap
 
-        async def frame_flip():
-            screen_tag, screen_record = await validate()
+        def frame_flip():
+            screen_tag, screen_record = validate()
             if not screen_record or not screen_tag:
                 logger.error(f"{screen_tag} 不是一个标准的mp4视频文件，或视频文件已损坏 ...")
                 return None
@@ -290,7 +290,7 @@ class Alynex(object):
                 change_record = os.path.join(
                     os.path.dirname(screen_record), f"screen_fps60_{random.randint(100, 999)}.mp4"
                 )
-                await self.ffmpeg.video_change(screen_record, change_record)
+                asyncio.run(self.ffmpeg.video_change(screen_record, change_record))
                 logger.info(f"视频转换完成: {os.path.basename(change_record)}")
                 os.remove(screen_record)
                 logger.info(f"移除旧的视频: {os.path.basename(screen_record)}")
@@ -301,8 +301,8 @@ class Alynex(object):
             task, hued = video.load_frames(color)
             return video, task, hued
 
-        async def frame_flow():
-            video, task, hued = await frame_flip()
+        def frame_flow():
+            video, task, hued = frame_flip()
             classify = self.framix.pixel_wizard(video, MODELS, self.report.extra_path)
             important_frames: List["SingleClassifierResult"] = classify.get_important_frame_list()
 
@@ -337,7 +337,7 @@ class Alynex(object):
 
             return classify, frames
 
-        async def frame_flick(classify):
+        def frame_flick(classify):
             try:
                 start_frame = classify.get_not_stable_stage_range()[0][1]
                 end_frame = classify.get_not_stable_stage_range()[-1][-1]
@@ -372,24 +372,24 @@ class Alynex(object):
             self.report.load(result)
             return before, after, final
 
-        async def frame_forge(frame: Union[SingleClassifierResult | Frame]):
+        def frame_forge(frame: Union[SingleClassifierResult | Frame]):
             short_timestamp = format(round(frame.timestamp, 5), ".5f")
             pic_name = f"{frame.frame_id}_{short_timestamp}.png"
             pic_path = os.path.join(self.report.frame_path, pic_name)
-            _, codec = cv2.imencode(".png", frame.data)
-            async with aiofiles.open(pic_path, "wb") as file:
-                await file.write(codec.tobytes())
+            # cv2.imwrite(pic_path, frame.data)
+            # logger.debug(f"frame saved to {pic_path}")
+            cv2.imencode(".png", frame.data)[1].tofile(pic_path)
 
-        async def analytics():
-            classify, frames = await frame_flow()
-            result, *_ = await asyncio.gather(
-                frame_flick(classify),
-                *(frame_forge(frame) for frame in frames)
-            )
-            return result
+        def analytics():
+            from concurrent.futures import ThreadPoolExecutor
 
-        loop = asyncio.get_event_loop()
-        start, end, cost = loop.run_until_complete(analytics())
+            classify, frames = frame_flow()
+            with ThreadPoolExecutor() as executor:
+                executor.map(frame_forge, [frame for frame in frames])
+                future = executor.submit(frame_flick, classify)
+            return future.result()
+
+        start, end, cost = analytics()
         return Alynex._Review(start, end, cost)
 
 

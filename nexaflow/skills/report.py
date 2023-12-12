@@ -50,8 +50,8 @@ class Report(object):
             if total_path:
                 self.total_path = total_path
             else:
-                # self.total_path = "/Users/acekeppel/PycharmProjects/NexaFlow/report/Nexa_20230822223025"
-                self.total_path = os.path.join(REPORT, f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection")
+                self.total_path = "/Users/acekeppel/PycharmProjects/NexaFlow/report/Nexa_20230822223025"
+                # self.total_path = os.path.join(REPORT, f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection")
             os.makedirs(self.total_path, exist_ok=True)
 
             if write_log:
@@ -84,8 +84,8 @@ class Report(object):
 
     @query.setter
     def query(self, query: str):
-        # self.__query = query
-        self.__query = query + "_" + self.clock()
+        self.__query = query
+        # self.__query = query + "_" + self.clock()
         self.video_path = os.path.join(self.query_path, self.query, "video")
         self.frame_path = os.path.join(self.query_path, self.query, "frame")
         self.extra_path = os.path.join(self.query_path, self.query, "extra")
@@ -105,7 +105,7 @@ class Report(object):
 
     def create_report(self) -> None:
 
-        async def handler_inform(result):
+        def start_create(result):
             handler_list = []
             query = result.get("query", "TimeCost")
             stage = result.get("stage", {"start": 1, "end": 2, "cost": "0.00000"})
@@ -113,39 +113,31 @@ class Report(object):
             extra = result.get("extra", "")
             proto = result.get("proto", "")
 
-            async def handler_frame():
-                handler_image_list = []
-                for image in os.listdir(frame):
-                    image_src = os.path.join(query, "frame", image)
-                    image_ids = re.search(r"\d+(?=_)", image).group()
-                    timestamp = float(re.search(r"(?<=_).+(?=\.)", image).group())
-                    handler_image_list.append(
-                        {
-                            "src": image_src,
-                            "frames_id": image_ids,
-                            "timestamp": f"{timestamp:.5f}"
-                        }
-                    )
-                handler_image_list.sort(key=lambda x: int(x["frames_id"]))
-                return handler_image_list
+            image_list = []
+            for image in os.listdir(frame):
+                image_src = os.path.join(query, "frame", image)
+                image_ids = re.search(r"\d+(?=_)", image).group()
+                timestamp = float(re.search(r"(?<=_).+(?=\.)", image).group())
+                image_list.append(
+                    {
+                        "src": image_src,
+                        "frames_id": image_ids,
+                        "timestamp": f"{timestamp:.5f}"
+                    }
+                )
+            image_list.sort(key=lambda x: int(x["frames_id"]))
 
-            async def handler_extra():
-                handler_extra_list = []
-                for ex in os.listdir(extra):
-                    extra_src = os.path.join(query, "extra", ex)
-                    extra_idx = ex.split("(")[0]
-                    handler_extra_list.append(
-                        {
-                            "src": extra_src,
-                            "idx": extra_idx
-                        }
-                    )
-                handler_extra_list.sort(key=lambda x: int(x["idx"].split("(")[0]))
-                return handler_extra_list
-
-            image_list, extra_list = await asyncio.gather(
-                handler_frame(), handler_extra()
-            )
+            extra_list = []
+            for ex in os.listdir(extra):
+                extra_src = os.path.join(query, "extra", ex)
+                extra_idx = ex.split("(")[0]
+                extra_list.append(
+                    {
+                        "src": extra_src,
+                        "idx": extra_idx
+                    }
+                )
+            extra_list.sort(key=lambda x: int(x["idx"].split("(")[0]))
 
             handler_list.append(
                 {
@@ -156,12 +148,18 @@ class Report(object):
                     "proto": os.path.join(query, os.path.basename(proto))
                 }
             )
+
             return handler_list
 
-        async def handler_start():
-            tasks = [handler_inform(result) for result in self.range_list]
-            results = await asyncio.gather(*tasks)
-            images_list = [ele for res in results for ele in res]
+        if len(self.range_list) > 0:
+            if len(self.range_list) == 1:
+                images_list = start_create(self.range_list[0])
+            else:
+                from concurrent.futures import ThreadPoolExecutor
+                with ThreadPoolExecutor() as executor:
+                    future = executor.map(start_create, self.range_list)
+                images_list = [i for f in future for i in f]
+
             loader = FileSystemLoader(os.path.join(Constants.NEXA, "template"))
             environment = Environment(loader=loader)
             template = environment.get_template("template.html")
@@ -189,21 +187,69 @@ class Report(object):
             self.range_list.clear()
             logger.info(f"{'=' * 36} {self.title} {'=' * 36}\n\n")
 
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(handler_start())
-
     def create_total_report(self) -> None:
+        if len(self.total_list) > 0:
+            loader = FileSystemLoader(os.path.join(Constants.NEXA, "template"))
+            environment = Environment(loader=loader)
+            template = environment.get_template("overall.html")
+            report_time = time.strftime('%Y.%m.%d %H:%M:%S')
+            html = template.render(report_time=report_time, total_list=self.total_list)
+
+            total_html_path = os.path.join(os.path.dirname(self.total_path), "NexaFlow.html")
+            with open(file=total_html_path, mode="w", encoding="utf-8") as f:
+                f.write(html)
+                logger.info(f"生成汇总报告: {total_html_path}\n\n")
+            self.total_list.clear()
+
+    @staticmethod
+    def reset_report(file_name: str) -> None:
         loader = FileSystemLoader(os.path.join(Constants.NEXA, "template"))
         environment = Environment(loader=loader)
         template = environment.get_template("overall.html")
         report_time = time.strftime('%Y.%m.%d %H:%M:%S')
-        html = template.render(report_time=report_time, total_list=self.total_list)
 
-        total_html_path = os.path.join(os.path.dirname(self.total_path), "NexaFlow.html")
+        with open(
+                file=os.path.join(REPORT, file_name, "Nexa_Recovery", "nexaflow.log"),
+                mode="r", encoding="utf-8"
+        ) as f:
+            log_restore = re.findall(r"(?<=Recovery: ).*}", f.read())
+        total_list = [json.loads(file) for file in log_restore]
+        html = template.render(report_time=report_time, total_list=total_list)
+
+        total_html_path = os.path.join(REPORT, file_name, "NexaFlow.html")
         with open(file=total_html_path, mode="w", encoding="utf-8") as f:
             f.write(html)
             logger.info(f"生成汇总报告: {total_html_path}\n\n")
-        self.total_list.clear()
+
+    @staticmethod
+    def merge_report(merge_list: List[str], loader_merge_loc: str) -> None:
+        merge_path = os.path.join(
+            os.path.dirname(os.path.dirname(merge_list[0])),
+            "Merge_Nexa_" + time.strftime("%Y%m%d%H%M%S"),
+            "Nexa_Collection"
+        )
+        os.makedirs(merge_path, exist_ok=True)
+        log_restore = []
+        for merge in merge_list:
+            logs = os.path.join(os.path.dirname(merge), "Nexa_Recovery", "nexaflow.log")
+            with open(file=logs, mode="r", encoding="utf-8") as f:
+                log_restore.extend(re.findall(r"(?<=Recovery: ).*}", f.read()))
+            shutil.copytree(
+                merge, merge_path, dirs_exist_ok=True,
+                ignore=shutil.ignore_patterns("NexaFlow.html", "nexaflow.log")
+            )
+
+        loader = FileSystemLoader(loader_merge_loc)
+        environment = Environment(loader=loader)
+        template = environment.get_template("overall.html")
+        report_time = time.strftime('%Y.%m.%d %H:%M:%S')
+        total_list = [json.loads(file) for file in log_restore]
+        html = template.render(report_time=report_time, total_list=total_list)
+
+        total_html_path = os.path.join(os.path.dirname(merge_path), "NexaFlow.html")
+        with open(file=total_html_path, mode="w", encoding="utf-8") as f:
+            f.write(html)
+            logger.info(f"合并汇总报告: {total_html_path}\n\n")
 
     @staticmethod
     async def ask_create_report(major_loc, title, total_path, query_path, range_list):
@@ -313,65 +359,16 @@ class Report(object):
         merge_result = await asyncio.gather(*tasks)
         total_list = [merge for merge in merge_result]
 
-        total_loader = FileSystemLoader(loader_total_loc)
-        total_environment = Environment(loader=total_loader)
-        total_template = total_environment.get_template("overall.html")
+        if len(total_list) > 0:
+            total_loader = FileSystemLoader(loader_total_loc)
+            total_environment = Environment(loader=total_loader)
+            total_template = total_environment.get_template("overall.html")
 
-        html = total_template.render(report_time=report_time, total_list=total_list)
-        total_html = os.path.join(file_name, "NexaFlow.html")
-        with open(file=total_html, mode="w", encoding="utf-8") as f:
-            f.write(html)
-            logger.info(f"生成汇总报告: {total_html}")
-
-    @staticmethod
-    def reset_report(file_name: str) -> None:
-        loader = FileSystemLoader(os.path.join(Constants.NEXA, "template"))
-        environment = Environment(loader=loader)
-        template = environment.get_template("overall.html")
-        report_time = time.strftime('%Y.%m.%d %H:%M:%S')
-
-        with open(
-                file=os.path.join(REPORT, file_name, "Nexa_Recovery", "nexaflow.log"),
-                mode="r", encoding="utf-8"
-        ) as f:
-            log_restore = re.findall(r"(?<=Recovery: ).*}", f.read())
-        total_list = [json.loads(file) for file in log_restore]
-        html = template.render(report_time=report_time, total_list=total_list)
-
-        total_html_path = os.path.join(REPORT, file_name, "NexaFlow.html")
-        with open(file=total_html_path, mode="w", encoding="utf-8") as f:
-            f.write(html)
-            logger.info(f"生成汇总报告: {total_html_path}\n\n")
-
-    @staticmethod
-    def merge_report(merge_list: List[str]) -> None:
-        merge_path = os.path.join(
-            os.path.dirname(os.path.dirname(merge_list[0])),
-            "Merge_Nexa_" + time.strftime("%Y%m%d%H%M%S"),
-            "Nexa_Collection"
-        )
-        os.makedirs(merge_path, exist_ok=True)
-        log_restore = []
-        for merge in merge_list:
-            logs = os.path.join(os.path.dirname(merge), "Nexa_Recovery", "nexaflow.log")
-            with open(file=logs, mode="r", encoding="utf-8") as f:
-                log_restore.extend(re.findall(r"(?<=Recovery: ).*}", f.read()))
-            shutil.copytree(
-                merge, merge_path, dirs_exist_ok=True,
-                ignore=shutil.ignore_patterns("NexaFlow.html", "nexaflow.log")
-            )
-
-        loader = FileSystemLoader(os.path.join(Constants.NEXA, "template"))
-        environment = Environment(loader=loader)
-        template = environment.get_template("overall.html")
-        report_time = time.strftime('%Y.%m.%d %H:%M:%S')
-        total_list = [json.loads(file) for file in log_restore]
-        html = template.render(report_time=report_time, total_list=total_list)
-
-        total_html_path = os.path.join(os.path.dirname(merge_path), "NexaFlow.html")
-        with open(file=total_html_path, mode="w", encoding="utf-8") as f:
-            f.write(html)
-            logger.info(f"合并汇总报告: {total_html_path}\n\n")
+            html = total_template.render(report_time=report_time, total_list=total_list)
+            total_html = os.path.join(file_name, "NexaFlow.html")
+            with open(file=total_html, mode="w", encoding="utf-8") as f:
+                f.write(html)
+                logger.info(f"生成汇总报告: {total_html}")
 
     @staticmethod
     def draw(

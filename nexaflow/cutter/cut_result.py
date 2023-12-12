@@ -302,7 +302,7 @@ class VideoCutResult(object):
 
         if not to_dir:
             to_dir = toolbox.get_timestamp_str()
-        logger.debug(f"try to make dirs: {to_dir}")
+        # logger.debug(f"try to make dirs: {to_dir}")
         os.makedirs(to_dir, exist_ok=True)
 
         for each_stage_id, each_frame_list in stage_list:
@@ -331,9 +331,9 @@ class VideoCutResult(object):
                 each_frame_path = os.path.join(each_stage_dir, image_name)
                 compressed = toolbox.compress_frame(each_frame_object.data, **kwargs)
                 cv2.imwrite(each_frame_path, compressed)
-                logger.debug(
-                    f"frame [{each_frame_object.frame_id}] saved to {each_frame_path}"
-                )
+                # logger.debug(
+                #     f"frame [{each_frame_object.frame_id}] saved to {each_frame_path}"
+                # )
 
         return to_dir
 

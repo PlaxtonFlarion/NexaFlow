@@ -6,6 +6,8 @@ from nexaflow.constants import Constants
 from nexaflow.skills.alynex import Alynex
 from nexaflow.skills.report import Report
 
+MERGE_TEMPLATE = os.path.join(Constants.NEXA, "template")
+
 
 def multi_video_task(folder: str) -> str:
     alynex = Alynex()
@@ -29,5 +31,5 @@ if __name__ == '__main__':
     with Pool(len(data)) as pool:
         results = pool.map(multi_video_task, data)
 
-    Report.merge_report(results)
+    Report.merge_report(results, MERGE_TEMPLATE)
     print(f"Total Time Cost: {(time.time() - start_time):.2f} 秒")
