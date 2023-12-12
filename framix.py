@@ -12,10 +12,16 @@ from rich.table import Table
 from rich.prompt import Prompt
 from rich.console import Console
 from rich.progress import Progress
+from multiprocessing import Pool, freeze_support
+from nexaflow import toolbox
+from nexaflow.video import VideoObject
 from nexaflow.terminal import Terminal
 from nexaflow.constants import Constants
 from nexaflow.skills.report import Report
-from multiprocessing import Pool, freeze_support
+from nexaflow.cutter.cutter import VideoCutter
+from nexaflow.hook import OmitHook, FrameSaveHook
+from nexaflow.classifier.keras_classifier import KerasClassifier
+from nexaflow.classifier.framix_classifier import FramixClassifier
 
 target_size = (350, 700)
 step = 1
@@ -156,11 +162,6 @@ def compatible():
     if _scrcpy:
         os.environ["PATH"] = os.path.dirname(_scrcpy) + os.path.pathsep + os.environ.get("PATH", "")
 
-    # logger.debug(f"Path: {_adb}")
-    # logger.debug(f"Path: {_ffmpeg}")
-    # logger.debug(f"Path: {_scrcpy}")
-    # for env in os.environ["PATH"].split(os.path.pathsep):
-    #     logger.debug(env)
     return _adb, _ffmpeg, _scrcpy
 
 
@@ -413,152 +414,179 @@ async def analysis(alone: bool):
 
 
 async def analyzer(reporter: "Report", vision_path: str, **kwargs):
-    start_time = time.time()
-    logger.debug("模块开始加载 ...")
-    from nexaflow import toolbox
-    from nexaflow.video import VideoObject
-    from nexaflow.cutter.cutter import VideoCutter
-    from nexaflow.hook import OmitHook, FrameSaveHook
-    from nexaflow.classifier.keras_classifier import KerasClassifier
-    logger.debug(f"模块加载:{time.time() - start_time:.5f} 秒")
-
     boost = kwargs.get("boost", True)
     color = kwargs.get("color", True)
+    focus = kwargs.get("focus", True)
     omits = kwargs.get("omits", [])
     model_path = kwargs["model_path"]
     proto_path = kwargs["proto_path"]
 
-    screen_tag, screen_cap = None, None
-
-    if os.path.isfile(vision_path):
-        screen = cv2.VideoCapture(vision_path)
-        if screen.isOpened():
-            screen_tag = os.path.basename(vision_path)
-            screen_cap = vision_path
-        screen.release()
-
-    elif os.path.isdir(vision_path):
-        if len(
-                file_list := [
-                    file for file in os.listdir(vision_path) if os.path.isfile(
-                        os.path.join(vision_path, file)
-                    )
-                ]
-        ) > 1 or len(file_list) == 1:
-            screen = cv2.VideoCapture(os.path.join(vision_path, file_list[0]))
+    async def validate():
+        screen_tag, screen_cap = None, None
+        if os.path.isfile(vision_path):
+            screen = cv2.VideoCapture(vision_path)
             if screen.isOpened():
-                screen_tag = os.path.basename(file_list[0])
-                screen_cap = os.path.join(vision_path, file_list[0])
+                screen_tag = os.path.basename(vision_path)
+                screen_cap = vision_path
             screen.release()
+        elif os.path.isdir(vision_path):
+            if len(
+                    file_list := [
+                        file for file in os.listdir(vision_path) if os.path.isfile(
+                            os.path.join(vision_path, file)
+                        )
+                    ]
+            ) > 1 or len(file_list) == 1:
+                screen = cv2.VideoCapture(os.path.join(vision_path, file_list[0]))
+                if screen.isOpened():
+                    screen_tag = os.path.basename(file_list[0])
+                    screen_cap = os.path.join(vision_path, file_list[0])
+                screen.release()
+        return screen_tag, screen_cap
 
-    if not screen_tag or not screen_cap:
-        logger.error(f"{screen_tag} 不是一个标准的mp4视频文件，或视频文件已损坏 ...")
-        return
-
-    logger.info(f"{screen_tag} 可正常播放，准备加载视频 ...")
-    change_record = os.path.join(
-        os.path.dirname(vision_path), f"screen_fps60_{random.randint(100, 999)}.mp4"
-    )
-    cmd = [kwargs.get("ffmpeg_exe", "ffmpeg"), "-i", vision_path, "-vf", "fps=60", "-c:v", "libx264", "-crf", "18", "-c:a", "copy", change_record]
-    await Terminal.cmd_line(*cmd)
-    logger.info(f"视频转换完成: {os.path.basename(change_record)}")
-    os.remove(vision_path)
-    logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
-
-    video = VideoObject(change_record)
-    task, hued = video.load_frames(color)
-
-    cutter = VideoCutter(
-        step=step,
-        compress_rate=compress_rate,
-        target_size=target_size
-    )
-
-    if len(omits) > 0:
-        for omit in omits:
-            x, y, x_size, y_size = omit
-            omit_hook = OmitHook((y_size, x_size), (y, x))
-            cutter.add_hook(omit_hook)
-    save_hook = FrameSaveHook(reporter.extra_path)
-    cutter.add_hook(save_hook)
-
-    res = cutter.cut(
-        video=video,
-        block=block,
-        window_size=window_size,
-        window_coefficient=window_coefficient
-    )
-
-    stable, unstable = res.get_range(
-        threshold=threshold,
-        offset=offset
-    )
-
-    files = os.listdir(reporter.extra_path)
-    files.sort(key=lambda n: int(n.split("(")[0]))
-    total_images = len(files)
-    interval = total_images // 11 if total_images > 12 else 1
-    for index, file in enumerate(files):
-        if index % interval != 0:
-            os.remove(
-                os.path.join(reporter.extra_path, file)
+    async def frame_flip():
+        if focus:
+            change_record = os.path.join(
+                os.path.dirname(vision_path), f"screen_fps60_{random.randint(100, 999)}.mp4"
             )
+            cmd = [
+                kwargs.get("ffmpeg_exe", "ffmpeg"), "-i", vision_path,
+                "-vf", "fps=60", "-c:v", "libx264", "-crf", "18", "-c:a", "copy", change_record
+            ]
+            await Terminal.cmd_line(*cmd)
+            logger.info(f"视频转换完成: {os.path.basename(change_record)}")
+            os.remove(vision_path)
+            logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
+        else:
+            change_record = screen_record
 
-    draws = os.listdir(reporter.extra_path)
-    for draw in draws:
-        toolbox.draw_line(
-            os.path.join(reporter.extra_path, draw)
+        video = VideoObject(change_record)
+        task, hued = video.load_frames(color)
+        return video, task, hued
+
+    async def frame_flow():
+        video, task, hued = await frame_flip()
+        cutter = VideoCutter(
+            step=step,
+            compress_rate=compress_rate,
+            target_size=target_size
         )
 
-    cl = KerasClassifier(target_size=target_size)
-    cl.load_model(model_path)
-    classify = cl.classify(video=video, valid_range=stable, keep_data=True)
+        if len(omits) > 0:
+            for omit in omits:
+                x, y, x_size, y_size = omit
+                omit_hook = OmitHook((y_size, x_size), (y, x))
+                cutter.add_hook(omit_hook)
+        save_hook = FrameSaveHook(reporter.extra_path)
+        cutter.add_hook(save_hook)
 
-    important_frames = classify.get_important_frame_list()
+        res = cutter.cut(
+            video=video,
+            block=block,
+            window_size=window_size,
+            window_coefficient=window_coefficient
+        )
 
-    pbar = toolbox.show_progress(classify.get_length(), 50, "Faster")
-    frames_list = []
-    if boost:
-        frames_list.append(previous := important_frames[0])
-        pbar.update(1)
-        for current in important_frames[1:]:
-            frames_list.append(current)
+        stable, unstable = res.get_range(
+            threshold=threshold,
+            offset=offset
+        )
+
+        files = os.listdir(reporter.extra_path)
+        files.sort(key=lambda n: int(n.split("(")[0]))
+        total_images = len(files)
+        interval = total_images // 11 if total_images > 12 else 1
+        for index, file in enumerate(files):
+            if index % interval != 0:
+                os.remove(
+                    os.path.join(reporter.extra_path, file)
+                )
+
+        draws = os.listdir(reporter.extra_path)
+        for draw in draws:
+            toolbox.draw_line(
+                os.path.join(reporter.extra_path, draw)
+            )
+
+        cl = KerasClassifier(target_size=target_size)
+        cl.load_model(model_path)
+        classify = cl.classify(video=video, valid_range=stable, keep_data=True)
+
+        important_frames = classify.get_important_frame_list()
+
+        pbar = toolbox.show_progress(classify.get_length(), 50, "Faster")
+        frames_list = []
+        if boost:
+            frames_list.append(previous := important_frames[0])
             pbar.update(1)
-            frames_diff = current.frame_id - previous.frame_id
-            if not previous.is_stable() and not current.is_stable() and frames_diff > 1:
-                for specially in classify.data[previous.frame_id: current.frame_id - 1]:
-                    frames_list.append(specially)
-                    pbar.update(1)
-            previous = current
-        pbar.close()
-    else:
-        for current in classify.data:
-            frames_list.append(current)
-            pbar.update(1)
-        pbar.close()
+            for current in important_frames[1:]:
+                frames_list.append(current)
+                pbar.update(1)
+                frames_diff = current.frame_id - previous.frame_id
+                if not previous.is_stable() and not current.is_stable() and frames_diff > 1:
+                    for specially in classify.data[previous.frame_id: current.frame_id - 1]:
+                        frames_list.append(specially)
+                        pbar.update(1)
+                previous = current
+            pbar.close()
+        else:
+            for current in classify.data:
+                frames_list.append(current)
+                pbar.update(1)
+            pbar.close()
 
-    if color:
-        video.hued_data = tuple(hued.result())
-        logger.info(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
-        task.shutdown()
-        frames = [video.hued_data[frame.frame_id - 1] for frame in frames_list]
-    else:
-        frames = [frame for frame in frames_list]
+        if color:
+            video.hued_data = tuple(hued.result())
+            logger.info(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
+            task.shutdown()
+            frames = [video.hued_data[frame.frame_id - 1] for frame in frames_list]
+        else:
+            frames = [frame for frame in frames_list]
 
-    try:
-        start_frame = classify.get_not_stable_stage_range()[0][1]
-        end_frame = classify.get_not_stable_stage_range()[-1][-1]
-    except AssertionError:
-        start_frame = classify.get_important_frame_list()[0]
-        end_frame = classify.get_important_frame_list()[-1]
+        return classify, frames
 
-    if start_frame == end_frame:
-        start_frame = classify.data[0]
-        end_frame = classify.data[-1]
+    async def frame_flick(classify):
+        try:
+            start_frame = classify.get_not_stable_stage_range()[0][1]
+            end_frame = classify.get_not_stable_stage_range()[-1][-1]
+        except AssertionError:
+            start_frame = classify.get_important_frame_list()[0]
+            end_frame = classify.get_important_frame_list()[-1]
 
-    time_cost = end_frame.timestamp - start_frame.timestamp
-    before, after, final = f"{start_frame.timestamp:.5f}", f"{end_frame.timestamp:.5f}", f"{time_cost:.5f}"
-    logger.info(f"图像分类结果: [开始帧: {before}] [结束帧: {after}] [总耗时: {final}]")
+        if start_frame == end_frame:
+            start_frame = classify.data[0]
+            end_frame = classify.data[-1]
+
+        time_cost = end_frame.timestamp - start_frame.timestamp
+        before, after, final = f"{start_frame.timestamp:.5f}", f"{end_frame.timestamp:.5f}", f"{time_cost:.5f}"
+        logger.info(f"图像分类结果: [开始帧: {before}] [结束帧: {after}] [总耗时: {final}]")
+
+        with open(proto_path, mode="r", encoding="utf-8") as t:
+            proto_file = t.read()
+            original_inform = reporter.draw(
+                classifier_result=classify,
+                proto_path=reporter.proto_path,
+                target_size=target_size,
+                framix_template=proto_file
+            )
+
+        result = {
+            "total_path": reporter.total_path,
+            "title": reporter.title,
+            "query_path": reporter.query_path,
+            "query": reporter.query,
+            "stage": {
+                "start": start_frame.frame_id,
+                "end": end_frame.frame_id,
+                "cost": f"{time_cost:.5f}"
+            },
+            "frame": reporter.frame_path,
+            "extra": reporter.extra_path,
+            "proto": original_inform,
+        }
+        logger.debug(f"Restore: {result}")
+        reporter.load(result)
+        return before, after, final
 
     async def frame_forge(frame):
         short_timestamp = format(round(frame.timestamp, 5), ".5f")
@@ -568,73 +596,62 @@ async def analyzer(reporter: "Report", vision_path: str, **kwargs):
         async with aiofiles.open(pic_path, "wb") as f:
             await f.write(codec.tobytes())
 
-    await asyncio.gather(*(frame_forge(frame) for frame in frames))
-
-    with open(proto_path, encoding="utf-8") as t:
-        proto_file = t.read()
-        original_inform = reporter.draw(
-            classifier_result=classify,
-            proto_path=reporter.proto_path,
-            target_size=target_size,
-            framix_template=proto_file
+    async def analytics():
+        classify, frames = await frame_flow()
+        result, *_ = await asyncio.gather(
+            frame_flick(classify), *(frame_forge(frame) for frame in frames)
         )
+        return result
 
-    result = {
-        "total_path": reporter.total_path,
-        "title": reporter.title,
-        "query_path": reporter.query_path,
-        "query": reporter.query,
-        "stage": {
-            "start": start_frame.frame_id,
-            "end": end_frame.frame_id,
-            "cost": f"{time_cost:.5f}"
-        },
-        "frame": reporter.frame_path,
-        "extra": reporter.extra_path,
-        "proto": original_inform,
-    }
-    logger.debug(f"Restore: {result}")
-    reporter.load(result)
+    tag, screen_record = await validate()
+    if not tag or not screen_record:
+        logger.error(f"{tag} 不是一个标准的mp4视频文件，或视频文件已损坏 ...")
+        return None
+    logger.info(f"{tag} 可正常播放，准备加载视频 ...")
+
+    start, end, cost = await analytics()
+    return start, end, cost
 
 
 async def painting():
-    import tempfile
-    from PIL import Image, ImageDraw, ImageFont
+    # import tempfile
+    # from PIL import Image, ImageDraw, ImageFont
 
-    cellphone = await check_device()
-    image_folder = "/sdcard/Pictures/Shots"
-    image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_" + "Shot.png"
-    await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "mkdir", "-p", image_folder)
-    await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "screencap", "-p", f"{image_folder}/{image}")
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        image_save_path = os.path.join(temp_dir, image)
-        await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "pull", f"{image_folder}/{image}", image_save_path)
-
-        image = Image.open(image_save_path)
-        image = image.convert("RGB")
-
-        resized = image.resize((new_w := 350, new_h := 700))
-
-        draw = ImageDraw.Draw(resized)
-        font = ImageFont.load_default()
-
-        for i in range(1, 5):
-            x_line = int(new_w * (i * 0.2))
-            draw.line([(x_line, 0), (x_line, new_h)], fill=(0, 255, 255), width=1)
-
-        for i in range(1, 20):
-            y_line = int(new_h * (i * 0.05))
-            text = f"{i * 5:02}%"
-            bbox = draw.textbbox((0, 0), text, font)
-            text_width = bbox[2] - bbox[0]
-            text_height = bbox[3] - bbox[1]
-            x_text_start = 3
-            draw.line([(text_width + 5 + x_text_start, y_line), (new_w, y_line)], fill=(255, 182, 193), width=1)
-            draw.text((x_text_start, y_line - text_height // 2), text, fill=(255, 182, 193), font=font)
-
-        resized.show()
-    await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "rm", f"{image_folder}/{image}")
+    # cellphone = await check_device()
+    # image_folder = "/sdcard/Pictures/Shots"
+    # image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_" + "Shot.png"
+    # await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "mkdir", "-p", image_folder)
+    # await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "screencap", "-p", f"{image_folder}/{image}")
+    #
+    # with tempfile.TemporaryDirectory() as temp_dir:
+    #     image_save_path = os.path.join(temp_dir, image)
+    #     await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "pull", f"{image_folder}/{image}", image_save_path)
+    #
+    #     image = Image.open(image_save_path)
+    #     image = image.convert("RGB")
+    #
+    #     resized = image.resize((new_w := 350, new_h := 700))
+    #
+    #     draw = ImageDraw.Draw(resized)
+    #     font = ImageFont.load_default()
+    #
+    #     for i in range(1, 5):
+    #         x_line = int(new_w * (i * 0.2))
+    #         draw.line([(x_line, 0), (x_line, new_h)], fill=(0, 255, 255), width=1)
+    #
+    #     for i in range(1, 20):
+    #         y_line = int(new_h * (i * 0.05))
+    #         text = f"{i * 5:02}%"
+    #         bbox = draw.textbbox((0, 0), text, font)
+    #         text_width = bbox[2] - bbox[0]
+    #         text_height = bbox[3] - bbox[1]
+    #         x_text_start = 3
+    #         draw.line([(text_width + 5 + x_text_start, y_line), (new_w, y_line)], fill=(255, 182, 193), width=1)
+    #         draw.text((x_text_start, y_line - text_height // 2), text, fill=(255, 182, 193), font=font)
+    #
+    #     resized.show()
+    # await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "rm", f"{image_folder}/{image}")
+    pass
 
 
 def single_video_task(input_video, *args):
@@ -685,9 +702,6 @@ def multiple_folder_task(folder, *args):
 
 
 def train_model(video_file, level):
-    from nexaflow.video import VideoObject
-    from nexaflow.cutter.cutter import VideoCutter
-
     Constants.initial_logger(level)
     new_total_path = initial_env()
     reporter = Report(total_path=new_total_path, write_log=False)
@@ -724,8 +738,6 @@ def train_model(video_file, level):
 
 
 def build_model(src, level):
-    from nexaflow.classifier.framix_classifier import FramixClassifier
-
     Constants.initial_logger(level)
     new_model_path = os.path.join(src, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
     new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"

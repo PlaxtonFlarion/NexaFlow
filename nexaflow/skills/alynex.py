@@ -4,6 +4,7 @@ import random
 import asyncio
 from loguru import logger
 from typing import List, Union, Optional
+from concurrent.futures import ThreadPoolExecutor
 from nexaflow import toolbox
 from nexaflow.constants import Constants
 from nexaflow.skills.report import Report
@@ -281,11 +282,6 @@ class Alynex(object):
             return screen_tag, screen_cap
 
         def frame_flip():
-            screen_tag, screen_record = validate()
-            if not screen_record or not screen_tag:
-                logger.error(f"{screen_tag} 不是一个标准的mp4视频文件，或视频文件已损坏 ...")
-                return None
-            logger.info(f"{screen_tag} 可正常播放，准备加载视频 ...")
             if focus:
                 change_record = os.path.join(
                     os.path.dirname(screen_record), f"screen_fps60_{random.randint(100, 999)}.mp4"
@@ -381,13 +377,17 @@ class Alynex(object):
             cv2.imencode(".png", frame.data)[1].tofile(pic_path)
 
         def analytics():
-            from concurrent.futures import ThreadPoolExecutor
-
             classify, frames = frame_flow()
             with ThreadPoolExecutor() as executor:
                 executor.map(frame_forge, [frame for frame in frames])
                 future = executor.submit(frame_flick, classify)
             return future.result()
+
+        tag, screen_record = validate()
+        if not tag or not screen_record:
+            logger.error(f"{tag} 不是一个标准的mp4视频文件，或视频文件已损坏 ...")
+            return None
+        logger.info(f"{tag} 可正常播放，准备加载视频 ...")
 
         start, end, cost = analytics()
         return Alynex._Review(start, end, cost)

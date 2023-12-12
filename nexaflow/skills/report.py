@@ -7,6 +7,7 @@ import asyncio
 import threading
 from loguru import logger
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List, Any, Tuple, Optional, Union
 from jinja2 import Template, Environment, FileSystemLoader
 from nexaflow import constants, toolbox
@@ -155,7 +156,6 @@ class Report(object):
             if len(self.range_list) == 1:
                 images_list = start_create(self.range_list[0])
             else:
-                from concurrent.futures import ThreadPoolExecutor
                 with ThreadPoolExecutor() as executor:
                     future = executor.map(start_create, self.range_list)
                 images_list = [i for f in future for i in f]
@@ -185,7 +185,10 @@ class Report(object):
             logger.debug("Recovery: " + json.dumps(single, ensure_ascii=False))
             self.total_list.append(single)
             self.range_list.clear()
-            logger.info(f"{'=' * 36} {self.title} {'=' * 36}\n\n")
+        else:
+            logger.info("没有可以聚合的报告 ...")
+
+        logger.info(f"{'=' * 36} {self.title} {'=' * 36}\n\n")
 
     def create_total_report(self) -> None:
         if len(self.total_list) > 0:
@@ -200,6 +203,8 @@ class Report(object):
                 f.write(html)
                 logger.info(f"生成汇总报告: {total_html_path}\n\n")
             self.total_list.clear()
+        else:
+            logger.info("没有可以汇总的报告 ...")
 
     @staticmethod
     def reset_report(file_name: str) -> None:
@@ -308,33 +313,38 @@ class Report(object):
             return handler_list
 
         async def handler_start():
-            tasks = [handler_inform(result) for result in range_list]
-            results = await asyncio.gather(*tasks)
-            images_list = [ele for res in results for ele in res]
+            single = {}
+            if len(range_list) > 0:
+                tasks = [handler_inform(result) for result in range_list]
+                results = await asyncio.gather(*tasks)
+                images_list = [ele for res in results for ele in res]
 
-            major_loader = FileSystemLoader(major_loc)
-            major_environment = Environment(loader=major_loader)
-            major_template = major_environment.get_template("template.html")
+                major_loader = FileSystemLoader(major_loc)
+                major_environment = Environment(loader=major_loader)
+                major_template = major_environment.get_template("template.html")
 
-            html = major_template.render(title=title, images_list=images_list)
-            report_html = os.path.join(query_path, f"{title}.html")
-            with open(file=report_html, mode="w", encoding="utf-8") as f:
-                f.write(html)
-                logger.info(f"生成聚合报告: {report_html}")
+                html = major_template.render(title=title, images_list=images_list)
+                report_html = os.path.join(query_path, f"{title}.html")
+                with open(file=report_html, mode="w", encoding="utf-8") as f:
+                    f.write(html)
+                    logger.info(f"生成聚合报告: {report_html}")
 
-            cost_list = [cost['stage']['cost'] for cost in images_list]
-            href_path = os.path.join(
-                os.path.basename(total_path),
-                title,
-                os.path.basename(report_html)
-            )
-            single = {
-                "case": title,
-                "cost_list": cost_list,
-                "avg": f"{sum(map(float, cost_list)) / len(cost_list):.5f}",
-                "href": href_path
-            }
-            logger.debug("Recovery: " + json.dumps(single, ensure_ascii=False))
+                cost_list = [cost['stage']['cost'] for cost in images_list]
+                href_path = os.path.join(
+                    os.path.basename(total_path),
+                    title,
+                    os.path.basename(report_html)
+                )
+                single = {
+                    "case": title,
+                    "cost_list": cost_list,
+                    "avg": f"{sum(map(float, cost_list)) / len(cost_list):.5f}",
+                    "href": href_path
+                }
+                logger.debug("Recovery: " + json.dumps(single, ensure_ascii=False))
+            else:
+                logger.info("没有可以聚合的报告 ...")
+
             logger.info(f"{'=' * 36} {title} {'=' * 36}\n\n")
             return single
 
@@ -369,6 +379,8 @@ class Report(object):
             with open(file=total_html, mode="w", encoding="utf-8") as f:
                 f.write(html)
                 logger.info(f"生成汇总报告: {total_html}")
+        else:
+            logger.info("没有可以汇总的报告 ...")
 
     @staticmethod
     def draw(
