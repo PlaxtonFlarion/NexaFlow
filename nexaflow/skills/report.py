@@ -51,8 +51,8 @@ class Report(object):
             if total_path:
                 self.total_path = total_path
             else:
-                self.total_path = "/Users/acekeppel/PycharmProjects/NexaFlow/report/Nexa_20230822223025"
-                # self.total_path = os.path.join(REPORT, f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection")
+                # self.total_path = "/Users/acekeppel/PycharmProjects/NexaFlow/report/Nexa_20230822223025"
+                self.total_path = os.path.join(REPORT, f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection")
             os.makedirs(self.total_path, exist_ok=True)
 
             if write_log:
@@ -85,8 +85,8 @@ class Report(object):
 
     @query.setter
     def query(self, query: str):
-        self.__query = query
-        # self.__query = query + "_" + self.clock()
+        # self.__query = query
+        self.__query = query + "_" + self.clock()
         self.video_path = os.path.join(self.query_path, self.query, "video")
         self.frame_path = os.path.join(self.query_path, self.query, "frame")
         self.extra_path = os.path.join(self.query_path, self.query, "extra")
