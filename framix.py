@@ -16,7 +16,6 @@ from multiprocessing import Pool, freeze_support
 from nexaflow import toolbox
 from nexaflow.video import VideoObject
 from nexaflow.terminal import Terminal
-from nexaflow.constants import Constants
 from nexaflow.skills.report import Report
 from nexaflow.cutter.cutter import VideoCutter
 from nexaflow.hook import OmitHook, FrameSaveHook
@@ -589,19 +588,27 @@ async def analyzer(reporter: "Report", vision_path: str, **kwargs):
         return before, after, final
 
     async def frame_forge(frame):
-        short_timestamp = format(round(frame.timestamp, 5), ".5f")
-        pic_name = f"{frame.frame_id}_{short_timestamp}.png"
-        pic_path = os.path.join(reporter.frame_path, pic_name)
-        _, codec = cv2.imencode(".png", frame.data)
-        async with aiofiles.open(pic_path, "wb") as f:
-            await f.write(codec.tobytes())
+        async with asyncio.Semaphore(256):
+            try:
+                short_timestamp = format(round(frame.timestamp, 5), ".5f")
+                pic_name = f"{frame.frame_id}_{short_timestamp}.png"
+                pic_path = os.path.join(reporter.frame_path, pic_name)
+                _, codec = cv2.imencode(".png", frame.data)
+                async with aiofiles.open(pic_path, "wb") as f:
+                    await f.write(codec.tobytes())
+            except Exception as e:
+                return e
 
     async def analytics():
         classify, frames = await frame_flow()
-        result, *_ = await asyncio.gather(
-            frame_flick(classify), *(frame_forge(frame) for frame in frames)
+        flick_result, *forge_result = await asyncio.gather(
+            frame_flick(classify), *(frame_forge(frame) for frame in frames),
+            return_exceptions=True
         )
-        return result
+        for result in forge_result:
+            if isinstance(result, Exception):
+                logger.error(f"Error: {result}")
+        return flick_result
 
     tag, screen_record = await validate()
     if not tag or not screen_record:
@@ -654,15 +661,20 @@ async def painting():
     pass
 
 
+def worker_init(log_level: str = "INFO"):
+    logger.remove(0)
+    log_format = "| <level>{level: <8}</level> | <level>{message}</level>"
+    logger.add(sys.stderr, format=log_format, level=log_level.upper())
+
+
 def single_video_task(input_video, *args):
-    boost, color, omits, model_path, total_path, major_path, proto_path, ffmpeg_exe, level = args
-    Constants.initial_logger(level)
+    boost, color, omits, model_path, total_path, major_path, proto_path, ffmpeg_exe = args
     new_total_path = initial_env()
     reporter = Report(total_path=new_total_path)
     reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
     reporter.query = f"{random.randint(10, 99)}"
     new_video_path = os.path.join(reporter.video_path, os.path.basename(input_video))
-    shutil.move(input_video, new_video_path)
+    shutil.copy(input_video, new_video_path)
     looper = asyncio.get_event_loop()
     looper.run_until_complete(
         analyzer(
@@ -677,8 +689,7 @@ def single_video_task(input_video, *args):
 
 
 def multiple_folder_task(folder, *args):
-    boost, color, omits, model_path, total_path, major_path, proto_path, ffmpeg_exe, level = args
-    Constants.initial_logger(level)
+    boost, color, omits, model_path, total_path, major_path, proto_path, ffmpeg_exe = args
     new_total_path = initial_env()
     reporter = Report(total_path=new_total_path)
     looper = asyncio.get_event_loop()
@@ -701,8 +712,7 @@ def multiple_folder_task(folder, *args):
     return reporter.total_path
 
 
-def train_model(video_file, level):
-    Constants.initial_logger(level)
+def train_model(video_file):
     new_total_path = initial_env()
     reporter = Report(total_path=new_total_path, write_log=False)
     reporter.title = f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
@@ -737,16 +747,30 @@ def train_model(video_file, level):
     )
 
 
-def build_model(src, level):
-    Constants.initial_logger(level)
-    new_model_path = os.path.join(src, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
-    new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
-    fc = FramixClassifier()
-    fc(src, new_model_path, new_model_name, target_size)
+def build_model(src):
+    if os.path.isdir(src):
+        real_path, file_list = "", []
+        logger.debug(f"搜索文件夹: {src}")
+        for root, dirs, files in os.walk(src, topdown=False):
+            for name in files:
+                file_list.append(os.path.join(root, name))
+            for name in dirs:
+                if len(name) == 1 and re.search(r"0", name):
+                    real_path = os.path.dirname(os.path.join(root, name))
+                    logger.debug(f"分类文件夹: {real_path}")
+                    break
+        if real_path and len(file_list) > 0:
+            new_model_path = os.path.join(real_path, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
+            new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
+            fc = FramixClassifier()
+            fc(real_path, new_model_path, new_model_name, target_size)
+        else:
+            logger.error("文件夹未正确分类 ...")
+    else:
+        logger.error("训练模型需要一个分类文件夹 ...")
 
 
 async def main():
-    Constants.initial_logger(_debug)
     if cmd_lines.flick or cmd_lines.alone:
         if scrcpy:
             await analysis(cmd_lines.alone)
@@ -775,7 +799,6 @@ if __name__ == '__main__':
             job_path = os.path.dirname(os.path.abspath(sys.argv[0]))
         else:
             job_path = os.path.dirname(sys.executable)
-        _classifier = os.path.join(job_path, "archivix", "framix_classifier.py")
         _tools_path = os.path.join(job_path, "archivix", "tools")
         _model_path = os.path.join(job_path, "archivix", "molds", "model.h5")
         _total_path = os.path.join(job_path, "archivix", "pages")
@@ -783,7 +806,6 @@ if __name__ == '__main__':
         _proto_path = os.path.join(job_path, "archivix", "pages", "extra.html")
     elif work_platform == "framix.py":
         job_path = os.path.dirname(os.path.abspath(__file__))
-        _classifier = os.path.join(job_path, "archivix", "framix_classifier.py")
         _tools_path = os.path.join(job_path, "archivix", "tools")
         _model_path = os.path.join(job_path, "archivix", "molds", "model.h5")
         _total_path = os.path.join(job_path, "archivix", "pages")
@@ -793,9 +815,6 @@ if __name__ == '__main__':
         console.print("[bold red]Only compatible with Windows and macOS platforms ...")
         time.sleep(5)
         sys.exit(1)
-
-    initial_total_path = initial_env()
-    adb, ffmpeg, scrcpy = compatible()
 
     from argparse import ArgumentParser
 
@@ -814,19 +833,21 @@ if __name__ == '__main__':
 
     _boost, _color = cmd_lines.boost, cmd_lines.color
     _debug = "DEBUG" if cmd_lines.debug else "INFO"
+    worker_init(_debug)
+    initial_total_path = initial_env()
+    adb, ffmpeg, scrcpy = compatible()
 
     if cmd_lines.whole and len(cmd_lines.whole) > 0:
         members = len(cmd_lines.whole)
         if members == 1:
             multiple_folder_task(
-                cmd_lines.whole[0], _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg, _debug
+                cmd_lines.whole[0], _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg
             )
         else:
-            Constants.initial_logger(_debug)
-            with Pool(members if members <= 6 else 6) as pool:
+            with Pool(initializer=worker_init, initargs=("ERROR", )) as pool:
                 results = pool.starmap(
                     multiple_folder_task,
-                    [(i, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg, "ERROR") for i in cmd_lines.whole]
+                    [(i, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg) for i in cmd_lines.whole]
                 )
             Report.merge_report(results, _total_path)
         sys.exit(0)
@@ -834,30 +855,30 @@ if __name__ == '__main__':
         members = len(cmd_lines.input)
         if members == 1:
             single_video_task(
-                cmd_lines.input[0], _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg, _debug
+                cmd_lines.input[0], _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg
             )
         else:
-            with Pool(members if members <= 6 else 6) as pool:
+            with Pool(initializer=worker_init, initargs=("ERROR", )) as pool:
                 pool.starmap(
                     single_video_task,
-                    [(i, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg, "ERROR") for i in cmd_lines.input]
+                    [(i, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg) for i in cmd_lines.input]
                 )
         sys.exit(0)
     elif cmd_lines.train and len(cmd_lines.train) > 0:
         members = len(cmd_lines.train)
         if members == 1:
-            train_model(cmd_lines.train[0], _debug)
+            train_model(cmd_lines.train[0])
         else:
-            with Pool(members if members <= 6 else 6) as pool:
-                pool.starmap(train_model, [(i, _debug) for i in cmd_lines.train])
+            with Pool(initializer=worker_init, initargs=("ERROR", )) as pool:
+                pool.starmap(train_model, [(i, ) for i in cmd_lines.train])
         sys.exit(0)
     elif cmd_lines.build and len(cmd_lines.build) > 0:
         members = len(cmd_lines.build)
         if members == 1:
-            build_model(cmd_lines.build[0], _debug)
+            build_model(cmd_lines.build[0])
         else:
-            with Pool(members if members <= 6 else 6) as pool:
-                pool.starmap(build_model, [(i, _debug) for i in cmd_lines.build])
+            with Pool(initializer=worker_init, initargs=("ERROR", )) as pool:
+                pool.starmap(build_model, [(i, ) for i in cmd_lines.build])
         sys.exit(0)
     else:
         try:
