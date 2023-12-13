@@ -211,7 +211,7 @@ class VideoObject(object):
         """
         从文件中加载所有帧到内存
         """
-        logger.info(f"加载视频帧到内存: {self.path}")
+        logger.info(f"加载视频帧到内存: {os.path.basename(self.path)}")
 
         def load_stream(frames: type[VideoFrame]):
             pbar = toolbox.show_progress(self.frame_count, 180, "Loader")

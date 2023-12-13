@@ -1,3 +1,4 @@
+import os
 import time
 import typing
 import numpy as np
@@ -233,11 +234,11 @@ class VideoCutter(object):
         if isinstance(video, str):
             video = VideoObject(video)
 
-        logger.info(f"开始压缩视频: {video.path}")
+        logger.info(f"开始压缩视频: {os.path.basename(video.path)}")
         range_list = self._convert_video_into_range_list(
             video, block, window_size, window_coefficient
         )
-        logger.info(f"视频压缩完成: {video}")
+        logger.info(f"视频压缩完成: {os.path.basename(video.path)}")
         logger.info(f"视频压缩耗时: {(time.time() - start_time):.2f}秒")
 
         return VideoCutResult(video, range_list, cut_kwargs=kwargs)

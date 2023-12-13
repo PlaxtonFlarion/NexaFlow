@@ -34,10 +34,10 @@ class Alynex(object):
     window_coefficient: int = 2
 
     def __init__(self):
-        self.__report: Report = Report()
-        self.__record: Record = Record()
-        self.__player: Player = Player()
-        self.__ffmpeg: Switch = Switch()
+        self.__report: Optional[Report] = None
+        self.__record: Optional[Record] = Record()
+        self.__player: Optional[Player] = Player()
+        self.__ffmpeg: Optional[Switch] = Switch()
         self.__framix: Alynex._Framix = Alynex._Framix()
         self.__filmer: Alynex._Filmer = Alynex._Filmer()
 
@@ -68,6 +68,7 @@ class Alynex(object):
 
     @property
     def report(self) -> "Report":
+        assert self.__report, f"{self.activate_report.__name__} first ..."
         return self.__report
 
     @property
@@ -105,10 +106,12 @@ class Alynex(object):
                 os.path.basename(root), root,
                 [os.path.join(root, f) for f in sorted(file)]
             )
-            for root, _, file in os.walk(
-                os.path.join(Constants.WORK, "data", folder)
-            ) if file
+            for root, _, file in os.walk(folder) if file
         ]
+
+    def activate_report(self, total_path: str = None, write_log: bool = True):
+        if not self.__report:
+            self.__report = Report(total_path, write_log)
 
     class _Filmer(object):
 
@@ -355,6 +358,9 @@ class Alynex(object):
                 target_size=Alynex.target_size
             )
             result = {
+                "total_path": self.report.total_path,
+                "title": self.report.title,
+                "query_path": self.report.query_path,
                 "query": self.report.query,
                 "stage": {
                     "start": start_frame.frame_id,
@@ -365,6 +371,7 @@ class Alynex(object):
                 "extra": self.report.extra_path,
                 "proto": original_inform
             }
+            logger.debug(f"Restore: {result}")
             self.report.load(result)
             return before, after, final
 

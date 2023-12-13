@@ -13,6 +13,7 @@ def multi_audio_task():
     Constants.initial_logger()
     manage = Manage()
     alynex = Alynex()
+    alynex.activate_report()
 
     device = manage.operate_device("")
     for query, audio in alynex.player.load_all_audio():
@@ -34,7 +35,7 @@ def multi_audio_task():
             device.ask_force_filter(application)
             device.ask_start_app(activity)
             alynex.framix.crop_hook(0, 0.2, 1, 0.8)
-            alynex.analyzer(shift=True)
+            alynex(focus=True)
         alynex.report.create_report()
     alynex.report.create_total_report()
     print(f"Total Time Cost: {(time.time() - start_time):.2f} 秒")

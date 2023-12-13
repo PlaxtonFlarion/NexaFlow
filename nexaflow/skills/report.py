@@ -168,7 +168,7 @@ class Report(object):
             report_html = os.path.join(self.query_path, f"{self.title}.html")
             with open(file=report_html, mode="w", encoding="utf-8") as f:
                 f.write(html)
-                logger.info(f"生成聚合报告: {report_html}")
+                logger.info(f"生成聚合报告: {os.path.basename(report_html)}")
 
             cost_list = [cost['stage']['cost'] for cost in images_list]
             href_path = os.path.join(
@@ -327,7 +327,7 @@ class Report(object):
                 report_html = os.path.join(query_path, f"{title}.html")
                 with open(file=report_html, mode="w", encoding="utf-8") as f:
                     f.write(html)
-                    logger.info(f"生成聚合报告: {report_html}")
+                    logger.info(f"生成聚合报告: {os.path.basename(report_html)}")
 
                 cost_list = [cost['stage']['cost'] for cost in images_list]
                 href_path = os.path.join(
@@ -523,7 +523,7 @@ class Report(object):
 
         with open(report_path, "w", encoding=constants.CHARSET) as fh:
             fh.write(template_content)
-        logger.info(f"生成单次报告: {report_path}")
+        logger.info(f"生成单次报告: {os.path.basename(report_path)}")
 
         return report_path
 

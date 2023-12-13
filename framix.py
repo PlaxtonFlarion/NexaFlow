@@ -588,26 +588,44 @@ async def analyzer(reporter: "Report", vision_path: str, **kwargs):
         return before, after, final
 
     async def frame_forge(frame):
-        async with asyncio.Semaphore(256):
-            try:
-                short_timestamp = format(round(frame.timestamp, 5), ".5f")
-                pic_name = f"{frame.frame_id}_{short_timestamp}.png"
-                pic_path = os.path.join(reporter.frame_path, pic_name)
-                _, codec = cv2.imencode(".png", frame.data)
-                async with aiofiles.open(pic_path, "wb") as f:
-                    await f.write(codec.tobytes())
-            except Exception as e:
-                return e
+        try:
+            short_timestamp = format(round(frame.timestamp, 5), ".5f")
+            pic_name = f"{frame.frame_id}_{short_timestamp}.png"
+            pic_path = os.path.join(reporter.frame_path, pic_name)
+            _, codec = cv2.imencode(".png", frame.data)
+            async with aiofiles.open(pic_path, "wb") as f:
+                await f.write(codec.tobytes())
+        except Exception as e:
+            return e
 
     async def analytics():
         classify, frames = await frame_flow()
-        flick_result, *forge_result = await asyncio.gather(
-            frame_flick(classify), *(frame_forge(frame) for frame in frames),
-            return_exceptions=True
-        )
+
+        if system_env := sys.platform.strip().lower() == "win32":
+            logger.debug(f"运行环境: {system_env}")
+            flick_result, *forge_result = await asyncio.gather(
+                frame_flick(classify), *(frame_forge(frame) for frame in frames),
+                return_exceptions=True
+            )
+        else:
+            logger.debug(f"运行环境: {system_env}")
+            tasks = [
+                [frame_forge(frame) for frame in chunk]
+                for chunk in
+                [frames[i:i + 100] for i in range(0, len(frames), 100)]
+            ]
+            flick_task = asyncio.create_task(frame_flick(classify))
+            forge_list = []
+            for task in tasks:
+                task_result = await asyncio.gather(*task, return_exceptions=True)
+                forge_list.extend(task_result)
+            forge_result = tuple(forge_list)
+            flick_result = await flick_task
+
         for result in forge_result:
             if isinstance(result, Exception):
                 logger.error(f"Error: {result}")
+
         return flick_result
 
     tag, screen_record = await validate()
