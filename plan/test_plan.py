@@ -36,7 +36,7 @@ class TestPlan(object):
             self.__device.start_app(self.activity)
 
             self.__alynex.framix.crop_hook(0, 0.2, 1, 0.8)
-            self.__alynex()
+            self.__alynex.analyzer()
         self.__alynex.report.create_report()
 
     def test_02(self):
@@ -45,7 +45,7 @@ class TestPlan(object):
         for i in range(1):
             self.__alynex.report.query = f"{i + 4}_{query}"
             self.__alynex.framix.crop_hook(0, 0.1, 1, 0.9)
-            self.__alynex()
+            self.__alynex.analyzer()
         self.__alynex.report.create_report()
 
     def __enter__(self):

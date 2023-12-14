@@ -61,7 +61,7 @@ class Terminal(object):
         transports = subprocess.run(
             cmd,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            text=True, encoding="utf-8"
+            text=True
         )
 
         if transports.returncode != 0:

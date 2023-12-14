@@ -32,6 +32,9 @@ window_size = 1
 window_coefficient = 2
 
 console: Console = Console()
+operation_system = sys.platform.strip().lower()
+work_platform = os.path.basename(os.path.abspath(sys.argv[0])).lower()
+exec_platform = ["framix.exe", "framix.bin", "framix"]
 
 
 def help_document():
@@ -161,18 +164,23 @@ def compatible():
     if _scrcpy:
         os.environ["PATH"] = os.path.dirname(_scrcpy) + os.path.pathsep + os.environ.get("PATH", "")
 
+    logger.debug(f"PATH: {_adb}")
+    logger.debug(f"PATH: {_ffmpeg}")
+    logger.debug(f"PATH: {_scrcpy}")
+    for env in os.environ["PATH"].split(os.pathsep):
+        logger.debug(env)
+
     return _adb, _ffmpeg, _scrcpy
 
 
 def initial_env():
-    basename = os.path.basename(os.path.abspath(sys.argv[0])).lower()
-    if basename == "framix.exe":
+    if work_platform == "framix.exe":
         new_total_path = os.path.join(
             os.path.dirname(
                 os.path.dirname(os.path.abspath(sys.argv[0]))
             ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
         )
-    elif basename == "framix.bin":
+    elif work_platform == "framix.bin":
         new_total_path = os.path.join(
             os.path.dirname(
                 os.path.dirname(
@@ -180,7 +188,7 @@ def initial_env():
                 )
             ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
         )
-    elif basename == "framix":
+    elif work_platform == "framix":
         new_total_path = os.path.join(
             os.path.dirname(
                 os.path.dirname(
@@ -255,7 +263,7 @@ async def check_device():
             await asyncio.sleep(3)
 
 
-async def analysis(alone: bool):
+async def analysis(alone: bool, *args):
 
     cellphone = None
     head_event = asyncio.Event()
@@ -356,7 +364,9 @@ async def analysis(alone: bool):
             for _ in range(10):
                 if done_event.is_set():
                     await analyzer(
-                        reporter, temp_video, boost=_boost, color=_color, omits=_omits, model_path=_model_path, proto_path=_proto_path
+                        reporter, cl, temp_video,
+                        boost=boost, color=color, omits=omits,
+                        proto_path=proto_path, ffmpeg_exe=ffmpeg_exe
                     )
                     return
                 elif fail_event.is_set():
@@ -372,10 +382,19 @@ async def analysis(alone: bool):
         reporter = Report(initial_total_path)
         reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
 
+    boost, color, omits, model_path, total_path, major_path, proto_path, ffmpeg_exe = args
+
+    cl = KerasClassifier(target_size=target_size)
+    cl.load_model(model_path)
+
+    timer_mode = 5
     while True:
         try:
             console.print(f"[bold #00FFAF]Connect:[/bold #00FFAF] {cellphone}")
-            if action := Prompt.ask("[bold #5FD7FF]<<<按 Enter 开始>>>", console=console):
+            if action := Prompt.ask(
+                    prompt=f"[bold #5FD7FF]<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/bold #D7FF5F] 秒>>>[/bold #5FD7FF]",
+                    console=console
+            ):
                 if "header" in action.strip():
                     if match := re.search(r"(?<=header\s).*", action):
                         if match.group().strip():
@@ -387,18 +406,22 @@ async def analysis(alone: bool):
                             logger.success("新标题设置成功 ...")
                             reporter.title = new_title
                         else:
-                            logger.warning("未设置新标题 ...")
-                            help_option()
+                            raise ValueError
                     else:
-                        logger.warning("未设置新标题 ...")
-                        help_option()
+                        raise ValueError
                     continue
                 elif action.strip() == "serial" and len(action.strip()) == 6:
                     cellphone = await check_device()
                     continue
-                timer_mode = 5 if int(action) < 5 else int(action)
-            else:
-                timer_mode = 5
+                elif action.isdigit():
+                    value, lower_bound, upper_bound = int(action), 5, 300
+                    if value > 300 or value < 5:
+                        console.print(
+                            f"[bold #FFFF87]{lower_bound} <= [bold #FFD7AF]Time[/bold #FFD7AF] <= {upper_bound}[/bold #FFFF87]"
+                        )
+                    timer_mode = max(lower_bound, min(upper_bound, value))
+                else:
+                    raise ValueError
         except ValueError:
             help_option()
         else:
@@ -412,12 +435,11 @@ async def analysis(alone: bool):
             fail_event.clear()
 
 
-async def analyzer(reporter: "Report", vision_path: str, **kwargs):
+async def analyzer(reporter: "Report", cl: "KerasClassifier", vision_path: str, **kwargs):
     boost = kwargs.get("boost", True)
     color = kwargs.get("color", True)
     focus = kwargs.get("focus", True)
     omits = kwargs.get("omits", [])
-    model_path = kwargs["model_path"]
     proto_path = kwargs["proto_path"]
 
     async def validate():
@@ -507,8 +529,6 @@ async def analyzer(reporter: "Report", vision_path: str, **kwargs):
                 os.path.join(reporter.extra_path, draw)
             )
 
-        cl = KerasClassifier(target_size=target_size)
-        cl.load_model(model_path)
         classify = cl.classify(video=video, valid_range=stable, keep_data=True)
 
         important_frames = classify.get_important_frame_list()
@@ -601,14 +621,14 @@ async def analyzer(reporter: "Report", vision_path: str, **kwargs):
     async def analytics():
         classify, frames = await frame_flow()
 
-        if system_env := sys.platform.strip().lower() == "win32":
-            logger.debug(f"运行环境: {system_env}")
+        if operation_system == "win32":
+            logger.debug(f"运行环境: {operation_system}")
             flick_result, *forge_result = await asyncio.gather(
                 frame_flick(classify), *(frame_forge(frame) for frame in frames),
                 return_exceptions=True
             )
         else:
-            logger.debug(f"运行环境: {system_env}")
+            logger.debug(f"运行环境: {operation_system}")
             tasks = [
                 [frame_forge(frame) for frame in chunk]
                 for chunk in
@@ -693,10 +713,14 @@ def single_video_task(input_video, *args):
     reporter.query = f"{random.randint(10, 99)}"
     new_video_path = os.path.join(reporter.video_path, os.path.basename(input_video))
     shutil.copy(input_video, new_video_path)
+    cl = KerasClassifier(target_size=target_size)
+    cl.load_model(model_path)
     looper = asyncio.get_event_loop()
     looper.run_until_complete(
         analyzer(
-            reporter, new_video_path, boost=boost, color=color, omits=omits, model_path=model_path, proto_path=proto_path, ffmpeg_exe=ffmpeg_exe
+            reporter, cl, new_video_path,
+            boost=boost, color=color, omits=omits,
+            proto_path=proto_path, ffmpeg_exe=ffmpeg_exe
         )
     )
     looper.run_until_complete(
@@ -710,6 +734,8 @@ def multiple_folder_task(folder, *args):
     boost, color, omits, model_path, total_path, major_path, proto_path, ffmpeg_exe = args
     new_total_path = initial_env()
     reporter = Report(total_path=new_total_path)
+    cl = KerasClassifier(target_size=target_size)
+    cl.load_model(model_path)
     looper = asyncio.get_event_loop()
     for video in only_video(folder):
         reporter.title = video.title
@@ -719,7 +745,9 @@ def multiple_folder_task(folder, *args):
             new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
             looper.run_until_complete(
                 analyzer(
-                    reporter, new_video_path, boost=boost, color=color, omits=omits, model_path=model_path, proto_path=proto_path, ffmpeg_exe=ffmpeg_exe
+                    reporter, cl, new_video_path,
+                    boost=boost, color=color, omits=omits,
+                    proto_path=proto_path, ffmpeg_exe=ffmpeg_exe
                 )
             )
     looper.run_until_complete(
@@ -781,7 +809,7 @@ def build_model(src):
             new_model_path = os.path.join(real_path, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
             new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
             fc = FramixClassifier()
-            fc(real_path, new_model_path, new_model_name, target_size)
+            fc.build(real_path, new_model_path, new_model_name, target_size)
         else:
             logger.error("文件夹未正确分类 ...")
     else:
@@ -791,7 +819,7 @@ def build_model(src):
 async def main():
     if cmd_lines.flick or cmd_lines.alone:
         if scrcpy:
-            await analysis(cmd_lines.alone)
+            await analysis(cmd_lines.alone, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg)
         else:
             logger.warning("Install Scrcpy in Homebrew: brew install scrcpy ...")
             logger.warning("Install Scrcpy in MacPorts: sudo port install scrcpy ...")
@@ -811,7 +839,6 @@ if __name__ == '__main__':
         sys.exit(1)
 
     freeze_support()
-    work_platform, exec_platform = os.path.basename(os.path.abspath(sys.argv[0])).lower(), ["framix.exe", "framix.bin", "framix"]
     if work_platform in exec_platform:
         if work_platform == "framix.exe":
             job_path = os.path.dirname(os.path.abspath(sys.argv[0]))
@@ -849,11 +876,13 @@ if __name__ == '__main__':
                     )
                 )
 
-    _boost, _color = cmd_lines.boost, cmd_lines.color
     _debug = "DEBUG" if cmd_lines.debug else "INFO"
     worker_init(_debug)
+    _boost, _color = cmd_lines.boost, cmd_lines.color
     initial_total_path = initial_env()
     adb, ffmpeg, scrcpy = compatible()
+    cpu = os.cpu_count()
+    logger.debug(f"CPU核心数量: {cpu}")
 
     if cmd_lines.whole and len(cmd_lines.whole) > 0:
         members = len(cmd_lines.whole)
@@ -862,7 +891,8 @@ if __name__ == '__main__':
                 cmd_lines.whole[0], _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg
             )
         else:
-            with Pool(initializer=worker_init, initargs=("ERROR", )) as pool:
+            processes = members if members <= cpu else cpu
+            with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
                 results = pool.starmap(
                     multiple_folder_task,
                     [(i, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg) for i in cmd_lines.whole]
@@ -876,7 +906,8 @@ if __name__ == '__main__':
                 cmd_lines.input[0], _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg
             )
         else:
-            with Pool(initializer=worker_init, initargs=("ERROR", )) as pool:
+            processes = members if members <= cpu else cpu
+            with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
                 pool.starmap(
                     single_video_task,
                     [(i, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg) for i in cmd_lines.input]
@@ -887,7 +918,8 @@ if __name__ == '__main__':
         if members == 1:
             train_model(cmd_lines.train[0])
         else:
-            with Pool(initializer=worker_init, initargs=("ERROR", )) as pool:
+            processes = members if members <= cpu else cpu
+            with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
                 pool.starmap(train_model, [(i, ) for i in cmd_lines.train])
         sys.exit(0)
     elif cmd_lines.build and len(cmd_lines.build) > 0:
@@ -895,7 +927,8 @@ if __name__ == '__main__':
         if members == 1:
             build_model(cmd_lines.build[0])
         else:
-            with Pool(initializer=worker_init, initargs=("ERROR", )) as pool:
+            processes = members if members <= cpu else cpu
+            with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
                 pool.starmap(build_model, [(i, ) for i in cmd_lines.build])
         sys.exit(0)
     else:

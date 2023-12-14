@@ -63,9 +63,6 @@ class Alynex(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
 
-    def __call__(self, boost: bool = True, color: bool = True, focus: bool = True, **kwargs):
-        return self.analyzer(boost, color, focus, **kwargs)
-
     @property
     def report(self) -> "Report":
         assert self.__report, f"{self.activate_report.__name__} first ..."
@@ -156,6 +153,8 @@ class Alynex(object):
 
         def __init__(self):
             self.framix_list: List["BaseHook"] = []
+            self.__cl = KerasClassifier(target_size=Alynex.target_size)
+            self.__cl.load_model(MODELS)
 
         def crop_hook(
                 self,
@@ -178,7 +177,6 @@ class Alynex(object):
         def pixel_wizard(
                 self,
                 video: "VideoObject",
-                model: str,
                 extra_path: str
         ) -> "ClassifierResult":
 
@@ -225,10 +223,7 @@ class Alynex(object):
                 )
 
             # 开始图像分类
-            cl = KerasClassifier(target_size=Alynex.target_size)
-            cl.load_model(model)
-            classify = cl.classify(video=video, valid_range=stable, keep_data=True)
-
+            classify = self.__cl.classify(video=video, valid_range=stable, keep_data=True)
             return classify
 
     class _Review(object):
@@ -302,7 +297,7 @@ class Alynex(object):
 
         def frame_flow():
             video, task, hued = frame_flip()
-            classify = self.framix.pixel_wizard(video, MODELS, self.report.extra_path)
+            classify = self.framix.pixel_wizard(video, self.report.extra_path)
             important_frames: List["SingleClassifierResult"] = classify.get_important_frame_list()
 
             pbar = toolbox.show_progress(classify.get_length(), 50, "Faster")

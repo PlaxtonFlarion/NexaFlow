@@ -9,19 +9,38 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 class FramixClassifier(object):
 
     MODEL_DENSE = 6
+    __model: keras.Sequential | None = None
 
-    def __init__(self):
-        self.model = None
-        self.data_size = (100, 100)
-        self.batch_size = 4
-        self.epochs = 20
+    def __init__(
+            self,
+            target_size: tuple = None,
+            batch_size: int = None,
+            epochs: int = None
+    ):
+
+        self.target_size: tuple = target_size or (100, 100)
+        self.batch_size: int = batch_size or 4
+        self.epochs: int = epochs or 20
+
+    @property
+    def model(self):
+        assert self.__model, f"{self.load_model.__name__} first ..."
+        return self.__model
+
+    @model.setter
+    def model(self, value):
+        self.__model = value
+
+    @model.deleter
+    def model(self):
+        del self.__model
 
     def create_model(self) -> keras.Sequential:
 
         if keras.backend.image_data_format() == "channels_first":
-            input_shape = (1, *self.data_size)
+            input_shape = (1, *self.target_size)
         else:
-            input_shape = (*self.data_size, 1)
+            input_shape = (*self.target_size, 1)
 
         model = keras.Sequential()
 
@@ -75,7 +94,7 @@ class FramixClassifier(object):
 
         train_generator = datagen.flow_from_directory(
             data_path,
-            target_size=self.data_size,
+            target_size=self.target_size,
             batch_size=self.batch_size,
             color_mode="grayscale",
             class_mode="sparse",
@@ -84,7 +103,7 @@ class FramixClassifier(object):
 
         validation_generator = datagen.flow_from_directory(
             data_path,
-            target_size=self.data_size,
+            target_size=self.target_size,
             batch_size=self.batch_size,
             color_mode="grayscale",
             class_mode="sparse",
@@ -104,8 +123,17 @@ class FramixClassifier(object):
         self.model.summary()
         logger.info(f"模型保存完成 {model_path}")
 
-    def __call__(self, *args, **kwargs):
-        src, new_model_path, new_model_name, self.data_size = args
+    def load_model(self, model_path: str, overwrite: bool = None):
+        assert os.path.isfile(model_path), f"model file {model_path} not existed"
+        if self.model and not overwrite:
+            raise RuntimeError(
+                f"model is not empty, you can set `overwrite` True to cover it"
+            )
+        self.model = self.create_model()
+        self.model.load_weights(model_path)
+
+    def build(self, *args):
+        src, new_model_path, new_model_name, self.target_size = args
         self.train(src)
         assert self.model, "model is empty"
         final_model = os.path.join(new_model_path, new_model_name)
