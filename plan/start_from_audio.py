@@ -1,7 +1,10 @@
+import os
 import time
 from nexaflow.constants import Constants
 from nexaflow.skills.device import Manage
 from nexaflow.skills.alynex import Alynex
+
+AUDIO_DIRS: str = os.path.join(Constants.WORK, "audio")
 
 
 def multi_audio_task():
@@ -16,7 +19,7 @@ def multi_audio_task():
     alynex.activate_report()
 
     device = manage.operate_device("")
-    for query, audio in alynex.player.load_all_audio():
+    for query, audio in alynex.player.load_all_audio(AUDIO_DIRS):
         alynex.report.title = query
         for _ in range(5):
             alynex.report.query = query

@@ -14,11 +14,11 @@ from rich.console import Console
 from rich.progress import Progress
 from multiprocessing import Pool, freeze_support
 from nexaflow import toolbox
-from nexaflow.video import VideoObject
+from nexaflow.video import VideoObject, VideoFrame
 from nexaflow.terminal import Terminal
 from nexaflow.skills.report import Report
 from nexaflow.cutter.cutter import VideoCutter
-from nexaflow.hook import OmitHook, FrameSaveHook
+from nexaflow.hook import OmitHook, FrameSaveHook, OmitShapeHook
 from nexaflow.classifier.keras_classifier import KerasClassifier
 from nexaflow.classifier.framix_classifier import FramixClassifier
 
@@ -56,7 +56,7 @@ def help_document():
         "[bold #FFDC00]--alone", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "", "[bold #39CCCC]录制视频"
     )
     table_major.add_row(
-        "[bold #FFDC00]--paint", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "", "[bold #39CCCC]绘制分割线条"
+        "[bold #FFDC00]--paint", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #D7FF00]支持", "[bold #39CCCC]绘制分割线条"
     )
     table_major.add_row(
         "[bold #FFDC00]--input", "[bold #7FDBFF]视频文件", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]分析单个视频"
@@ -92,7 +92,13 @@ def help_document():
         "[bold #FFDC00]--color", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]彩色模式"
     )
     table_minor.add_row(
-        "[bold #FFDC00]--omits", "[bold #7FDBFF]坐标", "[bold #FFAFAF]多次", "", "[bold #39CCCC]忽略区域"
+        "[bold #FFDC00]--shape", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #AFAFD7]自动", "[bold #39CCCC]图片尺寸"
+    )
+    table_minor.add_row(
+        "[bold #FFDC00]--scale", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #AFAFD7]自动", "[bold #39CCCC]缩放比例"
+    )
+    table_minor.add_row(
+        "[bold #FFDC00]--omits", "[bold #7FDBFF]坐标", "[bold #FFAFAF]多次", "[bold #AFAFD7]自动", "[bold #39CCCC]忽略区域"
     )
 
     nexaflow_logo = """[bold #D0D0D0]
@@ -125,6 +131,22 @@ def help_option():
 
 
 def parse_cmd():
+
+    def parse_shape(dim_str):
+        if dim_str:
+            shape = [int(i) for i in re.split(r'[\s,;]+', dim_str)]
+            return tuple(shape) if len(shape) == 2 else (shape[0], shape[0])
+        return None
+
+    def parse_scale(dim_str):
+        try:
+            return int(dim_str)
+        except ValueError:
+            try:
+                return float(dim_str)
+            except ValueError:
+                return None
+
     parser = ArgumentParser(description="Command Line Arguments Framix")
 
     parser.add_argument('--flick', action='store_true', help='录制分析视频帧')
@@ -138,6 +160,8 @@ def parse_cmd():
 
     parser.add_argument('--boost', action='store_true', help='快速模式')
     parser.add_argument('--color', action='store_true', help='彩色模式')
+    parser.add_argument('--shape', nargs='?', const=None, type=parse_shape, help='图片尺寸')
+    parser.add_argument('--scale', nargs='?', const=None, type=parse_scale, help='缩放比例')
     parser.add_argument('--omits', action='append', help='忽略区域')
 
     parser.add_argument('--debug', action='store_true', help='调试模式')
@@ -261,6 +285,14 @@ async def check_device():
         else:
             console.print(f"[bold yellow]设备未连接,等待设备连接 ...")
             await asyncio.sleep(3)
+
+
+async def ask_ffmpeg(ffmpeg_exe, fps, src, dst):
+    cmd = [
+        ffmpeg_exe,
+        "-i", src, "-vf", f"fps={fps}", "-c:v", "libx264", "-crf", "18", "-c:a", "copy", dst
+    ]
+    await Terminal.cmd_line(*cmd)
 
 
 async def analysis(alone: bool, *args):
@@ -470,11 +502,7 @@ async def analyzer(reporter: "Report", cl: "KerasClassifier", vision_path: str, 
             change_record = os.path.join(
                 os.path.dirname(vision_path), f"screen_fps60_{random.randint(100, 999)}.mp4"
             )
-            cmd = [
-                kwargs.get("ffmpeg_exe", "ffmpeg"), "-i", vision_path,
-                "-vf", "fps=60", "-c:v", "libx264", "-crf", "18", "-c:a", "copy", change_record
-            ]
-            await Terminal.cmd_line(*cmd)
+            await ask_ffmpeg(kwargs.get("ffmpeg_exe", "ffmpeg"), 60, vision_path, change_record)
             logger.info(f"视频转换完成: {os.path.basename(change_record)}")
             os.remove(vision_path)
             logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
@@ -658,10 +686,10 @@ async def analyzer(reporter: "Report", cl: "KerasClassifier", vision_path: str, 
     return start, end, cost
 
 
-async def painting():
+async def painting(shape, scale, color, omits):
     # import tempfile
     # from PIL import Image, ImageDraw, ImageFont
-
+    #
     # cellphone = await check_device()
     # image_folder = "/sdcard/Pictures/Shots"
     # image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_" + "Shot.png"
@@ -672,27 +700,74 @@ async def painting():
     #     image_save_path = os.path.join(temp_dir, image)
     #     await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "pull", f"{image_folder}/{image}", image_save_path)
     #
-    #     image = Image.open(image_save_path)
-    #     image = image.convert("RGB")
+    #     if color:
+    #         old_image = toolbox.imread(image_save_path)
+    #         new_image = VideoFrame(0, 0, old_image)
+    #     else:
+    #         old_image = toolbox.imread(image_save_path)
+    #         old_image = toolbox.turn_grey(old_image)
+    #         new_image = VideoFrame(0, 0, old_image)
     #
-    #     resized = image.resize((new_w := 350, new_h := 700))
+    #     if len(omits) > 0:
+    #         for omit in omits:
+    #             x, y, x_size, y_size = omit
+    #             omit_hook = OmitShapeHook((y_size, x_size), (y, x))
+    #             omit_hook.do(new_image)
+    #
+    #     cv2.imencode(".png", new_image.data)[1].tofile(image_save_path)
+    #
+    #     image_file = Image.open(image_save_path)
+    #     image_file = image_file.convert("RGB")
+    #
+    #     original_w, original_h = image_file.size
+    #     if shape:
+    #         shape_w, shape_h = shape
+    #         twist_w, twist_h = min(original_w, shape_w), min(original_h, shape_h)
+    #     else:
+    #         twist_w, twist_h = original_w, original_h
+    #
+    #     min_scale, max_scale = 0.3, 1.0
+    #     if scale:
+    #         image_scale = max_scale if scale > max_scale else (min_scale if scale < min_scale else scale)
+    #     else:
+    #         image_scale = min_scale if twist_w == original_w or twist_h == original_h else max_scale
+    #
+    #     new_w, new_h = int(twist_w * image_scale), int(twist_h * image_scale)
+    #     logger.debug(f"原始尺寸: {(original_w, original_h)} 调整尺寸: {(new_w, new_h)} 缩放比例: {int(image_scale * 100)}%")
+    #
+    #     if new_w == new_h:
+    #         x_line_num, y_line_num = 10, 10
+    #     elif new_w > new_h:
+    #         x_line_num, y_line_num = 10, 20
+    #     else:
+    #         x_line_num, y_line_num = 20, 10
+    #
+    #     resized = image_file.resize((new_w, new_h))
     #
     #     draw = ImageDraw.Draw(resized)
     #     font = ImageFont.load_default()
     #
-    #     for i in range(1, 5):
-    #         x_line = int(new_w * (i * 0.2))
-    #         draw.line([(x_line, 0), (x_line, new_h)], fill=(0, 255, 255), width=1)
+    #     if y_line_num > 0:
+    #         for i in range(1, y_line_num):
+    #             x_line = int(new_w * (i * (1 / y_line_num)))
+    #             text = f"{i * int(100 / y_line_num):02}"
+    #             bbox = draw.textbbox((0, 0), text, font)
+    #             text_width = bbox[2] - bbox[0]
+    #             text_height = bbox[3] - bbox[1]
+    #             y_text_start = 3
+    #             draw.line([(x_line, text_width + 5 + y_text_start), (x_line, new_h)], fill=(0, 255, 255), width=1)
+    #             draw.text((x_line - text_height // 2, y_text_start), text, fill=(0, 255, 255), font=font)
     #
-    #     for i in range(1, 20):
-    #         y_line = int(new_h * (i * 0.05))
-    #         text = f"{i * 5:02}%"
-    #         bbox = draw.textbbox((0, 0), text, font)
-    #         text_width = bbox[2] - bbox[0]
-    #         text_height = bbox[3] - bbox[1]
-    #         x_text_start = 3
-    #         draw.line([(text_width + 5 + x_text_start, y_line), (new_w, y_line)], fill=(255, 182, 193), width=1)
-    #         draw.text((x_text_start, y_line - text_height // 2), text, fill=(255, 182, 193), font=font)
+    #     if x_line_num > 0:
+    #         for i in range(1, x_line_num):
+    #             y_line = int(new_h * (i * (1 / x_line_num)))
+    #             text = f"{i * int(100 / x_line_num):02}"
+    #             bbox = draw.textbbox((0, 0), text, font)
+    #             text_width = bbox[2] - bbox[0]
+    #             text_height = bbox[3] - bbox[1]
+    #             x_text_start = 3
+    #             draw.line([(text_width + 5 + x_text_start, y_line), (new_w, y_line)], fill=(255, 182, 193), width=1)
+    #             draw.text((x_text_start, y_line - text_height // 2), text, fill=(255, 182, 193), font=font)
     #
     #     resized.show()
     # await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "rm", f"{image_folder}/{image}")
@@ -758,18 +833,19 @@ def multiple_folder_task(folder, *args):
     return reporter.total_path
 
 
-def train_model(video_file):
+def train_model(video_file, ffmpeg_exe):
     new_total_path = initial_env()
     reporter = Report(total_path=new_total_path, write_log=False)
     reporter.title = f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
     if not os.path.exists(reporter.query_path):
         os.makedirs(reporter.query_path)
 
-    video = VideoObject(
-        video_file,
-        fps=60
-    )
+    video_temp_file = os.path.join(reporter.query_path, f"tmp_fps60_{random.randint(100, 999)}.mp4")
+    asyncio.run(ask_ffmpeg(ffmpeg_exe, 60, video_file, video_temp_file))
+
+    video = VideoObject(video_file)
     video.load_frames()
+
     cutter = VideoCutter(
         step=step,
         compress_rate=compress_rate,
@@ -791,6 +867,8 @@ def train_model(video_file):
         to_dir=reporter.query_path,
         meaningful_name=True
     )
+
+    os.remove(video_temp_file)
 
 
 def build_model(src):
@@ -825,7 +903,7 @@ async def main():
             logger.warning("Install Scrcpy in MacPorts: sudo port install scrcpy ...")
             logger.warning("https://github.com/Genymobile/scrcpy/blob/master/doc/macos.md")
     elif cmd_lines.paint:
-        await painting()
+        await painting(_shape, _scale, _color, _omits)
     elif cmd_lines.merge and len(cmd_lines.merge) > 0:
         tasks = [Report.ask_create_total_report(merge, _total_path, _major_path) for merge in cmd_lines.merge]
         await asyncio.gather(*tasks)
@@ -867,7 +945,7 @@ if __name__ == '__main__':
     _omits = []
     if cmd_lines.omits and len(cmd_lines.omits) > 0:
         for hook in cmd_lines.omits:
-            if len(match_list := re.findall(r"-?\d*\.?\d+", hook)) > 0:
+            if len(match_list := re.findall(r"-?\d*\.?\d+", hook)) == 4:
                 _omits.append(
                     tuple(
                         [
@@ -879,6 +957,7 @@ if __name__ == '__main__':
     _debug = "DEBUG" if cmd_lines.debug else "INFO"
     worker_init(_debug)
     _boost, _color = cmd_lines.boost, cmd_lines.color
+    _shape, _scale = cmd_lines.shape, cmd_lines.scale
     initial_total_path = initial_env()
     adb, ffmpeg, scrcpy = compatible()
     cpu = os.cpu_count()
@@ -916,11 +995,11 @@ if __name__ == '__main__':
     elif cmd_lines.train and len(cmd_lines.train) > 0:
         members = len(cmd_lines.train)
         if members == 1:
-            train_model(cmd_lines.train[0])
+            train_model(cmd_lines.train[0], ffmpeg)
         else:
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
-                pool.starmap(train_model, [(i, ) for i in cmd_lines.train])
+                pool.starmap(train_model, [(i, ffmpeg) for i in cmd_lines.train])
         sys.exit(0)
     elif cmd_lines.build and len(cmd_lines.build) > 0:
         members = len(cmd_lines.build)

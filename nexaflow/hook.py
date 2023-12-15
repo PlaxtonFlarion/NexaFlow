@@ -148,6 +148,23 @@ class OmitHook(_AreaBaseHook):
         return frame
 
 
+class OmitShapeHook(_AreaBaseHook):
+
+    def do(self, frame: VideoFrame, *_, **__) -> typing.Optional[VideoFrame]:
+        super().do(frame, *_, **__)
+
+        if len(frame.data.shape) == 3:
+            frame_shape = frame.data.shape[0], frame.data.shape[1]
+        else:
+            frame_shape = frame.data.shape
+
+        height_range, width_range = self.convert_size_and_offset(*frame_shape)
+        frame.data[
+            height_range[0]: height_range[1], width_range[0]: width_range[1]
+        ] = 0
+        return frame
+
+
 class FrameSaveHook(BaseHook):
 
     def __init__(self, target_dir: str, *_, **__):
@@ -176,5 +193,3 @@ class FrameSaveHook(BaseHook):
 
 if __name__ == '__main__':
     pass
-
-

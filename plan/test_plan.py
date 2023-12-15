@@ -1,5 +1,9 @@
+import os
+from nexaflow.constants import Constants
 from nexaflow.skills.alynex import Alynex
 from nexaflow.skills.device import Device
+
+AUDIO_DIRS: str = os.path.join(Constants.WORK, "audio")
 
 
 class TestPlan(object):
@@ -16,10 +20,10 @@ class TestPlan(object):
 
     def test_01(self):
         """讲个笑话"""
-        query, audio = self.__alynex.player.load_audio("讲个笑话")
-        self.__alynex.report.title(query)
+        query, audio = self.__alynex.player.load_audio(AUDIO_DIRS, "讲个笑话")
+        self.__alynex.report.title = query
         for _ in range(self.looper):
-            self.__alynex.report.query(query)
+            self.__alynex.report.query = query
             self.__device.ask_swipe_unlock()
             self.__alynex.record.start_record(
                 self.__alynex.report.video_path,
