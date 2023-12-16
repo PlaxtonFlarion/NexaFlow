@@ -11,7 +11,7 @@ MERGE_TEMPLATE = os.path.join(Constants.NEXA, "template")
 
 def multi_video_task(folder: str) -> str:
     alynex = Alynex()
-    alynex.activate_report()
+    alynex.activate()
     for video in alynex.only_video(os.path.join(Constants.WORK, "data", folder)):
         alynex.report.title = video.title
         for path in video.sheet:

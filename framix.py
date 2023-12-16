@@ -23,6 +23,7 @@ from nexaflow.classifier.keras_classifier import KerasClassifier
 from nexaflow.classifier.framix_classifier import FramixClassifier
 
 target_size = (350, 700)
+fps = 60
 step = 1
 block = 6
 threshold = 0.97
@@ -287,7 +288,7 @@ async def check_device():
             await asyncio.sleep(3)
 
 
-async def ask_ffmpeg(ffmpeg_exe, fps, src, dst):
+async def ask_ffmpeg(ffmpeg_exe, src, dst):
     cmd = [
         ffmpeg_exe,
         "-i", src, "-vf", f"fps={fps}", "-c:v", "libx264", "-crf", "18", "-c:a", "copy", dst
@@ -502,7 +503,7 @@ async def analyzer(reporter: "Report", cl: "KerasClassifier", vision_path: str, 
             change_record = os.path.join(
                 os.path.dirname(vision_path), f"screen_fps60_{random.randint(100, 999)}.mp4"
             )
-            await ask_ffmpeg(kwargs.get("ffmpeg_exe", "ffmpeg"), 60, vision_path, change_record)
+            await ask_ffmpeg(kwargs.get("ffmpeg_exe", "ffmpeg"), vision_path, change_record)
             logger.info(f"视频转换完成: {os.path.basename(change_record)}")
             os.remove(vision_path)
             logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
@@ -841,7 +842,7 @@ def train_model(video_file, ffmpeg_exe):
         os.makedirs(reporter.query_path)
 
     video_temp_file = os.path.join(reporter.query_path, f"tmp_fps60_{random.randint(100, 999)}.mp4")
-    asyncio.run(ask_ffmpeg(ffmpeg_exe, 60, video_file, video_temp_file))
+    asyncio.run(ask_ffmpeg(ffmpeg_exe, video_file, video_temp_file))
 
     video = VideoObject(video_file)
     video.load_frames()

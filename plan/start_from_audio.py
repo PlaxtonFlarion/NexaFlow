@@ -16,7 +16,7 @@ def multi_audio_task():
     Constants.initial_logger()
     manage = Manage()
     alynex = Alynex()
-    alynex.activate_report()
+    alynex.activate()
 
     device = manage.operate_device("")
     for query, audio in alynex.player.load_all_audio(AUDIO_DIRS):

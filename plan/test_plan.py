@@ -16,7 +16,7 @@ class TestPlan(object):
         self.looper: int = looper
         self.__device: "Device" = device
         self.__alynex: "Alynex" = Alynex()
-        self.__alynex.activate_report()
+        self.__alynex.activate()
 
     def test_01(self):
         """讲个笑话"""

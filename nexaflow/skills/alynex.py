@@ -25,6 +25,7 @@ MODELS: str = os.path.join(Constants.WORK, "model", "model.h5")
 class Alynex(object):
 
     target_size: tuple = (350, 700)
+    fps: int = 60
     step: int = 1
     block: int = 6
     threshold: Union[int | float] = 0.97
@@ -38,13 +39,14 @@ class Alynex(object):
         self.__record: Optional[Record] = Record()
         self.__player: Optional[Player] = Player()
         self.__ffmpeg: Optional[Switch] = Switch()
-        self.__framix: Alynex._Framix = Alynex._Framix()
-        self.__filmer: Alynex._Filmer = Alynex._Filmer()
+        self.__framix: Optional[Alynex._Framix] = Alynex._Framix()
+        self.__filmer: Optional[Alynex._Filmer] = Alynex._Filmer()
 
     def __str__(self):
         return (f"""
         <Alynex for NexaFlow
         Target Size: {self.target_size}
+        Fps: {self.fps}
         Step: {self.step}
         Block: {self.block}
         Threshold: {self.threshold}
@@ -65,7 +67,7 @@ class Alynex(object):
 
     @property
     def report(self) -> "Report":
-        assert self.__report, f"{self.activate_report.__name__} first ..."
+        assert self.__report, f"{self.activate.__name__} first ..."
         return self.__report
 
     @property
@@ -106,7 +108,7 @@ class Alynex(object):
             for root, _, file in os.walk(folder) if file
         ]
 
-    def activate_report(self, total_path: str = None, write_log: bool = True):
+    def activate(self, total_path: str = None, write_log: bool = True):
         if not self.__report:
             self.__report = Report(total_path, write_log)
 
@@ -115,7 +117,7 @@ class Alynex(object):
         @staticmethod
         def train_model() -> None:
             # 将视频切分成帧
-            video = VideoObject(VIDEOS, fps=60)
+            video = VideoObject(VIDEOS, fps=Alynex.fps)
             # 新建帧，计算视频总共有多少帧，每帧多少ms
             video.load_frames()
             # 压缩视频
