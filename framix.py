@@ -238,7 +238,7 @@ class Deploy(object):
         table.add_row(
             f"{col_1_color}忽略区域", f"{col_2_color}{['!' for _ in range(len(self.omits))]}",
             f"[bold][{col_3_color}0 , 1[/bold #00af5f] ]",
-            f"[bold]共 [bold red]{len(self._initial['omits'])}[/bold red] 个区域的图像不参与计算",
+            f"[bold]共 [bold red]{len(self.omits)}[/bold red] 个区域的图像不参与计算",
         )
 
         # framix_logo = f"""
