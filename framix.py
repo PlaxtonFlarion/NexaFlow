@@ -23,17 +23,7 @@ from nexaflow.hook import OmitHook, FrameSaveHook, OmitShapeHook
 from nexaflow.classifier.keras_classifier import KerasClassifier
 from nexaflow.classifier.framix_classifier import FramixClassifier
 
-# target_size = (350, 700)
-# fps = 60
-# compress_rate = 0.5
-# threshold = 0.97
-# offset = 3
-# window_size = 1
-# step = 1
-# block = 6
-# window_coefficient = 2
-
-console: Console = Console()
+console = Console()
 operation_system = sys.platform.strip().lower()
 work_platform = os.path.basename(os.path.abspath(sys.argv[0])).lower()
 exec_platform = ["framix.exe", "framix.bin", "framix"]
@@ -138,7 +128,11 @@ class Deploy(object):
                 self._initial["window_coefficient"] = max(2, data.get("window_coefficient", 2))
                 hook_list = data.get("omits", [])
                 for hook_dict in hook_list:
-                    if sum([value for value in hook_dict.values() if isinstance(value, int | float)]) > 0:
+                    if len(
+                            data_list := [
+                                value for value in hook_dict.values() if isinstance(value, int | float)
+                            ]
+                    ) == 4 and sum(data_list) > 0:
                         self._initial["omits"].append(
                             (hook_dict["x"], hook_dict["y"], hook_dict["x_size"], hook_dict["y_size"])
                         )
@@ -191,10 +185,10 @@ class Deploy(object):
             header_style=f"bold #af5fd7", title_justify="center",
             show_header=True
         )
-        table.add_column("配置", no_wrap=True, width=8)
-        table.add_column("参数", no_wrap=True, max_width=28)
-        table.add_column("范围", no_wrap=True, width=8)
-        table.add_column("效果", no_wrap=True, max_width=28)
+        table.add_column("配置", no_wrap=True)
+        table.add_column("参数", no_wrap=True, max_width=12)
+        table.add_column("范围", no_wrap=True)
+        table.add_column("效果", no_wrap=True)
 
         table.add_row(
             f"{col_1_color}图像尺寸", f"{col_2_color}{self.target_size}",
@@ -242,7 +236,7 @@ class Deploy(object):
             f"[bold]加权计算 [bold red]{self.window_coefficient}[/bold red]",
         )
         table.add_row(
-            f"{col_1_color}忽略区域", f"{col_2_color}{self._initial['omits']}",
+            f"{col_1_color}忽略区域", f"{col_2_color}{['!' for _ in range(len(self.omits))]}",
             f"[bold][{col_3_color}0 , 1[/bold #00af5f] ]",
             f"[bold]共 [bold red]{len(self._initial['omits'])}[/bold red] 个区域的图像不参与计算",
         )
@@ -259,213 +253,219 @@ class Deploy(object):
         console.print(table)
 
 
-def help_document():
-    table_major = Table(
-        title="[bold #FF851B]NexaFlow Framix Main Command Line",
-        header_style="bold #FF851B", title_justify="center",
-        show_header=True, show_lines=True
-    )
-    table_major.add_column("主要命令", justify="center", width=12)
-    table_major.add_column("参数类型", justify="center", width=12)
-    table_major.add_column("传递次数", justify="center", width=8)
-    table_major.add_column("附加命令", justify="center", width=8)
-    table_major.add_column("功能说明", justify="center", width=22)
+class Help(object):
 
-    table_major.add_row(
-        "[bold #FFDC00]--flick", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #D7FF00]支持", "[bold #39CCCC]录制分析视频帧"
-    )
-    table_major.add_row(
-        "[bold #FFDC00]--alone", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "", "[bold #39CCCC]录制视频"
-    )
-    table_major.add_row(
-        "[bold #FFDC00]--paint", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #D7FF00]支持", "[bold #39CCCC]绘制分割线条"
-    )
-    table_major.add_row(
-        "[bold #FFDC00]--input", "[bold #7FDBFF]视频文件", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]分析单个视频"
-    )
-    table_major.add_row(
-        "[bold #FFDC00]--whole", "[bold #7FDBFF]视频集合", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]分析全部视频"
-    )
-    table_major.add_row(
-        "[bold #FFDC00]--merge", "[bold #7FDBFF]报告集合", "[bold #FFAFAF]多次", "", "[bold #39CCCC]聚合报告"
-    )
-    table_major.add_row(
-        "[bold #FFDC00]--train", "[bold #7FDBFF]视频文件", "[bold #FFAFAF]多次", "", "[bold #39CCCC]归类图片文件"
-    )
-    table_major.add_row(
-        "[bold #FFDC00]--build", "[bold #7FDBFF]图片集合", "[bold #FFAFAF]多次", "", "[bold #39CCCC]训练模型文件"
-    )
+    @staticmethod
+    def help_document():
+        table_major = Table(
+            title="[bold #FF851B]NexaFlow Framix Main Command Line",
+            header_style="bold #FF851B", title_justify="center",
+            show_header=True, show_lines=True
+        )
+        table_major.add_column("主要命令", justify="center", width=12)
+        table_major.add_column("参数类型", justify="center", width=12)
+        table_major.add_column("传递次数", justify="center", width=8)
+        table_major.add_column("附加命令", justify="center", width=8)
+        table_major.add_column("功能说明", justify="center", width=22)
 
-    table_minor = Table(
-        title="[bold #FF851B]NexaFlow Framix Extra Command Line",
-        header_style="bold #FF851B", title_justify="center",
-        show_header=True, show_lines=True
-    )
-    table_minor.add_column("附加命令", justify="center", width=12)
-    table_minor.add_column("参数类型", justify="center", width=12)
-    table_minor.add_column("传递次数", justify="center", width=8)
-    table_minor.add_column("默认状态", justify="center", width=8)
-    table_minor.add_column("功能说明", justify="center", width=22)
+        table_major.add_row(
+            "[bold #FFDC00]--flick", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #D7FF00]支持", "[bold #39CCCC]录制分析视频帧"
+        )
+        table_major.add_row(
+            "[bold #FFDC00]--alone", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "", "[bold #39CCCC]录制视频"
+        )
+        table_major.add_row(
+            "[bold #FFDC00]--paint", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #D7FF00]支持", "[bold #39CCCC]绘制分割线条"
+        )
+        table_major.add_row(
+            "[bold #FFDC00]--input", "[bold #7FDBFF]视频文件", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]分析单个视频"
+        )
+        table_major.add_row(
+            "[bold #FFDC00]--whole", "[bold #7FDBFF]视频集合", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]分析全部视频"
+        )
+        table_major.add_row(
+            "[bold #FFDC00]--merge", "[bold #7FDBFF]报告集合", "[bold #FFAFAF]多次", "", "[bold #39CCCC]聚合报告"
+        )
+        table_major.add_row(
+            "[bold #FFDC00]--train", "[bold #7FDBFF]视频文件", "[bold #FFAFAF]多次", "", "[bold #39CCCC]归类图片文件"
+        )
+        table_major.add_row(
+            "[bold #FFDC00]--build", "[bold #7FDBFF]图片集合", "[bold #FFAFAF]多次", "", "[bold #39CCCC]训练模型文件"
+        )
 
-    table_minor.add_row(
-        "[bold #FFDC00]--boost", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]快速模式"
-    )
-    table_minor.add_row(
-        "[bold #FFDC00]--color", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]彩色模式"
-    )
-    table_minor.add_row(
-        "[bold #FFDC00]--shape", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #AFAFD7]自动", "[bold #39CCCC]图片尺寸"
-    )
-    table_minor.add_row(
-        "[bold #FFDC00]--scale", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #AFAFD7]自动", "[bold #39CCCC]缩放比例"
-    )
-    table_minor.add_row(
-        "[bold #FFDC00]--omits", "[bold #7FDBFF]坐标", "[bold #FFAFAF]多次", "[bold #AFAFD7]自动", "[bold #39CCCC]忽略区域"
-    )
+        table_minor = Table(
+            title="[bold #FF851B]NexaFlow Framix Extra Command Line",
+            header_style="bold #FF851B", title_justify="center",
+            show_header=True, show_lines=True
+        )
+        table_minor.add_column("附加命令", justify="center", width=12)
+        table_minor.add_column("参数类型", justify="center", width=12)
+        table_minor.add_column("传递次数", justify="center", width=8)
+        table_minor.add_column("默认状态", justify="center", width=8)
+        table_minor.add_column("功能说明", justify="center", width=22)
 
-    nexaflow_logo = """[bold #D0D0D0]
-    ███╗   ██╗███████╗██╗  ██╗ █████╗   ███████╗██╗      ██████╗ ██╗    ██╗
-    ██╔██╗ ██║██╔════╝╚██╗██╔╝██╔══██╗  ██╔════╝██║     ██╔═══██╗██║    ██║
-    ██║╚██╗██║█████╗   ╚███╔╝ ███████║  █████╗  ██║     ██║   ██║██║ █╗ ██║
-    ██║ ╚████║██╔══╝   ██╔██╗ ██╔══██║  ██╔══╝  ██║     ██║   ██║██║███╗██║
-    ██║  ╚███║███████╗██╔╝ ██╗██║  ██║  ██║     ███████╗╚██████╔╝╚███╔███╔╝
-    ╚═╝   ╚══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝  ╚═╝     ╚══════╝ ╚═════╝  ╚══╝╚══╝
-    """
-    console.print(nexaflow_logo)
-    console.print(table_major)
-    console.print(table_minor)
-    with Progress() as progress:
-        task = progress.add_task("[bold #FFFFD7]Framix Terminal Command.", total=100)
-        while not progress.finished:
-            progress.update(task, advance=1)
-            time.sleep(0.1)
+        table_minor.add_row(
+            "[bold #FFDC00]--boost", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]快速模式"
+        )
+        table_minor.add_row(
+            "[bold #FFDC00]--color", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]彩色模式"
+        )
+        table_minor.add_row(
+            "[bold #FFDC00]--shape", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #AFAFD7]自动", "[bold #39CCCC]图片尺寸"
+        )
+        table_minor.add_row(
+            "[bold #FFDC00]--scale", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #AFAFD7]自动", "[bold #39CCCC]缩放比例"
+        )
+        table_minor.add_row(
+            "[bold #FFDC00]--omits", "[bold #7FDBFF]坐标", "[bold #FFAFAF]多次", "[bold #AFAFD7]自动", "[bold #39CCCC]忽略区域"
+        )
+
+        nexaflow_logo = """[bold #D0D0D0]
+        ███╗   ██╗███████╗██╗  ██╗ █████╗   ███████╗██╗      ██████╗ ██╗    ██╗
+        ██╔██╗ ██║██╔════╝╚██╗██╔╝██╔══██╗  ██╔════╝██║     ██╔═══██╗██║    ██║
+        ██║╚██╗██║█████╗   ╚███╔╝ ███████║  █████╗  ██║     ██║   ██║██║ █╗ ██║
+        ██║ ╚████║██╔══╝   ██╔██╗ ██╔══██║  ██╔══╝  ██║     ██║   ██║██║███╗██║
+        ██║  ╚███║███████╗██╔╝ ██╗██║  ██║  ██║     ███████╗╚██████╔╝╚███╔███╔╝
+        ╚═╝   ╚══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝  ╚═╝     ╚══════╝ ╚═════╝  ╚══╝╚══╝
+        """
+        console.print(nexaflow_logo)
+        console.print(table_major)
+        console.print(table_minor)
+        with Progress() as progress:
+            task = progress.add_task("[bold #FFFFD7]Framix Terminal Command.", total=100)
+            while not progress.finished:
+                progress.update(task, advance=1)
+                time.sleep(0.1)
+
+    @staticmethod
+    def help_option():
+        table = Table(show_header=True, header_style="bold #D7FF00", show_lines=True)
+        table.add_column("选项", justify="center", width=12)
+        table.add_column("参数", justify="center", width=12)
+        table.add_column("说明", justify="center", width=44)
+        table.add_row("[bold #FFAFAF]header", "[bold #AFD7FF]标题名", "[bold #DADADA]生成一个新标题文件夹")
+        table.add_row("[bold #FFAFAF]serial", "", "[bold #DADADA]重新选择已连接的设备")
+        table.add_row("[bold #FFAFAF]******", "", "[bold #DADADA]任意数字代表录制时长")
+        console.print(table)
 
 
-def help_option():
-    table = Table(show_header=True, header_style="bold #D7FF00", show_lines=True)
-    table.add_column("选项", justify="center", width=12)
-    table.add_column("参数", justify="center", width=12)
-    table.add_column("说明", justify="center", width=44)
-    table.add_row("[bold #FFAFAF]header", "[bold #AFD7FF]标题名", "[bold #DADADA]生成一个新标题文件夹")
-    table.add_row("[bold #FFAFAF]serial", "", "[bold #DADADA]重新选择已连接的设备")
-    table.add_row("[bold #FFAFAF]******", "", "[bold #DADADA]任意数字代表录制时长")
-    console.print(table)
+class Parser(object):
 
+    @staticmethod
+    def parse_cmd():
 
-def parse_cmd():
+        def parse_shape(dim_str):
+            if dim_str:
+                shape = [int(i) for i in re.split(r'[\s,;]+', dim_str)]
+                return tuple(shape) if len(shape) == 2 else (shape[0], shape[0])
+            return None
 
-    def parse_shape(dim_str):
-        if dim_str:
-            shape = [int(i) for i in re.split(r'[\s,;]+', dim_str)]
-            return tuple(shape) if len(shape) == 2 else (shape[0], shape[0])
-        return None
-
-    def parse_scale(dim_str):
-        try:
-            return int(dim_str)
-        except ValueError:
+        def parse_scale(dim_str):
             try:
-                return float(dim_str)
+                return int(dim_str)
             except ValueError:
-                return None
+                try:
+                    return float(dim_str)
+                except ValueError:
+                    return None
 
-    parser = ArgumentParser(description="Command Line Arguments Framix")
+        parser = ArgumentParser(description="Command Line Arguments Framix")
 
-    parser.add_argument('--flick', action='store_true', help='录制分析视频帧')
-    parser.add_argument('--alone', action='store_true', help='录制视频')
-    parser.add_argument('--paint', action='store_true', help='绘制分割线条')
-    parser.add_argument('--input', action='append', help='分析单个视频')
-    parser.add_argument('--whole', action='append', help='分析全部视频')
-    parser.add_argument('--merge', action='append', help='聚合报告')
-    parser.add_argument('--train', action='append', help='归类图片文件')
-    parser.add_argument('--build', action='append', help='训练模型文件')
+        parser.add_argument('--flick', action='store_true', help='录制分析视频帧')
+        parser.add_argument('--alone', action='store_true', help='录制视频')
+        parser.add_argument('--paint', action='store_true', help='绘制分割线条')
+        parser.add_argument('--input', action='append', help='分析单个视频')
+        parser.add_argument('--whole', action='append', help='分析全部视频')
+        parser.add_argument('--merge', action='append', help='聚合报告')
+        parser.add_argument('--train', action='append', help='归类图片文件')
+        parser.add_argument('--build', action='append', help='训练模型文件')
 
-    parser.add_argument('--boost', action='store_true', help='快速模式')
-    parser.add_argument('--color', action='store_true', help='彩色模式')
-    parser.add_argument('--shape', nargs='?', const=None, type=parse_shape, help='图片尺寸')
-    parser.add_argument('--scale', nargs='?', const=None, type=parse_scale, help='缩放比例')
-    parser.add_argument('--omits', action='append', help='忽略区域')
+        parser.add_argument('--boost', action='store_true', help='快速模式')
+        parser.add_argument('--color', action='store_true', help='彩色模式')
+        parser.add_argument('--shape', nargs='?', const=None, type=parse_shape, help='图片尺寸')
+        parser.add_argument('--scale', nargs='?', const=None, type=parse_scale, help='缩放比例')
+        parser.add_argument('--omits', action='append', help='忽略区域')
 
-    parser.add_argument('--debug', action='store_true', help='调试模式')
+        parser.add_argument('--debug', action='store_true', help='调试模式')
 
-    return parser.parse_args()
+        return parser.parse_args()
 
+    @staticmethod
+    def compatible():
+        if sys.platform.lower() == "win32":
+            _adb = os.path.join(_tools_path, "windows", "platform-tools", "adb.exe")
+            _ffmpeg = os.path.join(_tools_path, "windows", "ffmpeg-6.1-full_build", "bin", "ffmpeg.exe")
+            _scrcpy = os.path.join(_tools_path, "windows", "scrcpy-win64-v2.2", "scrcpy.exe")
+        elif sys.platform.lower() == "darwin":
+            _adb = os.path.join(_tools_path, "mac", "platform-tools", "adb")
+            _ffmpeg = os.path.join(_tools_path, "mac", "ffmpeg-6.1", "ffmpeg")
+            _scrcpy = shutil.which("scrcpy")
+        else:
+            _adb, _ffmpeg, _scrcpy = shutil.which("adb"), shutil.which("ffmpeg"), shutil.which("scrcpy")
 
-def compatible():
-    if sys.platform.lower() == "win32":
-        _adb = os.path.join(_tools_path, "windows", "platform-tools", "adb.exe")
-        _ffmpeg = os.path.join(_tools_path, "windows", "ffmpeg-6.1-full_build", "bin", "ffmpeg.exe")
-        _scrcpy = os.path.join(_tools_path, "windows", "scrcpy-win64-v2.2", "scrcpy.exe")
-    elif sys.platform.lower() == "darwin":
-        _adb = os.path.join(_tools_path, "mac", "platform-tools", "adb")
-        _ffmpeg = os.path.join(_tools_path, "mac", "ffmpeg-6.1", "ffmpeg")
-        _scrcpy = shutil.which("scrcpy")
-    else:
-        _adb, _ffmpeg, _scrcpy = shutil.which("adb"), shutil.which("ffmpeg"), shutil.which("scrcpy")
+        if _adb:
+            os.environ["PATH"] = os.path.dirname(_adb) + os.path.pathsep + os.environ.get("PATH", "")
+        if _ffmpeg:
+            os.environ["PATH"] = os.path.dirname(_ffmpeg) + os.path.pathsep + os.environ.get("PATH", "")
+        if _scrcpy:
+            os.environ["PATH"] = os.path.dirname(_scrcpy) + os.path.pathsep + os.environ.get("PATH", "")
 
-    if _adb:
-        os.environ["PATH"] = os.path.dirname(_adb) + os.path.pathsep + os.environ.get("PATH", "")
-    if _ffmpeg:
-        os.environ["PATH"] = os.path.dirname(_ffmpeg) + os.path.pathsep + os.environ.get("PATH", "")
-    if _scrcpy:
-        os.environ["PATH"] = os.path.dirname(_scrcpy) + os.path.pathsep + os.environ.get("PATH", "")
+        logger.debug(f"PATH: {_adb}")
+        logger.debug(f"PATH: {_ffmpeg}")
+        logger.debug(f"PATH: {_scrcpy}")
+        for env in os.environ["PATH"].split(os.pathsep):
+            logger.debug(env)
 
-    logger.debug(f"PATH: {_adb}")
-    logger.debug(f"PATH: {_ffmpeg}")
-    logger.debug(f"PATH: {_scrcpy}")
-    for env in os.environ["PATH"].split(os.pathsep):
-        logger.debug(env)
+        return _adb, _ffmpeg, _scrcpy
 
-    return _adb, _ffmpeg, _scrcpy
-
-
-def initial_env():
-    if work_platform == "framix.exe":
-        new_total_path = os.path.join(
-            os.path.dirname(
-                os.path.dirname(os.path.abspath(sys.argv[0]))
-            ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
-        )
-    elif work_platform == "framix.bin":
-        new_total_path = os.path.join(
-            os.path.dirname(
+    @staticmethod
+    def initial_env():
+        if work_platform == "framix.exe":
+            new_total_path = os.path.join(
                 os.path.dirname(
-                    sys.executable
-                )
-            ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
-        )
-    elif work_platform == "framix":
-        new_total_path = os.path.join(
-            os.path.dirname(
+                    os.path.dirname(os.path.abspath(sys.argv[0]))
+                ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
+            )
+        elif work_platform == "framix.bin":
+            new_total_path = os.path.join(
                 os.path.dirname(
                     os.path.dirname(
-                        os.path.dirname(sys.executable)
+                        sys.executable
                     )
-                )
-            ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
-        )
-    else:
-        new_total_path = None
+                ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
+            )
+        elif work_platform == "framix":
+            new_total_path = os.path.join(
+                os.path.dirname(
+                    os.path.dirname(
+                        os.path.dirname(
+                            os.path.dirname(sys.executable)
+                        )
+                    )
+                ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
+            )
+        else:
+            new_total_path = None
 
-    return new_total_path
+        return new_total_path
 
+    @staticmethod
+    def only_video(folder: str):
 
-def only_video(folder: str):
+        class Entry(object):
 
-    class Entry(object):
+            def __init__(self, title: str, place: str, sheet: list):
+                self.title = title
+                self.place = place
+                self.sheet = sheet
 
-        def __init__(self, title: str, place: str, sheet: list):
-            self.title = title
-            self.place = place
-            self.sheet = sheet
-
-    return [
-        Entry(
-            os.path.basename(root), root,
-            [os.path.join(root, f) for f in sorted(file)]
-        )
-        for root, _, file in os.walk(folder) if file
-    ]
+        return [
+            Entry(
+                os.path.basename(root), root,
+                [os.path.join(root, f) for f in sorted(file)]
+            )
+            for root, _, file in os.walk(folder) if file
+        ]
 
 
 async def check_device():
@@ -517,7 +517,7 @@ async def ask_ffmpeg(ffmpeg_exe, fps, src, dst):
     await Terminal.cmd_line(*cmd)
 
 
-async def analysis(alone: bool, deploy_file, *args):
+async def analysis(alone: bool, *args):
 
     cellphone = None
     head_event = asyncio.Event()
@@ -636,10 +636,10 @@ async def analysis(alone: bool, deploy_file, *args):
         reporter = Report(initial_total_path)
         reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
 
-    boost, color, omits, model_path, total_path, major_path, proto_path, ffmpeg_exe = args
+    boost, color, omits, model_path, total_path, major_path, proto_path, favor_path, ffmpeg_exe = args
 
     deploy = Deploy(omits=omits)
-    deploy.load_deploy(deploy_file)
+    deploy.load_deploy(favor_path)
 
     cl = KerasClassifier(target_size=deploy.target_size)
     cl.load_model(model_path)
@@ -671,13 +671,13 @@ async def analysis(alone: bool, deploy_file, *args):
                     cellphone = await check_device()
                     continue
                 elif action.strip() == "deploy" and len(action.strip()) == 6:
-                    deploy.dump_deploy(deploy_file)
+                    deploy.dump_deploy(favor_path)
+                    logger.warning("修改 deploy.json 文件后请完全退出编辑器进程再继续操作 ...")
                     if operation_system == "win32":
-                        await Terminal.cmd_line("Notepad", deploy_file)
+                        await Terminal.cmd_line("Notepad", favor_path)
                     else:
-                        logger.warning("修改 deploy.json 文件后请完全退出编辑器进程再继续操作 ...")
-                        await Terminal.cmd_line("open", "-W", "-n", "-a", "TextEdit", deploy_file)
-                    deploy.load_deploy(deploy_file)
+                        await Terminal.cmd_line("open", "-W", "-a", "TextEdit", favor_path)
+                    deploy.load_deploy(favor_path)
                     deploy.view_deploy()
                     continue
                 elif action.isdigit():
@@ -690,7 +690,7 @@ async def analysis(alone: bool, deploy_file, *args):
                 else:
                     raise ValueError
         except ValueError:
-            help_option()
+            Help.help_option()
         else:
             await start()
             if not done_event.is_set():
@@ -953,9 +953,10 @@ async def painting(shape, scale, color, omits):
 
             if len(omits) > 0:
                 for omit in omits:
-                    x, y, x_size, y_size = omit
-                    omit_shape_hook = OmitShapeHook((y_size, x_size), (y, x))
-                    omit_shape_hook.do(new_image)
+                    if len(omit) == 4 and sum(omit) > 0:
+                        x, y, x_size, y_size = omit
+                        omit_shape_hook = OmitShapeHook((y_size, x_size), (y, x))
+                        omit_shape_hook.do(new_image)
 
             cv2.imencode(".png", new_image.data)[1].tofile(image_save_path)
 
@@ -1023,9 +1024,9 @@ def worker_init(log_level: str = "INFO"):
     logger.add(sys.stderr, format=log_format, level=log_level.upper())
 
 
-def single_video_task(input_video, deploy_file, *args):
-    boost, color, omits, model_path, total_path, major_path, proto_path, ffmpeg_exe = args
-    new_total_path = initial_env()
+def single_video_task(input_video, *args):
+    boost, color, omits, model_path, total_path, major_path, proto_path, favor_path, ffmpeg_exe = args
+    new_total_path = Parser.initial_env()
 
     reporter = Report(total_path=new_total_path)
     reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
@@ -1035,8 +1036,7 @@ def single_video_task(input_video, deploy_file, *args):
     shutil.copy(input_video, new_video_path)
 
     deploy = Deploy(omits=omits)
-    deploy.load_deploy(deploy_file)
-    deploy.view_deploy()
+    deploy.load_deploy(favor_path)
 
     cl = KerasClassifier(target_size=deploy.target_size)
     cl.load_model(model_path)
@@ -1056,21 +1056,20 @@ def single_video_task(input_video, deploy_file, *args):
     )
 
 
-def multiple_folder_task(folder, deploy_file, *args):
-    boost, color, omits, model_path, total_path, major_path, proto_path, ffmpeg_exe = args
-    new_total_path = initial_env()
+def multiple_folder_task(folder, *args):
+    boost, color, omits, model_path, total_path, major_path, proto_path, favor_path, ffmpeg_exe = args
+    new_total_path = Parser.initial_env()
 
     reporter = Report(total_path=new_total_path)
 
     deploy = Deploy(omits=omits)
-    deploy.load_deploy(deploy_file)
-    deploy.view_deploy()
+    deploy.load_deploy(favor_path)
 
     cl = KerasClassifier(target_size=deploy.target_size)
     cl.load_model(model_path)
 
     looper = asyncio.get_event_loop()
-    for video in only_video(folder):
+    for video in Parser.only_video(folder):
         reporter.title = video.title
         for path in video.sheet:
             reporter.query = os.path.basename(path).split(".")[0]
@@ -1091,15 +1090,15 @@ def multiple_folder_task(folder, deploy_file, *args):
     return reporter.total_path
 
 
-def train_model(video_file, ffmpeg_exe, deploy_file):
-    new_total_path = initial_env()
+def train_model(video_file, ffmpeg_exe, favor_path):
+    new_total_path = Parser.initial_env()
     reporter = Report(total_path=new_total_path, write_log=False)
     reporter.title = f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
     if not os.path.exists(reporter.query_path):
         os.makedirs(reporter.query_path)
 
     deploy = Deploy()
-    deploy.load_deploy(deploy_file)
+    deploy.load_deploy(favor_path)
 
     video_temp_file = os.path.join(reporter.query_path, f"tmp_fps60_{random.randint(100, 999)}.mp4")
     asyncio.run(ask_ffmpeg(ffmpeg_exe, deploy.fps, video_file, video_temp_file))
@@ -1132,7 +1131,7 @@ def train_model(video_file, ffmpeg_exe, deploy_file):
     os.remove(video_temp_file)
 
 
-def build_model(src, deploy_file):
+def build_model(src, favor_path):
     if os.path.isdir(src):
         real_path, file_list = "", []
         logger.debug(f"搜索文件夹: {src}")
@@ -1149,7 +1148,7 @@ def build_model(src, deploy_file):
             new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
 
             deploy = Deploy()
-            deploy.load_deploy(deploy_file)
+            deploy.load_deploy(favor_path)
 
             fc = FramixClassifier()
             fc.build(real_path, new_model_path, new_model_name, deploy.target_size)
@@ -1162,7 +1161,7 @@ def build_model(src, deploy_file):
 async def main():
     if cmd_lines.flick or cmd_lines.alone:
         if scrcpy:
-            await analysis(cmd_lines.alone, _deploy_file, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg)
+            await analysis(cmd_lines.alone, *more_args)
         else:
             logger.warning("Install Scrcpy in Homebrew: brew install scrcpy ...")
             logger.warning("Install Scrcpy in MacPorts: sudo port install scrcpy ...")
@@ -1173,12 +1172,12 @@ async def main():
         tasks = [Report.ask_create_total_report(merge, _total_path, _major_path) for merge in cmd_lines.merge]
         await asyncio.gather(*tasks)
     else:
-        help_document()
+        Help.help_document()
 
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:
-        help_document()
+        Help.help_document()
         sys.exit(1)
 
     freeze_support()
@@ -1192,7 +1191,7 @@ if __name__ == '__main__':
         _total_path = os.path.join(job_path, "archivix", "pages")
         _major_path = os.path.join(job_path, "archivix", "pages")
         _proto_path = os.path.join(job_path, "archivix", "pages", "extra.html")
-        _deploy_file = os.path.join(job_path, "archivix", "deploy.json")
+        _favor_path = os.path.join(job_path, "archivix", "deploy.json")
     elif work_platform == "framix.py":
         job_path = os.path.dirname(os.path.abspath(__file__))
         _tools_path = os.path.join(job_path, "archivix", "tools")
@@ -1200,7 +1199,7 @@ if __name__ == '__main__':
         _total_path = os.path.join(job_path, "archivix", "pages")
         _major_path = os.path.join(job_path, "archivix", "pages")
         _proto_path = os.path.join(job_path, "archivix", "pages", "extra.html")
-        _deploy_file = os.path.join(job_path, "archivix", "deploy.json")
+        _favor_path = os.path.join(job_path, "archivix", "deploy.json")
     else:
         console.print("[bold red]Only compatible with Windows and macOS platforms ...")
         time.sleep(5)
@@ -1208,40 +1207,39 @@ if __name__ == '__main__':
 
     from argparse import ArgumentParser
 
-    cmd_lines = parse_cmd()
+    cmd_lines = Parser.parse_cmd()
+    _debug = "DEBUG" if cmd_lines.debug else "INFO"
+    worker_init(_debug)
+
+    _boost, _color = cmd_lines.boost, cmd_lines.color
+    _shape, _scale = cmd_lines.shape, cmd_lines.scale
+    initial_total_path = Parser.initial_env()
+    adb, ffmpeg, scrcpy = Parser.compatible()
+    cpu = os.cpu_count()
+    logger.debug(f"CPU核心数量: {cpu}")
+
     _omits = []
     if cmd_lines.omits and len(cmd_lines.omits) > 0:
         for hook in cmd_lines.omits:
             if len(match_list := re.findall(r"-?\d*\.?\d+", hook)) == 4:
-                _omits.append(
-                    tuple(
-                        [
-                            float(num) if "." in num else int(num) for num in match_list
-                        ]
-                    )
-                )
+                valid_list = [float(num) if "." in num else int(num) for num in match_list]
+                if sum(valid_list) > 0:
+                    _omits.append(tuple(valid_list))
 
-    _debug = "DEBUG" if cmd_lines.debug else "INFO"
-    worker_init(_debug)
-    _boost, _color = cmd_lines.boost, cmd_lines.color
-    _shape, _scale = cmd_lines.shape, cmd_lines.scale
-    initial_total_path = initial_env()
-    adb, ffmpeg, scrcpy = compatible()
-    cpu = os.cpu_count()
-    logger.debug(f"CPU核心数量: {cpu}")
+    more_args = _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, _favor_path, ffmpeg
 
     if cmd_lines.whole and len(cmd_lines.whole) > 0:
         members = len(cmd_lines.whole)
         if members == 1:
             multiple_folder_task(
-                cmd_lines.whole[0], _deploy_file, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg
+                cmd_lines.whole[0], *more_args
             )
         else:
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
                 results = pool.starmap(
                     multiple_folder_task,
-                    [(i, _deploy_file, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg) for i in cmd_lines.whole]
+                    [(i, *more_args) for i in cmd_lines.whole]
                 )
             Report.merge_report(results, _total_path)
         sys.exit(0)
@@ -1249,33 +1247,33 @@ if __name__ == '__main__':
         members = len(cmd_lines.input)
         if members == 1:
             single_video_task(
-                cmd_lines.input[0], _deploy_file, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg
+                cmd_lines.input[0], *more_args
             )
         else:
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
                 pool.starmap(
                     single_video_task,
-                    [(i, _deploy_file, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg) for i in cmd_lines.input]
+                    [(i, *more_args) for i in cmd_lines.input]
                 )
         sys.exit(0)
     elif cmd_lines.train and len(cmd_lines.train) > 0:
         members = len(cmd_lines.train)
         if members == 1:
-            train_model(cmd_lines.train[0], ffmpeg, _deploy_file)
+            train_model(cmd_lines.train[0], ffmpeg, _favor_path)
         else:
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
-                pool.starmap(train_model, [(i, ffmpeg, _deploy_file) for i in cmd_lines.train])
+                pool.starmap(train_model, [(i, ffmpeg, _favor_path) for i in cmd_lines.train])
         sys.exit(0)
     elif cmd_lines.build and len(cmd_lines.build) > 0:
         members = len(cmd_lines.build)
         if members == 1:
-            build_model(cmd_lines.build[0], _deploy_file)
+            build_model(cmd_lines.build[0], _favor_path)
         else:
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
-                pool.starmap(build_model, [(i, _deploy_file) for i in cmd_lines.build])
+                pool.starmap(build_model, [(i, _favor_path) for i in cmd_lines.build])
         sys.exit(0)
     else:
         try:
