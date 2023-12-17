@@ -1036,6 +1036,7 @@ def single_video_task(input_video, deploy_file, *args):
 
     deploy = Deploy(omits=omits)
     deploy.load_deploy(deploy_file)
+    deploy.view_deploy()
 
     cl = KerasClassifier(target_size=deploy.target_size)
     cl.load_model(model_path)
@@ -1057,12 +1058,13 @@ def single_video_task(input_video, deploy_file, *args):
 
 def multiple_folder_task(folder, deploy_file, *args):
     boost, color, omits, model_path, total_path, major_path, proto_path, ffmpeg_exe = args
-
     new_total_path = initial_env()
+
     reporter = Report(total_path=new_total_path)
 
     deploy = Deploy(omits=omits)
     deploy.load_deploy(deploy_file)
+    deploy.view_deploy()
 
     cl = KerasClassifier(target_size=deploy.target_size)
     cl.load_model(model_path)
