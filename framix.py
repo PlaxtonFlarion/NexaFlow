@@ -175,14 +175,14 @@ class Deploy(object):
 
     def view_deploy(self) -> None:
 
-        title_color = "[bold #af5fd7]"
-        col_1_color = "[bold #d75f87]"
-        col_2_color = "[bold #87afd7]"
-        col_3_color = "[bold #00af5f]"
+        title_color = "#af5fd7"
+        col_1_color = "#d75f87"
+        col_2_color = "#87afd7"
+        col_3_color = "#00af5f"
 
         table = Table(
             title=f"{title_color}Framix Analyzer Deploy",
-            header_style=f"bold #af5fd7", title_justify="center",
+            header_style=f"bold {title_color}", title_justify="center",
             show_header=True
         )
         table.add_column("配置", no_wrap=True)
@@ -191,53 +191,63 @@ class Deploy(object):
         table.add_column("效果", no_wrap=True)
 
         table.add_row(
-            f"{col_1_color}图像尺寸", f"{col_2_color}{self.target_size}",
-            f"[bold][{col_3_color}? , ?[/bold #00af5f] ]",
+            f"[bold {col_1_color}]图像尺寸",
+            f"[bold {col_2_color}]{self.target_size}",
+            f"[bold][[bold {col_3_color}]? , ?[/bold {col_3_color}] ]",
             f"[bold]宽 [bold red]{self.target_size[0]}[/bold red] 高 [bold red]{self.target_size[1]}[/bold red]",
         )
         table.add_row(
-            f"{col_1_color}视频帧率", f"{col_2_color}{self.fps}",
-            f"[bold][{col_3_color}15, 60[/bold #00af5f]]",
+            f"[bold {col_1_color}]视频帧率",
+            f"[bold {col_2_color}]{self.fps}",
+            f"[bold][[bold {col_3_color}]15, 60[/bold {col_3_color}]]",
             f"[bold]转换视频为 [bold red]{self.fps}[/bold red] 帧每秒",
         )
         table.add_row(
-            f"{col_1_color}压缩率", f"{col_2_color}{self.compress_rate}",
-            f"[bold][{col_3_color}0 , 1[/bold #00af5f] ]",
+            f"[bold {col_1_color}]压缩率",
+            f"[bold {col_2_color}]{self.compress_rate}",
+            f"[bold][[bold {col_3_color}]0 , 1[/bold {col_3_color}] ]",
             f"[bold]压缩视频大小为原来的 [bold red]{int(self.compress_rate * 100)}%[/bold red]",
         )
         table.add_row(
-            f"{col_1_color}相似度", f"{col_2_color}{self.threshold}",
-            f"[bold][{col_3_color}0 , 1[/bold #00af5f] ]",
+            f"[bold {col_1_color}]相似度",
+            f"[bold {col_2_color}]{self.threshold}",
+            f"[bold][[bold {col_3_color}]0 , 1[/bold {col_3_color}] ]",
             f"[bold]阈值超过 [bold red]{self.threshold}[/bold red] 的帧为稳定帧",
         )
         table.add_row(
-            f"{col_1_color}补偿值", f"{col_2_color}{self.offset}",
-            f"[bold][{col_3_color}0 , ?[/bold #00af5f] ]",
+            f"[bold {col_1_color}]补偿值",
+            f"[bold {col_2_color}]{self.offset}",
+            f"[bold][[bold {col_3_color}]0 , ?[/bold {col_3_color}] ]",
             f"[bold]合并 [bold red]{self.offset}[/bold red] 个变化不大的稳定区间",
         )
         table.add_row(
-            f"{col_1_color}片段数量", f"{col_2_color}{self.window_size}",
-            f"[bold][{col_3_color}1 , ?[/bold #00af5f] ]",
+            f"[bold {col_1_color}]片段数量",
+            f"[bold {col_2_color}]{self.window_size}",
+            f"[bold][[bold {col_3_color}]1 , ?[/bold {col_3_color}] ]",
             f"[bold]每次处理 [bold red]{self.window_size}[/bold red] 个帧片段",
         )
         table.add_row(
-            f"{col_1_color}处理数量", f"{col_2_color}{self.step}",
-            f"[bold][{col_3_color}1 , ?[/bold #00af5f] ]",
+            f"[bold {col_1_color}]处理数量",
+            f"[bold {col_2_color}]{self.step}",
+            f"[bold][[bold {col_3_color}]1 , ?[/bold {col_3_color}] ]",
             f"[bold]每个片段处理 [bold red]{self.step}[/bold red] 个帧图像",
         )
         table.add_row(
-            f"{col_1_color}切分程度", f"{col_2_color}{self.block}",
-            f"[bold][{col_3_color}1 , {int(min(self.target_size[0], self.target_size[1]) / 10)}[/bold #00af5f]]",
+            f"[bold {col_1_color}]切分程度",
+            f"[bold {col_2_color}]{self.block}",
+            f"[bold][[bold {col_3_color}]1 , {int(min(self.target_size[0], self.target_size[1]) / 10)}[/bold {col_3_color}]]",
             f"[bold]每个帧图像切分为 [bold red]{self.block}[/bold red] 块",
         )
         table.add_row(
-            f"{col_1_color}权重分布", f"{col_2_color}{self.window_coefficient}",
-            f"[bold][{col_3_color}2 , ?[/bold #00af5f] ]",
+            f"[bold {col_1_color}]权重分布",
+            f"[bold {col_2_color}]{self.window_coefficient}",
+            f"[bold][[bold {col_3_color}]2 , ?[/bold {col_3_color}] ]",
             f"[bold]加权计算 [bold red]{self.window_coefficient}[/bold red]",
         )
         table.add_row(
-            f"{col_1_color}忽略区域", f"{col_2_color}{['!' for _ in range(len(self.omits))]}",
-            f"[bold][{col_3_color}0 , 1[/bold #00af5f] ]",
+            f"[bold {col_1_color}]忽略区域",
+            f"[bold {col_2_color}]{['!' for _ in range(len(self.omits))]}",
+            f"[bold][[bold {col_3_color}]0 , 1[/bold {col_3_color}] ]",
             f"[bold]共 [bold red]{len(self.omits)}[/bold red] 个区域的图像不参与计算",
         )
 
