@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import cv2
+import json
 import time
 import shutil
 import random
@@ -22,20 +23,240 @@ from nexaflow.hook import OmitHook, FrameSaveHook, OmitShapeHook
 from nexaflow.classifier.keras_classifier import KerasClassifier
 from nexaflow.classifier.framix_classifier import FramixClassifier
 
-target_size = (350, 700)
-fps = 60
-step = 1
-block = 6
-threshold = 0.97
-offset = 3
-compress_rate = 0.5
-window_size = 1
-window_coefficient = 2
+# target_size = (350, 700)
+# fps = 60
+# compress_rate = 0.5
+# threshold = 0.97
+# offset = 3
+# window_size = 1
+# step = 1
+# block = 6
+# window_coefficient = 2
 
 console: Console = Console()
 operation_system = sys.platform.strip().lower()
 work_platform = os.path.basename(os.path.abspath(sys.argv[0])).lower()
 exec_platform = ["framix.exe", "framix.bin", "framix"]
+
+
+class Deploy(object):
+
+    _initial = {
+        "target_size": (350, 700),
+        "fps": 60,
+        "compress_rate": 0.5,
+        "threshold": 0.97,
+        "offset": 3,
+        "window_size": 1,
+        "step": 1,
+        "block": 6,
+        "window_coefficient": 2,
+        "omits": []
+    }
+
+    def __init__(
+            self,
+            target_size: tuple = None,
+            fps: int = None,
+            compress_rate: int | float = None,
+            threshold: int | float = None,
+            offset: int = None,
+            window_size: int = None,
+            step: int = None,
+            block: int = None,
+            window_coefficient: int = None,
+            omits: list = None
+    ):
+
+        self._initial["target_size"] = target_size or (350, 700)
+        self._initial["fps"] = fps or 60
+        self._initial["compress_rate"] = compress_rate or 0.5
+        self._initial["threshold"] = threshold or 0.97
+        self._initial["offset"] = offset or 3
+        self._initial["window_size"] = window_size or 1
+        self._initial["step"] = step or 1
+        self._initial["block"] = block or 6
+        self._initial["window_coefficient"] = window_coefficient or 2
+        self._initial["omits"] = omits or []
+
+    @property
+    def target_size(self):
+        return self._initial["target_size"]
+
+    @property
+    def fps(self):
+        return self._initial["fps"]
+
+    @property
+    def compress_rate(self):
+        return self._initial["compress_rate"]
+
+    @property
+    def threshold(self):
+        return self._initial["threshold"]
+
+    @property
+    def offset(self):
+        return self._initial["offset"]
+
+    @property
+    def window_size(self):
+        return self._initial["window_size"]
+
+    @property
+    def step(self):
+        return self._initial["step"]
+
+    @property
+    def block(self):
+        return self._initial["block"]
+
+    @property
+    def window_coefficient(self):
+        return self._initial["window_coefficient"]
+
+    @property
+    def omits(self):
+        return self._initial["omits"]
+
+    def load_deploy(self, deploy_file: str) -> bool:
+        is_load: bool = False
+        try:
+            with open(file=deploy_file, mode="r", encoding="utf-8") as f:
+                data = json.loads(f.read())
+                size = data.get("target_size", (350, 700))
+                self._initial["target_size"] = tuple(
+                    max(100, min(3000, int(i))) for i in re.findall(r"-?\d*\.?\d+", size)
+                ) if isinstance(size, str) else size
+                self._initial["fps"] = max(15, min(60, data.get("fps", 60)))
+                self._initial["compress_rate"] = max(0, min(1, data.get("compress_rate", 0.5)))
+                self._initial["threshold"] = max(0, min(1, data.get("threshold", 0.97)))
+                self._initial["offset"] = max(1, data.get("offset", 3))
+                self._initial["window_size"] = max(1, data.get("window_size", 1))
+                self._initial["step"] = max(1, data.get("step", 1))
+                self._initial["block"] = max(1, min(int(min(self.target_size[0], self.target_size[1]) / 10), data.get("block", 6)))
+                self._initial["window_coefficient"] = max(2, data.get("window_coefficient", 2))
+                hook_list = data.get("omits", [])
+                for hook_dict in hook_list:
+                    if sum([value for value in hook_dict.values() if isinstance(value, int | float)]) > 0:
+                        self._initial["omits"].append(
+                            (hook_dict["x"], hook_dict["y"], hook_dict["x_size"], hook_dict["y_size"])
+                        )
+        except FileNotFoundError:
+            logger.debug("未找到部署文件,使用默认参数 ...")
+        except json.decoder.JSONDecodeError:
+            logger.debug("部署文件解析错误,文件格式不正确,使用默认参数 ...")
+        else:
+            logger.debug("读取部署文件,使用部署参数 ...")
+            is_load = True
+        finally:
+            return is_load
+
+    def dump_deploy(self, deploy_file: str) -> None:
+        with open(file=deploy_file, mode="w", encoding="utf-8") as f:
+            f.writelines('{')
+            for k, v in self._initial.items():
+                f.writelines('\n')
+                if k == "target_size":
+                    f.writelines(f'    "{k}": "{v}",')
+                elif k == "omits":
+                    if len(v) == 0:
+                        default = '{"x": 0, "y": 0, "x_size": 0, "y_size": 0}'
+                        f.writelines(f'    "{k}": [\n')
+                        f.writelines(f'        {default}\n')
+                        f.writelines('    ]')
+                    else:
+                        f.writelines(f'    "{k}": [\n')
+                        for index, i in enumerate(v):
+                            x, y, x_size, y_size = i
+                            new_size = f'{{"x": {x}, "y": {y}, "x_size": {x_size}, "y_size": {y_size}}}'
+                            if (index + 1) == len(v):
+                                f.writelines(f'        {new_size}\n')
+                            else:
+                                f.writelines(f'        {new_size},\n')
+                        f.writelines('    ]')
+                else:
+                    f.writelines(f'    "{k}": {v},')
+            f.writelines('\n}')
+
+    def view_deploy(self) -> None:
+
+        title_color = "[bold #af5fd7]"
+        col_1_color = "[bold #d75f87]"
+        col_2_color = "[bold #87afd7]"
+        col_3_color = "[bold #00af5f]"
+
+        table = Table(
+            title=f"{title_color}Framix Analyzer Deploy",
+            header_style=f"bold #af5fd7", title_justify="center",
+            show_header=True
+        )
+        table.add_column("配置", no_wrap=True, width=8)
+        table.add_column("参数", no_wrap=True, max_width=28)
+        table.add_column("范围", no_wrap=True, width=8)
+        table.add_column("效果", no_wrap=True, max_width=28)
+
+        table.add_row(
+            f"{col_1_color}图像尺寸", f"{col_2_color}{self.target_size}",
+            f"[bold][{col_3_color}? , ?[/bold #00af5f] ]",
+            f"[bold]宽 [bold red]{self.target_size[0]}[/bold red] 高 [bold red]{self.target_size[1]}[/bold red]",
+        )
+        table.add_row(
+            f"{col_1_color}视频帧率", f"{col_2_color}{self.fps}",
+            f"[bold][{col_3_color}15, 60[/bold #00af5f]]",
+            f"[bold]转换视频为 [bold red]{self.fps}[/bold red] 帧每秒",
+        )
+        table.add_row(
+            f"{col_1_color}压缩率", f"{col_2_color}{self.compress_rate}",
+            f"[bold][{col_3_color}0 , 1[/bold #00af5f] ]",
+            f"[bold]压缩视频大小为原来的 [bold red]{int(self.compress_rate * 100)}%[/bold red]",
+        )
+        table.add_row(
+            f"{col_1_color}相似度", f"{col_2_color}{self.threshold}",
+            f"[bold][{col_3_color}0 , 1[/bold #00af5f] ]",
+            f"[bold]阈值超过 [bold red]{self.threshold}[/bold red] 的帧为稳定帧",
+        )
+        table.add_row(
+            f"{col_1_color}补偿值", f"{col_2_color}{self.offset}",
+            f"[bold][{col_3_color}0 , ?[/bold #00af5f] ]",
+            f"[bold]合并 [bold red]{self.offset}[/bold red] 个变化不大的稳定区间",
+        )
+        table.add_row(
+            f"{col_1_color}片段数量", f"{col_2_color}{self.window_size}",
+            f"[bold][{col_3_color}1 , ?[/bold #00af5f] ]",
+            f"[bold]每次处理 [bold red]{self.window_size}[/bold red] 个帧片段",
+        )
+        table.add_row(
+            f"{col_1_color}处理数量", f"{col_2_color}{self.step}",
+            f"[bold][{col_3_color}1 , ?[/bold #00af5f] ]",
+            f"[bold]每个片段处理 [bold red]{self.step}[/bold red] 个帧图像",
+        )
+        table.add_row(
+            f"{col_1_color}切分程度", f"{col_2_color}{self.block}",
+            f"[bold][{col_3_color}1 , {int(min(self.target_size[0], self.target_size[1]) / 10)}[/bold #00af5f]]",
+            f"[bold]每个帧图像切分为 [bold red]{self.block}[/bold red] 块",
+        )
+        table.add_row(
+            f"{col_1_color}权重分布", f"{col_2_color}{self.window_coefficient}",
+            f"[bold][{col_3_color}2 , ?[/bold #00af5f] ]",
+            f"[bold]加权计算 [bold red]{self.window_coefficient}[/bold red]",
+        )
+        table.add_row(
+            f"{col_1_color}忽略区域", f"{col_2_color}{self._initial['omits']}",
+            f"[bold][{col_3_color}0 , 1[/bold #00af5f] ]",
+            f"[bold]共 [bold red]{len(self._initial['omits'])}[/bold red] 个区域的图像不参与计算",
+        )
+
+        # framix_logo = f"""
+        # ███████╗██████╗  █████╗ ███╗   ███╗██╗██╗  ██╗
+        # ██╔════╝██╔══██╗██╔══██╗████╗ ████║██║╚██╗██╔╝
+        # █████╗  ██████╔╝███████║██╔████╔██║██║ ╚███╔╝
+        # ██╔══╝  ██╔══██╗██╔══██║██║╚██╔╝██║██║ ██╔██╗
+        # ██║     ██║  ██║██║  ██║██║ ╚═╝ ██║██║██╔╝ ██╗
+        # ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚═╝  ╚═╝
+        # """
+        # console.print(framix_logo)
+        console.print(table)
 
 
 def help_document():
@@ -288,7 +509,7 @@ async def check_device():
             await asyncio.sleep(3)
 
 
-async def ask_ffmpeg(ffmpeg_exe, src, dst):
+async def ask_ffmpeg(ffmpeg_exe, fps, src, dst):
     cmd = [
         ffmpeg_exe,
         "-i", src, "-vf", f"fps={fps}", "-c:v", "libx264", "-crf", "18", "-c:a", "copy", dst
@@ -296,7 +517,7 @@ async def ask_ffmpeg(ffmpeg_exe, src, dst):
     await Terminal.cmd_line(*cmd)
 
 
-async def analysis(alone: bool, *args):
+async def analysis(alone: bool, deploy_file, *args):
 
     cellphone = None
     head_event = asyncio.Event()
@@ -361,7 +582,7 @@ async def analysis(alone: bool, *args):
             asyncio.create_task(error_stream(transports))
             await asyncio.sleep(1)
             await timepiece(timer_mode)
-            if sys.platform.strip().lower() == "win32":
+            if operation_system == "win32":
                 await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
             else:
                 transports.terminate()
@@ -389,7 +610,7 @@ async def analysis(alone: bool, *args):
             asyncio.create_task(error_stream(transports))
             await asyncio.sleep(1)
             await timepiece(timer_mode)
-            if sys.platform.strip().lower() == "win32":
+            if operation_system == "win32":
                 await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
             else:
                 transports.terminate()
@@ -397,7 +618,7 @@ async def analysis(alone: bool, *args):
             for _ in range(10):
                 if done_event.is_set():
                     await analyzer(
-                        reporter, cl, temp_video,
+                        reporter, cl, deploy, temp_video,
                         boost=boost, color=color, omits=omits,
                         proto_path=proto_path, ffmpeg_exe=ffmpeg_exe
                     )
@@ -417,7 +638,10 @@ async def analysis(alone: bool, *args):
 
     boost, color, omits, model_path, total_path, major_path, proto_path, ffmpeg_exe = args
 
-    cl = KerasClassifier(target_size=target_size)
+    deploy = Deploy(omits=omits)
+    deploy.load_deploy(deploy_file)
+
+    cl = KerasClassifier(target_size=deploy.target_size)
     cl.load_model(model_path)
 
     timer_mode = 5
@@ -446,6 +670,16 @@ async def analysis(alone: bool, *args):
                 elif action.strip() == "serial" and len(action.strip()) == 6:
                     cellphone = await check_device()
                     continue
+                elif action.strip() == "deploy" and len(action.strip()) == 6:
+                    deploy.dump_deploy(deploy_file)
+                    if operation_system == "win32":
+                        await Terminal.cmd_line("Notepad", deploy_file)
+                    else:
+                        logger.warning("修改 deploy.json 文件后请完全退出编辑器进程再继续操作 ...")
+                        await Terminal.cmd_line("open", "-W", "-n", "-a", "TextEdit", deploy_file)
+                    deploy.load_deploy(deploy_file)
+                    deploy.view_deploy()
+                    continue
                 elif action.isdigit():
                     value, lower_bound, upper_bound = int(action), 5, 300
                     if value > 300 or value < 5:
@@ -468,11 +702,10 @@ async def analysis(alone: bool, *args):
             fail_event.clear()
 
 
-async def analyzer(reporter: "Report", cl: "KerasClassifier", vision_path: str, **kwargs):
+async def analyzer(reporter: "Report", cl: "KerasClassifier", deploy: "Deploy", vision_path: str, **kwargs):
     boost = kwargs.get("boost", True)
     color = kwargs.get("color", True)
     focus = kwargs.get("focus", True)
-    omits = kwargs.get("omits", [])
     proto_path = kwargs["proto_path"]
 
     async def validate():
@@ -503,7 +736,7 @@ async def analyzer(reporter: "Report", cl: "KerasClassifier", vision_path: str, 
             change_record = os.path.join(
                 os.path.dirname(vision_path), f"screen_fps60_{random.randint(100, 999)}.mp4"
             )
-            await ask_ffmpeg(kwargs.get("ffmpeg_exe", "ffmpeg"), vision_path, change_record)
+            await ask_ffmpeg(kwargs.get("ffmpeg_exe", "ffmpeg"), deploy.fps, vision_path, change_record)
             logger.info(f"视频转换完成: {os.path.basename(change_record)}")
             os.remove(vision_path)
             logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
@@ -517,13 +750,13 @@ async def analyzer(reporter: "Report", cl: "KerasClassifier", vision_path: str, 
     async def frame_flow():
         video, task, hued = await frame_flip()
         cutter = VideoCutter(
-            step=step,
-            compress_rate=compress_rate,
-            target_size=target_size
+            step=deploy.step,
+            compress_rate=deploy.compress_rate,
+            target_size=deploy.target_size
         )
 
-        if len(omits) > 0:
-            for omit in omits:
+        if len(deploy.omits) > 0:
+            for omit in deploy.omits:
                 x, y, x_size, y_size = omit
                 omit_hook = OmitHook((y_size, x_size), (y, x))
                 cutter.add_hook(omit_hook)
@@ -532,14 +765,14 @@ async def analyzer(reporter: "Report", cl: "KerasClassifier", vision_path: str, 
 
         res = cutter.cut(
             video=video,
-            block=block,
-            window_size=window_size,
-            window_coefficient=window_coefficient
+            block=deploy.block,
+            window_size=deploy.window_size,
+            window_coefficient=deploy.window_coefficient
         )
 
         stable, unstable = res.get_range(
-            threshold=threshold,
-            offset=offset
+            threshold=deploy.threshold,
+            offset=deploy.offset
         )
 
         files = os.listdir(reporter.extra_path)
@@ -614,7 +847,7 @@ async def analyzer(reporter: "Report", cl: "KerasClassifier", vision_path: str, 
             original_inform = reporter.draw(
                 classifier_result=classify,
                 proto_path=reporter.proto_path,
-                target_size=target_size,
+                target_size=deploy.target_size,
                 framix_template=proto_file
             )
 
@@ -688,91 +921,100 @@ async def analyzer(reporter: "Report", cl: "KerasClassifier", vision_path: str, 
 
 
 async def painting(shape, scale, color, omits):
-    # import tempfile
-    # from PIL import Image, ImageDraw, ImageFont
-    #
-    # cellphone = await check_device()
-    # image_folder = "/sdcard/Pictures/Shots"
-    # image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_" + "Shot.png"
-    # await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "mkdir", "-p", image_folder)
-    # await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "screencap", "-p", f"{image_folder}/{image}")
-    #
-    # with tempfile.TemporaryDirectory() as temp_dir:
-    #     image_save_path = os.path.join(temp_dir, image)
-    #     await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "pull", f"{image_folder}/{image}", image_save_path)
-    #
-    #     if color:
-    #         old_image = toolbox.imread(image_save_path)
-    #         new_image = VideoFrame(0, 0, old_image)
-    #     else:
-    #         old_image = toolbox.imread(image_save_path)
-    #         old_image = toolbox.turn_grey(old_image)
-    #         new_image = VideoFrame(0, 0, old_image)
-    #
-    #     if len(omits) > 0:
-    #         for omit in omits:
-    #             x, y, x_size, y_size = omit
-    #             omit_hook = OmitShapeHook((y_size, x_size), (y, x))
-    #             omit_hook.do(new_image)
-    #
-    #     cv2.imencode(".png", new_image.data)[1].tofile(image_save_path)
-    #
-    #     image_file = Image.open(image_save_path)
-    #     image_file = image_file.convert("RGB")
-    #
-    #     original_w, original_h = image_file.size
-    #     if shape:
-    #         shape_w, shape_h = shape
-    #         twist_w, twist_h = min(original_w, shape_w), min(original_h, shape_h)
-    #     else:
-    #         twist_w, twist_h = original_w, original_h
-    #
-    #     min_scale, max_scale = 0.3, 1.0
-    #     if scale:
-    #         image_scale = max_scale if scale > max_scale else (min_scale if scale < min_scale else scale)
-    #     else:
-    #         image_scale = min_scale if twist_w == original_w or twist_h == original_h else max_scale
-    #
-    #     new_w, new_h = int(twist_w * image_scale), int(twist_h * image_scale)
-    #     logger.debug(f"原始尺寸: {(original_w, original_h)} 调整尺寸: {(new_w, new_h)} 缩放比例: {int(image_scale * 100)}%")
-    #
-    #     if new_w == new_h:
-    #         x_line_num, y_line_num = 10, 10
-    #     elif new_w > new_h:
-    #         x_line_num, y_line_num = 10, 20
-    #     else:
-    #         x_line_num, y_line_num = 20, 10
-    #
-    #     resized = image_file.resize((new_w, new_h))
-    #
-    #     draw = ImageDraw.Draw(resized)
-    #     font = ImageFont.load_default()
-    #
-    #     if y_line_num > 0:
-    #         for i in range(1, y_line_num):
-    #             x_line = int(new_w * (i * (1 / y_line_num)))
-    #             text = f"{i * int(100 / y_line_num):02}"
-    #             bbox = draw.textbbox((0, 0), text, font)
-    #             text_width = bbox[2] - bbox[0]
-    #             text_height = bbox[3] - bbox[1]
-    #             y_text_start = 3
-    #             draw.line([(x_line, text_width + 5 + y_text_start), (x_line, new_h)], fill=(0, 255, 255), width=1)
-    #             draw.text((x_line - text_height // 2, y_text_start), text, fill=(0, 255, 255), font=font)
-    #
-    #     if x_line_num > 0:
-    #         for i in range(1, x_line_num):
-    #             y_line = int(new_h * (i * (1 / x_line_num)))
-    #             text = f"{i * int(100 / x_line_num):02}"
-    #             bbox = draw.textbbox((0, 0), text, font)
-    #             text_width = bbox[2] - bbox[0]
-    #             text_height = bbox[3] - bbox[1]
-    #             x_text_start = 3
-    #             draw.line([(text_width + 5 + x_text_start, y_line), (new_w, y_line)], fill=(255, 182, 193), width=1)
-    #             draw.text((x_text_start, y_line - text_height // 2), text, fill=(255, 182, 193), font=font)
-    #
-    #     resized.show()
-    # await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "rm", f"{image_folder}/{image}")
-    pass
+    import tempfile
+    from PIL import Image, ImageDraw, ImageFont
+
+    cellphone = await check_device()
+    image_folder = "/sdcard/Pictures/Shots"
+    image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_" + "Shot.png"
+    await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "mkdir", "-p", image_folder)
+    await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "screencap", "-p", f"{image_folder}/{image}")
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        image_save_path = os.path.join(temp_dir, image)
+        await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "pull", f"{image_folder}/{image}", image_save_path)
+
+        try:
+            logger.debug("尝试打开图片 ...")
+            with Image.open(image_save_path) as img:
+                img.verify()
+                img.close()
+            logger.info("图片正常 ...")
+        except (IOError, SyntaxError):
+            logger.error("图片损坏或不存在 ...")
+        else:
+            if color:
+                old_image = toolbox.imread(image_save_path)
+                new_image = VideoFrame(0, 0, old_image)
+            else:
+                old_image = toolbox.imread(image_save_path)
+                old_image = toolbox.turn_grey(old_image)
+                new_image = VideoFrame(0, 0, old_image)
+
+            if len(omits) > 0:
+                for omit in omits:
+                    x, y, x_size, y_size = omit
+                    omit_shape_hook = OmitShapeHook((y_size, x_size), (y, x))
+                    omit_shape_hook.do(new_image)
+
+            cv2.imencode(".png", new_image.data)[1].tofile(image_save_path)
+
+            image_file = Image.open(image_save_path)
+            image_file = image_file.convert("RGB")
+
+            original_w, original_h = image_file.size
+            if shape:
+                shape_w, shape_h = shape
+                twist_w, twist_h = min(original_w, shape_w), min(original_h, shape_h)
+            else:
+                twist_w, twist_h = original_w, original_h
+
+            min_scale, max_scale = 0.3, 1.0
+            if scale:
+                image_scale = max_scale if scale > max_scale else (min_scale if scale < min_scale else scale)
+            else:
+                image_scale = min_scale if twist_w == original_w or twist_h == original_h else max_scale
+
+            new_w, new_h = int(twist_w * image_scale), int(twist_h * image_scale)
+            logger.debug(f"原始尺寸: {(original_w, original_h)} 调整尺寸: {(new_w, new_h)} 缩放比例: {int(image_scale * 100)}%")
+
+            if new_w == new_h:
+                x_line_num, y_line_num = 10, 10
+            elif new_w > new_h:
+                x_line_num, y_line_num = 10, 20
+            else:
+                x_line_num, y_line_num = 20, 10
+
+            resized = image_file.resize((new_w, new_h))
+
+            draw = ImageDraw.Draw(resized)
+            font = ImageFont.load_default()
+
+            if y_line_num > 0:
+                for i in range(1, y_line_num):
+                    x_line = int(new_w * (i * (1 / y_line_num)))
+                    text = f"{i * int(100 / y_line_num):02}"
+                    bbox = draw.textbbox((0, 0), text, font)
+                    text_width = bbox[2] - bbox[0]
+                    text_height = bbox[3] - bbox[1]
+                    y_text_start = 3
+                    draw.line([(x_line, text_width + 5 + y_text_start), (x_line, new_h)], fill=(0, 255, 255), width=1)
+                    draw.text((x_line - text_height // 2, y_text_start), text, fill=(0, 255, 255), font=font)
+
+            if x_line_num > 0:
+                for i in range(1, x_line_num):
+                    y_line = int(new_h * (i * (1 / x_line_num)))
+                    text = f"{i * int(100 / x_line_num):02}"
+                    bbox = draw.textbbox((0, 0), text, font)
+                    text_width = bbox[2] - bbox[0]
+                    text_height = bbox[3] - bbox[1]
+                    x_text_start = 3
+                    draw.line([(text_width + 5 + x_text_start, y_line), (new_w, y_line)], fill=(255, 182, 193), width=1)
+                    draw.text((x_text_start, y_line - text_height // 2), text, fill=(255, 182, 193), font=font)
+
+            resized.show()
+
+    await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "rm", f"{image_folder}/{image}")
 
 
 def worker_init(log_level: str = "INFO"):
@@ -781,21 +1023,28 @@ def worker_init(log_level: str = "INFO"):
     logger.add(sys.stderr, format=log_format, level=log_level.upper())
 
 
-def single_video_task(input_video, *args):
+def single_video_task(input_video, deploy_file, *args):
     boost, color, omits, model_path, total_path, major_path, proto_path, ffmpeg_exe = args
     new_total_path = initial_env()
+
     reporter = Report(total_path=new_total_path)
     reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
     reporter.query = f"{random.randint(10, 99)}"
     new_video_path = os.path.join(reporter.video_path, os.path.basename(input_video))
+
     shutil.copy(input_video, new_video_path)
-    cl = KerasClassifier(target_size=target_size)
+
+    deploy = Deploy(omits=omits)
+    deploy.load_deploy(deploy_file)
+
+    cl = KerasClassifier(target_size=deploy.target_size)
     cl.load_model(model_path)
+
     looper = asyncio.get_event_loop()
     looper.run_until_complete(
         analyzer(
-            reporter, cl, new_video_path,
-            boost=boost, color=color, omits=omits,
+            reporter, cl, deploy, new_video_path,
+            boost=boost, color=color, omits=deploy.omits,
             proto_path=proto_path, ffmpeg_exe=ffmpeg_exe
         )
     )
@@ -806,12 +1055,18 @@ def single_video_task(input_video, *args):
     )
 
 
-def multiple_folder_task(folder, *args):
+def multiple_folder_task(folder, deploy_file, *args):
     boost, color, omits, model_path, total_path, major_path, proto_path, ffmpeg_exe = args
+
     new_total_path = initial_env()
     reporter = Report(total_path=new_total_path)
-    cl = KerasClassifier(target_size=target_size)
+
+    deploy = Deploy(omits=omits)
+    deploy.load_deploy(deploy_file)
+
+    cl = KerasClassifier(target_size=deploy.target_size)
     cl.load_model(model_path)
+
     looper = asyncio.get_event_loop()
     for video in only_video(folder):
         reporter.title = video.title
@@ -821,8 +1076,8 @@ def multiple_folder_task(folder, *args):
             new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
             looper.run_until_complete(
                 analyzer(
-                    reporter, cl, new_video_path,
-                    boost=boost, color=color, omits=omits,
+                    reporter, cl, deploy, new_video_path,
+                    boost=boost, color=color, omits=deploy.omits,
                     proto_path=proto_path, ffmpeg_exe=ffmpeg_exe
                 )
             )
@@ -834,33 +1089,36 @@ def multiple_folder_task(folder, *args):
     return reporter.total_path
 
 
-def train_model(video_file, ffmpeg_exe):
+def train_model(video_file, ffmpeg_exe, deploy_file):
     new_total_path = initial_env()
     reporter = Report(total_path=new_total_path, write_log=False)
     reporter.title = f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
     if not os.path.exists(reporter.query_path):
         os.makedirs(reporter.query_path)
 
+    deploy = Deploy()
+    deploy.load_deploy(deploy_file)
+
     video_temp_file = os.path.join(reporter.query_path, f"tmp_fps60_{random.randint(100, 999)}.mp4")
-    asyncio.run(ask_ffmpeg(ffmpeg_exe, video_file, video_temp_file))
+    asyncio.run(ask_ffmpeg(ffmpeg_exe, deploy.fps, video_file, video_temp_file))
 
     video = VideoObject(video_file)
     video.load_frames()
 
     cutter = VideoCutter(
-        step=step,
-        compress_rate=compress_rate,
-        target_size=target_size
+        step=deploy.step,
+        compress_rate=deploy.compress_rate,
+        target_size=deploy.target_size
     )
     res = cutter.cut(
         video=video,
-        block=block,
-        window_size=window_size,
-        window_coefficient=window_coefficient
+        block=deploy.block,
+        window_size=deploy.window_size,
+        window_coefficient=deploy.window_coefficient
     )
     stable, unstable = res.get_range(
-        threshold=threshold,
-        offset=offset
+        threshold=deploy.threshold,
+        offset=deploy.offset
     )
     res.pick_and_save(
         range_list=stable,
@@ -872,7 +1130,7 @@ def train_model(video_file, ffmpeg_exe):
     os.remove(video_temp_file)
 
 
-def build_model(src):
+def build_model(src, deploy_file):
     if os.path.isdir(src):
         real_path, file_list = "", []
         logger.debug(f"搜索文件夹: {src}")
@@ -887,8 +1145,12 @@ def build_model(src):
         if real_path and len(file_list) > 0:
             new_model_path = os.path.join(real_path, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
             new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
+
+            deploy = Deploy()
+            deploy.load_deploy(deploy_file)
+
             fc = FramixClassifier()
-            fc.build(real_path, new_model_path, new_model_name, target_size)
+            fc.build(real_path, new_model_path, new_model_name, deploy.target_size)
         else:
             logger.error("文件夹未正确分类 ...")
     else:
@@ -898,7 +1160,7 @@ def build_model(src):
 async def main():
     if cmd_lines.flick or cmd_lines.alone:
         if scrcpy:
-            await analysis(cmd_lines.alone, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg)
+            await analysis(cmd_lines.alone, _deploy_file, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg)
         else:
             logger.warning("Install Scrcpy in Homebrew: brew install scrcpy ...")
             logger.warning("Install Scrcpy in MacPorts: sudo port install scrcpy ...")
@@ -928,6 +1190,7 @@ if __name__ == '__main__':
         _total_path = os.path.join(job_path, "archivix", "pages")
         _major_path = os.path.join(job_path, "archivix", "pages")
         _proto_path = os.path.join(job_path, "archivix", "pages", "extra.html")
+        _deploy_file = os.path.join(job_path, "archivix", "deploy.json")
     elif work_platform == "framix.py":
         job_path = os.path.dirname(os.path.abspath(__file__))
         _tools_path = os.path.join(job_path, "archivix", "tools")
@@ -935,6 +1198,7 @@ if __name__ == '__main__':
         _total_path = os.path.join(job_path, "archivix", "pages")
         _major_path = os.path.join(job_path, "archivix", "pages")
         _proto_path = os.path.join(job_path, "archivix", "pages", "extra.html")
+        _deploy_file = os.path.join(job_path, "archivix", "deploy.json")
     else:
         console.print("[bold red]Only compatible with Windows and macOS platforms ...")
         time.sleep(5)
@@ -968,14 +1232,14 @@ if __name__ == '__main__':
         members = len(cmd_lines.whole)
         if members == 1:
             multiple_folder_task(
-                cmd_lines.whole[0], _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg
+                cmd_lines.whole[0], _deploy_file, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg
             )
         else:
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
                 results = pool.starmap(
                     multiple_folder_task,
-                    [(i, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg) for i in cmd_lines.whole]
+                    [(i, _deploy_file, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg) for i in cmd_lines.whole]
                 )
             Report.merge_report(results, _total_path)
         sys.exit(0)
@@ -983,33 +1247,33 @@ if __name__ == '__main__':
         members = len(cmd_lines.input)
         if members == 1:
             single_video_task(
-                cmd_lines.input[0], _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg
+                cmd_lines.input[0], _deploy_file, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg
             )
         else:
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
                 pool.starmap(
                     single_video_task,
-                    [(i, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg) for i in cmd_lines.input]
+                    [(i, _deploy_file, _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, ffmpeg) for i in cmd_lines.input]
                 )
         sys.exit(0)
     elif cmd_lines.train and len(cmd_lines.train) > 0:
         members = len(cmd_lines.train)
         if members == 1:
-            train_model(cmd_lines.train[0], ffmpeg)
+            train_model(cmd_lines.train[0], ffmpeg, _deploy_file)
         else:
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
-                pool.starmap(train_model, [(i, ffmpeg) for i in cmd_lines.train])
+                pool.starmap(train_model, [(i, ffmpeg, _deploy_file) for i in cmd_lines.train])
         sys.exit(0)
     elif cmd_lines.build and len(cmd_lines.build) > 0:
         members = len(cmd_lines.build)
         if members == 1:
-            build_model(cmd_lines.build[0])
+            build_model(cmd_lines.build[0], _deploy_file)
         else:
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
-                pool.starmap(build_model, [(i, ) for i in cmd_lines.build])
+                pool.starmap(build_model, [(i, _deploy_file) for i in cmd_lines.build])
         sys.exit(0)
     else:
         try:
