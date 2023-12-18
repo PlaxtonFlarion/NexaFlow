@@ -1,12 +1,12 @@
 import os
 import cv2
+import time
 import random
 import asyncio
 from loguru import logger
 from typing import List, Union, Optional
 from concurrent.futures import ThreadPoolExecutor
 from nexaflow import toolbox
-from nexaflow.constants import Constants
 from nexaflow.skills.report import Report
 from nexaflow.skills.record import Record
 from nexaflow.skills.player import Player
@@ -16,10 +16,6 @@ from nexaflow.video import VideoObject, Frame
 from nexaflow.classifier.keras_classifier import KerasClassifier
 from nexaflow.hook import BaseHook, CropHook, OmitHook, FrameSaveHook
 from nexaflow.classifier.base import ClassifierResult, SingleClassifierResult
-
-VIDEOS: str = os.path.join(Constants.WORK, "model", "model_video")
-STABLE: str = os.path.join(Constants.WORK, "model", "stable")
-MODELS: str = os.path.join(Constants.WORK, "model", "model.h5")
 
 
 class Alynex(object):
@@ -34,13 +30,17 @@ class Alynex(object):
     window_size: int = 1
     window_coefficient: int = 2
 
+    kc: KerasClassifier = KerasClassifier(
+        target_size=target_size
+    )
+
     def __init__(self):
         self.__report: Optional[Report] = None
         self.__record: Optional[Record] = Record()
         self.__player: Optional[Player] = Player()
         self.__ffmpeg: Optional[Switch] = Switch()
-        self.__framix: Optional[Alynex._Framix] = Alynex._Framix()
         self.__filmer: Optional[Alynex._Filmer] = Alynex._Filmer()
+        self.__framix: Optional[Alynex._Framix] = None
 
     def __str__(self):
         return (f"""
@@ -83,12 +83,13 @@ class Alynex(object):
         return self.__ffmpeg
 
     @property
-    def framix(self) -> "Alynex._Framix":
-        return self.__framix
-
-    @property
     def filmer(self) -> "Alynex._Filmer":
         return self.__filmer
+
+    @property
+    def framix(self) -> "Alynex._Framix":
+        assert self.__framix, f"{self.activate.__name__} first ..."
+        return self.__framix
 
     @staticmethod
     def only_video(folder: str) -> List:
@@ -108,16 +109,25 @@ class Alynex(object):
             for root, _, file in os.walk(folder) if file
         ]
 
-    def activate(self, total_path: str = None, write_log: bool = True):
+    def activate(self, models: str, total_path: str = None, write_log: bool = True):
         if not self.__report:
             self.__report = Report(total_path, write_log)
+            self.__framix = Alynex._Framix(self.report)
+            Alynex.kc.load_model(models)
 
     class _Filmer(object):
 
         @staticmethod
-        def train_model() -> None:
+        def train_model(video_file: str) -> None:
+            model_path = os.path.join(
+                os.path.dirname(video_file),
+                f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
+            )
+            if not os.path.exists(model_path):
+                os.makedirs(model_path, exist_ok=True)
+
             # 将视频切分成帧
-            video = VideoObject(VIDEOS, fps=Alynex.fps)
+            video = VideoObject(video_file, fps=Alynex.fps)
             # 新建帧，计算视频总共有多少帧，每帧多少ms
             video.load_frames()
             # 压缩视频
@@ -140,23 +150,26 @@ class Alynex(object):
             res.pick_and_save(
                 range_list=stable,
                 frame_count=20,
-                to_dir=STABLE,
+                to_dir=model_path,
                 meaningful_name=True
             )
 
         @staticmethod
-        def build_model() -> None:
-            # 从分类后的图片构建模型
-            cl = KerasClassifier(target_size=Alynex.target_size)
-            cl.train(STABLE)
-            cl.save_model(MODELS, overwrite=True)
+        def build_model(src: str) -> None:
+            new_model_path = os.path.join(src, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
+            new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
+            final_model = os.path.join(new_model_path, new_model_name)
+            if not os.path.exists(new_model_path):
+                os.makedirs(new_model_path, exist_ok=True)
+
+            Alynex.kc.train(src)
+            Alynex.kc.save_model(final_model, overwrite=True)
 
     class _Framix(object):
 
-        def __init__(self):
+        def __init__(self, report: "Report"):
             self.framix_list: List["BaseHook"] = []
-            self.__cl = KerasClassifier(target_size=Alynex.target_size)
-            self.__cl.load_model(MODELS)
+            self.__reporter = report
 
         def crop_hook(
                 self,
@@ -179,7 +192,6 @@ class Alynex(object):
         def pixel_wizard(
                 self,
                 video: "VideoObject",
-                extra_path: str
         ) -> "ClassifierResult":
 
             cutter = VideoCutter(
@@ -190,7 +202,7 @@ class Alynex(object):
             for mix in self.framix_list:
                 cutter.add_hook(mix)
 
-            save_hook = FrameSaveHook(extra_path)
+            save_hook = FrameSaveHook(self.__reporter.extra_path)
             cutter.add_hook(save_hook)
 
             # 计算每一帧视频的每一个block的ssim和峰值信噪比
@@ -207,25 +219,25 @@ class Alynex(object):
             )
 
             # 保存十二张hook图
-            files = os.listdir(extra_path)
+            files = os.listdir(self.__reporter.extra_path)
             files.sort(key=lambda x: int(x.split("(")[0]))
             total_images = len(files)
             interval = total_images // 11 if total_images > 12 else 1
             for index, file in enumerate(files):
                 if index % interval != 0:
                     os.remove(
-                        os.path.join(extra_path, file)
+                        os.path.join(self.__reporter.extra_path, file)
                     )
 
             # 为图片绘制线条
-            draws = os.listdir(extra_path)
+            draws = os.listdir(self.__reporter.extra_path)
             for draw in draws:
                 toolbox.draw_line(
-                    os.path.join(extra_path, draw)
+                    os.path.join(self.__reporter.extra_path, draw)
                 )
 
             # 开始图像分类
-            classify = self.__cl.classify(video=video, valid_range=stable, keep_data=True)
+            classify = Alynex.kc.classify(video=video, valid_range=stable, keep_data=True)
             return classify
 
     class _Review(object):
@@ -299,7 +311,7 @@ class Alynex(object):
 
         def frame_flow():
             video, task, hued = frame_flip()
-            classify = self.framix.pixel_wizard(video, self.report.extra_path)
+            classify = self.framix.pixel_wizard(video)
             important_frames: List["SingleClassifierResult"] = classify.get_important_frame_list()
 
             pbar = toolbox.show_progress(classify.get_length(), 50, "Faster")

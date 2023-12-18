@@ -2,8 +2,10 @@ import os
 from nexaflow.constants import Constants
 from nexaflow.skills.alynex import Alynex
 from nexaflow.skills.device import Device
+from nexaflow.skills.device import Manage
 
-AUDIO_DIRS: str = os.path.join(Constants.WORK, "audio")
+AUDIO_DIRS = os.path.join(Constants.WORK, "audio")
+MODELS = os.path.join(Constants.WORK, "model", "model.h5")
 
 
 class TestPlan(object):
@@ -16,7 +18,7 @@ class TestPlan(object):
         self.looper: int = looper
         self.__device: "Device" = device
         self.__alynex: "Alynex" = Alynex()
-        self.__alynex.activate()
+        self.__alynex.activate(MODELS)
 
     def test_01(self):
         """讲个笑话"""
@@ -65,4 +67,13 @@ class TestPlan(object):
 
 
 if __name__ == '__main__':
-    pass
+    # pip freeze > requirements.txt
+    # pip install -i https://pypi.tuna.tsinghua.edu.cn/simple tensorflow==2.14.0
+    # pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade tensorflow
+    # pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
+    Constants.initial_logger()
+    manage = Manage()
+    first_device = manage.Phone
+
+    with TestPlan(first_device, 5) as test:
+        test.test_02()

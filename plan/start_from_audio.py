@@ -4,7 +4,8 @@ from nexaflow.constants import Constants
 from nexaflow.skills.device import Manage
 from nexaflow.skills.alynex import Alynex
 
-AUDIO_DIRS: str = os.path.join(Constants.WORK, "audio")
+AUDIO_DIRS = os.path.join(Constants.WORK, "audio")
+MODELS = os.path.join(Constants.WORK, "model", "model.h5")
 
 
 def multi_audio_task():
@@ -16,7 +17,7 @@ def multi_audio_task():
     Constants.initial_logger()
     manage = Manage()
     alynex = Alynex()
-    alynex.activate()
+    alynex.activate(MODELS)
 
     device = manage.operate_device("")
     for query, audio in alynex.player.load_all_audio(AUDIO_DIRS):
@@ -46,4 +47,3 @@ def multi_audio_task():
 
 if __name__ == '__main__':
     multi_audio_task()
-
