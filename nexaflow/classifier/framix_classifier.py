@@ -24,7 +24,6 @@ class FramixClassifier(object):
 
     @property
     def model(self):
-        assert self.__model, f"{self.load_model.__name__} first ..."
         return self.__model
 
     @model.setter

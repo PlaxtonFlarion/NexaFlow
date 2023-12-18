@@ -181,7 +181,7 @@ class Deploy(object):
         col_3_color = "#00af5f"
 
         table = Table(
-            title=f"{title_color}Framix Analyzer Deploy",
+            title=f"[bold {title_color}]Framix Analyzer Deploy",
             header_style=f"bold {title_color}", title_justify="center",
             show_header=True
         )
@@ -331,12 +331,12 @@ class Help(object):
         )
 
         nexaflow_logo = """[bold #D0D0D0]
-        ███╗   ██╗███████╗██╗  ██╗ █████╗   ███████╗██╗      ██████╗ ██╗    ██╗
-        ██╔██╗ ██║██╔════╝╚██╗██╔╝██╔══██╗  ██╔════╝██║     ██╔═══██╗██║    ██║
-        ██║╚██╗██║█████╗   ╚███╔╝ ███████║  █████╗  ██║     ██║   ██║██║ █╗ ██║
-        ██║ ╚████║██╔══╝   ██╔██╗ ██╔══██║  ██╔══╝  ██║     ██║   ██║██║███╗██║
-        ██║  ╚███║███████╗██╔╝ ██╗██║  ██║  ██║     ███████╗╚██████╔╝╚███╔███╔╝
-        ╚═╝   ╚══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝  ╚═╝     ╚══════╝ ╚═════╝  ╚══╝╚══╝
+    ███╗   ██╗███████╗██╗  ██╗ █████╗   ███████╗██╗      ██████╗ ██╗    ██╗
+    ██╔██╗ ██║██╔════╝╚██╗██╔╝██╔══██╗  ██╔════╝██║     ██╔═══██╗██║    ██║
+    ██║╚██╗██║█████╗   ╚███╔╝ ███████║  █████╗  ██║     ██║   ██║██║ █╗ ██║
+    ██║ ╚████║██╔══╝   ██╔██╗ ██╔══██║  ██╔══╝  ██║     ██║   ██║██║███╗██║
+    ██║  ╚███║███████╗██╔╝ ██╗██║  ██║  ██║     ███████╗╚██████╔╝╚███╔███╔╝
+    ╚═╝   ╚══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝  ╚═╝     ╚══════╝ ╚═════╝  ╚══╝╚══╝
         """
         console.print(nexaflow_logo)
         console.print(table_major)
@@ -355,6 +355,7 @@ class Help(object):
         table.add_column("说明", justify="center", width=44)
         table.add_row("[bold #FFAFAF]header", "[bold #AFD7FF]标题名", "[bold #DADADA]生成一个新标题文件夹")
         table.add_row("[bold #FFAFAF]serial", "", "[bold #DADADA]重新选择已连接的设备")
+        table.add_row("[bold #FFAFAF]deploy", "", "[bold #DADADA]重新部署视频分析配置")
         table.add_row("[bold #FFAFAF]******", "", "[bold #DADADA]任意数字代表录制时长")
         console.print(table)
 
@@ -944,86 +945,77 @@ async def painting(shape, scale, color, omits):
         image_save_path = os.path.join(temp_dir, image)
         await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "pull", f"{image_folder}/{image}", image_save_path)
 
-        try:
-            logger.debug("尝试打开图片 ...")
-            with Image.open(image_save_path) as img:
-                img.verify()
-                img.close()
-            logger.info("图片正常 ...")
-        except (IOError, SyntaxError):
-            logger.error("图片损坏或不存在 ...")
+        if color:
+            old_image = toolbox.imread(image_save_path)
+            new_image = VideoFrame(0, 0, old_image)
         else:
-            if color:
-                old_image = toolbox.imread(image_save_path)
-                new_image = VideoFrame(0, 0, old_image)
-            else:
-                old_image = toolbox.imread(image_save_path)
-                old_image = toolbox.turn_grey(old_image)
-                new_image = VideoFrame(0, 0, old_image)
+            old_image = toolbox.imread(image_save_path)
+            old_image = toolbox.turn_grey(old_image)
+            new_image = VideoFrame(0, 0, old_image)
 
-            if len(omits) > 0:
-                for omit in omits:
-                    if len(omit) == 4 and sum(omit) > 0:
-                        x, y, x_size, y_size = omit
-                        omit_shape_hook = OmitShapeHook((y_size, x_size), (y, x))
-                        omit_shape_hook.do(new_image)
+        if len(omits) > 0:
+            for omit in omits:
+                if len(omit) == 4 and sum(omit) > 0:
+                    x, y, x_size, y_size = omit
+                    omit_shape_hook = OmitShapeHook((y_size, x_size), (y, x))
+                    omit_shape_hook.do(new_image)
 
-            cv2.imencode(".png", new_image.data)[1].tofile(image_save_path)
+        cv2.imencode(".png", new_image.data)[1].tofile(image_save_path)
 
-            image_file = Image.open(image_save_path)
-            image_file = image_file.convert("RGB")
+        image_file = Image.open(image_save_path)
+        image_file = image_file.convert("RGB")
 
-            original_w, original_h = image_file.size
-            if shape:
-                shape_w, shape_h = shape
-                twist_w, twist_h = min(original_w, shape_w), min(original_h, shape_h)
-            else:
-                twist_w, twist_h = original_w, original_h
+        original_w, original_h = image_file.size
+        if shape:
+            shape_w, shape_h = shape
+            twist_w, twist_h = min(original_w, shape_w), min(original_h, shape_h)
+        else:
+            twist_w, twist_h = original_w, original_h
 
-            min_scale, max_scale = 0.3, 1.0
-            if scale:
-                image_scale = max_scale if scale > max_scale else (min_scale if scale < min_scale else scale)
-            else:
-                image_scale = min_scale if twist_w == original_w or twist_h == original_h else max_scale
+        min_scale, max_scale = 0.3, 1.0
+        if scale:
+            image_scale = max_scale if scale > max_scale else (min_scale if scale < min_scale else scale)
+        else:
+            image_scale = min_scale if twist_w == original_w or twist_h == original_h else max_scale
 
-            new_w, new_h = int(twist_w * image_scale), int(twist_h * image_scale)
-            logger.debug(f"原始尺寸: {(original_w, original_h)} 调整尺寸: {(new_w, new_h)} 缩放比例: {int(image_scale * 100)}%")
+        new_w, new_h = int(twist_w * image_scale), int(twist_h * image_scale)
+        logger.debug(f"原始尺寸: {(original_w, original_h)} 调整尺寸: {(new_w, new_h)} 缩放比例: {int(image_scale * 100)}%")
 
-            if new_w == new_h:
-                x_line_num, y_line_num = 10, 10
-            elif new_w > new_h:
-                x_line_num, y_line_num = 10, 20
-            else:
-                x_line_num, y_line_num = 20, 10
+        if new_w == new_h:
+            x_line_num, y_line_num = 10, 10
+        elif new_w > new_h:
+            x_line_num, y_line_num = 10, 20
+        else:
+            x_line_num, y_line_num = 20, 10
 
-            resized = image_file.resize((new_w, new_h))
+        resized = image_file.resize((new_w, new_h))
 
-            draw = ImageDraw.Draw(resized)
-            font = ImageFont.load_default()
+        draw = ImageDraw.Draw(resized)
+        font = ImageFont.load_default()
 
-            if y_line_num > 0:
-                for i in range(1, y_line_num):
-                    x_line = int(new_w * (i * (1 / y_line_num)))
-                    text = f"{i * int(100 / y_line_num):02}"
-                    bbox = draw.textbbox((0, 0), text, font)
-                    text_width = bbox[2] - bbox[0]
-                    text_height = bbox[3] - bbox[1]
-                    y_text_start = 3
-                    draw.line([(x_line, text_width + 5 + y_text_start), (x_line, new_h)], fill=(0, 255, 255), width=1)
-                    draw.text((x_line - text_height // 2, y_text_start), text, fill=(0, 255, 255), font=font)
+        if y_line_num > 0:
+            for i in range(1, y_line_num):
+                x_line = int(new_w * (i * (1 / y_line_num)))
+                text = f"{i * int(100 / y_line_num):02}"
+                bbox = draw.textbbox((0, 0), text, font)
+                text_width = bbox[2] - bbox[0]
+                text_height = bbox[3] - bbox[1]
+                y_text_start = 3
+                draw.line([(x_line, text_width + 5 + y_text_start), (x_line, new_h)], fill=(0, 255, 255), width=1)
+                draw.text((x_line - text_height // 2, y_text_start), text, fill=(0, 255, 255), font=font)
 
-            if x_line_num > 0:
-                for i in range(1, x_line_num):
-                    y_line = int(new_h * (i * (1 / x_line_num)))
-                    text = f"{i * int(100 / x_line_num):02}"
-                    bbox = draw.textbbox((0, 0), text, font)
-                    text_width = bbox[2] - bbox[0]
-                    text_height = bbox[3] - bbox[1]
-                    x_text_start = 3
-                    draw.line([(text_width + 5 + x_text_start, y_line), (new_w, y_line)], fill=(255, 182, 193), width=1)
-                    draw.text((x_text_start, y_line - text_height // 2), text, fill=(255, 182, 193), font=font)
+        if x_line_num > 0:
+            for i in range(1, x_line_num):
+                y_line = int(new_h * (i * (1 / x_line_num)))
+                text = f"{i * int(100 / x_line_num):02}"
+                bbox = draw.textbbox((0, 0), text, font)
+                text_width = bbox[2] - bbox[0]
+                text_height = bbox[3] - bbox[1]
+                x_text_start = 3
+                draw.line([(text_width + 5 + x_text_start, y_line), (new_w, y_line)], fill=(255, 182, 193), width=1)
+                draw.text((x_text_start, y_line - text_height // 2), text, fill=(255, 182, 193), font=font)
 
-            resized.show()
+        resized.show()
 
     await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "rm", f"{image_folder}/{image}")
 
@@ -1113,7 +1105,7 @@ def train_model(video_file, ffmpeg_exe, favor_path):
     video_temp_file = os.path.join(reporter.query_path, f"tmp_fps60_{random.randint(100, 999)}.mp4")
     asyncio.run(ask_ffmpeg(ffmpeg_exe, deploy.fps, video_file, video_temp_file))
 
-    video = VideoObject(video_file)
+    video = VideoObject(video_temp_file)
     video.load_frames()
 
     cutter = VideoCutter(

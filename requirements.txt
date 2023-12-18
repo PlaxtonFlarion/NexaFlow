@@ -65,8 +65,8 @@ tensorboard-data-server==0.7.2
 tensorflow==2.14.0
 tensorflow-estimator==2.14.0
 tensorflow-io-gcs-filesystem==0.34.0
-tensorflow-macos==2.14.0
-tensorflow-metal==1.1.0
+tensorflow-macos==2.14.0; sys_platform == 'darwin'
+tensorflow-metal==1.1.0; sys_platform == 'darwin'
 termcolor==2.3.0
 threadpoolctl==3.2.0
 tifffile==2023.9.26
