@@ -652,7 +652,9 @@ async def analysis(alone: bool, *args):
     deploy = Deploy(omits=omits)
     deploy.load_deploy(favor_path)
 
-    cl = KerasClassifier(target_size=deploy.target_size)
+    cl = KerasClassifier(
+        target_size=deploy.target_size, data_size=deploy.target_size
+    )
     cl.load_model(model_path)
 
     timer_mode = 5
@@ -1040,7 +1042,9 @@ def single_video_task(input_video, *args):
     deploy = Deploy(omits=omits)
     deploy.load_deploy(favor_path)
 
-    cl = KerasClassifier(target_size=deploy.target_size)
+    cl = KerasClassifier(
+        target_size=deploy.target_size, data_size=deploy.target_size
+    )
     cl.load_model(model_path)
 
     looper = asyncio.get_event_loop()
@@ -1067,7 +1071,9 @@ def multiple_folder_task(folder, *args):
     deploy = Deploy(omits=omits)
     deploy.load_deploy(favor_path)
 
-    cl = KerasClassifier(target_size=deploy.target_size)
+    cl = KerasClassifier(
+        target_size=deploy.target_size, data_size=deploy.target_size
+    )
     cl.load_model(model_path)
 
     looper = asyncio.get_event_loop()
@@ -1153,7 +1159,7 @@ def build_model(src, favor_path):
             deploy.load_deploy(favor_path)
 
             fc = FramixClassifier()
-            fc.build(real_path, new_model_path, new_model_name, deploy.target_size)
+            fc.build(real_path, new_model_path, new_model_name)
         else:
             logger.error("文件夹未正确分类 ...")
     else:

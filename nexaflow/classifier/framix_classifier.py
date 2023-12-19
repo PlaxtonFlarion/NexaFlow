@@ -13,12 +13,12 @@ class FramixClassifier(object):
 
     def __init__(
             self,
-            target_size: tuple = None,
+            data_size: tuple = None,
             batch_size: int = None,
             epochs: int = None
     ):
 
-        self.target_size: tuple = target_size or (100, 100)
+        self.data_size: tuple = data_size or (200, 200)
         self.batch_size: int = batch_size or 4
         self.epochs: int = epochs or 20
 
@@ -34,12 +34,20 @@ class FramixClassifier(object):
     def model(self):
         del self.__model
 
+    @property
+    def follow_keras_size(self):
+        return self.data_size[1], self.data_size[0]
+
+    @property
+    def follow_cv_size(self):
+        return self.data_size[0], self.data_size[1]
+
     def create_model(self) -> keras.Sequential:
 
         if keras.backend.image_data_format() == "channels_first":
-            input_shape = (1, *self.target_size)
+            input_shape = (1, *self.follow_keras_size)
         else:
-            input_shape = (*self.target_size, 1)
+            input_shape = (*self.follow_keras_size, 1)
 
         model = keras.Sequential()
 
@@ -93,7 +101,7 @@ class FramixClassifier(object):
 
         train_generator = datagen.flow_from_directory(
             data_path,
-            target_size=self.target_size,
+            target_size=self.follow_keras_size,
             batch_size=self.batch_size,
             color_mode="grayscale",
             class_mode="sparse",
@@ -102,7 +110,7 @@ class FramixClassifier(object):
 
         validation_generator = datagen.flow_from_directory(
             data_path,
-            target_size=self.target_size,
+            target_size=self.follow_keras_size,
             batch_size=self.batch_size,
             color_mode="grayscale",
             class_mode="sparse",
@@ -132,7 +140,7 @@ class FramixClassifier(object):
         self.model.load_weights(model_path)
 
     def build(self, *args):
-        src, new_model_path, new_model_name, self.target_size = args
+        src, new_model_path, new_model_name = args
         self.train(src)
         assert self.model, "model is empty"
         final_model = os.path.join(new_model_path, new_model_name)

@@ -31,7 +31,7 @@ class Alynex(object):
     window_coefficient: int = 2
 
     kc: KerasClassifier = KerasClassifier(
-        target_size=target_size
+        target_size=target_size, data_size=target_size
     )
 
     def __init__(self):
@@ -168,8 +168,12 @@ class Alynex(object):
     class _Framix(object):
 
         def __init__(self, report: "Report"):
-            self.framix_list: List["BaseHook"] = []
+            self.__framix_list: List["BaseHook"] = []
             self.__reporter = report
+
+        @property
+        def framix_list(self) -> List["BaseHook"]:
+            return self.__framix_list
 
         def crop_hook(
                 self,
@@ -189,10 +193,7 @@ class Alynex(object):
             hook = OmitHook((y_size, x_size), (y, x))
             self.framix_list.append(hook)
 
-        def pixel_wizard(
-                self,
-                video: "VideoObject",
-        ) -> "ClassifierResult":
+        def pixel_wizard(self, video: "VideoObject") -> "ClassifierResult":
 
             cutter = VideoCutter(
                 target_size=Alynex.target_size

@@ -22,7 +22,7 @@ def multi_audio_task():
     device = manage.operate_device("")
     for query, audio in alynex.player.load_all_audio(AUDIO_DIRS):
         alynex.report.title = query
-        for _ in range(5):
+        for _ in range(3):
             alynex.report.query = query
             device.ask_swipe_unlock()
             alynex.record.start_record(
@@ -33,7 +33,7 @@ def multi_audio_task():
             device.ask_key_event(231)
             device.ask_sleep(1)
             alynex.player.play_audio(audio)
-            device.ask_sleep(2)
+            device.ask_sleep(10)
 
             alynex.record.stop_record()
             device.ask_force_filter(application)
