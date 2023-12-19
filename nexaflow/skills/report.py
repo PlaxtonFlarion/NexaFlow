@@ -51,7 +51,7 @@ class Report(object):
             if total_path:
                 self.total_path = total_path
             else:
-                # self.total_path = "/Users/acekeppel/PycharmProjects/NexaFlow/report/Nexa_20230822223025"
+                # self.total_path = "/Users/acekeppel/PycharmProjects/NexaFlow/report/Nexa_20230822223025/Nexa_Collection"
                 self.total_path = os.path.join(REPORT, f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection")
             os.makedirs(self.total_path, exist_ok=True)
 
@@ -269,7 +269,11 @@ class Report(object):
 
             async def handler_frame():
                 handler_image_list = []
-                for image in os.listdir(frame):
+                for image in os.listdir(
+                        os.path.join(
+                            query_path, query, os.path.basename(frame)
+                        )
+                ):
                     image_src = os.path.join(query, "frame", image)
                     image_ids = re.search(r"\d+(?=_)", image).group()
                     timestamp = float(re.search(r"(?<=_).+(?=\.)", image).group())
@@ -285,7 +289,11 @@ class Report(object):
 
             async def handler_extra():
                 handler_extra_list = []
-                for ex in os.listdir(extra):
+                for ex in os.listdir(
+                        os.path.join(
+                            query_path, query, os.path.basename(extra)
+                        )
+                ):
                     extra_src = os.path.join(query, "extra", ex)
                     extra_idx = ex.split("(")[0]
                     handler_extra_list.append(
@@ -363,7 +371,13 @@ class Report(object):
                 grouped_dict[parts].append(part)
 
         tasks = [
-            Report.ask_create_report(major_loc, title, total_path, query_path, range_list)
+            Report.ask_create_report(
+                major_loc,
+                title,
+                os.path.join(file_name, os.path.basename(total_path)),
+                os.path.join(file_name, os.path.basename(total_path), title),
+                range_list
+            )
             for (title, total_path, query_path), range_list in grouped_dict.items()
         ]
         merge_result = await asyncio.gather(*tasks)

@@ -136,6 +136,8 @@ class Deploy(object):
                         self._initial["omits"].append(
                             (hook_dict["x"], hook_dict["y"], hook_dict["x_size"], hook_dict["y_size"])
                         )
+                if len(self.omits) >= 2:
+                    self._initial["omits"] = list(set(self.omits))
         except FileNotFoundError:
             logger.debug("未找到部署文件,使用默认参数 ...")
         except json.decoder.JSONDecodeError:
@@ -690,6 +692,7 @@ async def analysis(alone: bool, *args):
                         await Terminal.cmd_line("Notepad", favor_path)
                     else:
                         await Terminal.cmd_line("open", "-W", "-a", "TextEdit", favor_path)
+                    deploy.omits.clear()
                     deploy.load_deploy(favor_path)
                     deploy.view_deploy()
                     continue
@@ -1233,6 +1236,8 @@ if __name__ == '__main__':
                 valid_list = [float(num) if "." in num else int(num) for num in match_list]
                 if sum(valid_list) > 0:
                     _omits.append(tuple(valid_list))
+    if len(_omits) >= 2:
+        _omits = list(set(_omits))
 
     more_args = _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, _favor_path, ffmpeg
 
