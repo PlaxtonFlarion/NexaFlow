@@ -55,7 +55,7 @@ NexaFlow 能智能识别您的操作系统，并自动选择适合的工具版�
 
 **NexaFlow** 提供简洁明了的安装包，让您能够轻松开始您的性能测试之旅。
 
-1. 下载安装包：访问我们的 [发布页面] 下载最新版的 NexaFlow 安装包。
+1. 下载安装包：访问我们的 [发布页面](https://github.com/PlaxtonFlarion/NexaFlow/releases) 下载最新版的 NexaFlow 安装包。
 2. 安装：运行下载的安装包，并按照提示完成安装过程。
 3. 启动：安装完成后，启动 NexaFlow 开始体验高效的性能测试。
 
