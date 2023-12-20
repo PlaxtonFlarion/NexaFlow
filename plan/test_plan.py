@@ -6,6 +6,7 @@ from nexaflow.skills.device import Manage
 
 AUDIO_DIRS = os.path.join(Constants.WORK, "audio")
 MODELS = os.path.join(Constants.WORK, "model", "model.h5")
+REPORT = os.path.join(Constants.WORK, "report")
 
 
 class TestPlan(object):
@@ -18,7 +19,7 @@ class TestPlan(object):
         self.looper: int = looper
         self.__device: "Device" = device
         self.__alynex: "Alynex" = Alynex()
-        self.__alynex.activate(MODELS)
+        self.__alynex.activate(MODELS, REPORT)
 
     def test_01(self):
         """讲个笑话"""

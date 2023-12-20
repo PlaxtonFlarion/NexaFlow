@@ -8,11 +8,12 @@ from nexaflow.skills.report import Report
 
 MERGE_TEMPLATE = os.path.join(Constants.NEXA, "template")
 MODELS = os.path.join(Constants.WORK, "model", "model.h5")
+REPORT = os.path.join(Constants.WORK, "report")
 
 
 def multi_video_task(folder: str) -> str:
     alynex = Alynex()
-    alynex.activate(MODELS)
+    alynex.activate(MODELS, REPORT)
     for video in alynex.only_video(os.path.join(Constants.WORK, "data", folder)):
         alynex.report.title = video.title
         for path in video.sheet:

@@ -435,9 +435,9 @@ class Parser(object):
 
     @staticmethod
     def initial_env():
-        universal_report_path = "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
-        universal_deploy_path = "framix.source", "deploy.json"
-        universal_option_path = "framix.source", "option.json"
+        universal_report_path = "framix.report"
+        universal_deploy_path = "framix.source"
+        universal_option_path = "framix.source"
         if work_platform == "framix.exe":
             universal = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
         elif work_platform == "framix.bin":
@@ -447,9 +447,9 @@ class Parser(object):
         else:
             universal = ""
 
-        new_report_path = os.path.join(universal, *universal_report_path)
-        new_deploy_path = os.path.join(universal, *universal_deploy_path)
-        new_option_path = os.path.join(universal, *universal_option_path)
+        new_report_path = os.path.join(universal, universal_report_path)
+        new_deploy_path = os.path.join(universal, universal_deploy_path)
+        new_option_path = os.path.join(universal, universal_option_path)
 
         return new_report_path, new_deploy_path, new_option_path
 
@@ -1229,7 +1229,19 @@ if __name__ == '__main__':
     if len(_omits) >= 2:
         _omits = list(set(_omits))
 
-    more_args = _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, _initial_report, _initial_deploy, _initial_option, ffmpeg
+    more_args = (
+        _boost,
+        _color,
+        _omits,
+        _model_path,
+        _total_path,
+        _major_path,
+        _proto_path,
+        _initial_report,
+        os.path.join(_initial_deploy, "deploy.json"),
+        os.path.join(_initial_option, "option.json"),
+        ffmpeg
+        )
 
     if cmd_lines.whole and len(cmd_lines.whole) > 0:
         members = len(cmd_lines.whole)

@@ -109,7 +109,7 @@ class Alynex(object):
             for root, _, file in os.walk(folder) if file
         ]
 
-    def activate(self, models: str, total_path: str = None, write_log: bool = True):
+    def activate(self, models: str, total_path: str, write_log: bool = True):
         if not self.__report:
             self.__report = Report(total_path, write_log)
             self.__framix = Alynex._Framix(self.report)

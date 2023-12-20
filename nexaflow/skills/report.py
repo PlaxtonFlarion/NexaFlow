@@ -13,7 +13,7 @@ from jinja2 import Template, Environment, FileSystemLoader
 from nexaflow import constants, toolbox
 from nexaflow.constants import Constants
 
-REPORT: str = os.path.join(Constants.WORK, "report")
+# REPORT: str = os.path.join(Constants.WORK, "report")
 FORMAT: str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>"
 
 
@@ -32,7 +32,7 @@ class Report(object):
                     cls.__init_var = (args, kwargs)
         return cls.__instance
 
-    def __init__(self, total_path: Optional[str] = None, write_log: bool = True):
+    def __init__(self, total_path: str, write_log: bool = True):
         if not self.__initialized:
             self.__initialized = True
 
@@ -48,11 +48,8 @@ class Report(object):
             self.range_list: list[dict] = []
             self.total_list: list[dict] = []
 
-            if total_path:
-                self.total_path = total_path
-            else:
-                # self.total_path = "/Users/acekeppel/PycharmProjects/NexaFlow/report/Nexa_20230822223025/Nexa_Collection"
-                self.total_path = os.path.join(REPORT, f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection")
+            # self.total_path = os.path.join(total_path, f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection")
+            self.total_path = "/Users/acekeppel/PycharmProjects/NexaFlow/report/Nexa_20230822223025/Nexa_Collection"
             os.makedirs(self.total_path, exist_ok=True)
 
             if write_log:
@@ -85,8 +82,8 @@ class Report(object):
 
     @query.setter
     def query(self, query: str):
-        # self.__query = query
-        self.__query = query + "_" + self.clock()
+        self.__query = query
+        # self.__query = query + "_" + self.clock()
         self.video_path = os.path.join(self.query_path, self.query, "video")
         self.frame_path = os.path.join(self.query_path, self.query, "frame")
         self.extra_path = os.path.join(self.query_path, self.query, "extra")
@@ -214,14 +211,14 @@ class Report(object):
         report_time = time.strftime('%Y.%m.%d %H:%M:%S')
 
         with open(
-                file=os.path.join(REPORT, file_name, "Nexa_Recovery", "nexaflow.log"),
+                file=os.path.join(file_name, "Nexa_Recovery", "nexaflow.log"),
                 mode="r", encoding="utf-8"
         ) as f:
             log_restore = re.findall(r"(?<=Recovery: ).*}", f.read())
         total_list = [json.loads(file) for file in log_restore]
         html = template.render(report_time=report_time, total_list=total_list)
 
-        total_html_path = os.path.join(REPORT, file_name, "NexaFlow.html")
+        total_html_path = os.path.join(file_name, "NexaFlow.html")
         with open(file=total_html_path, mode="w", encoding="utf-8") as f:
             f.write(html)
             logger.info(f"生成汇总报告: {total_html_path}\n\n")
