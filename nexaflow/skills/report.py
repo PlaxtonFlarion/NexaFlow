@@ -13,7 +13,6 @@ from jinja2 import Template, Environment, FileSystemLoader
 from nexaflow import constants, toolbox
 from nexaflow.constants import Constants
 
-# REPORT: str = os.path.join(Constants.WORK, "report")
 FORMAT: str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>"
 
 
@@ -48,8 +47,8 @@ class Report(object):
             self.range_list: list[dict] = []
             self.total_list: list[dict] = []
 
-            # self.total_path = os.path.join(total_path, f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection")
-            self.total_path = "/Users/acekeppel/PycharmProjects/NexaFlow/report/Nexa_20230822223025/Nexa_Collection"
+            self.total_path = os.path.join(total_path, f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection")
+            # self.total_path = "/Users/acekeppel/PycharmProjects/NexaFlow/report/Nexa_20230822223025/Nexa_Collection"
             os.makedirs(self.total_path, exist_ok=True)
 
             if write_log:
@@ -82,8 +81,8 @@ class Report(object):
 
     @query.setter
     def query(self, query: str):
-        self.__query = query
-        # self.__query = query + "_" + self.clock()
+        # self.__query = query
+        self.__query = query + "_" + self.clock()
         self.video_path = os.path.join(self.query_path, self.query, "video")
         self.frame_path = os.path.join(self.query_path, self.query, "frame")
         self.extra_path = os.path.join(self.query_path, self.query, "extra")
