@@ -149,6 +149,8 @@ class Deploy(object):
             return is_load
 
     def dump_deploy(self, deploy_file: str) -> None:
+        os.makedirs(os.path.dirname(deploy_file), exist_ok=True)
+
         with open(file=deploy_file, mode="w", encoding="utf-8") as f:
             f.writelines('{')
             for k, v in self._initial.items():
@@ -433,34 +435,23 @@ class Parser(object):
 
     @staticmethod
     def initial_env():
+        universal_report_path = "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
+        universal_deploy_path = "framix.source", "deploy.json"
+        universal_option_path = "framix.source", "option.json"
         if work_platform == "framix.exe":
-            new_total_path = os.path.join(
-                os.path.dirname(
-                    os.path.dirname(os.path.abspath(sys.argv[0]))
-                ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
-            )
+            universal = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
         elif work_platform == "framix.bin":
-            new_total_path = os.path.join(
-                os.path.dirname(
-                    os.path.dirname(
-                        sys.executable
-                    )
-                ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
-            )
+            universal = os.path.dirname(os.path.dirname(sys.executable))
         elif work_platform == "framix":
-            new_total_path = os.path.join(
-                os.path.dirname(
-                    os.path.dirname(
-                        os.path.dirname(
-                            os.path.dirname(sys.executable)
-                        )
-                    )
-                ), "framix.report", f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
-            )
+            universal = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(sys.executable))))
         else:
-            new_total_path = None
+            universal = ""
 
-        return new_total_path
+        new_report_path = os.path.join(universal, *universal_report_path)
+        new_deploy_path = os.path.join(universal, *universal_deploy_path)
+        new_option_path = os.path.join(universal, *universal_option_path)
+
+        return new_report_path, new_deploy_path, new_option_path
 
     @staticmethod
     def only_video(folder: str):
@@ -632,7 +623,7 @@ async def analysis(alone: bool, *args):
                 if done_event.is_set():
                     await analyzer(
                         reporter, cl, deploy, temp_video,
-                        boost=boost, color=color, omits=omits,
+                        boost=boost, color=color,
                         proto_path=proto_path, ffmpeg_exe=ffmpeg_exe
                     )
                     return
@@ -641,18 +632,18 @@ async def analysis(alone: bool, *args):
                 await asyncio.sleep(0.2)
             logger.error("录制视频失败,请重新录制视频 ...")
 
+    boost, color, omits, model_path, total_path, major_path, proto_path, initial_report, initial_deploy, initial_option, ffmpeg_exe = args
+
     cellphone = await check_device()
     if alone:
-        reporter = Report(initial_total_path, write_log=False)
+        reporter = Report(initial_report, write_log=False)
         reporter.title = f"Record_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
     else:
-        reporter = Report(initial_total_path)
+        reporter = Report(initial_report)
         reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
 
-    boost, color, omits, model_path, total_path, major_path, proto_path, favor_path, ffmpeg_exe = args
-
     deploy = Deploy(omits=omits)
-    deploy.load_deploy(favor_path)
+    deploy.load_deploy(initial_deploy)
 
     cl = KerasClassifier(
         target_size=deploy.target_size, data_size=deploy.target_size
@@ -686,14 +677,14 @@ async def analysis(alone: bool, *args):
                     cellphone = await check_device()
                     continue
                 elif action.strip() == "deploy" and len(action.strip()) == 6:
-                    deploy.dump_deploy(favor_path)
+                    deploy.dump_deploy(initial_deploy)
                     logger.warning("修改 deploy.json 文件后请完全退出编辑器进程再继续操作 ...")
                     if operation_system == "win32":
-                        await Terminal.cmd_line("Notepad", favor_path)
+                        await Terminal.cmd_line("Notepad", initial_deploy)
                     else:
-                        await Terminal.cmd_line("open", "-W", "-a", "TextEdit", favor_path)
+                        await Terminal.cmd_line("open", "-W", "-a", "TextEdit", initial_deploy)
                     deploy.omits.clear()
-                    deploy.load_deploy(favor_path)
+                    deploy.load_deploy(initial_deploy)
                     deploy.view_deploy()
                     continue
                 elif action.isdigit():
@@ -1032,10 +1023,9 @@ def worker_init(log_level: str = "INFO"):
 
 
 def single_video_task(input_video, *args):
-    boost, color, omits, model_path, total_path, major_path, proto_path, favor_path, ffmpeg_exe = args
-    new_total_path = Parser.initial_env()
+    boost, color, omits, model_path, total_path, major_path, proto_path, initial_report, initial_deploy, initial_option, ffmpeg_exe = args
 
-    reporter = Report(total_path=new_total_path)
+    reporter = Report(total_path=initial_report)
     reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
     reporter.query = f"{random.randint(10, 99)}"
     new_video_path = os.path.join(reporter.video_path, os.path.basename(input_video))
@@ -1043,7 +1033,7 @@ def single_video_task(input_video, *args):
     shutil.copy(input_video, new_video_path)
 
     deploy = Deploy(omits=omits)
-    deploy.load_deploy(favor_path)
+    deploy.load_deploy(initial_deploy)
 
     cl = KerasClassifier(
         target_size=deploy.target_size, data_size=deploy.target_size
@@ -1054,7 +1044,7 @@ def single_video_task(input_video, *args):
     looper.run_until_complete(
         analyzer(
             reporter, cl, deploy, new_video_path,
-            boost=boost, color=color, omits=deploy.omits,
+            boost=boost, color=color,
             proto_path=proto_path, ffmpeg_exe=ffmpeg_exe
         )
     )
@@ -1066,13 +1056,12 @@ def single_video_task(input_video, *args):
 
 
 def multiple_folder_task(folder, *args):
-    boost, color, omits, model_path, total_path, major_path, proto_path, favor_path, ffmpeg_exe = args
-    new_total_path = Parser.initial_env()
+    boost, color, omits, model_path, total_path, major_path, proto_path, initial_report, initial_deploy, initial_option, ffmpeg_exe = args
 
-    reporter = Report(total_path=new_total_path)
+    reporter = Report(total_path=initial_report)
 
     deploy = Deploy(omits=omits)
-    deploy.load_deploy(favor_path)
+    deploy.load_deploy(initial_deploy)
 
     cl = KerasClassifier(
         target_size=deploy.target_size, data_size=deploy.target_size
@@ -1089,7 +1078,7 @@ def multiple_folder_task(folder, *args):
             looper.run_until_complete(
                 analyzer(
                     reporter, cl, deploy, new_video_path,
-                    boost=boost, color=color, omits=deploy.omits,
+                    boost=boost, color=color,
                     proto_path=proto_path, ffmpeg_exe=ffmpeg_exe
                 )
             )
@@ -1101,15 +1090,16 @@ def multiple_folder_task(folder, *args):
     return reporter.total_path
 
 
-def train_model(video_file, ffmpeg_exe, favor_path):
-    new_total_path = Parser.initial_env()
-    reporter = Report(total_path=new_total_path, write_log=False)
+def train_model(video_file, *args):
+    boost, color, omits, model_path, total_path, major_path, proto_path, initial_report, initial_deploy, initial_option, ffmpeg_exe = args
+
+    reporter = Report(total_path=initial_report, write_log=False)
     reporter.title = f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
     if not os.path.exists(reporter.query_path):
         os.makedirs(reporter.query_path)
 
     deploy = Deploy()
-    deploy.load_deploy(favor_path)
+    deploy.load_deploy(initial_deploy)
 
     video_temp_file = os.path.join(reporter.query_path, f"tmp_fps60_{random.randint(100, 999)}.mp4")
     asyncio.run(ask_ffmpeg(ffmpeg_exe, deploy.fps, video_file, video_temp_file))
@@ -1142,7 +1132,9 @@ def train_model(video_file, ffmpeg_exe, favor_path):
     os.remove(video_temp_file)
 
 
-def build_model(src, favor_path):
+def build_model(src, *args):
+    boost, color, omits, model_path, total_path, major_path, proto_path, initial_report, initial_deploy, initial_option, ffmpeg_exe = args
+
     if os.path.isdir(src):
         real_path, file_list = "", []
         logger.debug(f"搜索文件夹: {src}")
@@ -1159,7 +1151,7 @@ def build_model(src, favor_path):
             new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
 
             deploy = Deploy()
-            deploy.load_deploy(favor_path)
+            deploy.load_deploy(initial_deploy)
 
             fc = FramixClassifier()
             fc.build(real_path, new_model_path, new_model_name)
@@ -1202,7 +1194,6 @@ if __name__ == '__main__':
         _total_path = os.path.join(job_path, "archivix", "pages")
         _major_path = os.path.join(job_path, "archivix", "pages")
         _proto_path = os.path.join(job_path, "archivix", "pages", "extra.html")
-        _favor_path = os.path.join(job_path, "archivix", "deploy.json")
     elif work_platform == "framix.py":
         job_path = os.path.dirname(os.path.abspath(__file__))
         _tools_path = os.path.join(job_path, "archivix", "tools")
@@ -1210,7 +1201,6 @@ if __name__ == '__main__':
         _total_path = os.path.join(job_path, "archivix", "pages")
         _major_path = os.path.join(job_path, "archivix", "pages")
         _proto_path = os.path.join(job_path, "archivix", "pages", "extra.html")
-        _favor_path = os.path.join(job_path, "archivix", "deploy.json")
     else:
         console.print("[bold red]Only compatible with Windows and macOS platforms ...")
         time.sleep(5)
@@ -1224,7 +1214,7 @@ if __name__ == '__main__':
 
     _boost, _color = cmd_lines.boost, cmd_lines.color
     _shape, _scale = cmd_lines.shape, cmd_lines.scale
-    initial_total_path = Parser.initial_env()
+    _initial_report, _initial_deploy, _initial_option = Parser.initial_env()
     adb, ffmpeg, scrcpy = Parser.compatible()
     cpu = os.cpu_count()
     logger.debug(f"CPU核心数量: {cpu}")
@@ -1239,7 +1229,7 @@ if __name__ == '__main__':
     if len(_omits) >= 2:
         _omits = list(set(_omits))
 
-    more_args = _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, _favor_path, ffmpeg
+    more_args = _boost, _color, _omits, _model_path, _total_path, _major_path, _proto_path, _initial_report, _initial_deploy, _initial_option, ffmpeg
 
     if cmd_lines.whole and len(cmd_lines.whole) > 0:
         members = len(cmd_lines.whole)
@@ -1273,20 +1263,20 @@ if __name__ == '__main__':
     elif cmd_lines.train and len(cmd_lines.train) > 0:
         members = len(cmd_lines.train)
         if members == 1:
-            train_model(cmd_lines.train[0], ffmpeg, _favor_path)
+            train_model(cmd_lines.train[0], *more_args)
         else:
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
-                pool.starmap(train_model, [(i, ffmpeg, _favor_path) for i in cmd_lines.train])
+                pool.starmap(train_model, [(i, *more_args) for i in cmd_lines.train])
         sys.exit(0)
     elif cmd_lines.build and len(cmd_lines.build) > 0:
         members = len(cmd_lines.build)
         if members == 1:
-            build_model(cmd_lines.build[0], _favor_path)
+            build_model(cmd_lines.build[0], *more_args)
         else:
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
-                pool.starmap(build_model, [(i, _favor_path) for i in cmd_lines.build])
+                pool.starmap(build_model, [(i, *more_args) for i in cmd_lines.build])
         sys.exit(0)
     else:
         try:
