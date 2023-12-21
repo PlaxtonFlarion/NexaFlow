@@ -126,8 +126,8 @@ class FramixClassifier(object):
         logger.info("模型训练完成 ...")
 
     def save_model(self, model_path: str):
+        assert self.model, "model is empty"
         self.model.save_weights(model_path, save_format="h5")
-        self.model.summary()
         logger.info(f"模型保存完成 {model_path}")
 
     def load_model(self, model_path: str, overwrite: bool = None):
@@ -142,7 +142,6 @@ class FramixClassifier(object):
     def build(self, *args):
         src, new_model_path, new_model_name = args
         self.train(src)
-        assert self.model, "model is empty"
         final_model = os.path.join(new_model_path, new_model_name)
         if not os.path.exists(new_model_path):
             os.makedirs(new_model_path, exist_ok=True)
