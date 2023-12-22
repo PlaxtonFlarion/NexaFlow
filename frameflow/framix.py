@@ -350,7 +350,7 @@ class Option(object):
             f.writelines('\n}')
 
 
-class Help(object):
+class Helper(object):
 
     @staticmethod
     def help_document():
@@ -503,11 +503,11 @@ class Parser(object):
 
     @staticmethod
     def compatible():
-        if sys.platform.lower() == "win32":
+        if operation_system == "win32":
             _adb = os.path.join(_tools_path, "windows", "platform-tools", "adb.exe")
             _ffmpeg = os.path.join(_tools_path, "windows", "ffmpeg-6.1-full_build", "bin", "ffmpeg.exe")
             _scrcpy = os.path.join(_tools_path, "windows", "scrcpy-win64-v2.2", "scrcpy.exe")
-        elif sys.platform.lower() == "darwin":
+        elif operation_system == "darwin":
             _adb = os.path.join(_tools_path, "mac", "platform-tools", "adb")
             _ffmpeg = os.path.join(_tools_path, "mac", "ffmpeg-6.1", "ffmpeg")
             _scrcpy = shutil.which("scrcpy")
@@ -790,7 +790,7 @@ async def analysis(alone: bool, *args):
                 else:
                     raise ValueError
         except ValueError:
-            Help.help_option()
+            Helper.help_option()
         else:
             await start()
             if not done_event.is_set():
@@ -1271,12 +1271,12 @@ async def main():
             if isinstance(e, Exception):
                 logger.error(e)
     else:
-        Help.help_document()
+        Helper.help_document()
 
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:
-        Help.help_document()
+        Helper.help_document()
         sys.exit(1)
 
     freeze_support()
