@@ -135,9 +135,9 @@ class Deploy(object):
         try:
             with open(file=deploy_file, mode="r", encoding="utf-8") as f:
                 data = json.loads(f.read())
-                boost_mode = data["boost"].lower() if isinstance(data.get("boost", "false"), str) else "false"
-                color_mode = data["color"].lower() if isinstance(data.get("color", "false"), str) else "false"
-                focus_mode = data["focus"].lower() if isinstance(data.get("focus", "false"), str) else "false"
+                boost_mode = data.get("boost", "false").lower() if isinstance(data.get("boost", "false"), str) else "false"
+                color_mode = data.get("color", "false").lower() if isinstance(data.get("color", "false"), str) else "false"
+                focus_mode = data.get("focus", "false").lower() if isinstance(data.get("focus", "false"), str) else "false"
                 self._deploys["boost"] = True if boost_mode == "true" else False
                 self._deploys["color"] = True if color_mode == "true" else False
                 self._deploys["focus"] = True if focus_mode == "true" else False
