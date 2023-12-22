@@ -547,6 +547,7 @@ async def analysis(alone: bool, *args):
                         logger.warning(f"剩余时间 -> {amount - i:02} 秒 {'----' * 10} ...")
                     await asyncio.sleep(1)
                 logger.warning(f"剩余时间 -> 00 秒")
+                return
             elif fail_event.is_set():
                 logger.warning(f"意外停止 ...")
                 break
