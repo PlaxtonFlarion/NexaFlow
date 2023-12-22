@@ -31,7 +31,10 @@ exec_platform = ["framix.exe", "framix.bin", "framix"]
 
 class Deploy(object):
 
-    _initial = {
+    _deploys = {
+        "boost": False,
+        "color": False,
+        "focus": False,
         "target_size": (350, 700),
         "fps": 60,
         "compress_rate": 0.5,
@@ -46,6 +49,9 @@ class Deploy(object):
 
     def __init__(
             self,
+            boost: bool = None,
+            color: bool = None,
+            focus: bool = None,
             target_size: tuple = None,
             fps: int = None,
             compress_rate: int | float = None,
@@ -58,74 +64,95 @@ class Deploy(object):
             omits: list = None
     ):
 
-        self._initial["target_size"] = target_size or (350, 700)
-        self._initial["fps"] = fps or 60
-        self._initial["compress_rate"] = compress_rate or 0.5
-        self._initial["threshold"] = threshold or 0.97
-        self._initial["offset"] = offset or 3
-        self._initial["window_size"] = window_size or 1
-        self._initial["step"] = step or 1
-        self._initial["block"] = block or 6
-        self._initial["window_coefficient"] = window_coefficient or 2
-        self._initial["omits"] = omits or []
+        self._deploys["boost"] = boost or False
+        self._deploys["color"] = color or False
+        self._deploys["focus"] = focus or False
+        self._deploys["target_size"] = target_size or (350, 700)
+        self._deploys["fps"] = fps or 60
+        self._deploys["compress_rate"] = compress_rate or 0.5
+        self._deploys["threshold"] = threshold or 0.97
+        self._deploys["offset"] = offset or 3
+        self._deploys["window_size"] = window_size or 1
+        self._deploys["step"] = step or 1
+        self._deploys["block"] = block or 6
+        self._deploys["window_coefficient"] = window_coefficient or 2
+        self._deploys["omits"] = omits or []
+
+    @property
+    def boost(self):
+        return self._deploys["boost"]
+
+    @property
+    def color(self):
+        return self._deploys["color"]
+
+    @property
+    def focus(self):
+        return self._deploys["focus"]
 
     @property
     def target_size(self):
-        return self._initial["target_size"]
+        return self._deploys["target_size"]
 
     @property
     def fps(self):
-        return self._initial["fps"]
+        return self._deploys["fps"]
 
     @property
     def compress_rate(self):
-        return self._initial["compress_rate"]
+        return self._deploys["compress_rate"]
 
     @property
     def threshold(self):
-        return self._initial["threshold"]
+        return self._deploys["threshold"]
 
     @property
     def offset(self):
-        return self._initial["offset"]
+        return self._deploys["offset"]
 
     @property
     def window_size(self):
-        return self._initial["window_size"]
+        return self._deploys["window_size"]
 
     @property
     def step(self):
-        return self._initial["step"]
+        return self._deploys["step"]
 
     @property
     def block(self):
-        return self._initial["block"]
+        return self._deploys["block"]
 
     @property
     def window_coefficient(self):
-        return self._initial["window_coefficient"]
+        return self._deploys["window_coefficient"]
 
     @property
     def omits(self):
-        return self._initial["omits"]
+        return self._deploys["omits"]
 
     def load_deploy(self, deploy_file: str) -> bool:
         is_load: bool = False
         try:
             with open(file=deploy_file, mode="r", encoding="utf-8") as f:
                 data = json.loads(f.read())
+                boost_mode = data["boost"].lower() if isinstance(data.get("boost", "false"), str) else "false"
+                color_mode = data["color"].lower() if isinstance(data.get("color", "false"), str) else "false"
+                focus_mode = data["focus"].lower() if isinstance(data.get("focus", "false"), str) else "false"
+                self._deploys["boost"] = True if boost_mode == "true" else False
+                self._deploys["color"] = True if color_mode == "true" else False
+                self._deploys["focus"] = True if focus_mode == "true" else False
                 size = data.get("target_size", (350, 700))
-                self._initial["target_size"] = tuple(
+                self._deploys["target_size"] = tuple(
                     max(100, min(3000, int(i))) for i in re.findall(r"-?\d*\.?\d+", size)
                 ) if isinstance(size, str) else size
-                self._initial["fps"] = max(15, min(60, data.get("fps", 60)))
-                self._initial["compress_rate"] = max(0, min(1, data.get("compress_rate", 0.5)))
-                self._initial["threshold"] = max(0, min(1, data.get("threshold", 0.97)))
-                self._initial["offset"] = max(1, data.get("offset", 3))
-                self._initial["window_size"] = max(1, data.get("window_size", 1))
-                self._initial["step"] = max(1, data.get("step", 1))
-                self._initial["block"] = max(1, min(int(min(self.target_size[0], self.target_size[1]) / 10), data.get("block", 6)))
-                self._initial["window_coefficient"] = max(2, data.get("window_coefficient", 2))
+                self._deploys["fps"] = max(15, min(60, data.get("fps", 60)))
+                self._deploys["compress_rate"] = max(0, min(1, data.get("compress_rate", 0.5)))
+                self._deploys["threshold"] = max(0, min(1, data.get("threshold", 0.97)))
+                self._deploys["offset"] = max(1, data.get("offset", 3))
+                self._deploys["window_size"] = max(1, data.get("window_size", 1))
+                self._deploys["step"] = max(1, data.get("step", 1))
+                self._deploys["block"] = max(1, min(int(min(self.target_size[0], self.target_size[1]) / 10), data.get("block", 6)))
+                self._deploys["window_coefficient"] = max(2, data.get("window_coefficient", 2))
                 hook_list = data.get("omits", [])
                 for hook_dict in hook_list:
                     if len(
@@ -133,11 +160,11 @@ class Deploy(object):
                                 value for value in hook_dict.values() if isinstance(value, int | float)
                             ]
                     ) == 4 and sum(data_list) > 0:
-                        self._initial["omits"].append(
+                        self._deploys["omits"].append(
                             (hook_dict["x"], hook_dict["y"], hook_dict["x_size"], hook_dict["y_size"])
                         )
                 if len(self.omits) >= 2:
-                    self._initial["omits"] = list(set(self.omits))
+                    self._deploys["omits"] = list(set(self.omits))
         except FileNotFoundError:
             logger.debug("未找到部署文件,使用默认参数 ...")
         except json.decoder.JSONDecodeError:
@@ -153,9 +180,11 @@ class Deploy(object):
 
         with open(file=deploy_file, mode="w", encoding="utf-8") as f:
             f.writelines('{')
-            for k, v in self._initial.items():
+            for k, v in self._deploys.items():
                 f.writelines('\n')
-                if k == "target_size":
+                if isinstance(v, bool):
+                    f.writelines(f'    "{k}": "{v}",')
+                elif k == "target_size":
                     f.writelines(f'    "{k}": "{v}",')
                 elif k == "omits":
                     if len(v) == 0:
@@ -194,6 +223,24 @@ class Deploy(object):
         table.add_column("范围", no_wrap=True)
         table.add_column("效果", no_wrap=True)
 
+        table.add_row(
+            f"[bold {col_1_color}]快速模式",
+            f"[bold {col_2_color}]{self.boost}",
+            f"[bold][[bold {col_3_color}]T | F[/bold {col_3_color}] ]",
+            f"[bold green]开启[/bold green]" if self.boost else "[bold red]关闭[/bold red]",
+        )
+        table.add_row(
+            f"[bold {col_1_color}]彩色模式",
+            f"[bold {col_2_color}]{self.color}",
+            f"[bold][[bold {col_3_color}]T | F[/bold {col_3_color}] ]",
+            f"[bold green]开启[/bold green]" if self.color else "[bold red]关闭[/bold red]",
+        )
+        table.add_row(
+            f"[bold {col_1_color}]视频转换",
+            f"[bold {col_2_color}]{self.focus}",
+            f"[bold][[bold {col_3_color}]T | F[/bold {col_3_color}] ]",
+            f"[bold green]开启[/bold green]" if self.focus else "[bold red]关闭[/bold red]",
+        )
         table.add_row(
             f"[bold {col_1_color}]图像尺寸",
             f"[bold {col_2_color}]{self.target_size}",
@@ -255,16 +302,52 @@ class Deploy(object):
             f"[bold]共 [bold red]{len(self.omits)}[/bold red] 个区域的图像不参与计算",
         )
 
-        # framix_logo = f"""
-        # ███████╗██████╗  █████╗ ███╗   ███╗██╗██╗  ██╗
-        # ██╔════╝██╔══██╗██╔══██╗████╗ ████║██║╚██╗██╔╝
-        # █████╗  ██████╔╝███████║██╔████╔██║██║ ╚███╔╝
-        # ██╔══╝  ██╔══██╗██╔══██║██║╚██╔╝██║██║ ██╔██╗
-        # ██║     ██║  ██║██║  ██║██║ ╚═╝ ██║██║██╔╝ ██╗
-        # ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚═╝  ╚═╝
-        # """
-        # console.print(framix_logo)
         console.print(table)
+
+
+class Option(object):
+
+    _options = {
+        "Total Path": ""
+    }
+
+    @property
+    def total_path(self):
+        return self._options["Total Path"]
+
+    @total_path.setter
+    def total_path(self, value):
+        self._options["Total Path"] = value
+
+    def load_option(self, option_file: str) -> bool:
+        is_load: bool = False
+        try:
+            with open(file=option_file, mode="r", encoding="utf-8") as f:
+                data = json.loads(f.read())
+                data_path = data.get("Total Path", "")
+                if data_path and os.path.isdir(data_path):
+                    if not os.path.exists(data_path):
+                        os.makedirs(data_path, exist_ok=True)
+                    self.total_path = data_path
+        except FileNotFoundError:
+            logger.debug("未找到配置文件,使用默认路径 ...")
+        except json.decoder.JSONDecodeError:
+            logger.debug("配置文件解析错误,文件格式不正确,使用默认路径 ...")
+        else:
+            logger.debug("读取配置文件,使用配置参数 ...")
+            is_load = True
+        finally:
+            return is_load
+
+    def dump_option(self, option_file: str) -> None:
+        os.makedirs(os.path.dirname(option_file), exist_ok=True)
+
+        with open(file=option_file, mode="w", encoding="utf-8") as f:
+            f.writelines('{')
+            for k, v in self._options.items():
+                f.writelines('\n')
+                f.writelines(f'    "{k}": "{v}"')
+            f.writelines('\n}')
 
 
 class Help(object):
@@ -325,6 +408,9 @@ class Help(object):
             "[bold #FFDC00]--color", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]彩色模式"
         )
         table_minor.add_row(
+            "[bold #FFDC00]--focus", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]转换视频"
+        )
+        table_minor.add_row(
             "[bold #FFDC00]--shape", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #AFAFD7]自动", "[bold #39CCCC]图片尺寸"
         )
         table_minor.add_row(
@@ -333,7 +419,14 @@ class Help(object):
         table_minor.add_row(
             "[bold #FFDC00]--omits", "[bold #7FDBFF]坐标", "[bold #FFAFAF]多次", "[bold #AFAFD7]自动", "[bold #39CCCC]忽略区域"
         )
-
+        framix_logo = """[bold #D0D0D0]
+              ███████╗██████╗  █████╗      ███╗   ███╗██╗██╗  ██╗
+              ██╔════╝██╔══██╗██╔══██╗     ████╗ ████║██║╚██╗██╔╝
+              █████╗  ██████╔╝███████║     ██╔████╔██║██║ ╚███╔╝
+              ██╔══╝  ██╔══██╗██╔══██║     ██║╚██╔╝██║██║ ██╔██╗
+              ██║     ██║  ██║██║  ██║     ██║ ╚═╝ ██║██║██╔╝ ██╗
+              ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝     ╚═╝     ╚═╝╚═╝╚═╝  ╚═╝
+        """
         nexaflow_logo = """[bold #D0D0D0]
     ███╗   ██╗███████╗██╗  ██╗ █████╗   ███████╗██╗      ██████╗ ██╗    ██╗
     ██╔██╗ ██║██╔════╝╚██╗██╔╝██╔══██╗  ██╔════╝██║     ██╔═══██╗██║    ██║
@@ -342,8 +435,10 @@ class Help(object):
     ██║  ╚███║███████╗██╔╝ ██╗██║  ██║  ██║     ███████╗╚██████╔╝╚███╔███╔╝
     ╚═╝   ╚══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝  ╚═╝     ╚══════╝ ╚═════╝  ╚══╝╚══╝
         """
+
         console.print(nexaflow_logo)
         console.print(table_major)
+        console.print(framix_logo)
         console.print(table_minor)
         with Progress() as progress:
             task = progress.add_task("[bold #FFFFD7]Framix Terminal Command.", total=100)
@@ -397,6 +492,7 @@ class Parser(object):
 
         parser.add_argument('--boost', action='store_true', help='快速模式')
         parser.add_argument('--color', action='store_true', help='彩色模式')
+        parser.add_argument('--focus', action='store_true', help='转换视频')
         parser.add_argument('--shape', nargs='?', const=None, type=parse_shape, help='图片尺寸')
         parser.add_argument('--scale', nargs='?', const=None, type=parse_scale, help='缩放比例')
         parser.add_argument('--omits', action='append', help='忽略区域')
@@ -622,18 +718,14 @@ async def analysis(alone: bool, *args):
                 await transports.wait()
             for _ in range(10):
                 if done_event.is_set():
-                    await analyzer(
-                        reporter, cl, deploy, temp_video,
-                        boost=boost, color=color,
-                        proto_path=proto_path, ffmpeg_exe=ffmpeg_exe
-                    )
+                    await analyzer(reporter, cl, deploy, temp_video, proto_path=proto_path, ffmpeg_exe=ffmpeg_exe)
                     return
                 elif fail_event.is_set():
                     break
                 await asyncio.sleep(0.2)
             logger.error("录制视频失败,请重新录制视频 ...")
 
-    boost, color, omits, model_path, total_path, major_path, proto_path, initial_report, initial_deploy, initial_option, ffmpeg_exe = args
+    boost, color, focus, omits, model_path, total_path, major_path, proto_path, initial_report, initial_deploy, initial_option, ffmpeg_exe = args
 
     cellphone = await check_device()
     if alone:
@@ -643,7 +735,7 @@ async def analysis(alone: bool, *args):
         reporter = Report(initial_report)
         reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
 
-    deploy = Deploy(omits=omits)
+    deploy = Deploy(boost=boost, color=color, focus=focus, omits=omits)
     deploy.load_deploy(initial_deploy)
 
     cl = KerasClassifier(
@@ -711,9 +803,7 @@ async def analysis(alone: bool, *args):
 
 
 async def analyzer(reporter: "Report", cl: "KerasClassifier", deploy: "Deploy", vision_path: str, **kwargs):
-    boost = kwargs.get("boost", True)
-    color = kwargs.get("color", True)
-    focus = kwargs.get("focus", True)
+
     proto_path = kwargs["proto_path"]
 
     async def validate():
@@ -740,19 +830,27 @@ async def analyzer(reporter: "Report", cl: "KerasClassifier", deploy: "Deploy", 
         return screen_tag, screen_cap
 
     async def frame_flip():
-        if focus:
-            change_record = os.path.join(
-                os.path.dirname(vision_path), f"screen_fps60_{random.randint(100, 999)}.mp4"
-            )
-            await ask_ffmpeg(kwargs.get("ffmpeg_exe", "ffmpeg"), deploy.fps, vision_path, change_record)
-            logger.info(f"视频转换完成: {os.path.basename(change_record)}")
-            os.remove(vision_path)
-            logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
-        else:
-            change_record = screen_record
+        change_record = os.path.join(
+            os.path.dirname(vision_path), f"screen_fps60_{random.randint(100, 999)}.mp4"
+        )
+        await ask_ffmpeg(kwargs.get("ffmpeg_exe", "ffmpeg"), deploy.fps, vision_path, change_record)
+        logger.info(f"视频转换完成: {os.path.basename(change_record)}")
+        os.remove(vision_path)
+        logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
+
+        # if deploy.focus:
+        #     change_record = os.path.join(
+        #         os.path.dirname(vision_path), f"screen_fps60_{random.randint(100, 999)}.mp4"
+        #     )
+        #     await ask_ffmpeg(kwargs.get("ffmpeg_exe", "ffmpeg"), deploy.fps, vision_path, change_record)
+        #     logger.info(f"视频转换完成: {os.path.basename(change_record)}")
+        #     os.remove(vision_path)
+        #     logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
+        # else:
+        #     change_record = screen_record
 
         video = VideoObject(change_record)
-        task, hued = video.load_frames(color)
+        task, hued = video.load_frames(deploy.color)
         return video, task, hued
 
     async def frame_flow():
@@ -805,7 +903,7 @@ async def analyzer(reporter: "Report", cl: "KerasClassifier", deploy: "Deploy", 
 
         pbar = toolbox.show_progress(classify.get_length(), 50, "Faster")
         frames_list = []
-        if boost:
+        if deploy.boost:
             frames_list.append(previous := important_frames[0])
             pbar.update(1)
             for current in important_frames[1:]:
@@ -824,7 +922,7 @@ async def analyzer(reporter: "Report", cl: "KerasClassifier", deploy: "Deploy", 
                 pbar.update(1)
             pbar.close()
 
-        if color:
+        if deploy.color:
             video.hued_data = tuple(hued.result())
             logger.info(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
             task.shutdown()
@@ -1024,7 +1122,7 @@ def worker_init(log_level: str = "INFO"):
 
 
 def single_video_task(input_video, *args):
-    boost, color, omits, model_path, total_path, major_path, proto_path, initial_report, initial_deploy, initial_option, ffmpeg_exe = args
+    boost, color, focus, omits, model_path, total_path, major_path, proto_path, initial_report, initial_deploy, initial_option, ffmpeg_exe = args
 
     reporter = Report(total_path=initial_report)
     reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
@@ -1033,7 +1131,7 @@ def single_video_task(input_video, *args):
 
     shutil.copy(input_video, new_video_path)
 
-    deploy = Deploy(omits=omits)
+    deploy = Deploy(boost=boost, color=color, focus=focus, omits=omits)
     deploy.load_deploy(initial_deploy)
 
     cl = KerasClassifier(
@@ -1043,11 +1141,8 @@ def single_video_task(input_video, *args):
 
     looper = asyncio.get_event_loop()
     looper.run_until_complete(
-        analyzer(
-            reporter, cl, deploy, new_video_path,
-            boost=boost, color=color,
-            proto_path=proto_path, ffmpeg_exe=ffmpeg_exe
-        )
+        analyzer(reporter, cl, deploy, new_video_path, boost=boost, color=color, proto_path=proto_path,
+                 ffmpeg_exe=ffmpeg_exe)
     )
     looper.run_until_complete(
         reporter.ask_create_total_report(
@@ -1057,11 +1152,11 @@ def single_video_task(input_video, *args):
 
 
 def multiple_folder_task(folder, *args):
-    boost, color, omits, model_path, total_path, major_path, proto_path, initial_report, initial_deploy, initial_option, ffmpeg_exe = args
+    boost, color, focus, omits, model_path, total_path, major_path, proto_path, initial_report, initial_deploy, initial_option, ffmpeg_exe = args
 
     reporter = Report(total_path=initial_report)
 
-    deploy = Deploy(omits=omits)
+    deploy = Deploy(boost=boost, color=color, focus=focus, omits=omits)
     deploy.load_deploy(initial_deploy)
 
     cl = KerasClassifier(
@@ -1077,11 +1172,8 @@ def multiple_folder_task(folder, *args):
             shutil.copy(path, reporter.video_path)
             new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
             looper.run_until_complete(
-                analyzer(
-                    reporter, cl, deploy, new_video_path,
-                    boost=boost, color=color,
-                    proto_path=proto_path, ffmpeg_exe=ffmpeg_exe
-                )
+                analyzer(reporter, cl, deploy, new_video_path, boost=boost, color=color, proto_path=proto_path,
+                         ffmpeg_exe=ffmpeg_exe)
             )
     looper.run_until_complete(
         reporter.ask_create_total_report(
@@ -1092,7 +1184,7 @@ def multiple_folder_task(folder, *args):
 
 
 def train_model(video_file, *args):
-    boost, color, omits, model_path, total_path, major_path, proto_path, initial_report, initial_deploy, initial_option, ffmpeg_exe = args
+    boost, color, focus, omits, model_path, total_path, major_path, proto_path, initial_report, initial_deploy, initial_option, ffmpeg_exe = args
 
     reporter = Report(total_path=initial_report, write_log=False)
     reporter.title = f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
@@ -1134,7 +1226,7 @@ def train_model(video_file, *args):
 
 
 def build_model(src, *args):
-    boost, color, omits, model_path, total_path, major_path, proto_path, initial_report, initial_deploy, initial_option, ffmpeg_exe = args
+    boost, color, focus, omits, model_path, total_path, major_path, proto_path, initial_report, initial_deploy, initial_option, ffmpeg_exe = args
 
     if os.path.isdir(src):
         real_path, file_list = "", []
@@ -1174,7 +1266,10 @@ async def main():
         await painting(_shape, _scale, _color, _omits)
     elif cmd_lines.merge and len(cmd_lines.merge) > 0:
         tasks = [Report.ask_create_total_report(merge, _total_path, _major_path) for merge in cmd_lines.merge]
-        await asyncio.gather(*tasks)
+        error = await asyncio.gather(*tasks)
+        for e in error:
+            if isinstance(e, Exception):
+                logger.error(e)
     else:
         Help.help_document()
 
@@ -1213,7 +1308,7 @@ if __name__ == '__main__':
     _debug = "DEBUG" if cmd_lines.debug else "INFO"
     worker_init(_debug)
 
-    _boost, _color = cmd_lines.boost, cmd_lines.color
+    _boost, _color, _focus = cmd_lines.boost, cmd_lines.color, cmd_lines.focus
     _shape, _scale = cmd_lines.shape, cmd_lines.scale
     _initial_report, _initial_deploy, _initial_option = Parser.initial_env()
     adb, ffmpeg, scrcpy = Parser.compatible()
@@ -1230,19 +1325,20 @@ if __name__ == '__main__':
     if len(_omits) >= 2:
         _omits = list(set(_omits))
 
+    _initial_deploy = os.path.join(_initial_deploy, "deploy.json")
+    _initial_option = os.path.join(_initial_option, "option.json")
+
+    option = Option()
+    option.load_option(_initial_option)
+    option.dump_option(_initial_option)
+    _initial_report = option.total_path if option.total_path else _initial_report
+
     more_args = (
-        _boost,
-        _color,
-        _omits,
-        _model_path,
-        _total_path,
-        _major_path,
-        _proto_path,
-        _initial_report,
-        os.path.join(_initial_deploy, "deploy.json"),
-        os.path.join(_initial_option, "option.json"),
+        _boost, _color, _focus, _omits,
+        _model_path, _total_path, _major_path, _proto_path,
+        _initial_report, _initial_deploy, _initial_option,
         ffmpeg
-        )
+    )
 
     if cmd_lines.whole and len(cmd_lines.whole) > 0:
         members = len(cmd_lines.whole)

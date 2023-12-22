@@ -357,40 +357,44 @@ class Report(object):
     @staticmethod
     async def ask_create_total_report(file_name: str, major_loc: str, loader_total_loc: str):
         report_time = time.strftime('%Y.%m.%d %H:%M:%S')
-
-        with open(file=os.path.join(file_name, "Nexa_Recovery", "nexaflow.log"), mode="r", encoding="utf-8") as f:
-            match_list = re.findall(r"(?<=Restore: ).*}", f.read())
+        try:
+            with open(file=os.path.join(file_name, "Nexa_Recovery", "nexaflow.log"), mode="r", encoding="utf-8") as f:
+                open_file = f.read()
+        except FileNotFoundError as e:
+            return e
+        else:
+            match_list = re.findall(r"(?<=Restore: ).*}", open_file)
             range_list = [json.loads(file.replace("'", '"')) for file in match_list if file]
             grouped_dict = defaultdict(list)
             for part in range_list:
                 parts = part.pop("title"), part.pop("total_path"), part.pop("query_path")
                 grouped_dict[parts].append(part)
 
-        tasks = [
-            Report.ask_create_report(
-                major_loc,
-                title,
-                os.path.join(file_name, os.path.basename(total_path)),
-                os.path.join(file_name, os.path.basename(total_path), title),
-                range_list
-            )
-            for (title, total_path, query_path), range_list in grouped_dict.items()
-        ]
-        merge_result = await asyncio.gather(*tasks)
-        total_list = [merge for merge in merge_result]
+            tasks = [
+                Report.ask_create_report(
+                    major_loc,
+                    title,
+                    os.path.join(file_name, os.path.basename(total_path)),
+                    os.path.join(file_name, os.path.basename(total_path), title),
+                    range_list
+                )
+                for (title, total_path, query_path), range_list in grouped_dict.items()
+            ]
+            merge_result = await asyncio.gather(*tasks)
+            total_list = [merge for merge in merge_result]
 
-        if len(total_list) > 0:
-            total_loader = FileSystemLoader(loader_total_loc)
-            total_environment = Environment(loader=total_loader)
-            total_template = total_environment.get_template("overall.html")
+            if len(total_list) > 0:
+                total_loader = FileSystemLoader(loader_total_loc)
+                total_environment = Environment(loader=total_loader)
+                total_template = total_environment.get_template("overall.html")
 
-            html = total_template.render(report_time=report_time, total_list=total_list)
-            total_html = os.path.join(file_name, "NexaFlow.html")
-            with open(file=total_html, mode="w", encoding="utf-8") as f:
-                f.write(html)
-                logger.info(f"生成汇总报告: {total_html}")
-        else:
-            logger.info("没有可以汇总的报告 ...")
+                html = total_template.render(report_time=report_time, total_list=total_list)
+                total_html = os.path.join(file_name, "NexaFlow.html")
+                with open(file=total_html, mode="w", encoding="utf-8") as f:
+                    f.write(html)
+                    logger.info(f"生成汇总报告: {total_html}")
+            else:
+                logger.info("没有可以汇总的报告 ...")
 
     @staticmethod
     def draw(
