@@ -935,7 +935,10 @@ class Missions(object):
             reporter = Report(self.initial_report)
             reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
 
-        deploy = Deploy(boost=self.boost, color=self.color, focus=self.focus, omits=self.omits)
+        deploy = Deploy(
+            boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
+            omits=self.omits
+        )
         deploy.load_deploy(self.initial_deploy)
 
         cl = KerasClassifier(
