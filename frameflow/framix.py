@@ -530,10 +530,10 @@ class Parser(object):
         return adb, ffmpeg, scrcpy
 
     @staticmethod
-    def initial_env(report_dirs, deploy_file, option_file):
+    def initial_directory(report_dirs, deploy_dirs, option_dirs):
         universal_report_path = report_dirs
-        universal_deploy_path = deploy_file
-        universal_option_path = option_file
+        universal_deploy_path = deploy_dirs
+        universal_option_path = option_dirs
         if work_platform == "framix.exe":
             universal = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
         elif work_platform == "framix.bin":
@@ -548,6 +548,22 @@ class Parser(object):
         new_option_path = os.path.join(universal, universal_option_path)
 
         return new_report_path, new_deploy_path, new_option_path
+
+
+class Missions(object):
+
+    def __init__(self, *args, **kwargs):
+        self.boost, self.color, self.focus, self.omits, self.shape, self.scale = args
+        self.model_path = kwargs["model_path"]
+        self.total_path = kwargs["total_path"]
+        self.major_path = kwargs["major_path"]
+        self.proto_path = kwargs["proto_path"]
+        self.initial_report = kwargs["initial_report"]
+        self.initial_deploy = kwargs["initial_deploy"]
+        self.initial_option = kwargs["initial_option"]
+        self.adb_exe = kwargs["adb_exe"]
+        self.ffmpeg_exe = kwargs["ffmpeg_exe"]
+        self.scrcpy_exe = kwargs["scrcpy_exe"]
 
     @staticmethod
     def only_video(folder: str):
@@ -567,23 +583,7 @@ class Parser(object):
             for root, _, file in os.walk(folder) if file
         ]
 
-
-class Missions(object):
-
-    def __init__(self, *args, **kwargs):
-        self.boost, self.color, self.focus, self.omits, self.shape, self.scale = args
-        self.model_path = kwargs["model_path"]
-        self.total_path = kwargs["total_path"]
-        self.major_path = kwargs["major_path"]
-        self.proto_path = kwargs["proto_path"]
-        self.initial_report = kwargs["initial_report"]
-        self.initial_deploy = kwargs["initial_deploy"]
-        self.initial_option = kwargs["initial_option"]
-        self.adb_exe = kwargs["adb_exe"]
-        self.ffmpeg_exe = kwargs["ffmpeg_exe"]
-        self.scrcpy_exe = kwargs["scrcpy_exe"]
-
-    def videos_task(self, input_video):
+    def video_task(self, input_video):
         reporter = Report(total_path=self.initial_report)
         reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
         reporter.query = f"{random.randint(10, 99)}"
@@ -591,7 +591,10 @@ class Missions(object):
 
         shutil.copy(input_video, new_video_path)
 
-        deploy = Deploy(boost=self.boost, color=self.color, focus=self.focus, omits=self.omits)
+        deploy = Deploy(
+            boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
+            omits=self.omits
+        )
         deploy.load_deploy(self.initial_deploy)
 
         cl = KerasClassifier(
@@ -603,7 +606,9 @@ class Missions(object):
         looper.run_until_complete(
             analyzer(
                 reporter, cl, deploy, new_video_path,
-                boost=self.boost, color=self.color, proto_path=self.proto_path, ffmpeg_exe=self.ffmpeg_exe)
+                proto_path=self.proto_path,
+                ffmpeg_exe=self.ffmpeg_exe
+            )
         )
         looper.run_until_complete(
             reporter.ask_create_total_report(
@@ -611,10 +616,13 @@ class Missions(object):
             )
         )
 
-    def folder_task(self, folder):
+    def video_dir_task(self, folder):
         reporter = Report(total_path=self.initial_report)
 
-        deploy = Deploy(boost=self.boost, color=self.color, focus=self.focus, omits=self.omits)
+        deploy = Deploy(
+            boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
+            omits=self.omits
+        )
         deploy.load_deploy(self.initial_deploy)
 
         cl = KerasClassifier(
@@ -623,7 +631,7 @@ class Missions(object):
         cl.load_model(self.model_path)
 
         looper = asyncio.get_event_loop()
-        for video in Parser.only_video(folder):
+        for video in self.only_video(folder):
             reporter.title = video.title
             for path in video.sheet:
                 reporter.query = os.path.basename(path).split(".")[0]
@@ -632,7 +640,9 @@ class Missions(object):
                 looper.run_until_complete(
                     analyzer(
                         reporter, cl, deploy, new_video_path,
-                        boost=self.boost, color=self.color, proto_path=self.proto_path, ffmpeg_exe=self.ffmpeg_exe)
+                        proto_path=self.proto_path,
+                        ffmpeg_exe=self.ffmpeg_exe
+                    )
                 )
         looper.run_until_complete(
             reporter.ask_create_total_report(
@@ -706,11 +716,11 @@ class Missions(object):
         else:
             logger.error("训练模型需要一个分类文件夹 ...")
 
-    async def combines(self):
+    async def combines(self, merge):
         tasks = [
             Report.ask_create_total_report(
-                merge, self.total_path, self.major_path
-            ) for merge in cmd_lines.merge
+                m, self.total_path, self.major_path
+            ) for m in merge
         ]
         error = await asyncio.gather(*tasks)
         for e in error:
@@ -906,7 +916,11 @@ class Missions(object):
                     await transports.wait()
                 for _ in range(10):
                     if done_event.is_set():
-                        await analyzer(reporter, cl, deploy, temp_video, proto_path=self.proto_path, ffmpeg_exe=self.ffmpeg_exe)
+                        await analyzer(
+                            reporter, cl, deploy, temp_video,
+                            proto_path=self.proto_path,
+                            ffmpeg_exe=self.ffmpeg_exe
+                        )
                         return
                     elif fail_event.is_set():
                         break
@@ -988,7 +1002,7 @@ class Missions(object):
                 fail_event.clear()
 
 
-def worker_init(log_level: str = "INFO"):
+def worker_init(log_level: str):
     logger.remove(0)
     log_format = "| <level>{level: <8}</level> | <level>{message}</level>"
     logger.add(sys.stderr, format=log_format, level=log_level.upper())
@@ -1043,9 +1057,16 @@ async def ask_ffmpeg(ffmpeg_exe, fps, src, dst):
     await Terminal.cmd_line(*cmd)
 
 
-async def analyzer(reporter: "Report", cl: "KerasClassifier", deploy: "Deploy", vision_path: str, **kwargs):
+async def analyzer(
+        reporter: "Report",
+        cl: "KerasClassifier",
+        deploy: "Deploy",
+        vision_path: str,
+        **kwargs
+):
 
     proto_path = kwargs["proto_path"]
+    ffmpeg_exe = kwargs["ffmpeg_exe"]
 
     async def validate():
         screen_tag, screen_cap = None, None
@@ -1071,24 +1092,17 @@ async def analyzer(reporter: "Report", cl: "KerasClassifier", deploy: "Deploy", 
         return screen_tag, screen_cap
 
     async def frame_flip():
-        change_record = os.path.join(
-            os.path.dirname(vision_path), f"screen_fps60_{random.randint(100, 999)}.mp4"
-        )
-        await ask_ffmpeg(kwargs.get("ffmpeg_exe", "ffmpeg"), deploy.fps, vision_path, change_record)
-        logger.info(f"视频转换完成: {os.path.basename(change_record)}")
-        os.remove(vision_path)
-        logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
-
-        # if deploy.focus:
-        #     change_record = os.path.join(
-        #         os.path.dirname(vision_path), f"screen_fps60_{random.randint(100, 999)}.mp4"
-        #     )
-        #     await ask_ffmpeg(kwargs.get("ffmpeg_exe", "ffmpeg"), deploy.fps, vision_path, change_record)
-        #     logger.info(f"视频转换完成: {os.path.basename(change_record)}")
-        #     os.remove(vision_path)
-        #     logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
-        # else:
-        #     change_record = screen_record
+        if deploy.focus:
+            change_record = os.path.join(
+                os.path.dirname(vision_path),
+                f"screen_fps60_{random.randint(100, 999)}.mp4"
+            )
+            await ask_ffmpeg(ffmpeg_exe, deploy.fps, vision_path, change_record)
+            logger.info(f"视频转换完成: {os.path.basename(change_record)}")
+            os.remove(vision_path)
+            logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
+        else:
+            change_record = screen_record
 
         video = VideoObject(change_record)
         task, hued = video.load_frames(deploy.color)
@@ -1273,7 +1287,7 @@ async def main():
     elif cmd_lines.paint:
         await missions.painting()
     elif cmd_lines.merge and len(cmd_lines.merge) > 0:
-        await missions.combines()
+        await missions.combines(cmd_lines.merge)
     else:
         Helper.help_document()
 
@@ -1314,7 +1328,7 @@ if __name__ == '__main__':
 
     _boost, _color, _focus = cmd_lines.boost, cmd_lines.color, cmd_lines.focus
     _shape, _scale = cmd_lines.shape, cmd_lines.scale
-    _initial_report, _initial_deploy, _initial_option = Parser.initial_env(
+    _initial_report, _initial_deploy, _initial_option = Parser.initial_directory(
         "framix.report", "framix.source", "framix.source"
     )
     _adb_exe, _ffmpeg_exe, _scrcpy_exe = Parser.compatible(_tools_path)
@@ -1349,21 +1363,21 @@ if __name__ == '__main__':
     if cmd_lines.whole and len(cmd_lines.whole) > 0:
         members = len(cmd_lines.whole)
         if members == 1:
-            missions.folder_task(cmd_lines.whole[0])
+            missions.video_dir_task(cmd_lines.whole[0])
         else:
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
-                results = pool.starmap(missions.folder_task, [(i,) for i in cmd_lines.whole])
+                results = pool.starmap(missions.video_dir_task, [(i, ) for i in cmd_lines.whole])
             Report.merge_report(results, _total_path)
         sys.exit(0)
     elif cmd_lines.input and len(cmd_lines.input) > 0:
         members = len(cmd_lines.input)
         if members == 1:
-            missions.videos_task(cmd_lines.input[0])
+            missions.video_task(cmd_lines.input[0])
         else:
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
-                pool.starmap(missions.videos_task, [(i,) for i in cmd_lines.input])
+                pool.starmap(missions.video_task, [(i, ) for i in cmd_lines.input])
         sys.exit(0)
     elif cmd_lines.train and len(cmd_lines.train) > 0:
         members = len(cmd_lines.train)
@@ -1372,7 +1386,7 @@ if __name__ == '__main__':
         else:
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
-                pool.starmap(missions.train_model, [(i,) for i in cmd_lines.train])
+                pool.starmap(missions.train_model, [(i, ) for i in cmd_lines.train])
         sys.exit(0)
     elif cmd_lines.build and len(cmd_lines.build) > 0:
         members = len(cmd_lines.build)
@@ -1381,7 +1395,7 @@ if __name__ == '__main__':
         else:
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
-                pool.starmap(missions.build_model, [(i,) for i in cmd_lines.build])
+                pool.starmap(missions.build_model, [(i, ) for i in cmd_lines.build])
         sys.exit(0)
     else:
         try:
