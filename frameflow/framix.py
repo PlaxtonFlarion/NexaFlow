@@ -19,7 +19,7 @@ from nexaflow.video import VideoObject, VideoFrame
 from nexaflow.terminal import Terminal
 from nexaflow.skills.report import Report
 from nexaflow.cutter.cutter import VideoCutter
-from nexaflow.hook import OmitHook, FrameSaveHook, OmitShapeHook
+from nexaflow.hook import OmitHook, FrameSaveHook, ShapeHook
 from nexaflow.classifier.keras_classifier import KerasClassifier
 from nexaflow.classifier.framix_classifier import FramixClassifier
 
@@ -753,8 +753,8 @@ class Missions(object):
                 for omit in self.omits:
                     if len(omit) == 4 and sum(omit) > 0:
                         x, y, x_size, y_size = omit
-                        omit_shape_hook = OmitShapeHook((y_size, x_size), (y, x))
-                        omit_shape_hook.do(new_image)
+                        shape_hook = ShapeHook((y_size, x_size), (y, x))
+                        shape_hook.do(new_image)
 
             cv2.imencode(".png", new_image.data)[1].tofile(image_save_path)
 

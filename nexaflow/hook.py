@@ -148,7 +148,7 @@ class OmitHook(_AreaBaseHook):
         return frame
 
 
-class OmitShapeHook(_AreaBaseHook):
+class ShapeHook(_AreaBaseHook):
 
     def do(self, frame: VideoFrame, *_, **__) -> typing.Optional[VideoFrame]:
         super().do(frame, *_, **__)
