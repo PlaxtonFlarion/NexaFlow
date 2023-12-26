@@ -502,38 +502,38 @@ class Parser(object):
         return parser.parse_args()
 
     @staticmethod
-    def compatible():
+    def compatible(tools_path):
         if operation_system == "win32":
-            _adb = os.path.join(_tools_path, "windows", "platform-tools", "adb.exe")
-            _ffmpeg = os.path.join(_tools_path, "windows", "ffmpeg-6.1-full_build", "bin", "ffmpeg.exe")
-            _scrcpy = os.path.join(_tools_path, "windows", "scrcpy-win64-v2.2", "scrcpy.exe")
+            adb = os.path.join(tools_path, "windows", "platform-tools", "adb.exe")
+            ffmpeg = os.path.join(tools_path, "windows", "ffmpeg-6.1-full_build", "bin", "ffmpeg.exe")
+            scrcpy = os.path.join(tools_path, "windows", "scrcpy-win64-v2.2", "scrcpy.exe")
         elif operation_system == "darwin":
-            _adb = os.path.join(_tools_path, "mac", "platform-tools", "adb")
-            _ffmpeg = os.path.join(_tools_path, "mac", "ffmpeg-6.1", "ffmpeg")
-            _scrcpy = shutil.which("scrcpy")
+            adb = os.path.join(tools_path, "mac", "platform-tools", "adb")
+            ffmpeg = os.path.join(tools_path, "mac", "ffmpeg-6.1", "ffmpeg")
+            scrcpy = shutil.which("scrcpy")
         else:
-            _adb, _ffmpeg, _scrcpy = shutil.which("adb"), shutil.which("ffmpeg"), shutil.which("scrcpy")
+            adb, ffmpeg, scrcpy = shutil.which("adb"), shutil.which("ffmpeg"), shutil.which("scrcpy")
 
-        if _adb:
-            os.environ["PATH"] = os.path.dirname(_adb) + os.path.pathsep + os.environ.get("PATH", "")
-        if _ffmpeg:
-            os.environ["PATH"] = os.path.dirname(_ffmpeg) + os.path.pathsep + os.environ.get("PATH", "")
-        if _scrcpy:
-            os.environ["PATH"] = os.path.dirname(_scrcpy) + os.path.pathsep + os.environ.get("PATH", "")
+        if adb:
+            os.environ["PATH"] = os.path.dirname(adb) + os.path.pathsep + os.environ.get("PATH", "")
+        if ffmpeg:
+            os.environ["PATH"] = os.path.dirname(ffmpeg) + os.path.pathsep + os.environ.get("PATH", "")
+        if scrcpy:
+            os.environ["PATH"] = os.path.dirname(scrcpy) + os.path.pathsep + os.environ.get("PATH", "")
 
-        logger.debug(f"PATH: {_adb}")
-        logger.debug(f"PATH: {_ffmpeg}")
-        logger.debug(f"PATH: {_scrcpy}")
+        logger.debug(f"PATH: {adb}")
+        logger.debug(f"PATH: {ffmpeg}")
+        logger.debug(f"PATH: {scrcpy}")
         for env in os.environ["PATH"].split(os.pathsep):
             logger.debug(env)
 
-        return _adb, _ffmpeg, _scrcpy
+        return adb, ffmpeg, scrcpy
 
     @staticmethod
-    def initial_env():
-        universal_report_path = "framix.report"
-        universal_deploy_path = "framix.source"
-        universal_option_path = "framix.source"
+    def initial_env(report_dirs, deploy_file, option_file):
+        universal_report_path = report_dirs
+        universal_deploy_path = deploy_file
+        universal_option_path = option_file
         if work_platform == "framix.exe":
             universal = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
         elif work_platform == "framix.bin":
@@ -568,7 +568,431 @@ class Parser(object):
         ]
 
 
-async def check_device():
+class Missions(object):
+
+    def __init__(self, *args, **kwargs):
+        self.boost, self.color, self.focus, self.omits, self.shape, self.scale = args
+        self.model_path = kwargs["model_path"]
+        self.total_path = kwargs["total_path"]
+        self.major_path = kwargs["major_path"]
+        self.proto_path = kwargs["proto_path"]
+        self.initial_report = kwargs["initial_report"]
+        self.initial_deploy = kwargs["initial_deploy"]
+        self.initial_option = kwargs["initial_option"]
+        self.adb_exe = kwargs["adb_exe"]
+        self.ffmpeg_exe = kwargs["ffmpeg_exe"]
+        self.scrcpy_exe = kwargs["scrcpy_exe"]
+
+    def videos_task(self, input_video):
+        reporter = Report(total_path=self.initial_report)
+        reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
+        reporter.query = f"{random.randint(10, 99)}"
+        new_video_path = os.path.join(reporter.video_path, os.path.basename(input_video))
+
+        shutil.copy(input_video, new_video_path)
+
+        deploy = Deploy(boost=self.boost, color=self.color, focus=self.focus, omits=self.omits)
+        deploy.load_deploy(self.initial_deploy)
+
+        cl = KerasClassifier(
+            target_size=deploy.target_size, data_size=deploy.target_size
+        )
+        cl.load_model(self.model_path)
+
+        looper = asyncio.get_event_loop()
+        looper.run_until_complete(
+            analyzer(reporter, cl, deploy, new_video_path, boost=self.boost, color=self.color, proto_path=self.proto_path,
+                     ffmpeg_exe=self.ffmpeg_exe)
+        )
+        looper.run_until_complete(
+            reporter.ask_create_total_report(
+                os.path.dirname(reporter.total_path), self.major_path, self.total_path
+            )
+        )
+
+    def folder_task(self, folder):
+        reporter = Report(total_path=self.initial_report)
+
+        deploy = Deploy(boost=self.boost, color=self.color, focus=self.focus, omits=self.omits)
+        deploy.load_deploy(self.initial_deploy)
+
+        cl = KerasClassifier(
+            target_size=deploy.target_size, data_size=deploy.target_size
+        )
+        cl.load_model(self.model_path)
+
+        looper = asyncio.get_event_loop()
+        for video in Parser.only_video(folder):
+            reporter.title = video.title
+            for path in video.sheet:
+                reporter.query = os.path.basename(path).split(".")[0]
+                shutil.copy(path, reporter.video_path)
+                new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
+                looper.run_until_complete(
+                    analyzer(reporter, cl, deploy, new_video_path, boost=self.boost, color=self.color, proto_path=self.proto_path,
+                             ffmpeg_exe=self.ffmpeg_exe)
+                )
+        looper.run_until_complete(
+            reporter.ask_create_total_report(
+                os.path.dirname(reporter.total_path), self.major_path, self.total_path
+            )
+        )
+        return reporter.total_path
+
+    def train_model(self, video_file):
+        reporter = Report(total_path=self.initial_report, write_log=False)
+        reporter.title = f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
+        if not os.path.exists(reporter.query_path):
+            os.makedirs(reporter.query_path)
+
+        deploy = Deploy()
+        deploy.load_deploy(self.initial_deploy)
+
+        video_temp_file = os.path.join(reporter.query_path, f"tmp_fps60_{random.randint(100, 999)}.mp4")
+        asyncio.run(ask_ffmpeg(self.ffmpeg_exe, deploy.fps, video_file, video_temp_file))
+
+        video = VideoObject(video_temp_file)
+        video.load_frames()
+
+        cutter = VideoCutter(
+            step=deploy.step,
+            compress_rate=deploy.compress_rate,
+            target_size=deploy.target_size
+        )
+        res = cutter.cut(
+            video=video,
+            block=deploy.block,
+            window_size=deploy.window_size,
+            window_coefficient=deploy.window_coefficient
+        )
+        stable, unstable = res.get_range(
+            threshold=deploy.threshold,
+            offset=deploy.offset
+        )
+        res.pick_and_save(
+            range_list=stable,
+            frame_count=20,
+            to_dir=reporter.query_path,
+            meaningful_name=True
+        )
+
+        os.remove(video_temp_file)
+
+    def build_model(self, src):
+        if os.path.isdir(src):
+            real_path, file_list = "", []
+            logger.debug(f"搜索文件夹: {src}")
+            for root, dirs, files in os.walk(src, topdown=False):
+                for name in files:
+                    file_list.append(os.path.join(root, name))
+                for name in dirs:
+                    if len(name) == 1 and re.search(r"0", name):
+                        real_path = os.path.dirname(os.path.join(root, name))
+                        logger.debug(f"分类文件夹: {real_path}")
+                        break
+            if real_path and len(file_list) > 0:
+                new_model_path = os.path.join(real_path, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
+                new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
+
+                deploy = Deploy(target_size=self.shape)
+                deploy.load_deploy(self.initial_deploy)
+
+                fc = FramixClassifier(data_size=deploy.target_size)
+                fc.build(real_path, new_model_path, new_model_name)
+            else:
+                logger.error("文件夹未正确分类 ...")
+        else:
+            logger.error("训练模型需要一个分类文件夹 ...")
+
+    async def combines(self):
+        tasks = [
+            Report.ask_create_total_report(
+                merge, self.total_path, self.major_path
+            ) for merge in cmd_lines.merge
+        ]
+        error = await asyncio.gather(*tasks)
+        for e in error:
+            if isinstance(e, Exception):
+                logger.error(e)
+
+    async def painting(self):
+        import tempfile
+        from PIL import Image, ImageDraw, ImageFont
+
+        cellphone = await check_device(self.adb_exe)
+        image_folder = "/sdcard/Pictures/Shots"
+        image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_" + "Shot.png"
+        await Terminal.cmd_line(self.adb_exe, "-s", cellphone.serial, "wait-for-usb-device", "shell", "mkdir", "-p", image_folder)
+        await Terminal.cmd_line(self.adb_exe, "-s", cellphone.serial, "wait-for-usb-device", "shell", "screencap", "-p", f"{image_folder}/{image}")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            image_save_path = os.path.join(temp_dir, image)
+            await Terminal.cmd_line(self.adb_exe, "-s", cellphone.serial, "wait-for-usb-device", "pull", f"{image_folder}/{image}", image_save_path)
+
+            if self.color:
+                old_image = toolbox.imread(image_save_path)
+                new_image = VideoFrame(0, 0, old_image)
+            else:
+                old_image = toolbox.imread(image_save_path)
+                old_image = toolbox.turn_grey(old_image)
+                new_image = VideoFrame(0, 0, old_image)
+
+            if len(self.omits) > 0:
+                for omit in self.omits:
+                    if len(omit) == 4 and sum(omit) > 0:
+                        x, y, x_size, y_size = omit
+                        omit_shape_hook = OmitShapeHook((y_size, x_size), (y, x))
+                        omit_shape_hook.do(new_image)
+
+            cv2.imencode(".png", new_image.data)[1].tofile(image_save_path)
+
+            image_file = Image.open(image_save_path)
+            image_file = image_file.convert("RGB")
+
+            original_w, original_h = image_file.size
+            if self.shape:
+                shape_w, shape_h = self.shape
+                twist_w, twist_h = min(original_w, shape_w), min(original_h, shape_h)
+            else:
+                twist_w, twist_h = original_w, original_h
+
+            min_scale, max_scale = 0.3, 1.0
+            if self.scale:
+                image_scale = max_scale if self.scale > max_scale else (min_scale if self.scale < min_scale else self.scale)
+            else:
+                image_scale = min_scale if twist_w == original_w or twist_h == original_h else max_scale
+
+            new_w, new_h = int(twist_w * image_scale), int(twist_h * image_scale)
+            logger.debug(f"原始尺寸: {(original_w, original_h)} 调整尺寸: {(new_w, new_h)} 缩放比例: {int(image_scale * 100)}%")
+
+            if new_w == new_h:
+                x_line_num, y_line_num = 10, 10
+            elif new_w > new_h:
+                x_line_num, y_line_num = 10, 20
+            else:
+                x_line_num, y_line_num = 20, 10
+
+            resized = image_file.resize((new_w, new_h))
+
+            draw = ImageDraw.Draw(resized)
+            font = ImageFont.load_default()
+
+            if y_line_num > 0:
+                for i in range(1, y_line_num):
+                    x_line = int(new_w * (i * (1 / y_line_num)))
+                    text = f"{i * int(100 / y_line_num):02}"
+                    bbox = draw.textbbox((0, 0), text, font)
+                    text_width = bbox[2] - bbox[0]
+                    text_height = bbox[3] - bbox[1]
+                    y_text_start = 3
+                    draw.line([(x_line, text_width + 5 + y_text_start), (x_line, new_h)], fill=(0, 255, 255), width=1)
+                    draw.text((x_line - text_height // 2, y_text_start), text, fill=(0, 255, 255), font=font)
+
+            if x_line_num > 0:
+                for i in range(1, x_line_num):
+                    y_line = int(new_h * (i * (1 / x_line_num)))
+                    text = f"{i * int(100 / x_line_num):02}"
+                    bbox = draw.textbbox((0, 0), text, font)
+                    text_width = bbox[2] - bbox[0]
+                    text_height = bbox[3] - bbox[1]
+                    x_text_start = 3
+                    draw.line([(text_width + 5 + x_text_start, y_line), (new_w, y_line)], fill=(255, 182, 193), width=1)
+                    draw.text((x_text_start, y_line - text_height // 2), text, fill=(255, 182, 193), font=font)
+
+            resized.show()
+
+        await Terminal.cmd_line(self.adb_exe, "-s", cellphone.serial, "wait-for-usb-device", "shell", "rm", f"{image_folder}/{image}")
+
+    async def analysis(self, alone: bool):
+
+        cellphone = None
+        head_event = asyncio.Event()
+        done_event = asyncio.Event()
+        stop_event = asyncio.Event()
+        fail_event = asyncio.Event()
+
+        async def timepiece(amount):
+            while True:
+                if head_event.is_set():
+                    for i in range(amount):
+                        if stop_event.is_set() and i != amount:
+                            logger.warning(f"主动停止 ...")
+                            logger.warning(f"剩余时间 -> 00 秒")
+                            return
+                        elif fail_event.is_set():
+                            logger.warning(f"意外停止 ...")
+                            logger.warning(f"剩余时间 -> 00 秒")
+                            return
+                        if amount - i <= 10:
+                            logger.warning(f"剩余时间 -> {amount - i:02} 秒 {'----' * (amount - i)}")
+                        else:
+                            logger.warning(f"剩余时间 -> {amount - i:02} 秒 {'----' * 10} ...")
+                        await asyncio.sleep(1)
+                    logger.warning(f"剩余时间 -> 00 秒")
+                    return
+                elif fail_event.is_set():
+                    logger.warning(f"意外停止 ...")
+                    break
+                await asyncio.sleep(0.2)
+
+        async def input_stream(transports):
+            async for line in transports.stdout:
+                logger.info(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
+                if "Recording started" in stream:
+                    head_event.set()
+                elif "Recording complete" in stream:
+                    stop_event.set()
+                    done_event.set()
+                    break
+
+        async def error_stream(transports):
+            async for line in transports.stderr:
+                logger.info(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
+                if "Could not find" in stream or "connection failed" in stream or "Recorder error" in stream:
+                    fail_event.set()
+                    break
+
+        async def start():
+            await Terminal.cmd_line(self.adb_exe, "wait-for-device")
+            if alone:
+                if not os.path.exists(reporter.query_path):
+                    os.makedirs(reporter.query_path)
+                cmd = [
+                    self.scrcpy_exe, "-s", cellphone.serial, "--no-audio",
+                    "--video-bit-rate", "8M", "--max-fps", "60", "--record",
+                    temp_video := f"{os.path.join(reporter.query_path, 'screen')}_"
+                                  f"{time.strftime('%Y%m%d%H%M%S')}_"
+                                  f"{random.randint(100, 999)}.mkv"
+                ]
+                transports = await Terminal.cmd_link(*cmd)
+                asyncio.create_task(input_stream(transports))
+                asyncio.create_task(error_stream(transports))
+                await asyncio.sleep(1)
+                await timepiece(timer_mode)
+                if operation_system == "win32":
+                    await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
+                else:
+                    transports.terminate()
+                    await transports.wait()
+                for _ in range(10):
+                    if done_event.is_set():
+                        logger.success(f"视频录制成功: {temp_video}")
+                        return
+                    elif fail_event.is_set():
+                        break
+                    await asyncio.sleep(0.2)
+                logger.error("录制视频失败,请重新录制视频 ...")
+
+            else:
+                reporter.query = f"{random.randint(10, 99)}"
+                cmd = [
+                    self.scrcpy_exe, "-s", cellphone.serial, "--no-audio",
+                    "--video-bit-rate", "8M", "--max-fps", "60", "--record",
+                    temp_video := f"{os.path.join(reporter.video_path, 'screen')}_"
+                                  f"{time.strftime('%Y%m%d%H%M%S')}_"
+                                  f"{random.randint(100, 999)}.mkv"
+                ]
+                transports = await Terminal.cmd_link(*cmd)
+                asyncio.create_task(input_stream(transports))
+                asyncio.create_task(error_stream(transports))
+                await asyncio.sleep(1)
+                await timepiece(timer_mode)
+                if operation_system == "win32":
+                    await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
+                else:
+                    transports.terminate()
+                    await transports.wait()
+                for _ in range(10):
+                    if done_event.is_set():
+                        await analyzer(reporter, cl, deploy, temp_video, proto_path=self.proto_path, ffmpeg_exe=self.ffmpeg_exe)
+                        return
+                    elif fail_event.is_set():
+                        break
+                    await asyncio.sleep(0.2)
+                logger.error("录制视频失败,请重新录制视频 ...")
+
+        cellphone = await check_device(self.adb_exe)
+        if alone:
+            reporter = Report(self.initial_report, write_log=False)
+            reporter.title = f"Record_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
+        else:
+            reporter = Report(self.initial_report)
+            reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
+
+        deploy = Deploy(boost=self.boost, color=self.color, focus=self.focus, omits=self.omits)
+        deploy.load_deploy(self.initial_deploy)
+
+        cl = KerasClassifier(
+            target_size=deploy.target_size, data_size=deploy.target_size
+        )
+        cl.load_model(self.model_path)
+
+        timer_mode = 5
+        while True:
+            try:
+                console.print(f"[bold #00FFAF]Connect:[/bold #00FFAF] {cellphone}")
+                if action := Prompt.ask(
+                        prompt=f"[bold #5FD7FF]<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/bold #D7FF5F] 秒>>>[/bold #5FD7FF]",
+                        console=console
+                ):
+                    if "header" in action.strip():
+                        if match := re.search(r"(?<=header\s).*", action):
+                            if match.group().strip():
+                                src_title = f"Record_{time.strftime('%Y%m%d_%H%M%S')}" if alone else f"Framix_{time.strftime('%Y%m%d_%H%M%S')}"
+                                if title := match.group().strip():
+                                    new_title = f"{src_title}_{title}"
+                                else:
+                                    new_title = f"{src_title}_{random.randint(10000, 99999)}"
+                                logger.success("新标题设置成功 ...")
+                                reporter.title = new_title
+                            else:
+                                raise ValueError
+                        else:
+                            raise ValueError
+                        continue
+                    elif action.strip() == "serial" and len(action.strip()) == 6:
+                        cellphone = await check_device(self.adb_exe)
+                        continue
+                    elif action.strip() == "deploy" and len(action.strip()) == 6:
+                        deploy.dump_deploy(self.initial_deploy)
+                        logger.warning("修改 deploy.json 文件后请完全退出编辑器进程再继续操作 ...")
+                        if operation_system == "win32":
+                            await Terminal.cmd_line("Notepad", self.initial_deploy)
+                        else:
+                            await Terminal.cmd_line("open", "-W", "-a", "TextEdit", self.initial_deploy)
+                        deploy.omits.clear()
+                        deploy.load_deploy(self.initial_deploy)
+                        deploy.view_deploy()
+                        continue
+                    elif action.isdigit():
+                        value, lower_bound, upper_bound = int(action), 5, 300
+                        if value > 300 or value < 5:
+                            console.print(
+                                f"[bold #FFFF87]{lower_bound} <= [bold #FFD7AF]Time[/bold #FFD7AF] <= {upper_bound}[/bold #FFFF87]"
+                            )
+                        timer_mode = max(lower_bound, min(upper_bound, value))
+                    else:
+                        raise ValueError
+            except ValueError:
+                Helper.help_option()
+            else:
+                await start()
+                if not done_event.is_set():
+                    cellphone = await check_device(self.adb_exe)
+            finally:
+                head_event.clear()
+                done_event.clear()
+                stop_event.clear()
+                fail_event.clear()
+
+
+def worker_init(log_level: str = "INFO"):
+    logger.remove(0)
+    log_format = "| <level>{level: <8}</level> | <level>{message}</level>"
+    logger.add(sys.stderr, format=log_format, level=log_level.upper())
+
+
+async def check_device(adb_exe):
 
     class Phone(object):
 
@@ -582,13 +1006,13 @@ async def check_device():
 
     async def check(serial):
         brand, version = await asyncio.gather(
-            Terminal.cmd_line(adb, "-s", serial, "wait-for-usb-device", "shell", "getprop", "ro.product.brand"),
-            Terminal.cmd_line(adb, "-s", serial, "wait-for-usb-device", "shell", "getprop", "ro.build.version.release")
+            Terminal.cmd_line(adb_exe, "-s", serial, "wait-for-usb-device", "shell", "getprop", "ro.product.brand"),
+            Terminal.cmd_line(adb_exe, "-s", serial, "wait-for-usb-device", "shell", "getprop", "ro.build.version.release")
         )
         return Phone(serial, brand, version)
 
     while True:
-        devices = await Terminal.cmd_line(adb, "devices")
+        devices = await Terminal.cmd_line(adb_exe, "devices")
         if len(device_list := [i.split()[0] for i in devices.split("\n")[1:]]) == 1:
             return await check(device_list[0])
         elif len(device_list) > 1:
@@ -615,191 +1039,6 @@ async def ask_ffmpeg(ffmpeg_exe, fps, src, dst):
         "-i", src, "-vf", f"fps={fps}", "-c:v", "libx264", "-crf", "18", "-c:a", "copy", dst
     ]
     await Terminal.cmd_line(*cmd)
-
-
-async def analysis(alone: bool, *args):
-
-    cellphone = None
-    head_event = asyncio.Event()
-    done_event = asyncio.Event()
-    stop_event = asyncio.Event()
-    fail_event = asyncio.Event()
-
-    async def timepiece(amount):
-        while True:
-            if head_event.is_set():
-                for i in range(amount):
-                    if stop_event.is_set() and i != amount:
-                        logger.warning(f"主动停止 ...")
-                        logger.warning(f"剩余时间 -> 00 秒")
-                        return
-                    elif fail_event.is_set():
-                        logger.warning(f"意外停止 ...")
-                        logger.warning(f"剩余时间 -> 00 秒")
-                        return
-                    if amount - i <= 10:
-                        logger.warning(f"剩余时间 -> {amount - i:02} 秒 {'----' * (amount - i)}")
-                    else:
-                        logger.warning(f"剩余时间 -> {amount - i:02} 秒 {'----' * 10} ...")
-                    await asyncio.sleep(1)
-                logger.warning(f"剩余时间 -> 00 秒")
-                return
-            elif fail_event.is_set():
-                logger.warning(f"意外停止 ...")
-                break
-            await asyncio.sleep(0.2)
-
-    async def input_stream(transports):
-        async for line in transports.stdout:
-            logger.info(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
-            if "Recording started" in stream:
-                head_event.set()
-            elif "Recording complete" in stream:
-                stop_event.set()
-                done_event.set()
-                break
-
-    async def error_stream(transports):
-        async for line in transports.stderr:
-            logger.info(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
-            if "Could not find" in stream or "connection failed" in stream or "Recorder error" in stream:
-                fail_event.set()
-                break
-
-    async def start():
-        await Terminal.cmd_line(adb, "wait-for-device")
-        if alone:
-            if not os.path.exists(reporter.query_path):
-                os.makedirs(reporter.query_path)
-            cmd = [
-                scrcpy, "-s", cellphone.serial, "--no-audio",
-                "--video-bit-rate", "8M", "--max-fps", "60", "--record",
-                temp_video := f"{os.path.join(reporter.query_path, 'screen')}_"
-                              f"{time.strftime('%Y%m%d%H%M%S')}_"
-                              f"{random.randint(100, 999)}.mkv"
-            ]
-            transports = await Terminal.cmd_link(*cmd)
-            asyncio.create_task(input_stream(transports))
-            asyncio.create_task(error_stream(transports))
-            await asyncio.sleep(1)
-            await timepiece(timer_mode)
-            if operation_system == "win32":
-                await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
-            else:
-                transports.terminate()
-                await transports.wait()
-            for _ in range(10):
-                if done_event.is_set():
-                    logger.success(f"视频录制成功: {temp_video}")
-                    return
-                elif fail_event.is_set():
-                    break
-                await asyncio.sleep(0.2)
-            logger.error("录制视频失败,请重新录制视频 ...")
-
-        else:
-            reporter.query = f"{random.randint(10, 99)}"
-            cmd = [
-                scrcpy, "-s", cellphone.serial, "--no-audio",
-                "--video-bit-rate", "8M", "--max-fps", "60", "--record",
-                temp_video := f"{os.path.join(reporter.video_path, 'screen')}_"
-                              f"{time.strftime('%Y%m%d%H%M%S')}_"
-                              f"{random.randint(100, 999)}.mkv"
-            ]
-            transports = await Terminal.cmd_link(*cmd)
-            asyncio.create_task(input_stream(transports))
-            asyncio.create_task(error_stream(transports))
-            await asyncio.sleep(1)
-            await timepiece(timer_mode)
-            if operation_system == "win32":
-                await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
-            else:
-                transports.terminate()
-                await transports.wait()
-            for _ in range(10):
-                if done_event.is_set():
-                    await analyzer(reporter, cl, deploy, temp_video, proto_path=proto_path, ffmpeg_exe=ffmpeg_exe)
-                    return
-                elif fail_event.is_set():
-                    break
-                await asyncio.sleep(0.2)
-            logger.error("录制视频失败,请重新录制视频 ...")
-
-    boost, color, focus, omits, model_path, total_path, major_path, proto_path, initial_report, initial_deploy, initial_option, ffmpeg_exe = args
-
-    cellphone = await check_device()
-    if alone:
-        reporter = Report(initial_report, write_log=False)
-        reporter.title = f"Record_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
-    else:
-        reporter = Report(initial_report)
-        reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
-
-    deploy = Deploy(boost=boost, color=color, focus=focus, omits=omits)
-    deploy.load_deploy(initial_deploy)
-
-    cl = KerasClassifier(
-        target_size=deploy.target_size, data_size=deploy.target_size
-    )
-    cl.load_model(model_path)
-
-    timer_mode = 5
-    while True:
-        try:
-            console.print(f"[bold #00FFAF]Connect:[/bold #00FFAF] {cellphone}")
-            if action := Prompt.ask(
-                    prompt=f"[bold #5FD7FF]<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/bold #D7FF5F] 秒>>>[/bold #5FD7FF]",
-                    console=console
-            ):
-                if "header" in action.strip():
-                    if match := re.search(r"(?<=header\s).*", action):
-                        if match.group().strip():
-                            src_title = f"Record_{time.strftime('%Y%m%d_%H%M%S')}" if alone else f"Framix_{time.strftime('%Y%m%d_%H%M%S')}"
-                            if title := match.group().strip():
-                                new_title = f"{src_title}_{title}"
-                            else:
-                                new_title = f"{src_title}_{random.randint(10000, 99999)}"
-                            logger.success("新标题设置成功 ...")
-                            reporter.title = new_title
-                        else:
-                            raise ValueError
-                    else:
-                        raise ValueError
-                    continue
-                elif action.strip() == "serial" and len(action.strip()) == 6:
-                    cellphone = await check_device()
-                    continue
-                elif action.strip() == "deploy" and len(action.strip()) == 6:
-                    deploy.dump_deploy(initial_deploy)
-                    logger.warning("修改 deploy.json 文件后请完全退出编辑器进程再继续操作 ...")
-                    if operation_system == "win32":
-                        await Terminal.cmd_line("Notepad", initial_deploy)
-                    else:
-                        await Terminal.cmd_line("open", "-W", "-a", "TextEdit", initial_deploy)
-                    deploy.omits.clear()
-                    deploy.load_deploy(initial_deploy)
-                    deploy.view_deploy()
-                    continue
-                elif action.isdigit():
-                    value, lower_bound, upper_bound = int(action), 5, 300
-                    if value > 300 or value < 5:
-                        console.print(
-                            f"[bold #FFFF87]{lower_bound} <= [bold #FFD7AF]Time[/bold #FFD7AF] <= {upper_bound}[/bold #FFFF87]"
-                        )
-                    timer_mode = max(lower_bound, min(upper_bound, value))
-                else:
-                    raise ValueError
-        except ValueError:
-            Helper.help_option()
-        else:
-            await start()
-            if not done_event.is_set():
-                cellphone = await check_device()
-        finally:
-            head_event.clear()
-            done_event.clear()
-            stop_event.clear()
-            fail_event.clear()
 
 
 async def analyzer(reporter: "Report", cl: "KerasClassifier", deploy: "Deploy", vision_path: str, **kwargs):
@@ -1026,250 +1265,13 @@ async def analyzer(reporter: "Report", cl: "KerasClassifier", deploy: "Deploy", 
     return start, end, cost
 
 
-async def painting(shape, scale, color, omits):
-    import tempfile
-    from PIL import Image, ImageDraw, ImageFont
-
-    cellphone = await check_device()
-    image_folder = "/sdcard/Pictures/Shots"
-    image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_" + "Shot.png"
-    await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "mkdir", "-p", image_folder)
-    await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "screencap", "-p", f"{image_folder}/{image}")
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        image_save_path = os.path.join(temp_dir, image)
-        await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "pull", f"{image_folder}/{image}", image_save_path)
-
-        if color:
-            old_image = toolbox.imread(image_save_path)
-            new_image = VideoFrame(0, 0, old_image)
-        else:
-            old_image = toolbox.imread(image_save_path)
-            old_image = toolbox.turn_grey(old_image)
-            new_image = VideoFrame(0, 0, old_image)
-
-        if len(omits) > 0:
-            for omit in omits:
-                if len(omit) == 4 and sum(omit) > 0:
-                    x, y, x_size, y_size = omit
-                    omit_shape_hook = OmitShapeHook((y_size, x_size), (y, x))
-                    omit_shape_hook.do(new_image)
-
-        cv2.imencode(".png", new_image.data)[1].tofile(image_save_path)
-
-        image_file = Image.open(image_save_path)
-        image_file = image_file.convert("RGB")
-
-        original_w, original_h = image_file.size
-        if shape:
-            shape_w, shape_h = shape
-            twist_w, twist_h = min(original_w, shape_w), min(original_h, shape_h)
-        else:
-            twist_w, twist_h = original_w, original_h
-
-        min_scale, max_scale = 0.3, 1.0
-        if scale:
-            image_scale = max_scale if scale > max_scale else (min_scale if scale < min_scale else scale)
-        else:
-            image_scale = min_scale if twist_w == original_w or twist_h == original_h else max_scale
-
-        new_w, new_h = int(twist_w * image_scale), int(twist_h * image_scale)
-        logger.debug(f"原始尺寸: {(original_w, original_h)} 调整尺寸: {(new_w, new_h)} 缩放比例: {int(image_scale * 100)}%")
-
-        if new_w == new_h:
-            x_line_num, y_line_num = 10, 10
-        elif new_w > new_h:
-            x_line_num, y_line_num = 10, 20
-        else:
-            x_line_num, y_line_num = 20, 10
-
-        resized = image_file.resize((new_w, new_h))
-
-        draw = ImageDraw.Draw(resized)
-        font = ImageFont.load_default()
-
-        if y_line_num > 0:
-            for i in range(1, y_line_num):
-                x_line = int(new_w * (i * (1 / y_line_num)))
-                text = f"{i * int(100 / y_line_num):02}"
-                bbox = draw.textbbox((0, 0), text, font)
-                text_width = bbox[2] - bbox[0]
-                text_height = bbox[3] - bbox[1]
-                y_text_start = 3
-                draw.line([(x_line, text_width + 5 + y_text_start), (x_line, new_h)], fill=(0, 255, 255), width=1)
-                draw.text((x_line - text_height // 2, y_text_start), text, fill=(0, 255, 255), font=font)
-
-        if x_line_num > 0:
-            for i in range(1, x_line_num):
-                y_line = int(new_h * (i * (1 / x_line_num)))
-                text = f"{i * int(100 / x_line_num):02}"
-                bbox = draw.textbbox((0, 0), text, font)
-                text_width = bbox[2] - bbox[0]
-                text_height = bbox[3] - bbox[1]
-                x_text_start = 3
-                draw.line([(text_width + 5 + x_text_start, y_line), (new_w, y_line)], fill=(255, 182, 193), width=1)
-                draw.text((x_text_start, y_line - text_height // 2), text, fill=(255, 182, 193), font=font)
-
-        resized.show()
-
-    await Terminal.cmd_line(adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "rm", f"{image_folder}/{image}")
-
-
-def worker_init(log_level: str = "INFO"):
-    logger.remove(0)
-    log_format = "| <level>{level: <8}</level> | <level>{message}</level>"
-    logger.add(sys.stderr, format=log_format, level=log_level.upper())
-
-
-def single_video_task(input_video, *args):
-    boost, color, focus, omits, model_path, total_path, major_path, proto_path, initial_report, initial_deploy, initial_option, ffmpeg_exe = args
-
-    reporter = Report(total_path=initial_report)
-    reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
-    reporter.query = f"{random.randint(10, 99)}"
-    new_video_path = os.path.join(reporter.video_path, os.path.basename(input_video))
-
-    shutil.copy(input_video, new_video_path)
-
-    deploy = Deploy(boost=boost, color=color, focus=focus, omits=omits)
-    deploy.load_deploy(initial_deploy)
-
-    cl = KerasClassifier(
-        target_size=deploy.target_size, data_size=deploy.target_size
-    )
-    cl.load_model(model_path)
-
-    looper = asyncio.get_event_loop()
-    looper.run_until_complete(
-        analyzer(reporter, cl, deploy, new_video_path, boost=boost, color=color, proto_path=proto_path,
-                 ffmpeg_exe=ffmpeg_exe)
-    )
-    looper.run_until_complete(
-        reporter.ask_create_total_report(
-            os.path.dirname(reporter.total_path), major_path, total_path
-        )
-    )
-
-
-def multiple_folder_task(folder, *args):
-    boost, color, focus, omits, model_path, total_path, major_path, proto_path, initial_report, initial_deploy, initial_option, ffmpeg_exe = args
-
-    reporter = Report(total_path=initial_report)
-
-    deploy = Deploy(boost=boost, color=color, focus=focus, omits=omits)
-    deploy.load_deploy(initial_deploy)
-
-    cl = KerasClassifier(
-        target_size=deploy.target_size, data_size=deploy.target_size
-    )
-    cl.load_model(model_path)
-
-    looper = asyncio.get_event_loop()
-    for video in Parser.only_video(folder):
-        reporter.title = video.title
-        for path in video.sheet:
-            reporter.query = os.path.basename(path).split(".")[0]
-            shutil.copy(path, reporter.video_path)
-            new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
-            looper.run_until_complete(
-                analyzer(reporter, cl, deploy, new_video_path, boost=boost, color=color, proto_path=proto_path,
-                         ffmpeg_exe=ffmpeg_exe)
-            )
-    looper.run_until_complete(
-        reporter.ask_create_total_report(
-            os.path.dirname(reporter.total_path), major_path, total_path
-        )
-    )
-    return reporter.total_path
-
-
-def train_model(video_file, *args):
-    boost, color, focus, omits, model_path, total_path, major_path, proto_path, initial_report, initial_deploy, initial_option, ffmpeg_exe = args
-
-    reporter = Report(total_path=initial_report, write_log=False)
-    reporter.title = f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
-    if not os.path.exists(reporter.query_path):
-        os.makedirs(reporter.query_path)
-
-    deploy = Deploy()
-    deploy.load_deploy(initial_deploy)
-
-    video_temp_file = os.path.join(reporter.query_path, f"tmp_fps60_{random.randint(100, 999)}.mp4")
-    asyncio.run(ask_ffmpeg(ffmpeg_exe, deploy.fps, video_file, video_temp_file))
-
-    video = VideoObject(video_temp_file)
-    video.load_frames()
-
-    cutter = VideoCutter(
-        step=deploy.step,
-        compress_rate=deploy.compress_rate,
-        target_size=deploy.target_size
-    )
-    res = cutter.cut(
-        video=video,
-        block=deploy.block,
-        window_size=deploy.window_size,
-        window_coefficient=deploy.window_coefficient
-    )
-    stable, unstable = res.get_range(
-        threshold=deploy.threshold,
-        offset=deploy.offset
-    )
-    res.pick_and_save(
-        range_list=stable,
-        frame_count=20,
-        to_dir=reporter.query_path,
-        meaningful_name=True
-    )
-
-    os.remove(video_temp_file)
-
-
-def build_model(src, *args):
-    boost, color, focus, omits, model_path, total_path, major_path, proto_path, initial_report, initial_deploy, initial_option, ffmpeg_exe = args
-
-    if os.path.isdir(src):
-        real_path, file_list = "", []
-        logger.debug(f"搜索文件夹: {src}")
-        for root, dirs, files in os.walk(src, topdown=False):
-            for name in files:
-                file_list.append(os.path.join(root, name))
-            for name in dirs:
-                if len(name) == 1 and re.search(r"0", name):
-                    real_path = os.path.dirname(os.path.join(root, name))
-                    logger.debug(f"分类文件夹: {real_path}")
-                    break
-        if real_path and len(file_list) > 0:
-            new_model_path = os.path.join(real_path, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
-            new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
-
-            deploy = Deploy()
-            deploy.load_deploy(initial_deploy)
-
-            fc = FramixClassifier()
-            fc.build(real_path, new_model_path, new_model_name)
-        else:
-            logger.error("文件夹未正确分类 ...")
-    else:
-        logger.error("训练模型需要一个分类文件夹 ...")
-
-
 async def main():
     if cmd_lines.flick or cmd_lines.alone:
-        if scrcpy:
-            await analysis(cmd_lines.alone, *more_args)
-        else:
-            logger.warning("Install Scrcpy in Homebrew: brew install scrcpy ...")
-            logger.warning("Install Scrcpy in MacPorts: sudo port install scrcpy ...")
-            logger.warning("https://github.com/Genymobile/scrcpy/blob/master/doc/macos.md")
+        await missions.analysis(cmd_lines.alone)
     elif cmd_lines.paint:
-        await painting(_shape, _scale, _color, _omits)
+        await missions.painting()
     elif cmd_lines.merge and len(cmd_lines.merge) > 0:
-        tasks = [Report.ask_create_total_report(merge, _total_path, _major_path) for merge in cmd_lines.merge]
-        error = await asyncio.gather(*tasks)
-        for e in error:
-            if isinstance(e, Exception):
-                logger.error(e)
+        await missions.combines()
     else:
         Helper.help_document()
 
@@ -1310,8 +1312,10 @@ if __name__ == '__main__':
 
     _boost, _color, _focus = cmd_lines.boost, cmd_lines.color, cmd_lines.focus
     _shape, _scale = cmd_lines.shape, cmd_lines.scale
-    _initial_report, _initial_deploy, _initial_option = Parser.initial_env()
-    adb, ffmpeg, scrcpy = Parser.compatible()
+    _initial_report, _initial_deploy, _initial_option = Parser.initial_env(
+        "framix.report", "framix.source", "framix.source"
+    )
+    _adb_exe, _ffmpeg_exe, _scrcpy_exe = Parser.compatible(_tools_path)
     cpu = os.cpu_count()
     logger.debug(f"CPU核心数量: {cpu}")
 
@@ -1333,59 +1337,49 @@ if __name__ == '__main__':
     option.dump_option(_initial_option)
     _initial_report = option.total_path if option.total_path else _initial_report
 
-    more_args = (
-        _boost, _color, _focus, _omits,
-        _model_path, _total_path, _major_path, _proto_path,
-        _initial_report, _initial_deploy, _initial_option,
-        ffmpeg
+    missions = Missions(
+        _boost, _color, _focus, _omits, _shape, _scale,
+        model_path=_model_path, total_path=_total_path, major_path=_major_path, proto_path=_proto_path,
+        initial_report=_initial_report, initial_deploy=_initial_deploy, initial_option=_initial_option,
+        adb_exe=_adb_exe, ffmpeg_exe=_ffmpeg_exe, scrcpy_exe=_scrcpy_exe,
     )
 
     if cmd_lines.whole and len(cmd_lines.whole) > 0:
         members = len(cmd_lines.whole)
         if members == 1:
-            multiple_folder_task(
-                cmd_lines.whole[0], *more_args
-            )
+            missions.folder_task(cmd_lines.whole[0])
         else:
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
-                results = pool.starmap(
-                    multiple_folder_task,
-                    [(i, *more_args) for i in cmd_lines.whole]
-                )
+                results = pool.starmap(missions.folder_task, [(i,) for i in cmd_lines.whole])
             Report.merge_report(results, _total_path)
         sys.exit(0)
     elif cmd_lines.input and len(cmd_lines.input) > 0:
         members = len(cmd_lines.input)
         if members == 1:
-            single_video_task(
-                cmd_lines.input[0], *more_args
-            )
+            missions.videos_task(cmd_lines.input[0])
         else:
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
-                pool.starmap(
-                    single_video_task,
-                    [(i, *more_args) for i in cmd_lines.input]
-                )
+                pool.starmap(missions.videos_task, [(i,) for i in cmd_lines.input])
         sys.exit(0)
     elif cmd_lines.train and len(cmd_lines.train) > 0:
         members = len(cmd_lines.train)
         if members == 1:
-            train_model(cmd_lines.train[0], *more_args)
+            missions.train_model(cmd_lines.train[0])
         else:
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
-                pool.starmap(train_model, [(i, *more_args) for i in cmd_lines.train])
+                pool.starmap(missions.train_model, [(i,) for i in cmd_lines.train])
         sys.exit(0)
     elif cmd_lines.build and len(cmd_lines.build) > 0:
         members = len(cmd_lines.build)
         if members == 1:
-            build_model(cmd_lines.build[0], *more_args)
+            missions.build_model(cmd_lines.build[0])
         else:
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
-                pool.starmap(build_model, [(i, *more_args) for i in cmd_lines.build])
+                pool.starmap(missions.build_model, [(i,) for i in cmd_lines.build])
         sys.exit(0)
     else:
         try:
