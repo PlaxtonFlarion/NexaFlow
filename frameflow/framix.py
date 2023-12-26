@@ -601,8 +601,9 @@ class Missions(object):
 
         looper = asyncio.get_event_loop()
         looper.run_until_complete(
-            analyzer(reporter, cl, deploy, new_video_path, boost=self.boost, color=self.color, proto_path=self.proto_path,
-                     ffmpeg_exe=self.ffmpeg_exe)
+            analyzer(
+                reporter, cl, deploy, new_video_path,
+                boost=self.boost, color=self.color, proto_path=self.proto_path, ffmpeg_exe=self.ffmpeg_exe)
         )
         looper.run_until_complete(
             reporter.ask_create_total_report(
@@ -629,8 +630,9 @@ class Missions(object):
                 shutil.copy(path, reporter.video_path)
                 new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
                 looper.run_until_complete(
-                    analyzer(reporter, cl, deploy, new_video_path, boost=self.boost, color=self.color, proto_path=self.proto_path,
-                             ffmpeg_exe=self.ffmpeg_exe)
+                    analyzer(
+                        reporter, cl, deploy, new_video_path,
+                        boost=self.boost, color=self.color, proto_path=self.proto_path, ffmpeg_exe=self.ffmpeg_exe)
                 )
         looper.run_until_complete(
             reporter.ask_create_total_report(
