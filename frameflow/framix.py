@@ -135,9 +135,9 @@ class Deploy(object):
         try:
             with open(file=deploy_file, mode="r", encoding="utf-8") as f:
                 data = json.loads(f.read())
-                boost_mode = data.get("boost", "false").lower() if isinstance(data.get("boost", "false"), str) else "false"
-                color_mode = data.get("color", "false").lower() if isinstance(data.get("color", "false"), str) else "false"
-                focus_mode = data.get("focus", "false").lower() if isinstance(data.get("focus", "false"), str) else "false"
+                boost_mode = boost_data.lower() if isinstance(boost_data := data.get("boost", "false"), str) else "false"
+                color_mode = color_data.lower() if isinstance(color_data := data.get("color", "false"), str) else "false"
+                focus_mode = focus_data.lower() if isinstance(focus_data := data.get("focus", "false"), str) else "false"
                 self._deploys["boost"] = True if boost_mode == "true" else False
                 self._deploys["color"] = True if color_mode == "true" else False
                 self._deploys["focus"] = True if focus_mode == "true" else False
@@ -554,6 +554,7 @@ class Missions(object):
 
     def __init__(self, *args, **kwargs):
         self.boost, self.color, self.focus, self.omits, self.shape, self.scale = args
+
         self.model_path = kwargs["model_path"]
         self.total_path = kwargs["total_path"]
         self.major_path = kwargs["major_path"]
@@ -564,6 +565,18 @@ class Missions(object):
         self.adb_exe = kwargs["adb_exe"]
         self.ffmpeg_exe = kwargs["ffmpeg_exe"]
         self.scrcpy_exe = kwargs["scrcpy_exe"]
+
+        self.deploy = Deploy(
+            boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
+            omits=self.omits
+        )
+        self.deploy.load_deploy(self.initial_deploy)
+        self.deploy.view_deploy()
+
+        self.kc = KerasClassifier(
+            target_size=self.deploy.target_size, data_size=self.deploy.target_size
+        )
+        self.kc.load_model(self.model_path)
 
     @staticmethod
     def only_video(folder: str):
@@ -591,21 +604,10 @@ class Missions(object):
 
         shutil.copy(input_video, new_video_path)
 
-        deploy = Deploy(
-            boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
-            omits=self.omits
-        )
-        deploy.load_deploy(self.initial_deploy)
-
-        cl = KerasClassifier(
-            target_size=deploy.target_size, data_size=deploy.target_size
-        )
-        cl.load_model(self.model_path)
-
         looper = asyncio.get_event_loop()
         looper.run_until_complete(
             analyzer(
-                reporter, cl, deploy, new_video_path,
+                reporter, self.kc, self.deploy, new_video_path,
                 proto_path=self.proto_path,
                 ffmpeg_exe=self.ffmpeg_exe
             )
@@ -619,17 +621,6 @@ class Missions(object):
     def video_dir_task(self, folder):
         reporter = Report(total_path=self.initial_report)
 
-        deploy = Deploy(
-            boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
-            omits=self.omits
-        )
-        deploy.load_deploy(self.initial_deploy)
-
-        cl = KerasClassifier(
-            target_size=deploy.target_size, data_size=deploy.target_size
-        )
-        cl.load_model(self.model_path)
-
         looper = asyncio.get_event_loop()
         for video in self.only_video(folder):
             reporter.title = video.title
@@ -639,7 +630,7 @@ class Missions(object):
                 new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
                 looper.run_until_complete(
                     analyzer(
-                        reporter, cl, deploy, new_video_path,
+                        reporter, self.kc, self.deploy, new_video_path,
                         proto_path=self.proto_path,
                         ffmpeg_exe=self.ffmpeg_exe
                     )
@@ -657,29 +648,26 @@ class Missions(object):
         if not os.path.exists(reporter.query_path):
             os.makedirs(reporter.query_path)
 
-        deploy = Deploy()
-        deploy.load_deploy(self.initial_deploy)
-
         video_temp_file = os.path.join(reporter.query_path, f"tmp_fps60_{random.randint(100, 999)}.mp4")
-        asyncio.run(ask_ffmpeg(self.ffmpeg_exe, deploy.fps, video_file, video_temp_file))
+        asyncio.run(ask_ffmpeg(self.ffmpeg_exe, self.deploy.fps, video_file, video_temp_file))
 
         video = VideoObject(video_temp_file)
         video.load_frames()
 
         cutter = VideoCutter(
-            step=deploy.step,
-            compress_rate=deploy.compress_rate,
-            target_size=deploy.target_size
+            step=self.deploy.step,
+            compress_rate=self.deploy.compress_rate,
+            target_size=self.deploy.target_size
         )
         res = cutter.cut(
             video=video,
-            block=deploy.block,
-            window_size=deploy.window_size,
-            window_coefficient=deploy.window_coefficient
+            block=self.deploy.block,
+            window_size=self.deploy.window_size,
+            window_coefficient=self.deploy.window_coefficient
         )
         stable, unstable = res.get_range(
-            threshold=deploy.threshold,
-            offset=deploy.offset
+            threshold=self.deploy.threshold,
+            offset=self.deploy.offset
         )
         res.pick_and_save(
             range_list=stable,
@@ -706,10 +694,7 @@ class Missions(object):
                 new_model_path = os.path.join(real_path, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
                 new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
 
-                deploy = Deploy(target_size=self.shape)
-                deploy.load_deploy(self.initial_deploy)
-
-                fc = FramixClassifier(data_size=deploy.target_size)
+                fc = FramixClassifier(data_size=self.deploy.target_size)
                 fc.build(real_path, new_model_path, new_model_name)
             else:
                 logger.error("文件夹未正确分类 ...")
@@ -917,7 +902,7 @@ class Missions(object):
                 for _ in range(10):
                     if done_event.is_set():
                         await analyzer(
-                            reporter, cl, deploy, temp_video,
+                            reporter, self.kc, self.deploy, temp_video,
                             proto_path=self.proto_path,
                             ffmpeg_exe=self.ffmpeg_exe
                         )
@@ -934,17 +919,6 @@ class Missions(object):
         else:
             reporter = Report(self.initial_report)
             reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
-
-        deploy = Deploy(
-            boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
-            omits=self.omits
-        )
-        deploy.load_deploy(self.initial_deploy)
-
-        cl = KerasClassifier(
-            target_size=deploy.target_size, data_size=deploy.target_size
-        )
-        cl.load_model(self.model_path)
 
         timer_mode = 5
         while True:
@@ -973,15 +947,15 @@ class Missions(object):
                         cellphone = await check_device(self.adb_exe)
                         continue
                     elif action.strip() == "deploy" and len(action.strip()) == 6:
-                        deploy.dump_deploy(self.initial_deploy)
+                        self.deploy.dump_deploy(self.initial_deploy)
                         logger.warning("修改 deploy.json 文件后请完全退出编辑器进程再继续操作 ...")
                         if operation_system == "win32":
                             await Terminal.cmd_line("Notepad", self.initial_deploy)
                         else:
                             await Terminal.cmd_line("open", "-W", "-a", "TextEdit", self.initial_deploy)
-                        deploy.omits.clear()
-                        deploy.load_deploy(self.initial_deploy)
-                        deploy.view_deploy()
+                        self.deploy.omits.clear()
+                        self.deploy.load_deploy(self.initial_deploy)
+                        self.deploy.view_deploy()
                         continue
                     elif action.isdigit():
                         value, lower_bound, upper_bound = int(action), 5, 300
