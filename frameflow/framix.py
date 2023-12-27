@@ -579,9 +579,9 @@ class Missions(object):
         return [
             Entry(
                 os.path.basename(root), root,
-                [os.path.join(root, f) for f in sorted(file)]
+                [os.path.join(root, f) for f in sorted(file) if "log" not in f]
             )
-            for root, _, file in os.walk(folder) if file and "log" not in file
+            for root, _, file in os.walk(folder) if file
         ]
 
     def video_task(self, input_video):
