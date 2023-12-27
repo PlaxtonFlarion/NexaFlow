@@ -371,21 +371,24 @@
             background-color: #CCCCCC;
             color: #666666;
         }
-        #img-info {
-            width: 20%;
-            margin-bottom: 20px;
+        #info-wrapper {
+            display: flex;
+            text-align: center;
+        }
+        .img-info {
+            width: 180px;
+            margin: 0 20px 20px 20px;
             background-color: #f8f3df;
-            padding: 10px;
+            padding: 5px;
             border-radius: 10px;
-            font-size: 16px;
+            font-weight: bold;
             transition: background-color 0.3s;
             color: #f2620bcc;
-            display: flex;
-            flex-direction: row;
-            justify-content: space-between;
         }
-        #img-info:hover {
-            background-color: #ffec99;
+        .img-info:hover {
+            cursor: grab;
+            color: #f8f3df;
+            background-color: #f2620bcc;
             transition: background-color 0.3s ease;
         }
         #lightbox-img, #light {
@@ -419,7 +422,7 @@
         }
         .thumbnail {
             flex: none;
-            margin: 5.5px;
+            margin: 6.5px;
             margin-top: 20px;
             margin-bottom: 10px;
             border-radius: 10px;
@@ -641,9 +644,13 @@
     <div id="lightbox">
         <div class="content">
             <button id="prev" class="nav-button" style="position: absolute; left: 0;">上一张</button>
-            <div id="img-info">
-                <span id="frame-id"></span>
-                <span id="timestamp"></span>
+            <div id="info-wrapper">
+                <div class="img-info">
+                    <span id="frame-id"></span>
+                </div>
+                <div class="img-info">
+                    <span id="timestamp"></span>
+                </div>
             </div>
             <img id="lightbox-img" src="" alt="Image" data-frame="" data-timestamp="">
             <div id="thumbnails"></div>
