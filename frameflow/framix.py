@@ -1322,14 +1322,14 @@ if __name__ == '__main__':
         _model_path = os.path.join(job_path, "archivix", "molds", "model.h5")
         _total_path = os.path.join(job_path, "archivix", "pages")
         _major_path = os.path.join(job_path, "archivix", "pages")
-        _proto_path = os.path.join(job_path, "archivix", "pages", "extra.html")
+        _proto_path = os.path.join(job_path, "archivix", "pages", "template_extra.html")
     elif work_platform == "framix.py":
         job_path = os.path.dirname(os.path.abspath(__file__))
         _tools_path = os.path.join(job_path, "archivix", "tools")
         _model_path = os.path.join(job_path, "archivix", "molds", "model.h5")
         _total_path = os.path.join(job_path, "archivix", "pages")
         _major_path = os.path.join(job_path, "archivix", "pages")
-        _proto_path = os.path.join(job_path, "archivix", "pages", "extra.html")
+        _proto_path = os.path.join(job_path, "archivix", "pages", "template_extra.html")
     else:
         console.print("[bold red]Only compatible with Windows and macOS platforms ...")
         time.sleep(5)

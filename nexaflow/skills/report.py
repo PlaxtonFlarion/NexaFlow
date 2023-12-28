@@ -158,7 +158,7 @@ class Report(object):
 
             loader = FileSystemLoader(os.path.join(Constants.NEXA, "template"))
             environment = Environment(loader=loader)
-            template = environment.get_template("template.html")
+            template = environment.get_template("template_main.html")
 
             html = template.render(title=self.title, images_list=images_list)
             report_html = os.path.join(self.query_path, f"{self.title}.html")
@@ -190,7 +190,7 @@ class Report(object):
         if len(self.total_list) > 0:
             loader = FileSystemLoader(os.path.join(Constants.NEXA, "template"))
             environment = Environment(loader=loader)
-            template = environment.get_template("overall.html")
+            template = environment.get_template("template_information.html")
             report_time = time.strftime('%Y.%m.%d %H:%M:%S')
             html = template.render(report_time=report_time, total_list=self.total_list)
 
@@ -206,7 +206,7 @@ class Report(object):
     def reset_report(file_name: str) -> None:
         loader = FileSystemLoader(os.path.join(Constants.NEXA, "template"))
         environment = Environment(loader=loader)
-        template = environment.get_template("overall.html")
+        template = environment.get_template("template_information.html")
         report_time = time.strftime('%Y.%m.%d %H:%M:%S')
 
         with open(
@@ -242,7 +242,7 @@ class Report(object):
 
         loader = FileSystemLoader(loader_merge_loc)
         environment = Environment(loader=loader)
-        template = environment.get_template("overall.html")
+        template = environment.get_template("template_information.html")
         report_time = time.strftime('%Y.%m.%d %H:%M:%S')
         total_list = [json.loads(file) for file in log_restore]
         html = template.render(report_time=report_time, total_list=total_list)
@@ -325,7 +325,7 @@ class Report(object):
 
                 major_loader = FileSystemLoader(major_loc)
                 major_environment = Environment(loader=major_loader)
-                major_template = major_environment.get_template("template.html")
+                major_template = major_environment.get_template("template_main.html")
 
                 html = major_template.render(title=title, images_list=images_list)
                 report_html = os.path.join(query_path, f"{title}.html")
@@ -386,7 +386,7 @@ class Report(object):
             if len(total_list) > 0:
                 total_loader = FileSystemLoader(loader_total_loc)
                 total_environment = Environment(loader=total_loader)
-                total_template = total_environment.get_template("overall.html")
+                total_template = total_environment.get_template("template_information.html")
 
                 html = total_template.render(report_time=report_time, total_list=total_list)
                 total_html = os.path.join(file_name, "NexaFlow.html")
@@ -510,7 +510,7 @@ class Report(object):
 
         def get_template() -> str:
             template_dirs = os.path.join(Constants.NEXA, "template")
-            template_path = os.path.join(template_dirs, "extra.html")
+            template_path = os.path.join(template_dirs, "template_extra.html")
             with open(template_path, encoding=constants.CHARSET) as t:
                 template_file = t.read()
             return template_file
