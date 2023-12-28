@@ -1472,12 +1472,33 @@
 
                 // 修改复制内容的可见性
                 originalContent.style.display = 'block';
-                // 将复制内容转换为HTML字符串
-                const htmlString = originalContent.outerHTML;
+                // 创建完整的HTML结构
+                var htmlContent = `
+                    <html>
+                    <head>
+                        <title>画帧秀 - Other</title>
+                        ${styles}
+                    </head>
+                    <body>
+                        ${originalContent.outerHTML}
+                    </body>
+                    </html>
+                `;
                 // 将修改后的内容写入新窗口
-                newWindow.document.write(styles + htmlString);
+                newWindow.document.write(htmlContent);
                 // 将新的 <script> 元素添加到新窗口的 <body>
                 newWindow.document.body.appendChild(scriptElement);
+
+<!--                // 修改复制内容的可见性-->
+<!--                originalContent.style.display = 'block';-->
+<!--                // 将复制内容转换为HTML字符串-->
+<!--                const htmlString = originalContent.outerHTML;-->
+<!--                // 将修改后的内容写入新窗口-->
+<!--                newWindow.document.write(styles + htmlString);-->
+<!--                // 将修改后的内容写入新窗口-->
+<!--                newWindow.document.write(htmlContent);-->
+<!--                // 将新的 <script> 元素添加到新窗口的 <body>-->
+<!--                newWindow.document.body.appendChild(scriptElement);-->
 
                 // 创建加载遮罩，创建加载动画
                 const loaderWrapper = newWindow.document.createElement('div');
