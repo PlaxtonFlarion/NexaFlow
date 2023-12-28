@@ -4,7 +4,7 @@
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-    <title>阶段耗时测试</title>
+    <title>画帧秀</title>
 
     <style>
         /* 加载动画 */
@@ -85,7 +85,7 @@
         }
         .time-difference.effect-off {
             border: 1px solid #e2e5e9;
-            background-color: #e2e5e9;
+            background-image: linear-gradient(45deg, #8BAAAA 0%, #AE8B9C 100%);
             pointer-events: none;
         }
         .time-difference:hover {
@@ -229,7 +229,7 @@
             width: 100%;
             border-radius: 10px;
             flex: 0 0 calc(12.5% - 20px);
-            margin: 10px;
+            margin: 20px 10px;
             text-align: center;
         }
         .image-box:hover {
@@ -239,8 +239,7 @@
         }
         .image-box img {
             width: 90%;
-            margin: 5px;
-            height: auto;
+            margin: 10px 5px;
             border-radius: 10px;
         }
         .image-box img:hover {
@@ -330,18 +329,18 @@
             padding: 20px;
         }
         .nav-button {
-            padding: 10px 20px;
+            padding: 5px 20px;
             margin: 5px;
             border: none;
             border-radius: 10px;
             background-color: #17a2b8;
             color: white;
-            font-size: 16px;
+            font-weight: bold;
             transition: background-color 0.3s;
         }
         .nav-button:hover {
             cursor: pointer;
-            background-color: #0056b3;
+            background-color: #1296dd;
         }
         .nav-button:active {
             transform: scale(0.95);
@@ -352,17 +351,18 @@
         }
         #close, #reselect {
             cursor: pointer;
-            padding: 10px 20px;
+            padding: 5px 20px;
             margin: 5px;
             border: none;
             border-radius: 10px;
             background-color: #ffdb6f;
-            color: black;
-            font-size: 16px;
+            font-weight: bold;
             transition: background-color 0.3s;
         }
         #close:hover, #reselect:hover {
-            background-color: #ffefbf;
+            transform: scale(1.05);
+            color: #d91212;
+            background-color: #dfab10;
         }
         #close:active, #reselect:active {
             transform: scale(0.95);
@@ -375,15 +375,25 @@
             display: flex;
             text-align: center;
         }
-        .img-info {
-            width: 180px;
-            margin: 0 20px 20px 20px;
-            background-color: #f8f3df;
+        .img-info, .lightbox-logo {
+            margin: 0 10px 20px;
             padding: 5px;
             border-radius: 10px;
             font-weight: bold;
             transition: background-color 0.3s;
+        }
+        .img-info {
+            width: 150px;
             color: #f2620bcc;
+            background-color: #f8f3df;
+        }
+        .lightbox-logo {
+            width: 80px;
+            color: #4682b4;
+            background-image: linear-gradient(to top, #D5DEE7 0%, #ffafbd 0%, #C9FFBF 100%);
+        }
+        .img-info > p, .lightbox-logo > p {
+            margin: auto;
         }
         .img-info:hover {
             cursor: grab;
@@ -391,9 +401,18 @@
             background-color: #f2620bcc;
             transition: background-color 0.3s ease;
         }
-        #lightbox-img, #light {
+        .lightbox-logo:hover {
+            cursor: grab;
+            color: #ff1493;
+            background-image: linear-gradient(-225deg, #E3FDF5 0%, #FFE6FA 100%);
+        }
+        .img-info:active, .lightbox-logo:active {
+            transform: scale(0.95);
+        }
+        #lightbox-img {
             max-width: 60%;
             max-height: 60%;
+            margin: 10px;
             object-fit: contain;
             border-radius: 10px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
@@ -422,9 +441,7 @@
         }
         .thumbnail {
             flex: none;
-            margin: 6.5px;
-            margin-top: 20px;
-            margin-bottom: 10px;
+            margin: 20px 10px;
             border-radius: 10px;
             cursor: pointer;
         }
@@ -496,7 +513,8 @@
             bottom: 50%; /* 从底部开始的位置 */
             left: 50%; /* 居中显示 */
             transform: translateX(-50%); /* 用于水平居中 */
-            border-radius: 30px;
+            border-radius: 10px;
+            font-weight: bold;
             transition: visibility 0.5s, opacity 0.5s linear;
         }
         .toast.show {
@@ -531,6 +549,9 @@
         }
         .ex-info, .proto-link {
             background: linear-gradient(to right, #56ccf2, #2f80ed);
+        }
+        .proto-link {
+            text-decoration: none;
         }
         .all-copy:hover, .all-reselect:hover, .quick-reselect:hover, .ex-info:hover, .proto-link:hover {
             background: linear-gradient(to left, #00eaa3, #007991);
@@ -569,7 +590,7 @@
         .box-res:last-child:active {
             transform: scale(0.95);
         }
-        .box-res p{
+        .box-res p {
             color: #8e44ad;
             margin: 5px;
             text-align: center;
@@ -643,20 +664,23 @@
     <!--灯箱查看器-->
     <div id="lightbox">
         <div class="content">
-            <button id="prev" class="nav-button" style="position: absolute; left: 0;">上一张</button>
+            <button id="prev" class="nav-button" style="position: absolute; left: 0;"><<< Prev</button>
             <div id="info-wrapper">
                 <div class="img-info">
-                    <span id="frame-id"></span>
+                    <p>ID: <span id="frame-id"></span></p>
+                </div>
+                <div class="lightbox-logo">
+                    <p><span id="box-logo">Framix</span></p>
                 </div>
                 <div class="img-info">
-                    <span id="timestamp"></span>
+                    <p>TS: <span id="timestamp"></span></p>
                 </div>
             </div>
             <img id="lightbox-img" src="" alt="Image" data-frame="" data-timestamp="">
             <div id="thumbnails"></div>
-            <button id="next"  class="nav-button" style="position: absolute; right: 0;">下一张</button>
-            <button id="close" style="position: absolute; top: 0; right: 0;">关闭</button>
-            <button id="reselect" style="position: absolute; top: 0; left: 0;">重选</button>
+            <button id="next"  class="nav-button" style="position: absolute; right: 0;">Next >>></button>
+            <button id="close" style="position: absolute; top: 0; right: 0;">X</button>
+            <button id="reselect" style="position: absolute; top: 0; left: 0;">R</button>
             <div class="box-res" style="position: absolute; top: 18%; left: 0;">
                 <p id="box-diff1">0 -> 0</p>
             </div>
@@ -766,7 +790,7 @@
                 timeDiffs[idx].classList.remove('effect-on');
                 timeDiffs[idx].classList.add('effect-off');
                 options[idx].style.display = 'none';
-                setBoxDiff('0 -> 0', '0.00000', 'none');
+                setBoxDiff('0 -> 0', 'none', '0.00000', 'none');
 
                 let quickParent = e.currentTarget.closest('.image-container');
                 marked = quickParent.querySelectorAll('.marked');
@@ -797,13 +821,13 @@
         });
 
         // 设置灯箱结果
-        function setBoxDiff(diff1, diff2, vision) {
+        function setBoxDiff(diff1, vision1, diff2, vision2) {
             let boxDiff1 = document.querySelector('#box-diff1');
             let boxDiff2 = document.querySelector('#box-diff2');
             boxDiff1.textContent = diff1;
-            boxDiff1.parentElement.style.display = vision;
+            boxDiff1.parentElement.style.display = vision1;
             boxDiff2.textContent = diff2;
-            boxDiff2.parentElement.style.display = vision;
+            boxDiff2.parentElement.style.display = vision2;
         }
 
         // 灯箱结果标签的点击事件
@@ -863,8 +887,8 @@
                     lightboxImg.src = e.target.src;
                     lightboxImg.dataset.frame = e.target.dataset.frame;
                     lightboxImg.dataset.timestamp = e.target.dataset.timestamp;
-                    frameIdSpan.textContent = '帧编号: ' + e.target.dataset.frame;
-                    timestampSpan.textContent = '时间戳: ' + e.target.dataset.timestamp;
+                    frameIdSpan.textContent = e.target.dataset.frame;
+                    timestampSpan.textContent = e.target.dataset.timestamp;
                     diffIndex = containerIndex;  // 获取当前容器的索引
                     currentImageIndex = index;  // 获取当前图片的索引
 
@@ -872,7 +896,8 @@
                     if (selectedImage.length === 1) {
                         images = currentImages.filter(img => img.parentElement.style.display === '');
                         currentImageIndex = images.indexOf(e.target);
-                        setBoxDiff('0 -> 0', '0.00000', 'none');
+                        let diff1 = selectedImage[0].querySelector('img')
+                        setBoxDiff(diff1.dataset.frame, '', '0.00000', 'none');
 
                     } else if (selectedImage.length === 2) {
                         images = currentImages.filter(img => img.parentElement.style.display === '');
@@ -883,11 +908,11 @@
                         let timestamp2 = Number(selectedImage[1].querySelector('img').getAttribute('data-timestamp'));
                         let diff = Math.abs(timestamp2 - timestamp1);
                         diff = diff.toFixed(5);
-                        setBoxDiff(frame1 + ' -> ' + frame2, diff, '');
+                        setBoxDiff(frame1 + ' -> ' + frame2, '', diff, '');
 
                     } else {
                         images = currentImages;
-                        setBoxDiff('0 -> 0', '0.00000', 'none');
+                        setBoxDiff('0 -> 0', 'none', '0.00000', 'none');
                     }
 
                     originalImage = e.target;  // 获取原始图片的信息
@@ -918,8 +943,8 @@
                 thumbnail.addEventListener('click', function(e) {
                     // 点击缩略图时更新大图
                     lightboxImg.src = image.src;
-                    frameIdSpan.textContent = '帧编号: ' + image.dataset.frame;
-                    timestampSpan.textContent = '时间戳: ' + image.dataset.timestamp;
+                    frameIdSpan.textContent = image.dataset.frame;
+                    timestampSpan.textContent = image.dataset.timestamp;
                     currentImageIndex = index;
                     originalImage = image;
                     updateButtonStatus();
@@ -935,8 +960,8 @@
             lightboxImg.src = image.src;
             lightboxImg.dataset.frame = image.dataset.frame;
             lightboxImg.dataset.timestamp = image.dataset.timestamp;
-            frameIdSpan.textContent = '帧编号: ' + image.dataset.frame;
-            timestampSpan.textContent = '时间戳: ' + image.dataset.timestamp;
+            frameIdSpan.textContent = image.dataset.frame;
+            timestampSpan.textContent = image.dataset.timestamp;
             originalImage = image;
             updateButtonStatus();
             boxVision();
@@ -993,7 +1018,7 @@
                 mark.parentElement.style.display = '';
             });
 
-            setBoxDiff('0 -> 0', '0.00000', 'none');
+            setBoxDiff('0 -> 0', 'none', '0.00000', 'none');
 
             let resultDivs = Array.from(document.querySelectorAll('.time-difference'));
             let resContainers = Array.from(document.querySelectorAll('.result-container'));
@@ -1086,7 +1111,8 @@
                 resDivs[diffIndex].classList.remove('effect-on');
                 resDivs[diffIndex].classList.add('effect-off');
                 options[diffIndex].style.display = 'none';
-                setBoxDiff('0 -> 0', '0.00000', 'none');
+                let diff1 = resMark[0].parentElement.querySelector('img')
+                setBoxDiff(diff1.dataset.frame, '', '0.00000', 'none');
 
             } else if (resMark.length === 0) {
                 allImages.forEach(image => {image.parentElement.style.display = ''});
@@ -1094,7 +1120,7 @@
                 resDivs[diffIndex].classList.add('effect-off');
                 resContainers[diffIndex].style.display = 'none';
                 options[diffIndex].style.display = 'none';
-                setBoxDiff('0 -> 0', '0.00000', 'none');
+                setBoxDiff('0 -> 0', 'none', '0.00000', 'none');
 
                 images = allImages;
                 let thumbs = Array.from(document.querySelectorAll('.thumbnail'));
@@ -1118,7 +1144,8 @@
                 let timestamp2 = Number(resMark[1].parentElement.querySelector('img').getAttribute('data-timestamp'));
                 let diff = Math.abs(timestamp2 - timestamp1);
                 diff = diff.toFixed(5);
-                setBoxDiff(frame1 + ' -> ' + frame2, diff, '');
+                setBoxDiff(frame1 + ' -> ' + frame2, '', diff, '');
+
                 resDivs[diffIndex].textContent = diff;
                 resDivs[diffIndex].classList.add('effect-on');
                 resDivs[diffIndex].classList.remove('effect-off');
