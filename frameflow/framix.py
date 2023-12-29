@@ -64,15 +64,15 @@ os.environ["PATH"] = os.path.dirname(_scrcpy_exe) + os.path.pathsep + os.environ
 
 try:
     from nexaflow import toolbox
-    from nexaflow.video import VideoObject, VideoFrame
     from nexaflow.terminal import Terminal
     from nexaflow.skills.report import Report
+    from nexaflow.video import VideoObject, VideoFrame
     from nexaflow.cutter.cutter import VideoCutter
     from nexaflow.hook import OmitHook, FrameSaveHook, ShapeHook
     from nexaflow.classifier.keras_classifier import KerasClassifier
     from nexaflow.classifier.framix_classifier import FramixClassifier
-except RuntimeError as run_time_error:
-    console.print(run_time_error)
+except (RuntimeError, ModuleNotFoundError) as err:
+    console.print(f"[bold]Error: {err}")
     time.sleep(5)
     sys.exit(1)
 
