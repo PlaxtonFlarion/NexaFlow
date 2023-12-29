@@ -13,20 +13,68 @@ from rich.table import Table
 from rich.prompt import Prompt
 from rich.console import Console
 from rich.progress import Progress
-from multiprocessing import Pool, freeze_support
-from nexaflow import toolbox
-from nexaflow.video import VideoObject, VideoFrame
-from nexaflow.terminal import Terminal
-from nexaflow.skills.report import Report
-from nexaflow.cutter.cutter import VideoCutter
-from nexaflow.hook import OmitHook, FrameSaveHook, ShapeHook
-from nexaflow.classifier.keras_classifier import KerasClassifier
-from nexaflow.classifier.framix_classifier import FramixClassifier
 
 console = Console()
 operation_system = sys.platform.strip().lower()
 work_platform = os.path.basename(os.path.abspath(sys.argv[0])).lower()
-exec_platform = ["framix.exe", "framix.bin", "framix"]
+exec_platform = ["framix.exe", "framix.bin", "framix", "framix.py"]
+
+if work_platform == "framix.exe":
+    _job_path = os.path.dirname(os.path.abspath(sys.argv[0]))
+    _universal = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+elif work_platform == "framix.bin":
+    _job_path = os.path.dirname(sys.executable)
+    _universal = os.path.dirname(os.path.dirname(sys.executable))
+elif work_platform == "framix":
+    _job_path = os.path.dirname(sys.executable)
+    _universal = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(sys.executable))))
+elif work_platform == "framix.py":
+    _job_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    _universal = os.path.dirname(os.path.abspath(__file__))
+else:
+    console.print("[bold red]Only compatible with Windows and macOS platforms ...")
+    time.sleep(5)
+    sys.exit(1)
+
+_tools_path = os.path.join(_job_path, "archivix", "tools")
+_model_path = os.path.join(_job_path, "archivix", "molds", "model.h5")
+_total_path = os.path.join(_job_path, "archivix", "pages")
+_major_path = os.path.join(_job_path, "archivix", "pages")
+_proto_path = os.path.join(_job_path, "archivix", "pages", "template_extra.html")
+_initial_report = os.path.join(_universal, "framix.report")
+_initial_deploy = os.path.join(_universal, "framix.source")
+_initial_option = os.path.join(_universal, "framix.source")
+
+if operation_system == "win32":
+    _adb_exe = os.path.join(_tools_path, "windows", "platform-tools", "adb.exe")
+    _ffmpeg_exe = os.path.join(_tools_path, "windows", "ffmpeg", "bin", "ffmpeg.exe")
+    _scrcpy_exe = os.path.join(_tools_path, "windows", "scrcpy", "scrcpy.exe")
+elif operation_system == "darwin":
+    _adb_exe = os.path.join(_tools_path, "mac", "platform-tools", "adb")
+    _ffmpeg_exe = os.path.join(_tools_path, "mac", "ffmpeg", "ffmpeg")
+    _scrcpy_exe = os.path.join(_tools_path, "mac", "scrcpy", "scrcpy")
+else:
+    console.print("[bold red]Only compatible with Windows and macOS platforms ...")
+    time.sleep(5)
+    sys.exit(1)
+
+os.environ["PATH"] = os.path.dirname(_adb_exe) + os.path.pathsep + os.environ.get("PATH", "")
+os.environ["PATH"] = os.path.dirname(_ffmpeg_exe) + os.path.pathsep + os.environ.get("PATH", "")
+os.environ["PATH"] = os.path.dirname(_scrcpy_exe) + os.path.pathsep + os.environ.get("PATH", "")
+
+try:
+    from nexaflow import toolbox
+    from nexaflow.video import VideoObject, VideoFrame
+    from nexaflow.terminal import Terminal
+    from nexaflow.skills.report import Report
+    from nexaflow.cutter.cutter import VideoCutter
+    from nexaflow.hook import OmitHook, FrameSaveHook, ShapeHook
+    from nexaflow.classifier.keras_classifier import KerasClassifier
+    from nexaflow.classifier.framix_classifier import FramixClassifier
+except RuntimeError as run_time_error:
+    console.print(run_time_error)
+    time.sleep(5)
+    sys.exit(1)
 
 
 class Deploy(object):
@@ -500,54 +548,6 @@ class Parser(object):
         parser.add_argument('--debug', action='store_true', help='调试模式')
 
         return parser.parse_args()
-
-    @staticmethod
-    def compatible(tools_path):
-        if operation_system == "win32":
-            adb = os.path.join(tools_path, "windows", "platform-tools", "adb.exe")
-            ffmpeg = os.path.join(tools_path, "windows", "ffmpeg-6.1-full_build", "bin", "ffmpeg.exe")
-            scrcpy = os.path.join(tools_path, "windows", "scrcpy-win64-v2.2", "scrcpy.exe")
-        elif operation_system == "darwin":
-            adb = os.path.join(tools_path, "mac", "platform-tools", "adb")
-            ffmpeg = os.path.join(tools_path, "mac", "ffmpeg-6.1", "ffmpeg")
-            scrcpy = shutil.which("scrcpy")
-        else:
-            adb, ffmpeg, scrcpy = shutil.which("adb"), shutil.which("ffmpeg"), shutil.which("scrcpy")
-
-        if adb:
-            os.environ["PATH"] = os.path.dirname(adb) + os.path.pathsep + os.environ.get("PATH", "")
-        if ffmpeg:
-            os.environ["PATH"] = os.path.dirname(ffmpeg) + os.path.pathsep + os.environ.get("PATH", "")
-        if scrcpy:
-            os.environ["PATH"] = os.path.dirname(scrcpy) + os.path.pathsep + os.environ.get("PATH", "")
-
-        logger.debug(f"PATH: {adb}")
-        logger.debug(f"PATH: {ffmpeg}")
-        logger.debug(f"PATH: {scrcpy}")
-        for env in os.environ["PATH"].split(os.pathsep):
-            logger.debug(env)
-
-        return adb, ffmpeg, scrcpy
-
-    @staticmethod
-    def initial_directory(report_dirs, deploy_dirs, option_dirs):
-        universal_report_path = report_dirs
-        universal_deploy_path = deploy_dirs
-        universal_option_path = option_dirs
-        if work_platform == "framix.exe":
-            universal = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
-        elif work_platform == "framix.bin":
-            universal = os.path.dirname(os.path.dirname(sys.executable))
-        elif work_platform == "framix":
-            universal = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(sys.executable))))
-        else:
-            universal = ""
-
-        new_report_path = os.path.join(universal, universal_report_path)
-        new_deploy_path = os.path.join(universal, universal_deploy_path)
-        new_option_path = os.path.join(universal, universal_option_path)
-
-        return new_report_path, new_deploy_path, new_option_path
 
 
 class Missions(object):
@@ -1312,43 +1312,39 @@ if __name__ == '__main__':
         Helper.help_document()
         sys.exit(1)
 
+    from multiprocessing import Pool, freeze_support
     freeze_support()
-    if work_platform in exec_platform:
-        if work_platform == "framix.exe":
-            job_path = os.path.dirname(os.path.abspath(sys.argv[0]))
-        else:
-            job_path = os.path.dirname(sys.executable)
-        _tools_path = os.path.join(job_path, "archivix", "tools")
-        _model_path = os.path.join(job_path, "archivix", "molds", "model.h5")
-        _total_path = os.path.join(job_path, "archivix", "pages")
-        _major_path = os.path.join(job_path, "archivix", "pages")
-        _proto_path = os.path.join(job_path, "archivix", "pages", "template_extra.html")
-    elif work_platform == "framix.py":
-        job_path = os.path.dirname(os.path.abspath(__file__))
-        _tools_path = os.path.join(job_path, "archivix", "tools")
-        _model_path = os.path.join(job_path, "archivix", "molds", "model.h5")
-        _total_path = os.path.join(job_path, "archivix", "pages")
-        _major_path = os.path.join(job_path, "archivix", "pages")
-        _proto_path = os.path.join(job_path, "archivix", "pages", "template_extra.html")
-    else:
-        console.print("[bold red]Only compatible with Windows and macOS platforms ...")
-        time.sleep(5)
-        sys.exit(1)
 
     from argparse import ArgumentParser
-
     cmd_lines = Parser.parse_cmd()
-    _debug = "DEBUG" if cmd_lines.debug else "INFO"
-    worker_init(_debug)
+    _level = "DEBUG" if cmd_lines.debug else "INFO"
+    worker_init(_level)
+
+    # <Debug Mode>
+    logger.debug(f"Level: {_level}")
+
+    logger.debug(f"System: {operation_system}")
+    logger.debug(f"Worker: {work_platform}")
+
+    logger.debug(f"Tools: {_tools_path}")
+    logger.debug(f"Model: {_model_path}")
+    logger.debug(f"Html-Template: {_total_path}")
+    logger.debug(f"Html-Template: {_major_path}")
+    logger.debug(f"Html-Template: {_proto_path}")
+
+    logger.debug(f"adb: {_adb_exe}")
+    logger.debug(f"ffmpeg: {_ffmpeg_exe}")
+    logger.debug(f"scrcpy: {_scrcpy_exe}")
+
+    for env in os.environ["PATH"].split(os.path.pathsep):
+        logger.debug(env)
+    # </Debug Mode>
 
     _boost, _color, _focus = cmd_lines.boost, cmd_lines.color, cmd_lines.focus
     _shape, _scale = cmd_lines.shape, cmd_lines.scale
-    _initial_report, _initial_deploy, _initial_option = Parser.initial_directory(
-        "framix.report", "framix.source", "framix.source"
-    )
-    _adb_exe, _ffmpeg_exe, _scrcpy_exe = Parser.compatible(_tools_path)
+
     cpu = os.cpu_count()
-    logger.debug(f"CPU核心数量: {cpu}")
+    logger.debug(f"CPU Core: {cpu}")
 
     _omits = []
     if cmd_lines.omits and len(cmd_lines.omits) > 0:
@@ -1367,6 +1363,10 @@ if __name__ == '__main__':
     option.load_option(_initial_option)
     option.dump_option(_initial_option)
     _initial_report = option.total_path if option.total_path else _initial_report
+
+    logger.debug(f"Initial-Report: {_initial_report}")
+    logger.debug(f"Initial-Deploy: {_initial_deploy}")
+    logger.debug(f"Initial-Option: {_initial_option}")
 
     missions = Missions(
         _boost, _color, _focus, _omits, _shape, _scale,

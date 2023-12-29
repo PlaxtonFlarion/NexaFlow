@@ -896,7 +896,7 @@
                     if (selectedImage.length === 1) {
                         images = currentImages.filter(img => img.parentElement.style.display === '');
                         currentImageIndex = images.indexOf(e.target);
-                        let diff1 = selectedImage[0].querySelector('img')
+                        let diff1 = selectedImage[0].querySelector('img');
                         setBoxDiff(diff1.dataset.frame, '', '0.00000', 'none');
 
                     } else if (selectedImage.length === 2) {
@@ -1031,7 +1031,7 @@
 
             let allThumb = Array.from(document.querySelectorAll('.thumb-selected'));
             allThumb.forEach(thumb => {
-                thumb.classList.remove('thumb-selected')
+                thumb.classList.remove('thumb-selected');
             });
 
             images = Array.from(container.querySelectorAll('.image-box img'));
@@ -1111,7 +1111,7 @@
                 resDivs[diffIndex].classList.remove('effect-on');
                 resDivs[diffIndex].classList.add('effect-off');
                 options[diffIndex].style.display = 'none';
-                let diff1 = resMark[0].parentElement.querySelector('img')
+                let diff1 = resMark[0].parentElement.querySelector('img');
                 setBoxDiff(diff1.dataset.frame, '', '0.00000', 'none');
 
             } else if (resMark.length === 0) {
@@ -1495,8 +1495,6 @@
 <!--                const htmlString = originalContent.outerHTML;-->
 <!--                // 将修改后的内容写入新窗口-->
 <!--                newWindow.document.write(styles + htmlString);-->
-<!--                // 将修改后的内容写入新窗口-->
-<!--                newWindow.document.write(htmlContent);-->
 <!--                // 将新的 <script> 元素添加到新窗口的 <body>-->
 <!--                newWindow.document.body.appendChild(scriptElement);-->
 
