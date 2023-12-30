@@ -2,19 +2,16 @@ import os
 import re
 import sys
 import cv2
-import json
 import time
 import shutil
 import random
 import asyncio
 import aiofiles
 from loguru import logger
-from rich.table import Table
 from rich.prompt import Prompt
-from rich.console import Console
-from rich.progress import Progress
+from frameflow.show import Show
+from frameflow.manage import Option, Deploy, Manage
 
-console = Console()
 operation_system = sys.platform.strip().lower()
 work_platform = os.path.basename(os.path.abspath(sys.argv[0])).lower()
 exec_platform = ["framix.exe", "framix.bin", "framix", "framix.py"]
@@ -32,7 +29,7 @@ elif work_platform == "framix.py":
     _job_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     _universal = os.path.dirname(os.path.abspath(__file__))
 else:
-    console.print("[bold red]Only compatible with Windows and macOS platforms ...")
+    Show.console.print("[bold red]Only compatible with Windows and macOS platforms ...")
     time.sleep(5)
     sys.exit(1)
 
@@ -54,7 +51,7 @@ elif operation_system == "darwin":
     _ffmpeg = os.path.join(_tools_path, "mac", "ffmpeg", "bin", "ffmpeg")
     _scrcpy = os.path.join(_tools_path, "mac", "scrcpy", "bin", "scrcpy")
 else:
-    console.print("[bold red]Only compatible with Windows and macOS platforms ...")
+    Show.console.print("[bold red]Only compatible with Windows and macOS platforms ...")
     time.sleep(5)
     sys.exit(1)
 
@@ -72,439 +69,9 @@ try:
     from nexaflow.classifier.keras_classifier import KerasClassifier
     from nexaflow.classifier.framix_classifier import FramixClassifier
 except (RuntimeError, ModuleNotFoundError) as err:
-    console.print(f"[bold]Error: {err}")
+    Show.console.print(f"[bold]Error: {err}")
     time.sleep(5)
     sys.exit(1)
-
-
-class Deploy(object):
-
-    _deploys = {
-        "boost": False,
-        "color": False,
-        "focus": False,
-        "target_size": (350, 700),
-        "fps": 60,
-        "compress_rate": 0.5,
-        "threshold": 0.97,
-        "offset": 3,
-        "window_size": 1,
-        "step": 1,
-        "block": 6,
-        "window_coefficient": 2,
-        "omits": []
-    }
-
-    def __init__(
-            self,
-            boost: bool = None,
-            color: bool = None,
-            focus: bool = None,
-            target_size: tuple = None,
-            fps: int = None,
-            compress_rate: int | float = None,
-            threshold: int | float = None,
-            offset: int = None,
-            window_size: int = None,
-            step: int = None,
-            block: int = None,
-            window_coefficient: int = None,
-            omits: list = None
-    ):
-
-        self._deploys["boost"] = boost or False
-        self._deploys["color"] = color or False
-        self._deploys["focus"] = focus or False
-        self._deploys["target_size"] = target_size or (350, 700)
-        self._deploys["fps"] = fps or 60
-        self._deploys["compress_rate"] = compress_rate or 0.5
-        self._deploys["threshold"] = threshold or 0.97
-        self._deploys["offset"] = offset or 3
-        self._deploys["window_size"] = window_size or 1
-        self._deploys["step"] = step or 1
-        self._deploys["block"] = block or 6
-        self._deploys["window_coefficient"] = window_coefficient or 2
-        self._deploys["omits"] = omits or []
-
-    @property
-    def boost(self):
-        return self._deploys["boost"]
-
-    @property
-    def color(self):
-        return self._deploys["color"]
-
-    @property
-    def focus(self):
-        return self._deploys["focus"]
-
-    @property
-    def target_size(self):
-        return self._deploys["target_size"]
-
-    @property
-    def fps(self):
-        return self._deploys["fps"]
-
-    @property
-    def compress_rate(self):
-        return self._deploys["compress_rate"]
-
-    @property
-    def threshold(self):
-        return self._deploys["threshold"]
-
-    @property
-    def offset(self):
-        return self._deploys["offset"]
-
-    @property
-    def window_size(self):
-        return self._deploys["window_size"]
-
-    @property
-    def step(self):
-        return self._deploys["step"]
-
-    @property
-    def block(self):
-        return self._deploys["block"]
-
-    @property
-    def window_coefficient(self):
-        return self._deploys["window_coefficient"]
-
-    @property
-    def omits(self):
-        return self._deploys["omits"]
-
-    def load_deploy(self, deploy_file: str) -> bool:
-        is_load: bool = False
-        try:
-            with open(file=deploy_file, mode="r", encoding="utf-8") as f:
-                data = json.loads(f.read())
-                boost_mode = boost_data.lower() if isinstance(boost_data := data.get("boost", "false"), str) else "false"
-                color_mode = color_data.lower() if isinstance(color_data := data.get("color", "false"), str) else "false"
-                focus_mode = focus_data.lower() if isinstance(focus_data := data.get("focus", "false"), str) else "false"
-                self._deploys["boost"] = True if boost_mode == "true" else False
-                self._deploys["color"] = True if color_mode == "true" else False
-                self._deploys["focus"] = True if focus_mode == "true" else False
-                size = data.get("target_size", (350, 700))
-                self._deploys["target_size"] = tuple(
-                    max(100, min(3000, int(i))) for i in re.findall(r"-?\d*\.?\d+", size)
-                ) if isinstance(size, str) else size
-                self._deploys["fps"] = max(15, min(60, data.get("fps", 60)))
-                self._deploys["compress_rate"] = max(0, min(1, data.get("compress_rate", 0.5)))
-                self._deploys["threshold"] = max(0, min(1, data.get("threshold", 0.97)))
-                self._deploys["offset"] = max(1, data.get("offset", 3))
-                self._deploys["window_size"] = max(1, data.get("window_size", 1))
-                self._deploys["step"] = max(1, data.get("step", 1))
-                self._deploys["block"] = max(1, min(int(min(self.target_size[0], self.target_size[1]) / 10), data.get("block", 6)))
-                self._deploys["window_coefficient"] = max(2, data.get("window_coefficient", 2))
-                hook_list = data.get("omits", [])
-                for hook_dict in hook_list:
-                    if len(
-                            data_list := [
-                                value for value in hook_dict.values() if isinstance(value, int | float)
-                            ]
-                    ) == 4 and sum(data_list) > 0:
-                        self._deploys["omits"].append(
-                            (hook_dict["x"], hook_dict["y"], hook_dict["x_size"], hook_dict["y_size"])
-                        )
-                if len(self.omits) >= 2:
-                    self._deploys["omits"] = list(set(self.omits))
-        except FileNotFoundError:
-            logger.debug("未找到部署文件,使用默认参数 ...")
-        except json.decoder.JSONDecodeError:
-            logger.debug("部署文件解析错误,文件格式不正确,使用默认参数 ...")
-        else:
-            logger.debug("读取部署文件,使用部署参数 ...")
-            is_load = True
-        finally:
-            return is_load
-
-    def dump_deploy(self, deploy_file: str) -> None:
-        os.makedirs(os.path.dirname(deploy_file), exist_ok=True)
-
-        with open(file=deploy_file, mode="w", encoding="utf-8") as f:
-            f.writelines('{')
-            for k, v in self._deploys.items():
-                f.writelines('\n')
-                if isinstance(v, bool):
-                    f.writelines(f'    "{k}": "{v}",')
-                elif k == "target_size":
-                    f.writelines(f'    "{k}": "{v}",')
-                elif k == "omits":
-                    if len(v) == 0:
-                        default = '{"x": 0, "y": 0, "x_size": 0, "y_size": 0}'
-                        f.writelines(f'    "{k}": [\n')
-                        f.writelines(f'        {default}\n')
-                        f.writelines('    ]')
-                    else:
-                        f.writelines(f'    "{k}": [\n')
-                        for index, i in enumerate(v):
-                            x, y, x_size, y_size = i
-                            new_size = f'{{"x": {x}, "y": {y}, "x_size": {x_size}, "y_size": {y_size}}}'
-                            if (index + 1) == len(v):
-                                f.writelines(f'        {new_size}\n')
-                            else:
-                                f.writelines(f'        {new_size},\n')
-                        f.writelines('    ]')
-                else:
-                    f.writelines(f'    "{k}": {v},')
-            f.writelines('\n}')
-
-    def view_deploy(self) -> None:
-
-        title_color = "#af5fd7"
-        col_1_color = "#d75f87"
-        col_2_color = "#87afd7"
-        col_3_color = "#00af5f"
-
-        table = Table(
-            title=f"[bold {title_color}]Framix Analyzer Deploy",
-            header_style=f"bold {title_color}", title_justify="center",
-            show_header=True
-        )
-        table.add_column("配置", no_wrap=True)
-        table.add_column("参数", no_wrap=True, max_width=12)
-        table.add_column("范围", no_wrap=True)
-        table.add_column("效果", no_wrap=True)
-
-        table.add_row(
-            f"[bold {col_1_color}]快速模式",
-            f"[bold {col_2_color}]{self.boost}",
-            f"[bold][[bold {col_3_color}]T | F[/bold {col_3_color}] ]",
-            f"[bold green]开启[/bold green]" if self.boost else "[bold red]关闭[/bold red]",
-        )
-        table.add_row(
-            f"[bold {col_1_color}]彩色模式",
-            f"[bold {col_2_color}]{self.color}",
-            f"[bold][[bold {col_3_color}]T | F[/bold {col_3_color}] ]",
-            f"[bold green]开启[/bold green]" if self.color else "[bold red]关闭[/bold red]",
-        )
-        table.add_row(
-            f"[bold {col_1_color}]视频转换",
-            f"[bold {col_2_color}]{self.focus}",
-            f"[bold][[bold {col_3_color}]T | F[/bold {col_3_color}] ]",
-            f"[bold green]开启[/bold green]" if self.focus else "[bold red]关闭[/bold red]",
-        )
-        table.add_row(
-            f"[bold {col_1_color}]图像尺寸",
-            f"[bold {col_2_color}]{self.target_size}",
-            f"[bold][[bold {col_3_color}]? , ?[/bold {col_3_color}] ]",
-            f"[bold]宽 [bold red]{self.target_size[0]}[/bold red] 高 [bold red]{self.target_size[1]}[/bold red]",
-        )
-        table.add_row(
-            f"[bold {col_1_color}]视频帧率",
-            f"[bold {col_2_color}]{self.fps}",
-            f"[bold][[bold {col_3_color}]15, 60[/bold {col_3_color}]]",
-            f"[bold]转换视频为 [bold red]{self.fps}[/bold red] 帧每秒",
-        )
-        table.add_row(
-            f"[bold {col_1_color}]压缩率",
-            f"[bold {col_2_color}]{self.compress_rate}",
-            f"[bold][[bold {col_3_color}]0 , 1[/bold {col_3_color}] ]",
-            f"[bold]压缩视频大小为原来的 [bold red]{int(self.compress_rate * 100)}%[/bold red]",
-        )
-        table.add_row(
-            f"[bold {col_1_color}]相似度",
-            f"[bold {col_2_color}]{self.threshold}",
-            f"[bold][[bold {col_3_color}]0 , 1[/bold {col_3_color}] ]",
-            f"[bold]阈值超过 [bold red]{self.threshold}[/bold red] 的帧为稳定帧",
-        )
-        table.add_row(
-            f"[bold {col_1_color}]补偿值",
-            f"[bold {col_2_color}]{self.offset}",
-            f"[bold][[bold {col_3_color}]0 , ?[/bold {col_3_color}] ]",
-            f"[bold]合并 [bold red]{self.offset}[/bold red] 个变化不大的稳定区间",
-        )
-        table.add_row(
-            f"[bold {col_1_color}]片段数量",
-            f"[bold {col_2_color}]{self.window_size}",
-            f"[bold][[bold {col_3_color}]1 , ?[/bold {col_3_color}] ]",
-            f"[bold]每次处理 [bold red]{self.window_size}[/bold red] 个帧片段",
-        )
-        table.add_row(
-            f"[bold {col_1_color}]处理数量",
-            f"[bold {col_2_color}]{self.step}",
-            f"[bold][[bold {col_3_color}]1 , ?[/bold {col_3_color}] ]",
-            f"[bold]每个片段处理 [bold red]{self.step}[/bold red] 个帧图像",
-        )
-        table.add_row(
-            f"[bold {col_1_color}]切分程度",
-            f"[bold {col_2_color}]{self.block}",
-            f"[bold][[bold {col_3_color}]1 , {int(min(self.target_size[0], self.target_size[1]) / 10)}[/bold {col_3_color}]]",
-            f"[bold]每个帧图像切分为 [bold red]{self.block}[/bold red] 块",
-        )
-        table.add_row(
-            f"[bold {col_1_color}]权重分布",
-            f"[bold {col_2_color}]{self.window_coefficient}",
-            f"[bold][[bold {col_3_color}]2 , ?[/bold {col_3_color}] ]",
-            f"[bold]加权计算 [bold red]{self.window_coefficient}[/bold red]",
-        )
-        table.add_row(
-            f"[bold {col_1_color}]忽略区域",
-            f"[bold {col_2_color}]{['!' for _ in range(len(self.omits))]}",
-            f"[bold][[bold {col_3_color}]0 , 1[/bold {col_3_color}] ]",
-            f"[bold]共 [bold red]{len(self.omits)}[/bold red] 个区域的图像不参与计算",
-        )
-
-        console.print(table)
-
-
-class Option(object):
-
-    _options = {
-        "Total Path": ""
-    }
-
-    @property
-    def total_path(self):
-        return self._options["Total Path"]
-
-    @total_path.setter
-    def total_path(self, value):
-        self._options["Total Path"] = value
-
-    def load_option(self, option_file: str) -> bool:
-        is_load: bool = False
-        try:
-            with open(file=option_file, mode="r", encoding="utf-8") as f:
-                data = json.loads(f.read())
-                data_path = data.get("Total Path", "")
-                if data_path and os.path.isdir(data_path):
-                    if not os.path.exists(data_path):
-                        os.makedirs(data_path, exist_ok=True)
-                    self.total_path = data_path
-        except FileNotFoundError:
-            logger.debug("未找到配置文件,使用默认路径 ...")
-        except json.decoder.JSONDecodeError:
-            logger.debug("配置文件解析错误,文件格式不正确,使用默认路径 ...")
-        else:
-            logger.debug("读取配置文件,使用配置参数 ...")
-            is_load = True
-        finally:
-            return is_load
-
-    def dump_option(self, option_file: str) -> None:
-        os.makedirs(os.path.dirname(option_file), exist_ok=True)
-
-        with open(file=option_file, mode="w", encoding="utf-8") as f:
-            f.writelines('{')
-            for k, v in self._options.items():
-                f.writelines('\n')
-                f.writelines(f'    "{k}": "{v}"')
-            f.writelines('\n}')
-
-
-class Helper(object):
-
-    @staticmethod
-    def help_document():
-        table_major = Table(
-            title="[bold #FF851B]NexaFlow Framix Main Command Line",
-            header_style="bold #FF851B", title_justify="center",
-            show_header=True, show_lines=True
-        )
-        table_major.add_column("主要命令", justify="center", width=12)
-        table_major.add_column("参数类型", justify="center", width=12)
-        table_major.add_column("传递次数", justify="center", width=8)
-        table_major.add_column("附加命令", justify="center", width=8)
-        table_major.add_column("功能说明", justify="center", width=22)
-
-        table_major.add_row(
-            "[bold #FFDC00]--flick", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #D7FF00]支持", "[bold #39CCCC]录制分析视频帧"
-        )
-        table_major.add_row(
-            "[bold #FFDC00]--alone", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "", "[bold #39CCCC]录制视频"
-        )
-        table_major.add_row(
-            "[bold #FFDC00]--paint", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #D7FF00]支持", "[bold #39CCCC]绘制分割线条"
-        )
-        table_major.add_row(
-            "[bold #FFDC00]--input", "[bold #7FDBFF]视频文件", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]分析单个视频"
-        )
-        table_major.add_row(
-            "[bold #FFDC00]--whole", "[bold #7FDBFF]视频集合", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]分析全部视频"
-        )
-        table_major.add_row(
-            "[bold #FFDC00]--merge", "[bold #7FDBFF]报告集合", "[bold #FFAFAF]多次", "", "[bold #39CCCC]聚合报告"
-        )
-        table_major.add_row(
-            "[bold #FFDC00]--train", "[bold #7FDBFF]视频文件", "[bold #FFAFAF]多次", "", "[bold #39CCCC]归类图片文件"
-        )
-        table_major.add_row(
-            "[bold #FFDC00]--build", "[bold #7FDBFF]图片集合", "[bold #FFAFAF]多次", "", "[bold #39CCCC]训练模型文件"
-        )
-
-        table_minor = Table(
-            title="[bold #FF851B]NexaFlow Framix Extra Command Line",
-            header_style="bold #FF851B", title_justify="center",
-            show_header=True, show_lines=True
-        )
-        table_minor.add_column("附加命令", justify="center", width=12)
-        table_minor.add_column("参数类型", justify="center", width=12)
-        table_minor.add_column("传递次数", justify="center", width=8)
-        table_minor.add_column("默认状态", justify="center", width=8)
-        table_minor.add_column("功能说明", justify="center", width=22)
-
-        table_minor.add_row(
-            "[bold #FFDC00]--boost", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]快速模式"
-        )
-        table_minor.add_row(
-            "[bold #FFDC00]--color", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]彩色模式"
-        )
-        table_minor.add_row(
-            "[bold #FFDC00]--focus", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]转换视频"
-        )
-        table_minor.add_row(
-            "[bold #FFDC00]--shape", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #AFAFD7]自动", "[bold #39CCCC]图片尺寸"
-        )
-        table_minor.add_row(
-            "[bold #FFDC00]--scale", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #AFAFD7]自动", "[bold #39CCCC]缩放比例"
-        )
-        table_minor.add_row(
-            "[bold #FFDC00]--omits", "[bold #7FDBFF]坐标", "[bold #FFAFAF]多次", "[bold #AFAFD7]自动", "[bold #39CCCC]忽略区域"
-        )
-        framix_logo = """[bold #D0D0D0]
-              ███████╗██████╗  █████╗      ███╗   ███╗██╗██╗  ██╗
-              ██╔════╝██╔══██╗██╔══██╗     ████╗ ████║██║╚██╗██╔╝
-              █████╗  ██████╔╝███████║     ██╔████╔██║██║ ╚███╔╝
-              ██╔══╝  ██╔══██╗██╔══██║     ██║╚██╔╝██║██║ ██╔██╗
-              ██║     ██║  ██║██║  ██║     ██║ ╚═╝ ██║██║██╔╝ ██╗
-              ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝     ╚═╝     ╚═╝╚═╝╚═╝  ╚═╝
-        """
-        nexaflow_logo = """[bold #D0D0D0]
-    ███╗   ██╗███████╗██╗  ██╗ █████╗   ███████╗██╗      ██████╗ ██╗    ██╗
-    ██╔██╗ ██║██╔════╝╚██╗██╔╝██╔══██╗  ██╔════╝██║     ██╔═══██╗██║    ██║
-    ██║╚██╗██║█████╗   ╚███╔╝ ███████║  █████╗  ██║     ██║   ██║██║ █╗ ██║
-    ██║ ╚████║██╔══╝   ██╔██╗ ██╔══██║  ██╔══╝  ██║     ██║   ██║██║███╗██║
-    ██║  ╚███║███████╗██╔╝ ██╗██║  ██║  ██║     ███████╗╚██████╔╝╚███╔███╔╝
-    ╚═╝   ╚══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝  ╚═╝     ╚══════╝ ╚═════╝  ╚══╝╚══╝
-        """
-
-        console.print(nexaflow_logo)
-        console.print(table_major)
-        console.print(framix_logo)
-        console.print(table_minor)
-        with Progress() as progress:
-            task = progress.add_task("[bold #FFFFD7]Framix Terminal Command.", total=100)
-            while not progress.finished:
-                progress.update(task, advance=1)
-                time.sleep(0.1)
-
-    @staticmethod
-    def help_option():
-        table = Table(show_header=True, header_style="bold #D7FF00", show_lines=True)
-        table.add_column("选项", justify="center", width=12)
-        table.add_column("参数", justify="center", width=12)
-        table.add_column("说明", justify="center", width=44)
-        table.add_row("[bold #FFAFAF]header", "[bold #AFD7FF]标题名", "[bold #DADADA]生成一个新标题文件夹")
-        table.add_row("[bold #FFAFAF]serial", "", "[bold #DADADA]重新选择已连接的设备")
-        table.add_row("[bold #FFAFAF]deploy", "", "[bold #DADADA]重新部署视频分析配置")
-        table.add_row("[bold #FFAFAF]******", "", "[bold #DADADA]任意数字代表录制时长")
-        console.print(table)
 
 
 class Parser(object):
@@ -670,7 +237,7 @@ class Missions(object):
         kc.load_model(self.model_path)
 
         video_temp_file = os.path.join(reporter.query_path, f"tmp_fps60_{random.randint(100, 999)}.mp4")
-        asyncio.run(ask_ffmpeg(self.ffmpeg, deploy.fps, video_file, video_temp_file))
+        asyncio.run(ask_video_change(self.ffmpeg, deploy.fps, video_file, video_temp_file))
 
         video = VideoObject(video_temp_file)
         video.load_frames()
@@ -743,7 +310,8 @@ class Missions(object):
         import tempfile
         from PIL import Image, ImageDraw, ImageFont
 
-        cellphone = await check_device(self.adb)
+        manage = Manage(self.adb)
+        cellphone = await manage.operate_device()
         image_folder = "/sdcard/Pictures/Shots"
         image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_" + "Shot.png"
         await Terminal.cmd_line(self.adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "mkdir", "-p", image_folder)
@@ -926,7 +494,8 @@ class Missions(object):
                 await stop_record(temp_video, transports, True)
 
         # Start Tasks
-        cellphone = await check_device(self.adb)
+        manage = Manage(self.adb)
+        cellphone = await manage.operate_device()
 
         reporter = Report(self.initial_report)
         if alone:
@@ -948,10 +517,10 @@ class Missions(object):
         timer_mode = 5
         while True:
             try:
-                console.print(f"[bold #00FFAF]Connect:[/bold #00FFAF] {cellphone}")
+                Show.console.print(f"[bold #00FFAF]Connect:[/bold #00FFAF] {cellphone}")
                 if action := Prompt.ask(
                         prompt=f"[bold #5FD7FF]<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/bold #D7FF5F] 秒>>>[/bold #5FD7FF]",
-                        console=console
+                        console=Show.console
                 ):
                     if "header" in action.strip():
                         if match := re.search(r"(?<=header\s).*", action):
@@ -969,7 +538,7 @@ class Missions(object):
                             raise ValueError
                         continue
                     elif action.strip() == "serial" and len(action.strip()) == 6:
-                        cellphone = await check_device(self.adb)
+                        cellphone = await manage.operate_device()
                         continue
                     elif action.strip() == "deploy" and len(action.strip()) == 6:
                         deploy.dump_deploy(self.initial_deploy)
@@ -985,18 +554,18 @@ class Missions(object):
                     elif action.isdigit():
                         value, lower_bound, upper_bound = int(action), 5, 300
                         if value > 300 or value < 5:
-                            console.print(
+                            Show.console.print(
                                 f"[bold #FFFF87]{lower_bound} <= [bold #FFD7AF]Time[/bold #FFD7AF] <= {upper_bound}[/bold #FFFF87]"
                             )
                         timer_mode = max(lower_bound, min(upper_bound, value))
                     else:
                         raise ValueError
             except ValueError:
-                Helper.help_option()
+                Show.tips_document()
             else:
                 await start(cellphone.serial)
                 if not done_event.is_set():
-                    cellphone = await check_device(self.adb)
+                    cellphone = await manage.operate_device()
             finally:
                 head_event.clear()
                 done_event.clear()
@@ -1010,51 +579,20 @@ def worker_init(log_level: str):
     logger.add(sys.stderr, format=log_format, level=log_level.upper())
 
 
-async def check_device(adb):
-
-    class Phone(object):
-
-        def __init__(self, *args):
-            self.serial, self.brand, self.version, *_ = args
-
-        def __str__(self):
-            return f"<Phone brand={self.brand} version=OS{self.version} serial={self.serial}>"
-
-        __repr__ = __str__
-
-    async def check(serial):
-        brand, version = await asyncio.gather(
-            Terminal.cmd_line(adb, "-s", serial, "wait-for-usb-device", "shell", "getprop", "ro.product.brand"),
-            Terminal.cmd_line(adb, "-s", serial, "wait-for-usb-device", "shell", "getprop", "ro.build.version.release")
-        )
-        return Phone(serial, brand, version)
-
-    while True:
-        devices = await Terminal.cmd_line(adb, "devices")
-        if len(device_list := [i.split()[0] for i in devices.split("\n")[1:]]) == 1:
-            return await check(device_list[0])
-        elif len(device_list) > 1:
-            console.print(f"[bold yellow]已连接多台设备[/bold yellow] {device_list}")
-            device_dict = {}
-            tasks = [check(serial) for serial in device_list]
-            result = await asyncio.gather(*tasks)
-            for idx, cur in enumerate(result):
-                device_dict.update({str(idx + 1): cur})
-                console.print(f"[{idx + 1}] {cur}")
-            while True:
-                try:
-                    return device_dict[Prompt.ask("[bold #5FD7FF]请输入编号选择一台设备")]
-                except KeyError:
-                    console.print(f"[bold red]没有该序号,请重新选择 ...")
-        else:
-            console.print(f"[bold yellow]设备未连接,等待设备连接 ...")
-            await asyncio.sleep(3)
-
-
-async def ask_ffmpeg(ffmpeg, fps, src, dst):
+async def ask_video_change(ffmpeg, fps, src, dst):
     cmd = [
         ffmpeg,
-        "-i", src, "-vf", f"fps={fps}", "-c:v", "libx264", "-crf", "18", "-c:a", "copy", dst
+        "-i", src, "-vf", f"fps={fps}", "-c:v", "libx264", "-crf", "18", "-c:a", "copy",
+        dst
+    ]
+    await Terminal.cmd_line(*cmd)
+
+
+async def ask_video_detach(ffmpeg, fps, src, dst):
+    cmd = [
+        ffmpeg,
+        "-i", src, "-vf", f"fps={fps}",
+        f"{os.path.join(dst, 'frame_%05d.png')}"
     ]
     await Terminal.cmd_line(*cmd)
 
@@ -1099,7 +637,7 @@ async def analyzer(
                 os.path.dirname(vision_path),
                 f"screen_fps60_{random.randint(100, 999)}.mp4"
             )
-            await ask_ffmpeg(ffmpeg, deploy.fps, vision_path, change_record)
+            await ask_video_change(ffmpeg, deploy.fps, vision_path, change_record)
             logger.info(f"视频转换完成: {os.path.basename(change_record)}")
             os.remove(vision_path)
             logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
@@ -1291,13 +829,13 @@ async def main():
     elif cmd_lines.merge and len(cmd_lines.merge) > 0:
         await missions.combines(cmd_lines.merge)
     else:
-        Helper.help_document()
+        Show.help_document()
 
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:
-        Helper.help_document()
-        sys.exit(1)
+        Show.help_document()
+        sys.exit(0)
 
     from multiprocessing import Pool, freeze_support
     freeze_support()

@@ -136,12 +136,13 @@ class Device(Terminal):
         return result.split("=")[-1].strip()
 
     async def ask_swipe_unlock(self) -> None:
-        if self.is_screen_on() == "false":
+        screen = await self.ask_is_screen_on()
+        if screen == "false":
             await self.ask_key_event(26)
-            time.sleep(0.5)
+            await asyncio.sleep(1)
             cmd = self.__initial + ["shell", "input", "touchscreen", "swipe", "250", "650", "250", "50"]
             await self.cmd_line(*cmd)
-            time.sleep(0.5)
+            await asyncio.sleep(1)
 
     async def ask_key_event(self, key_code: int) -> None:
         cmd = self.__initial + ["shell", "input", "keyevent", str(key_code)]
