@@ -46,21 +46,21 @@ _initial_deploy = os.path.join(_universal, "framix.source")
 _initial_option = os.path.join(_universal, "framix.source")
 
 if operation_system == "win32":
-    _adb_exe = os.path.join(_tools_path, "win", "platform-tools", "adb.exe")
-    _ffmpeg_exe = os.path.join(_tools_path, "win", "ffmpeg", "bin", "ffmpeg.exe")
-    _scrcpy_exe = os.path.join(_tools_path, "win", "scrcpy", "scrcpy.exe")
+    _adb = os.path.join(_tools_path, "win", "platform-tools", "adb.exe")
+    _ffmpeg = os.path.join(_tools_path, "win", "ffmpeg", "bin", "ffmpeg.exe")
+    _scrcpy = os.path.join(_tools_path, "win", "scrcpy", "scrcpy.exe")
 elif operation_system == "darwin":
-    _adb_exe = os.path.join(_tools_path, "mac", "platform-tools", "adb")
-    _ffmpeg_exe = os.path.join(_tools_path, "mac", "ffmpeg", "bin", "ffmpeg")
-    _scrcpy_exe = os.path.join(_tools_path, "mac", "scrcpy", "bin", "scrcpy")
+    _adb = os.path.join(_tools_path, "mac", "platform-tools", "adb")
+    _ffmpeg = os.path.join(_tools_path, "mac", "ffmpeg", "bin", "ffmpeg")
+    _scrcpy = os.path.join(_tools_path, "mac", "scrcpy", "bin", "scrcpy")
 else:
     console.print("[bold red]Only compatible with Windows and macOS platforms ...")
     time.sleep(5)
     sys.exit(1)
 
-os.environ["PATH"] = os.path.dirname(_adb_exe) + os.path.pathsep + os.environ.get("PATH", "")
-os.environ["PATH"] = os.path.dirname(_ffmpeg_exe) + os.path.pathsep + os.environ.get("PATH", "")
-os.environ["PATH"] = os.path.dirname(_scrcpy_exe) + os.path.pathsep + os.environ.get("PATH", "")
+os.environ["PATH"] = os.path.dirname(_adb) + os.path.pathsep + os.environ.get("PATH", "")
+os.environ["PATH"] = os.path.dirname(_ffmpeg) + os.path.pathsep + os.environ.get("PATH", "")
+os.environ["PATH"] = os.path.dirname(_scrcpy) + os.path.pathsep + os.environ.get("PATH", "")
 
 try:
     from nexaflow import toolbox
@@ -562,9 +562,9 @@ class Missions(object):
         self.initial_report = kwargs["initial_report"]
         self.initial_deploy = kwargs["initial_deploy"]
         self.initial_option = kwargs["initial_option"]
-        self.adb_exe = kwargs["adb_exe"]
-        self.ffmpeg_exe = kwargs["ffmpeg_exe"]
-        self.scrcpy_exe = kwargs["scrcpy_exe"]
+        self.adb = kwargs["adb"]
+        self.ffmpeg = kwargs["ffmpeg"]
+        self.scrcpy = kwargs["scrcpy"]
 
     @staticmethod
     def only_video(folder: str):
@@ -608,7 +608,7 @@ class Missions(object):
             analyzer(
                 reporter, kc, deploy, new_video_path,
                 proto_path=self.proto_path,
-                ffmpeg_exe=self.ffmpeg_exe
+                ffmpeg=self.ffmpeg
             )
         )
         looper.run_until_complete(
@@ -642,7 +642,7 @@ class Missions(object):
                     analyzer(
                         reporter, kc, deploy, new_video_path,
                         proto_path=self.proto_path,
-                        ffmpeg_exe=self.ffmpeg_exe
+                        ffmpeg=self.ffmpeg
                     )
                 )
         looper.run_until_complete(
@@ -653,7 +653,7 @@ class Missions(object):
         return reporter.total_path
 
     def train_model(self, video_file):
-        reporter = Report(total_path=self.initial_report, write_log=False)
+        reporter = Report(total_path=self.initial_report)
         reporter.title = f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
         if not os.path.exists(reporter.query_path):
             os.makedirs(reporter.query_path)
@@ -670,7 +670,7 @@ class Missions(object):
         kc.load_model(self.model_path)
 
         video_temp_file = os.path.join(reporter.query_path, f"tmp_fps60_{random.randint(100, 999)}.mp4")
-        asyncio.run(ask_ffmpeg(self.ffmpeg_exe, deploy.fps, video_file, video_temp_file))
+        asyncio.run(ask_ffmpeg(self.ffmpeg, deploy.fps, video_file, video_temp_file))
 
         video = VideoObject(video_temp_file)
         video.load_frames()
@@ -743,15 +743,15 @@ class Missions(object):
         import tempfile
         from PIL import Image, ImageDraw, ImageFont
 
-        cellphone = await check_device(self.adb_exe)
+        cellphone = await check_device(self.adb)
         image_folder = "/sdcard/Pictures/Shots"
         image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_" + "Shot.png"
-        await Terminal.cmd_line(self.adb_exe, "-s", cellphone.serial, "wait-for-usb-device", "shell", "mkdir", "-p", image_folder)
-        await Terminal.cmd_line(self.adb_exe, "-s", cellphone.serial, "wait-for-usb-device", "shell", "screencap", "-p", f"{image_folder}/{image}")
+        await Terminal.cmd_line(self.adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "mkdir", "-p", image_folder)
+        await Terminal.cmd_line(self.adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "screencap", "-p", f"{image_folder}/{image}")
 
         with tempfile.TemporaryDirectory() as temp_dir:
             image_save_path = os.path.join(temp_dir, image)
-            await Terminal.cmd_line(self.adb_exe, "-s", cellphone.serial, "wait-for-usb-device", "pull", f"{image_folder}/{image}", image_save_path)
+            await Terminal.cmd_line(self.adb, "-s", cellphone.serial, "wait-for-usb-device", "pull", f"{image_folder}/{image}", image_save_path)
 
             if self.color:
                 old_image = toolbox.imread(image_save_path)
@@ -825,11 +825,10 @@ class Missions(object):
 
             resized.show()
 
-        await Terminal.cmd_line(self.adb_exe, "-s", cellphone.serial, "wait-for-usb-device", "shell", "rm", f"{image_folder}/{image}")
+        await Terminal.cmd_line(self.adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "rm", f"{image_folder}/{image}")
 
     async def analysis(self, alone: bool):
 
-        cellphone = None
         head_event = asyncio.Event()
         done_event = asyncio.Event()
         stop_event = asyncio.Event()
@@ -876,75 +875,63 @@ class Missions(object):
                     fail_event.set()
                     break
 
-        async def start():
-            await Terminal.cmd_line(self.adb_exe, "wait-for-device")
-            if alone:
-                if not os.path.exists(reporter.query_path):
-                    os.makedirs(reporter.query_path)
-                cmd = [
-                    self.scrcpy_exe, "-s", cellphone.serial, "--no-audio",
-                    "--video-bit-rate", "8M", "--max-fps", "60", "--record",
-                    temp_video := f"{os.path.join(reporter.query_path, 'screen')}_"
-                                  f"{time.strftime('%Y%m%d%H%M%S')}_"
-                                  f"{random.randint(100, 999)}.mkv"
-                ]
-                transports = await Terminal.cmd_link(*cmd)
-                asyncio.create_task(input_stream(transports))
-                asyncio.create_task(error_stream(transports))
-                await asyncio.sleep(1)
-                await timepiece(timer_mode)
-                if operation_system == "win32":
-                    await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
-                else:
-                    transports.terminate()
-                    await transports.wait()
-                for _ in range(10):
-                    if done_event.is_set():
-                        logger.success(f"视频录制成功: {temp_video}")
-                        return
-                    elif fail_event.is_set():
-                        break
-                    await asyncio.sleep(0.2)
-                logger.error("录制视频失败,请重新录制视频 ...")
+        async def start_record(serial: str, dst: str):
+            temp_video = f"{os.path.join(dst, 'screen')}_{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
+            cmd = [
+                self.scrcpy, "-s", serial, "--no-audio", "--video-bit-rate", "8M", "--max-fps", deploy.fps, "--record", temp_video
+            ]
+            transports = await Terminal.cmd_link(*cmd)
+            asyncio.create_task(input_stream(transports))
+            asyncio.create_task(error_stream(transports))
+            await asyncio.sleep(1)
+            return temp_video, transports
 
+        async def stop_record(temp_video, transports, solve: bool):
+            if operation_system == "win32":
+                await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
             else:
-                reporter.query = f"{random.randint(10, 99)}"
-                cmd = [
-                    self.scrcpy_exe, "-s", cellphone.serial, "--no-audio",
-                    "--video-bit-rate", "8M", "--max-fps", "60", "--record",
-                    temp_video := f"{os.path.join(reporter.video_path, 'screen')}_"
-                                  f"{time.strftime('%Y%m%d%H%M%S')}_"
-                                  f"{random.randint(100, 999)}.mkv"
-                ]
-                transports = await Terminal.cmd_link(*cmd)
-                asyncio.create_task(input_stream(transports))
-                asyncio.create_task(error_stream(transports))
-                await asyncio.sleep(1)
-                await timepiece(timer_mode)
-                if operation_system == "win32":
-                    await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
-                else:
-                    transports.terminate()
-                    await transports.wait()
-                for _ in range(10):
-                    if done_event.is_set():
+                transports.terminate()
+                await transports.wait()
+
+            for _ in range(10):
+                if done_event.is_set():
+                    logger.success(f"视频录制成功: {temp_video}")
+                    if solve:
                         await analyzer(
                             reporter, kc, deploy, temp_video,
                             proto_path=self.proto_path,
-                            ffmpeg_exe=self.ffmpeg_exe
+                            ffmpeg=self.ffmpeg
                         )
-                        return
-                    elif fail_event.is_set():
-                        break
-                    await asyncio.sleep(0.2)
-                logger.error("录制视频失败,请重新录制视频 ...")
+                    return
+                elif fail_event.is_set():
+                    break
+                await asyncio.sleep(0.2)
+            logger.error("录制视频失败,请重新录制视频 ...")
 
-        cellphone = await check_device(self.adb_exe)
+        async def start(serial):
+            await Terminal.cmd_line(self.adb, "wait-for-device")
+            if alone:
+                temp_video, transports = await start_record(
+                    serial, reporter.query_path
+                )
+                await timepiece(timer_mode)
+                await stop_record(temp_video, transports, False)
+
+            else:
+                reporter.query = time.strftime('%Y%m%d%H%M%S')
+                temp_video, transports = await start_record(
+                    serial, reporter.video_path
+                )
+                await timepiece(timer_mode)
+                await stop_record(temp_video, transports, True)
+
+        # Start
+        cellphone = await check_device(self.adb)
+
+        reporter = Report(self.initial_report)
         if alone:
-            reporter = Report(self.initial_report, write_log=False)
             reporter.title = f"Record_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
         else:
-            reporter = Report(self.initial_report)
             reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
 
         deploy = Deploy(
@@ -982,7 +969,7 @@ class Missions(object):
                             raise ValueError
                         continue
                     elif action.strip() == "serial" and len(action.strip()) == 6:
-                        cellphone = await check_device(self.adb_exe)
+                        cellphone = await check_device(self.adb)
                         continue
                     elif action.strip() == "deploy" and len(action.strip()) == 6:
                         deploy.dump_deploy(self.initial_deploy)
@@ -1007,9 +994,9 @@ class Missions(object):
             except ValueError:
                 Helper.help_option()
             else:
-                await start()
+                await start(cellphone.serial)
                 if not done_event.is_set():
-                    cellphone = await check_device(self.adb_exe)
+                    cellphone = await check_device(self.adb)
             finally:
                 head_event.clear()
                 done_event.clear()
@@ -1023,7 +1010,7 @@ def worker_init(log_level: str):
     logger.add(sys.stderr, format=log_format, level=log_level.upper())
 
 
-async def check_device(adb_exe):
+async def check_device(adb):
 
     class Phone(object):
 
@@ -1037,13 +1024,13 @@ async def check_device(adb_exe):
 
     async def check(serial):
         brand, version = await asyncio.gather(
-            Terminal.cmd_line(adb_exe, "-s", serial, "wait-for-usb-device", "shell", "getprop", "ro.product.brand"),
-            Terminal.cmd_line(adb_exe, "-s", serial, "wait-for-usb-device", "shell", "getprop", "ro.build.version.release")
+            Terminal.cmd_line(adb, "-s", serial, "wait-for-usb-device", "shell", "getprop", "ro.product.brand"),
+            Terminal.cmd_line(adb, "-s", serial, "wait-for-usb-device", "shell", "getprop", "ro.build.version.release")
         )
         return Phone(serial, brand, version)
 
     while True:
-        devices = await Terminal.cmd_line(adb_exe, "devices")
+        devices = await Terminal.cmd_line(adb, "devices")
         if len(device_list := [i.split()[0] for i in devices.split("\n")[1:]]) == 1:
             return await check(device_list[0])
         elif len(device_list) > 1:
@@ -1064,9 +1051,9 @@ async def check_device(adb_exe):
             await asyncio.sleep(3)
 
 
-async def ask_ffmpeg(ffmpeg_exe, fps, src, dst):
+async def ask_ffmpeg(ffmpeg, fps, src, dst):
     cmd = [
-        ffmpeg_exe,
+        ffmpeg,
         "-i", src, "-vf", f"fps={fps}", "-c:v", "libx264", "-crf", "18", "-c:a", "copy", dst
     ]
     await Terminal.cmd_line(*cmd)
@@ -1081,7 +1068,7 @@ async def analyzer(
 ):
 
     proto_path = kwargs["proto_path"]
-    ffmpeg_exe = kwargs["ffmpeg_exe"]
+    ffmpeg = kwargs["ffmpeg"]
 
     async def validate():
         screen_tag, screen_cap = None, None
@@ -1112,7 +1099,7 @@ async def analyzer(
                 os.path.dirname(vision_path),
                 f"screen_fps60_{random.randint(100, 999)}.mp4"
             )
-            await ask_ffmpeg(ffmpeg_exe, deploy.fps, vision_path, change_record)
+            await ask_ffmpeg(ffmpeg, deploy.fps, vision_path, change_record)
             logger.info(f"视频转换完成: {os.path.basename(change_record)}")
             os.remove(vision_path)
             logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
@@ -1320,7 +1307,7 @@ if __name__ == '__main__':
     _level = "DEBUG" if cmd_lines.debug else "INFO"
     worker_init(_level)
 
-    # <Debug Mode>
+    # Debug Mode
     logger.debug(f"Level: {_level}")
 
     logger.debug(f"System: {operation_system}")
@@ -1332,13 +1319,12 @@ if __name__ == '__main__':
     logger.debug(f"Html-Template: {_major_path}")
     logger.debug(f"Html-Template: {_proto_path}")
 
-    logger.debug(f"adb: {_adb_exe}")
-    logger.debug(f"ffmpeg: {_ffmpeg_exe}")
-    logger.debug(f"scrcpy: {_scrcpy_exe}")
+    logger.debug(f"adb: {_adb}")
+    logger.debug(f"ffmpeg: {_ffmpeg}")
+    logger.debug(f"scrcpy: {_scrcpy}")
 
     for env in os.environ["PATH"].split(os.path.pathsep):
         logger.debug(env)
-    # </Debug Mode>
 
     _boost, _color, _focus = cmd_lines.boost, cmd_lines.color, cmd_lines.focus
     _shape, _scale = cmd_lines.shape, cmd_lines.scale
@@ -1364,6 +1350,7 @@ if __name__ == '__main__':
     option.dump_option(_initial_option)
     _initial_report = option.total_path if option.total_path else _initial_report
 
+    # Debug Mode
     logger.debug(f"Initial-Report: {_initial_report}")
     logger.debug(f"Initial-Deploy: {_initial_deploy}")
     logger.debug(f"Initial-Option: {_initial_option}")
@@ -1372,7 +1359,7 @@ if __name__ == '__main__':
         _boost, _color, _focus, _omits, _shape, _scale,
         model_path=_model_path, total_path=_total_path, major_path=_major_path, proto_path=_proto_path,
         initial_report=_initial_report, initial_deploy=_initial_deploy, initial_option=_initial_option,
-        adb_exe=_adb_exe, ffmpeg_exe=_ffmpeg_exe, scrcpy_exe=_scrcpy_exe,
+        adb=_adb, ffmpeg=_ffmpeg, scrcpy=_scrcpy,
     )
 
     if cmd_lines.whole and len(cmd_lines.whole) > 0:

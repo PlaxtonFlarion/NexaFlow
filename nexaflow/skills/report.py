@@ -31,7 +31,8 @@ class Report(object):
                     cls.__init_var = (args, kwargs)
         return cls.__instance
 
-    def __init__(self, total_path: str, write_log: bool = True):
+    # todo
+    def __init__(self, total_path: str):
         if not self.__initialized:
             self.__initialized = True
 
@@ -51,11 +52,10 @@ class Report(object):
             # self.total_path = "/Users/acekeppel/PycharmProjects/NexaFlow/report/Nexa_20230822223025/Nexa_Collection"
             os.makedirs(self.total_path, exist_ok=True)
 
-            if write_log:
-                self.reset_path = os.path.join(os.path.dirname(self.total_path), "Nexa_Recovery")
-                os.makedirs(self.reset_path, exist_ok=True)
-                log_papers = os.path.join(self.reset_path, "nexaflow.log")
-                logger.add(log_papers, format=FORMAT, level="DEBUG")
+            self.reset_path = os.path.join(os.path.dirname(self.total_path), "Nexa_Recovery")
+            os.makedirs(self.reset_path, exist_ok=True)
+            log_papers = os.path.join(self.reset_path, "nexaflow.log")
+            logger.add(log_papers, format=FORMAT, level="DEBUG")
 
     @property
     def proto_path(self) -> str:
@@ -65,11 +65,13 @@ class Report(object):
     def title(self):
         return self.__title
 
+    # todo
     @title.setter
     def title(self, title: str):
         self.__title = title
         self.query_path = os.path.join(self.total_path, self.title)
-        logger.info(f"{'=' * 36} {self.title} {'=' * 36}\n")
+        os.makedirs(self.query_path, exist_ok=True)
+        logger.info(f"✪✪✪✪✪✪✪✪✪✪ {self.title} ✪✪✪✪✪✪✪✪✪✪\n")
 
     @title.deleter
     def title(self):
@@ -79,26 +81,27 @@ class Report(object):
     def query(self):
         return self.__query
 
+    # todo
     @query.setter
     def query(self, query: str):
-        # self.__query = query
-        self.__query = query + "_" + self.clock()
+        self.__query = query
         self.video_path = os.path.join(self.query_path, self.query, "video")
         self.frame_path = os.path.join(self.query_path, self.query, "frame")
         self.extra_path = os.path.join(self.query_path, self.query, "extra")
         os.makedirs(self.video_path, exist_ok=True)
         os.makedirs(self.frame_path, exist_ok=True)
         os.makedirs(self.extra_path, exist_ok=True)
-        logger.info(f"{self.query} Start ... {'-' * 60}")
+        logger.info(f"Start -> {self.query}")
 
     @query.deleter
     def query(self):
         del self.__query
 
+    # todo
     def load(self, inform: Optional[Dict[str, Union[str | Dict]]]) -> None:
         if inform:
             self.range_list.append(inform)
-        logger.info(f"{self.query} End ... {'-' * 60}\n")
+        logger.info(f"End -> {self.query}\n")
 
     def create_report(self) -> None:
 
@@ -184,7 +187,7 @@ class Report(object):
         else:
             logger.info("没有可以聚合的报告 ...")
 
-        logger.info(f"{'=' * 36} {self.title} {'=' * 36}\n\n")
+        logger.info(f"✪✪✪✪✪✪✪✪✪✪ {self.title} ✪✪✪✪✪✪✪✪✪✪\n\n")
 
     def create_total_report(self) -> None:
         if len(self.total_list) > 0:
@@ -252,6 +255,7 @@ class Report(object):
             f.write(html)
             logger.info(f"合并汇总报告: {total_html_path}\n\n")
 
+    # todo
     @staticmethod
     async def ask_create_report(major_loc, title, total_path, query_path, range_list):
 
@@ -349,7 +353,7 @@ class Report(object):
             else:
                 logger.info("没有可以聚合的报告 ...")
 
-            logger.info(f"{'=' * 36} {title} {'=' * 36}\n\n")
+            logger.info(f"✪✪✪✪✪✪✪✪✪✪ {title} ✪✪✪✪✪✪✪✪✪✪\n\n")
             return single
 
         return await handler_start()
