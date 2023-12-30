@@ -925,7 +925,7 @@ class Missions(object):
                 await timepiece(timer_mode)
                 await stop_record(temp_video, transports, True)
 
-        # Start
+        # Start Tasks
         cellphone = await check_device(self.adb)
 
         reporter = Report(self.initial_report)
