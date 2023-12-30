@@ -385,7 +385,7 @@ class Manage(object):
             return None
 
 
-class Phone(object):
+class Phones(object):
 
     def __init__(self, serial: str, brand: str, version: str):
         self.serial, self.brand, self.version = serial, brand, version
@@ -396,7 +396,7 @@ class Phone(object):
     __repr__ = __str__
 
 
-class Device(Phone):
+class Device(Phones):
 
     def __init__(self, adb: str, serial: str, brand: str, version: str):
         super().__init__(serial, brand, version)
