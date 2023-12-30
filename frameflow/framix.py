@@ -46,13 +46,13 @@ _initial_deploy = os.path.join(_universal, "framix.source")
 _initial_option = os.path.join(_universal, "framix.source")
 
 if operation_system == "win32":
-    _adb_exe = os.path.join(_tools_path, "windows", "platform-tools", "adb.exe")
-    _ffmpeg_exe = os.path.join(_tools_path, "windows", "ffmpeg", "bin", "ffmpeg.exe")
-    _scrcpy_exe = os.path.join(_tools_path, "windows", "scrcpy", "scrcpy.exe")
+    _adb_exe = os.path.join(_tools_path, "win", "platform-tools", "adb.exe")
+    _ffmpeg_exe = os.path.join(_tools_path, "win", "ffmpeg", "bin", "ffmpeg.exe")
+    _scrcpy_exe = os.path.join(_tools_path, "win", "scrcpy", "scrcpy.exe")
 elif operation_system == "darwin":
     _adb_exe = os.path.join(_tools_path, "mac", "platform-tools", "adb")
-    _ffmpeg_exe = os.path.join(_tools_path, "mac", "ffmpeg", "ffmpeg")
-    _scrcpy_exe = os.path.join(_tools_path, "mac", "scrcpy", "scrcpy")
+    _ffmpeg_exe = os.path.join(_tools_path, "mac", "ffmpeg", "bin", "ffmpeg")
+    _scrcpy_exe = os.path.join(_tools_path, "mac", "scrcpy", "bin")
 else:
     console.print("[bold red]Only compatible with Windows and macOS platforms ...")
     time.sleep(5)
