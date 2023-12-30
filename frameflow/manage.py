@@ -338,10 +338,8 @@ class Manage(object):
 
         async def check(serial: str) -> "Device":
             brand, version = await asyncio.gather(
-                Terminal.cmd_line(self.__adb, "-s", serial, "wait-for-usb-device", "shell", "getprop",
-                                  "ro.product.brand"),
-                Terminal.cmd_line(self.__adb, "-s", serial, "wait-for-usb-device", "shell", "getprop",
-                                  "ro.build.version.release")
+                Terminal.cmd_line(self.__adb, "-s", serial, "wait-for-usb-device", "shell", "getprop", "ro.product.brand"),
+                Terminal.cmd_line(self.__adb, "-s", serial, "wait-for-usb-device", "shell", "getprop", "ro.build.version.release")
             )
             return Device(self.__adb, serial, brand, version)
 
@@ -370,10 +368,7 @@ class Manage(object):
                 else:
                     try:
                         action = Prompt.ask("[bold #5FD7FF]请输入编号选择一台设备")
-                        if action == "16888":
-                            return [device for device in device_dict.values()]
-                        else:
-                            return device_dict[action]
+                        return device_dict[action]
                     except KeyError:
                         retry += 1
                         Show.console.print(f"[bold][bold red]没有该序号,请重新选择[/bold red] ... 剩余 {max_retry - retry} 次 ...")
