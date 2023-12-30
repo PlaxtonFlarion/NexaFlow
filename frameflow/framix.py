@@ -52,7 +52,7 @@ if operation_system == "win32":
 elif operation_system == "darwin":
     _adb_exe = os.path.join(_tools_path, "mac", "platform-tools", "adb")
     _ffmpeg_exe = os.path.join(_tools_path, "mac", "ffmpeg", "bin", "ffmpeg")
-    _scrcpy_exe = os.path.join(_tools_path, "mac", "scrcpy", "bin")
+    _scrcpy_exe = os.path.join(_tools_path, "mac", "scrcpy", "bin", "scrcpy")
 else:
     console.print("[bold red]Only compatible with Windows and macOS platforms ...")
     time.sleep(5)
