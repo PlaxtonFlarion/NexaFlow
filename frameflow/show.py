@@ -38,7 +38,7 @@ class Show(object):
         Show.console.print(logo)
 
     @staticmethod
-    def nexaflow_logo():
+    def major_logo():
         logo = """[bold #D0D0D0]
     ███╗   ██╗███████╗██╗  ██╗ █████╗   ███████╗██╗      ██████╗ ██╗    ██╗
     ██╔██╗ ██║██╔════╝╚██╗██╔╝██╔══██╗  ██╔════╝██║     ██╔═══██╗██║    ██║
@@ -50,7 +50,7 @@ class Show(object):
         Show.console.print(logo)
 
     @staticmethod
-    def framix_logo():
+    def minor_logo():
         logo = """[bold #D0D0D0]
               ███████╗██████╗  █████╗      ███╗   ███╗██╗██╗  ██╗
               ██╔════╝██╔══██╗██╔══██╗     ████╗ ████║██║╚██╗██╔╝
@@ -128,9 +128,9 @@ class Show(object):
         table_minor.add_row(
             "[bold #FFDC00]--omits", "[bold #7FDBFF]坐标", "[bold #FFAFAF]多次", "[bold #AFAFD7]自动", "[bold #39CCCC]忽略区域"
         )
-        Show.nexaflow_logo()
+        Show.major_logo()
         Show.console.print(table_major)
-        Show.framix_logo()
+        Show.minor_logo()
         Show.console.print(table_minor)
         with Progress() as progress:
             task = progress.add_task("[bold #FFFFD7]Framix Terminal Command.", total=100)

@@ -10,7 +10,8 @@ import aiofiles
 from loguru import logger
 from rich.prompt import Prompt
 from frameflow.show import Show
-from frameflow.manage import Option, Deploy, Manage
+from frameflow.manage import Manage
+from frameflow.parameters import Deploy, Option
 
 operation_system = sys.platform.strip().lower()
 work_platform = os.path.basename(os.path.abspath(sys.argv[0])).lower()
