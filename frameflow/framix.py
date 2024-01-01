@@ -447,7 +447,7 @@ class Missions(object):
         async def start_record(serial: str, dst: str):
             temp_video = f"{os.path.join(dst, 'screen')}_{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
             cmd = [
-                self.scrcpy, "-s", serial, "--no-audio", "--video-bit-rate", "8M", "--max-fps", deploy.fps, "--record", temp_video
+                self.scrcpy, "-s", serial, "--no-audio", "--video-bit-rate", "8M", "--max-fps", f"{deploy.fps}", "--record", temp_video
             ]
             transports = await Terminal.cmd_link(*cmd)
             asyncio.create_task(input_stream(transports))

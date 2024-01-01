@@ -31,7 +31,6 @@ class Report(object):
                     cls.__init_var = (args, kwargs)
         return cls.__instance
 
-    # todo
     def __init__(self, total_path: str):
         if not self.__initialized:
             self.__initialized = True
@@ -65,7 +64,6 @@ class Report(object):
     def title(self):
         return self.__title
 
-    # todo
     @title.setter
     def title(self, title: str):
         self.__title = title
@@ -81,7 +79,6 @@ class Report(object):
     def query(self):
         return self.__query
 
-    # todo
     @query.setter
     def query(self, query: str):
         self.__query = query
@@ -97,7 +94,6 @@ class Report(object):
     def query(self):
         del self.__query
 
-    # todo
     def load(self, inform: Optional[Dict[str, Union[str | Dict]]]) -> None:
         if inform:
             self.range_list.append(inform)
@@ -255,7 +251,6 @@ class Report(object):
             f.write(html)
             logger.info(f"合并汇总报告: {total_html_path}\n\n")
 
-    # todo
     @staticmethod
     async def ask_create_report(major_loc, title, total_path, query_path, range_list):
 
