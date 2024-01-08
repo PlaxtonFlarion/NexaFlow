@@ -19,41 +19,63 @@ class Manage(object):
             )
             return Device(self.__adb, serial, brand, version)
 
+        device_dict = {}
         devices = await Terminal.cmd_line(self.__adb, "devices")
         serial_list = [i.split()[0] for i in devices.split("\n")[1:]]
-        tasks = [check(serial) for serial in serial_list]
-        result = await asyncio.gather(*tasks)
-
-        device_dict = {str(idx + 1): c for idx, c in enumerate(result)}
+        if len(serial_list) > 0:
+            tasks = [check(serial) for serial in serial_list]
+            result = await asyncio.gather(*tasks)
+            device_dict = {str(idx + 1): c for idx, c in enumerate(result)}
         return device_dict
 
-    async def operate_device(self):
-        max_retry, retry, sleep, total = 10, 0, 3, 20
-
-        for _ in range(total):
-            if retry == max_retry:
-                Show.retry_fail_logo()
-                return None
-
+    async def operate_device(self) -> list["Device"]:
+        final = []
+        while True:
             device_dict: dict[str, "Device"] = await self.current_device()
             if len(device_dict) > 0:
                 for k, v in device_dict.items():
+                    final.append(v)
                     Show.console.print(f"[bold][bold yellow]已连接设备[/bold yellow] [{k}] {v}")
-                if len(device_dict) == 1:
-                    return device_dict["1"]
-                else:
+
+                multiple = False if len(device_dict) == 1 else True
+
+                if multiple:
                     try:
                         action = Prompt.ask("[bold #5FD7FF]请输入编号选择一台设备")
-                        return device_dict[action]
+                        final = final if action == "000" else [device_dict[action]]
                     except KeyError:
-                        retry += 1
-                        Show.console.print(f"[bold][bold red]没有该序号,请重新选择[/bold red] ... 剩余 {max_retry - retry} 次 ...")
+                        Show.console.print(f"[bold red]没有该序号,请重新选择 ...[/bold red]\n")
+                        continue
+
+                if len(final) == 1:
+                    Show.console.print(f"[bold]<Link> <单设备模式>")
+                else:
+                    Show.console.print(f"[bold]<Link> <多设备模式>")
+
+                return final
+
             else:
-                Show.console.print(f"[bold]设备未连接,等待设备连接 ...")
-                await asyncio.sleep(sleep)
-        else:
-            Show.connect_fail_logo()
-            return None
+                Show.console.print(f"[bold yellow]设备未连接,等待设备连接 ...")
+                await asyncio.sleep(5)
+
+    # async def operate_device(self):
+    #     while True:
+    #         device_dict: dict[str, "Device"] = await self.current_device()
+    #         if len(device_dict) > 0:
+    #             for k, v in device_dict.items():
+    #                 Show.console.print(f"[bold][bold yellow]已连接设备[/bold yellow] [{k}] {v}")
+    #             if len(device_dict) == 1:
+    #                 return device_dict["1"]
+    #
+    #             try:
+    #                 action = Prompt.ask("[bold #5FD7FF]请输入编号选择一台设备")
+    #                 return device_dict[action]
+    #             except KeyError:
+    #                 Show.console.print(f"[bold red]没有该序号,请重新选择 ...[/bold red]")
+    #
+    #         else:
+    #             Show.console.print(f"[bold]设备未连接,等待设备连接 ...")
+    #             await asyncio.sleep(5)
 
 
 class Phones(object):
