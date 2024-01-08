@@ -312,89 +312,94 @@ class Missions(object):
         from PIL import Image, ImageDraw, ImageFont
 
         manage = Manage(self.adb)
-        cellphone = await manage.operate_device()
-        image_folder = "/sdcard/Pictures/Shots"
-        image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_" + "Shot.png"
-        await Terminal.cmd_line(self.adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "mkdir", "-p", image_folder)
-        await Terminal.cmd_line(self.adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "screencap", "-p", f"{image_folder}/{image}")
+        device_list = await manage.operate_device()
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            image_save_path = os.path.join(temp_dir, image)
-            await Terminal.cmd_line(self.adb, "-s", cellphone.serial, "wait-for-usb-device", "pull", f"{image_folder}/{image}", image_save_path)
+        async def paint_lines(serial):
+            image_folder = "/sdcard/Pictures/Shots"
+            image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_" + "Shot.png"
+            await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-usb-device", "shell", "mkdir", "-p", image_folder)
+            await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-usb-device", "shell", "screencap", "-p", f"{image_folder}/{image}")
 
-            if self.color:
-                old_image = toolbox.imread(image_save_path)
-                new_image = VideoFrame(0, 0, old_image)
-            else:
-                old_image = toolbox.imread(image_save_path)
-                old_image = toolbox.turn_grey(old_image)
-                new_image = VideoFrame(0, 0, old_image)
+            with tempfile.TemporaryDirectory() as temp_dir:
+                image_save_path = os.path.join(temp_dir, image)
+                await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-usb-device", "pull", f"{image_folder}/{image}", image_save_path)
 
-            if len(self.omits) > 0:
-                for omit in self.omits:
-                    if len(omit) == 4 and sum(omit) > 0:
-                        x, y, x_size, y_size = omit
-                        shape_hook = ShapeHook((y_size, x_size), (y, x))
-                        shape_hook.do(new_image)
+                if self.color:
+                    old_image = toolbox.imread(image_save_path)
+                    new_image = VideoFrame(0, 0, old_image)
+                else:
+                    old_image = toolbox.imread(image_save_path)
+                    old_image = toolbox.turn_grey(old_image)
+                    new_image = VideoFrame(0, 0, old_image)
 
-            cv2.imencode(".png", new_image.data)[1].tofile(image_save_path)
+                if len(self.omits) > 0:
+                    for omit in self.omits:
+                        if len(omit) == 4 and sum(omit) > 0:
+                            x, y, x_size, y_size = omit
+                            shape_hook = ShapeHook((y_size, x_size), (y, x))
+                            shape_hook.do(new_image)
 
-            image_file = Image.open(image_save_path)
-            image_file = image_file.convert("RGB")
+                cv2.imencode(".png", new_image.data)[1].tofile(image_save_path)
 
-            original_w, original_h = image_file.size
-            if self.shape:
-                shape_w, shape_h = self.shape
-                twist_w, twist_h = min(original_w, shape_w), min(original_h, shape_h)
-            else:
-                twist_w, twist_h = original_w, original_h
+                image_file = Image.open(image_save_path)
+                image_file = image_file.convert("RGB")
 
-            min_scale, max_scale = 0.3, 1.0
-            if self.scale:
-                image_scale = max_scale if self.scale > max_scale else (min_scale if self.scale < min_scale else self.scale)
-            else:
-                image_scale = min_scale if twist_w == original_w or twist_h == original_h else max_scale
+                original_w, original_h = image_file.size
+                if self.shape:
+                    shape_w, shape_h = self.shape
+                    twist_w, twist_h = min(original_w, shape_w), min(original_h, shape_h)
+                else:
+                    twist_w, twist_h = original_w, original_h
 
-            new_w, new_h = int(twist_w * image_scale), int(twist_h * image_scale)
-            logger.debug(f"原始尺寸: {(original_w, original_h)} 调整尺寸: {(new_w, new_h)} 缩放比例: {int(image_scale * 100)}%")
+                min_scale, max_scale = 0.3, 1.0
+                if self.scale:
+                    image_scale = max_scale if self.scale > max_scale else (min_scale if self.scale < min_scale else self.scale)
+                else:
+                    image_scale = min_scale if twist_w == original_w or twist_h == original_h else max_scale
 
-            if new_w == new_h:
-                x_line_num, y_line_num = 10, 10
-            elif new_w > new_h:
-                x_line_num, y_line_num = 10, 20
-            else:
-                x_line_num, y_line_num = 20, 10
+                new_w, new_h = int(twist_w * image_scale), int(twist_h * image_scale)
+                logger.debug(f"原始尺寸: {(original_w, original_h)} 调整尺寸: {(new_w, new_h)} 缩放比例: {int(image_scale * 100)}%")
 
-            resized = image_file.resize((new_w, new_h))
+                if new_w == new_h:
+                    x_line_num, y_line_num = 10, 10
+                elif new_w > new_h:
+                    x_line_num, y_line_num = 10, 20
+                else:
+                    x_line_num, y_line_num = 20, 10
 
-            draw = ImageDraw.Draw(resized)
-            font = ImageFont.load_default()
+                resized = image_file.resize((new_w, new_h))
 
-            if y_line_num > 0:
-                for i in range(1, y_line_num):
-                    x_line = int(new_w * (i * (1 / y_line_num)))
-                    text = f"{i * int(100 / y_line_num):02}"
-                    bbox = draw.textbbox((0, 0), text, font)
-                    text_width = bbox[2] - bbox[0]
-                    text_height = bbox[3] - bbox[1]
-                    y_text_start = 3
-                    draw.line([(x_line, text_width + 5 + y_text_start), (x_line, new_h)], fill=(0, 255, 255), width=1)
-                    draw.text((x_line - text_height // 2, y_text_start), text, fill=(0, 255, 255), font=font)
+                draw = ImageDraw.Draw(resized)
+                font = ImageFont.load_default()
 
-            if x_line_num > 0:
-                for i in range(1, x_line_num):
-                    y_line = int(new_h * (i * (1 / x_line_num)))
-                    text = f"{i * int(100 / x_line_num):02}"
-                    bbox = draw.textbbox((0, 0), text, font)
-                    text_width = bbox[2] - bbox[0]
-                    text_height = bbox[3] - bbox[1]
-                    x_text_start = 3
-                    draw.line([(text_width + 5 + x_text_start, y_line), (new_w, y_line)], fill=(255, 182, 193), width=1)
-                    draw.text((x_text_start, y_line - text_height // 2), text, fill=(255, 182, 193), font=font)
+                if y_line_num > 0:
+                    for i in range(1, y_line_num):
+                        x_line = int(new_w * (i * (1 / y_line_num)))
+                        text = f"{i * int(100 / y_line_num):02}"
+                        bbox = draw.textbbox((0, 0), text, font)
+                        text_width = bbox[2] - bbox[0]
+                        text_height = bbox[3] - bbox[1]
+                        y_text_start = 3
+                        draw.line([(x_line, text_width + 5 + y_text_start), (x_line, new_h)], fill=(0, 255, 255), width=1)
+                        draw.text((x_line - text_height // 2, y_text_start), text, fill=(0, 255, 255), font=font)
 
-            resized.show()
+                if x_line_num > 0:
+                    for i in range(1, x_line_num):
+                        y_line = int(new_h * (i * (1 / x_line_num)))
+                        text = f"{i * int(100 / x_line_num):02}"
+                        bbox = draw.textbbox((0, 0), text, font)
+                        text_width = bbox[2] - bbox[0]
+                        text_height = bbox[3] - bbox[1]
+                        x_text_start = 3
+                        draw.line([(text_width + 5 + x_text_start, y_line), (new_w, y_line)], fill=(255, 182, 193), width=1)
+                        draw.text((x_text_start, y_line - text_height // 2), text, fill=(255, 182, 193), font=font)
 
-        await Terminal.cmd_line(self.adb, "-s", cellphone.serial, "wait-for-usb-device", "shell", "rm", f"{image_folder}/{image}")
+                resized.show()
+
+            await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-usb-device", "shell", "rm", f"{image_folder}/{image}")
+
+        tasks = [paint_lines(device.serial) for device in device_list]
+        await asyncio.gather(*tasks)
 
     async def analysis(self, alone: bool):
 
@@ -494,9 +499,15 @@ class Missions(object):
                 await timepiece(timer_mode)
                 await stop_record(temp_video, transports, True)
 
-        # Start Tasks
+        async def mode():
+            while True:
+                Show.console.print(f"[bold yellow]--flick & --alone 仅支持单设备模式 ...")
+                device_list = await manage.operate_device()
+                if len(device_list) == 1:
+                    return device_list[0]
+
         manage = Manage(self.adb)
-        cellphone = await manage.operate_device()
+        device = await mode()
 
         reporter = Report(self.initial_report)
         if alone:
@@ -518,7 +529,7 @@ class Missions(object):
         timer_mode = 5
         while True:
             try:
-                Show.console.print(f"[bold #00FFAF]Connect:[/bold #00FFAF] {cellphone}")
+                Show.console.print(f"[bold #00FFAF]Connect:[/bold #00FFAF] {device}")
                 if action := Prompt.ask(
                         prompt=f"[bold #5FD7FF]<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/bold #D7FF5F] 秒>>>[/bold #5FD7FF]",
                         console=Show.console
@@ -539,7 +550,7 @@ class Missions(object):
                             raise ValueError
                         continue
                     elif action.strip() == "serial" and len(action.strip()) == 6:
-                        cellphone = await manage.operate_device()
+                        device = await mode()
                         continue
                     elif action.strip() == "deploy" and len(action.strip()) == 6:
                         deploy.dump_deploy(self.initial_deploy)
@@ -564,9 +575,9 @@ class Missions(object):
             except ValueError:
                 Show.tips_document()
             else:
-                await start(cellphone.serial)
+                await start(device.serial)
                 if not done_event.is_set():
-                    cellphone = await manage.operate_device()
+                    device = await mode()
             finally:
                 head_event.clear()
                 done_event.clear()
