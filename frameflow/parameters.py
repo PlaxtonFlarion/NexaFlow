@@ -21,6 +21,7 @@ class Deploy(object):
         "step": 1,
         "block": 6,
         "window_coefficient": 2,
+        "crops": [],
         "omits": []
     }
 
@@ -38,6 +39,7 @@ class Deploy(object):
             step: int = None,
             block: int = None,
             window_coefficient: int = None,
+            crops: list = None,
             omits: list = None
     ):
 
@@ -53,6 +55,7 @@ class Deploy(object):
         self._deploys["step"] = step or 1
         self._deploys["block"] = block or 6
         self._deploys["window_coefficient"] = window_coefficient or 2
+        self._deploys["crops"] = crops or []
         self._deploys["omits"] = omits or []
 
     @property
@@ -104,6 +107,10 @@ class Deploy(object):
         return self._deploys["window_coefficient"]
 
     @property
+    def crops(self):
+        return self._deploys["crops"]
+
+    @property
     def omits(self):
         return self._deploys["omits"]
 
@@ -130,8 +137,24 @@ class Deploy(object):
                 self._deploys["step"] = max(1, data.get("step", 1))
                 self._deploys["block"] = max(1, min(int(min(self.target_size[0], self.target_size[1]) / 10), data.get("block", 6)))
                 self._deploys["window_coefficient"] = max(2, data.get("window_coefficient", 2))
-                hook_list = data.get("omits", [])
-                for hook_dict in hook_list:
+
+                # Crops Hook
+                crops_list = data.get("crops", [])
+                for hook_dict in crops_list:
+                    if len(
+                            data_list := [
+                                value for value in hook_dict.values() if isinstance(value, int | float)
+                            ]
+                    ) == 4 and sum(data_list) > 0:
+                        self._deploys["crops"].append(
+                            (hook_dict["x"], hook_dict["y"], hook_dict["x_size"], hook_dict["y_size"])
+                        )
+                if len(self.crops) >= 2:
+                    self._deploys["crops"] = list(set(self.crops))
+
+                # Omits Hook
+                omits_list = data.get("omits", [])
+                for hook_dict in omits_list:
                     if len(
                             data_list := [
                                 value for value in hook_dict.values() if isinstance(value, int | float)
@@ -163,12 +186,12 @@ class Deploy(object):
                     f.writelines(f'    "{k}": "{v}",')
                 elif k == "target_size":
                     f.writelines(f'    "{k}": "{v}",')
-                elif k == "omits":
+                elif k == "crops" or k == "omits":
                     if len(v) == 0:
                         default = '{"x": 0, "y": 0, "x_size": 0, "y_size": 0}'
                         f.writelines(f'    "{k}": [\n')
                         f.writelines(f'        {default}\n')
-                        f.writelines('    ]')
+                        f.writelines('    ],') if k == "crops" else f.writelines('    ]')
                     else:
                         f.writelines(f'    "{k}": [\n')
                         for index, i in enumerate(v):
@@ -178,7 +201,7 @@ class Deploy(object):
                                 f.writelines(f'        {new_size}\n')
                             else:
                                 f.writelines(f'        {new_size},\n')
-                        f.writelines('    ]')
+                        f.writelines('    ],') if k == "crops" else f.writelines('    ]')
                 else:
                     f.writelines(f'    "{k}": {v},')
             f.writelines('\n}')
@@ -271,6 +294,12 @@ class Deploy(object):
             f"[bold {col_2_color}]{self.window_coefficient}",
             f"[bold][[bold {col_3_color}]2 , ?[/bold {col_3_color}] ]",
             f"[bold]加权计算 [bold red]{self.window_coefficient}[/bold red]",
+        )
+        table.add_row(
+            f"[bold {col_1_color}]获取区域",
+            f"[bold {col_2_color}]{['!' for _ in range(len(self.crops))]}",
+            f"[bold][[bold {col_3_color}]0 , 1[/bold {col_3_color}] ]",
+            f"[bold]共 [bold red]{len(self.crops)}[/bold red] 个区域的图像参与计算",
         )
         table.add_row(
             f"[bold {col_1_color}]忽略区域",

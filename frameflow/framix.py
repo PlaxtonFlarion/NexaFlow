@@ -66,7 +66,7 @@ try:
     from nexaflow.skills.report import Report
     from nexaflow.video import VideoObject, VideoFrame
     from nexaflow.cutter.cutter import VideoCutter
-    from nexaflow.hook import OmitHook, FrameSaveHook, ShapeHook
+    from nexaflow.hook import CropHook, OmitHook, FrameSaveHook, ShapeHook
     from nexaflow.classifier.keras_classifier import KerasClassifier
     from nexaflow.classifier.framix_classifier import FramixClassifier
 except (RuntimeError, ModuleNotFoundError) as err:
@@ -111,6 +111,7 @@ class Parser(object):
         parser.add_argument('--focus', action='store_true', help='转换视频')
         parser.add_argument('--shape', nargs='?', const=None, type=parse_shape, help='图片尺寸')
         parser.add_argument('--scale', nargs='?', const=None, type=parse_scale, help='缩放比例')
+        parser.add_argument('--crops', action='append', help='获取区域')
         parser.add_argument('--omits', action='append', help='忽略区域')
 
         parser.add_argument('--debug', action='store_true', help='调试模式')
@@ -121,7 +122,7 @@ class Parser(object):
 class Missions(object):
 
     def __init__(self, *args, **kwargs):
-        self.boost, self.color, self.focus, self.omits, self.shape, self.scale = args
+        self.boost, self.color, self.focus, self.crops, self.omits, self.shape, self.scale = args
 
         self.model_path = kwargs["model_path"]
         self.total_path = kwargs["total_path"]
@@ -162,7 +163,7 @@ class Missions(object):
 
         deploy = Deploy(
             boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
-            omits=self.omits
+            crops=self.crops, omits=self.omits
         )
         deploy.load_deploy(self.initial_deploy)
 
@@ -190,7 +191,7 @@ class Missions(object):
 
         deploy = Deploy(
             boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
-            omits=self.omits
+            crops=self.crops, omits=self.omits
         )
         deploy.load_deploy(self.initial_deploy)
 
@@ -228,7 +229,7 @@ class Missions(object):
 
         deploy = Deploy(
             boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
-            omits=self.omits
+            crops=self.crops, omits=self.omits
         )
         deploy.load_deploy(self.initial_deploy)
 
@@ -285,7 +286,7 @@ class Missions(object):
 
                 deploy = Deploy(
                     boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
-                    omits=self.omits
+                    crops=self.crops, omits=self.omits
                 )
                 deploy.load_deploy(self.initial_deploy)
 
@@ -501,7 +502,7 @@ class Missions(object):
 
         async def mode():
             while True:
-                Show.console.print(f"[bold yellow]--flick & --alone 仅支持单设备模式 ...")
+                Show.console.print(f"[bold][bold yellow][--flick] & [--alone][/bold yellow] 仅支持单设备模式 ...[/bold]")
                 device_list = await manage.operate_device()
                 if len(device_list) == 1:
                     return device_list[0]
@@ -517,7 +518,7 @@ class Missions(object):
 
         deploy = Deploy(
             boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
-            omits=self.omits
+            crops=self.crops, omits=self.omits
         )
         deploy.load_deploy(self.initial_deploy)
 
@@ -559,6 +560,7 @@ class Missions(object):
                             await Terminal.cmd_line("Notepad", self.initial_deploy)
                         else:
                             await Terminal.cmd_line("open", "-W", "-a", "TextEdit", self.initial_deploy)
+                        deploy.crops.clear()
                         deploy.omits.clear()
                         deploy.load_deploy(self.initial_deploy)
                         deploy.view_deploy()
@@ -668,11 +670,18 @@ async def analyzer(
             target_size=deploy.target_size
         )
 
+        if len(deploy.crops) > 0:
+            for crop in deploy.crops:
+                x, y, x_size, y_size = crop
+                crop_hook = CropHook((y_size, x_size), (y, x))
+                cutter.add_hook(crop_hook)
+
         if len(deploy.omits) > 0:
             for omit in deploy.omits:
                 x, y, x_size, y_size = omit
                 omit_hook = OmitHook((y_size, x_size), (y, x))
                 cutter.add_hook(omit_hook)
+
         save_hook = FrameSaveHook(reporter.extra_path)
         cutter.add_hook(save_hook)
 
@@ -882,6 +891,16 @@ if __name__ == '__main__':
     cpu = os.cpu_count()
     logger.debug(f"CPU Core: {cpu}")
 
+    _crops = []
+    if cmd_lines.crops and len(cmd_lines.crops) > 0:
+        for hook in cmd_lines.crops:
+            if len(match_list := re.findall(r"-?\d*\.?\d+", hook)) == 4:
+                valid_list = [float(num) if "." in num else int(num) for num in match_list]
+                if sum(valid_list) > 0:
+                    _crops.append(tuple(valid_list))
+    if len(_crops) >= 2:
+        _crops = list(set(_crops))
+
     _omits = []
     if cmd_lines.omits and len(cmd_lines.omits) > 0:
         for hook in cmd_lines.omits:
@@ -906,7 +925,7 @@ if __name__ == '__main__':
     logger.debug(f"Initial-Option: {_initial_option}")
 
     missions = Missions(
-        _boost, _color, _focus, _omits, _shape, _scale,
+        _boost, _color, _focus, _crops, _omits, _shape, _scale,
         model_path=_model_path, total_path=_total_path, major_path=_major_path, proto_path=_proto_path,
         initial_report=_initial_report, initial_deploy=_initial_deploy, initial_option=_initial_option,
         adb=_adb, ffmpeg=_ffmpeg, scrcpy=_scrcpy,
