@@ -56,25 +56,6 @@ class Manage(object):
                 Show.console.print(f"[bold yellow]设备未连接,等待设备连接 ...")
                 await asyncio.sleep(5)
 
-    # async def operate_device(self):
-    #     while True:
-    #         device_dict: dict[str, "Device"] = await self.current_device()
-    #         if len(device_dict) > 0:
-    #             for k, v in device_dict.items():
-    #                 Show.console.print(f"[bold][bold yellow]已连接设备[/bold yellow] [{k}] {v}")
-    #             if len(device_dict) == 1:
-    #                 return device_dict["1"]
-    #
-    #             try:
-    #                 action = Prompt.ask("[bold #5FD7FF]请输入编号选择一台设备")
-    #                 return device_dict[action]
-    #             except KeyError:
-    #                 Show.console.print(f"[bold red]没有该序号,请重新选择 ...")
-    #
-    #         else:
-    #             Show.console.print(f"[bold yellow]设备未连接,等待设备连接 ...")
-    #             await asyncio.sleep(5)
-
 
 class Phones(object):
 
