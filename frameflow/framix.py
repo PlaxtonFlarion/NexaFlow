@@ -52,7 +52,7 @@ elif operation_system == "darwin":
     _ffmpeg = os.path.join(_tools_path, "mac", "ffmpeg", "bin", "ffmpeg")
     _scrcpy = os.path.join(_tools_path, "mac", "scrcpy", "bin", "scrcpy")
 else:
-    Show.console.print("[bold red]Only compatible with Windows and macOS platforms ...")
+    Show.console.print("[bold]Only compatible with [bold red]Windows[/bold red] and [bold red]macOS[/bold red] platforms ...[bold]")
     time.sleep(5)
     sys.exit(1)
 
@@ -70,7 +70,7 @@ try:
     from nexaflow.classifier.keras_classifier import KerasClassifier
     from nexaflow.classifier.framix_classifier import FramixClassifier
 except (RuntimeError, ModuleNotFoundError) as err:
-    Show.console.print(f"[bold]Error: {err}")
+    Show.console.print(f"[bold red]Error: {err}")
     time.sleep(5)
     sys.exit(1)
 
@@ -483,19 +483,18 @@ class Missions(object):
                 await asyncio.sleep(0.2)
             logger.error("录制视频失败,请重新录制视频 ...")
 
-        async def start(serial):
+        async def start():
             await Terminal.cmd_line(self.adb, "wait-for-device")
             if alone:
                 temp_video, transports = await start_record(
-                    serial, reporter.query_path
+                    device.serial, reporter.query_path
                 )
                 await timepiece(timer_mode)
                 await stop_record(temp_video, transports, False)
-
             else:
                 reporter.query = time.strftime('%Y%m%d%H%M%S')
                 temp_video, transports = await start_record(
-                    serial, reporter.video_path
+                    device.serial, reporter.video_path
                 )
                 await timepiece(timer_mode)
                 await stop_record(temp_video, transports, True)
@@ -577,7 +576,7 @@ class Missions(object):
             except ValueError:
                 Show.tips_document()
             else:
-                await start(device.serial)
+                await start()
                 if not done_event.is_set():
                     device = await mode()
             finally:
