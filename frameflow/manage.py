@@ -37,9 +37,7 @@ class Manage(object):
                     final.append(v)
                     Show.console.print(f"[bold][bold yellow]已连接设备[/bold yellow] [{k}] {v}")
 
-                multiple = False if len(device_dict) == 1 else True
-
-                if multiple:
+                if len(device_dict) > 1:
                     try:
                         action = Prompt.ask("[bold #5FD7FF]请输入编号选择一台设备")
                         final = final if action == "000" else [device_dict[action]]
@@ -71,10 +69,10 @@ class Manage(object):
     #                 action = Prompt.ask("[bold #5FD7FF]请输入编号选择一台设备")
     #                 return device_dict[action]
     #             except KeyError:
-    #                 Show.console.print(f"[bold red]没有该序号,请重新选择 ...[/bold red]")
+    #                 Show.console.print(f"[bold red]没有该序号,请重新选择 ...")
     #
     #         else:
-    #             Show.console.print(f"[bold]设备未连接,等待设备连接 ...")
+    #             Show.console.print(f"[bold yellow]设备未连接,等待设备连接 ...")
     #             await asyncio.sleep(5)
 
 
