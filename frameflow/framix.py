@@ -486,7 +486,7 @@ class Missions(object):
             await asyncio.sleep(1)
             return temp_video, transports
 
-        async def stop_record(temp_video, transports, solve: bool):
+        async def stop_record(temp_video, transports):
             if operation_system == "win32":
                 await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
             else:
@@ -496,12 +496,6 @@ class Missions(object):
             for _ in range(10):
                 if done_event.is_set():
                     logger.success(f"视频录制成功: {temp_video}")
-                    if solve:
-                        await analyzer(
-                            reporter, kc, deploy, temp_video,
-                            proto_path=self.proto_path,
-                            ffmpeg=self.ffmpeg
-                        )
                     return
                 elif fail_event.is_set():
                     break
@@ -515,14 +509,19 @@ class Missions(object):
                     device.serial, reporter.query_path
                 )
                 await timepiece(timer_mode)
-                await stop_record(temp_video, transports, False)
+                await stop_record(temp_video, transports)
             else:
                 reporter.query = time.strftime('%Y%m%d%H%M%S')
                 temp_video, transports = await start_record(
                     device.serial, reporter.video_path
                 )
                 await timepiece(timer_mode)
-                await stop_record(temp_video, transports, True)
+                await stop_record(temp_video, transports)
+                await analyzer(
+                    reporter, kc, deploy, temp_video,
+                    proto_path=self.proto_path,
+                    ffmpeg=self.ffmpeg
+                )
 
         async def mode():
             while True:
