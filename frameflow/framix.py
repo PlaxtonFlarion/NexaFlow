@@ -66,7 +66,7 @@ try:
     from nexaflow.skills.report import Report
     from nexaflow.video import VideoObject, VideoFrame
     from nexaflow.cutter.cutter import VideoCutter
-    from nexaflow.hook import CropHook, OmitHook, FrameSaveHook, ShapeHook
+    from nexaflow.hook import CropHook, OmitHook, FrameSaveHook, PaintCropHook, PaintOmitHook
     from nexaflow.classifier.keras_classifier import KerasClassifier
     from nexaflow.classifier.framix_classifier import FramixClassifier
 except (RuntimeError, ModuleNotFoundError) as err:
@@ -312,9 +312,6 @@ class Missions(object):
         import tempfile
         from PIL import Image, ImageDraw, ImageFont
 
-        manage = Manage(self.adb)
-        device_list = await manage.operate_device()
-
         async def paint_lines(serial):
             image_folder = "/sdcard/Pictures/Shots"
             image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_" + "Shot.png"
@@ -333,12 +330,19 @@ class Missions(object):
                     old_image = toolbox.turn_grey(old_image)
                     new_image = VideoFrame(0, 0, old_image)
 
+                if len(self.crops) > 0:
+                    for crop in self.crops:
+                        if len(crop) == 4 and sum(crop) > 0:
+                            x, y, x_size, y_size = crop
+                        paint_crop_hook = PaintCropHook((y_size, x_size), (y, x))
+                        paint_crop_hook.do(new_image)
+
                 if len(self.omits) > 0:
                     for omit in self.omits:
                         if len(omit) == 4 and sum(omit) > 0:
                             x, y, x_size, y_size = omit
-                            shape_hook = ShapeHook((y_size, x_size), (y, x))
-                            shape_hook.do(new_image)
+                            paint_omit_hook = PaintOmitHook((y_size, x_size), (y, x))
+                            paint_omit_hook.do(new_image)
 
                 cv2.imencode(".png", new_image.data)[1].tofile(image_save_path)
 
@@ -398,9 +402,30 @@ class Missions(object):
                 resized.show()
 
             await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-usb-device", "shell", "rm", f"{image_folder}/{image}")
+            return resized
 
+        manage = Manage(self.adb)
+        device_list = await manage.operate_device()
         tasks = [paint_lines(device.serial) for device in device_list]
-        await asyncio.gather(*tasks)
+        resized_result = await asyncio.gather(*tasks)
+
+        while True:
+            action = Prompt.ask(
+                f"[bold]保存图片([bold #5fd700]Y[/bold #5fd700]/[bold #ff87af]N[/bold #ff87af])?[/bold]",
+                console=Show.console, default="Y"
+            )
+            if action.strip().upper() == "Y":
+                reporter = Report(self.initial_report)
+                reporter.title = f"Hooks_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
+                for device, resize_img in zip(device_list, resized_result):
+                    img_save_path = os.path.join(reporter.query_path, f"hook_{device.serial}_{random.randint(10000, 99999)}.png")
+                    resize_img.save(img_save_path)
+                    Show.console.print(f"[bold]保存图片: {[img_save_path]}")
+                break
+            elif action.strip().upper() == "N":
+                break
+            else:
+                Show.console.print(f"[bold][bold red]没有该选项,请重新输入[/bold red] ...[/bold]\n")
 
     async def analysis(self, alone: bool):
 

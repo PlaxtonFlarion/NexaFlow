@@ -42,6 +42,7 @@ class Manage(object):
                         action = Prompt.ask("[bold #5FD7FF]请输入编号选择一台设备")
                         final = final if action == "000" else [device_dict[action]]
                     except KeyError:
+                        final.clear()
                         Show.console.print(f"[bold red]没有该序号,请重新选择 ...[/bold red]\n")
                         continue
 

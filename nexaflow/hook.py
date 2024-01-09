@@ -148,7 +148,25 @@ class OmitHook(_AreaBaseHook):
         return frame
 
 
-class ShapeHook(_AreaBaseHook):
+class PaintCropHook(_AreaBaseHook):
+
+    def do(self, frame: VideoFrame, *_, **__) -> typing.Optional[VideoFrame]:
+        super().do(frame, *_, **__)
+
+        if len(frame.data.shape) == 3:
+            frame_shape = frame.data.shape[0], frame.data.shape[1]
+        else:
+            frame_shape = frame.data.shape
+
+        height_range, width_range = self.convert_size_and_offset(*frame_shape)
+        frame.data[: height_range[0], :] = 0
+        frame.data[height_range[1]:, :] = 0
+        frame.data[:, : width_range[0]] = 0
+        frame.data[:, width_range[1]:] = 0
+        return frame
+
+
+class PaintOmitHook(_AreaBaseHook):
 
     def do(self, frame: VideoFrame, *_, **__) -> typing.Optional[VideoFrame]:
         super().do(frame, *_, **__)

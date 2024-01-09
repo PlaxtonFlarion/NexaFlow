@@ -814,8 +814,8 @@
                 lightboxImg.src = firstImage.src;
                 lightboxImg.dataset.frame = firstImage.dataset.frame;
                 lightboxImg.dataset.timestamp = firstImage.dataset.timestamp;
-                frameIdSpan.textContent = '帧编号: ' + firstImage.dataset.frame;
-                timestampSpan.textContent = '时间戳: ' + firstImage.dataset.timestamp;
+                frameIdSpan.textContent = firstImage.dataset.frame;
+                timestampSpan.textContent = firstImage.dataset.timestamp;
 
                 originalImage = firstImage;  // 获取原始图片的信息
                 updateButtonStatus();  // 更新前后按钮的状态
