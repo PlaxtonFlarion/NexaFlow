@@ -148,9 +148,9 @@ class Show(object):
         table.add_column("参数", justify="center", width=12)
         table.add_column("说明", justify="center", width=44)
         table.add_row("[bold #FFAFAF]header", "[bold #AFD7FF]标题名", "[bold #DADADA]生成一个新标题文件夹")
-        table.add_row("[bold #FFAFAF]serial", "", "[bold #DADADA]重新选择已连接的设备")
-        table.add_row("[bold #FFAFAF]deploy", "", "[bold #DADADA]重新部署视频分析配置")
-        table.add_row("[bold #FFAFAF]******", "", "[bold #DADADA]任意数字代表录制时长")
+        table.add_row("[bold #FFAFAF]serial", "[bold #8A8A8A]无参数", "[bold #DADADA]重新选择已连接的设备")
+        table.add_row("[bold #FFAFAF]deploy", "[bold #8A8A8A]无参数", "[bold #DADADA]重新部署视频分析配置")
+        table.add_row("[bold #FFAFAF]******", "[bold #8A8A8A]无参数", "[bold #DADADA]任意数字代表录制时长")
         Show.console.print(table)
 
 
