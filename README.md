@@ -181,7 +181,7 @@ Framix 能自动计算并展示视频帧之间的差异。
 
 ## 📖 操作手册
 
-📚 想要掌握 Framix 的全部奥秘？请查阅我们的 [详细文档](https://github.com/PlaxtonFlarion/NexaFlow/releases)。
+📚 想要掌握 Framix 的全部奥秘？请查阅我们的 [详细文档](https://zhuanlan.zhihu.com/p/677840747)。
 
 
 ## 🖐️ 技术支持
