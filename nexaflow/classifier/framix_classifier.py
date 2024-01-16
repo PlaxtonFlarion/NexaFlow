@@ -141,11 +141,15 @@ class FramixClassifier(object):
 
     def build(self, *args):
         src, new_model_path, new_model_name = args
-        self.train(src)
-        final_model = os.path.join(new_model_path, new_model_name)
-        if not os.path.exists(new_model_path):
-            os.makedirs(new_model_path, exist_ok=True)
-        self.save_model(final_model)
+        try:
+            self.train(src)
+        except AssertionError as e:
+            logger.error(e)
+        else:
+            final_model = os.path.join(new_model_path, new_model_name)
+            if not os.path.exists(new_model_path):
+                os.makedirs(new_model_path, exist_ok=True)
+            self.save_model(final_model)
 
 
 if __name__ == '__main__':
