@@ -178,7 +178,7 @@ class Missions(object):
         looper = asyncio.get_event_loop()
         futures = looper.run_until_complete(
             analyzer(
-                kc, deploy, new_video_path,
+                kc, deploy, new_video_path, reporter.frame_path, reporter.extra_path,
                 ffmpeg=self.ffmpeg
             )
         )
@@ -233,7 +233,7 @@ class Missions(object):
 
                 futures = looper.run_until_complete(
                     analyzer(
-                        kc, deploy, new_video_path,
+                        kc, deploy, new_video_path, reporter.frame_path, reporter.extra_path,
                         ffmpeg=self.ffmpeg
                     )
                 )
