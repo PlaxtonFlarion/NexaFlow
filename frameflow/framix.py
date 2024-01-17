@@ -787,28 +787,23 @@ async def analyzer(
             end_frame = classify.data[-1]
 
         time_cost = end_frame.timestamp - start_frame.timestamp
-        before, after, final = f"{start_frame.timestamp:.5f}", f"{end_frame.timestamp:.5f}", f"{time_cost:.5f}"
-        logger.info(f"图像分类结果: [开始帧: {before}] [结束帧: {after}] [总耗时: {final}]")
+        before, after, final = start_frame.timestamp, end_frame.timestamp, time_cost
+        logger.info(f"图像分类结果: [开始帧: {before:.5f}] [结束帧: {after:.5f}] [总耗时: {final:.5f}]")
 
         with open(proto_path, mode="r", encoding="utf-8") as t:
             proto_file = t.read()
-            original_inform = reporter.draw(
-                classifier_result=classify,
-                proto_path=reporter.proto_path,
-                target_size=deploy.target_size,
-                framix_template=proto_file
-            )
-
+        original_inform = reporter.draw(
+            classifier_result=classify,
+            proto_path=reporter.proto_path,
+            target_size=deploy.target_size,
+            framix_template=proto_file
+        )
         result = {
             "total_path": reporter.total_path,
             "title": reporter.title,
             "query_path": reporter.query_path,
             "query": reporter.query,
-            "stage": {
-                "start": start_frame.frame_id,
-                "end": end_frame.frame_id,
-                "cost": f"{time_cost:.5f}"
-            },
+            "stage": {"start": before, "end": after, "cost": final},
             "frame": reporter.frame_path,
             "extra": reporter.extra_path,
             "proto": original_inform,

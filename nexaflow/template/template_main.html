@@ -1244,6 +1244,7 @@
                     timeDivs[index].classList.add('effect-on');
                     resContainers[index].style.display = 'flex';
                 } else {
+                    const timeDivs = Array.from(document.querySelectorAll('.time-difference'));
                     timeDivs[index].classList.add('effect-off');
                 }
             });
