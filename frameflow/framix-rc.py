@@ -3,12 +3,14 @@ import re
 import sys
 import cv2
 import time
+import json
 import shutil
 import random
 import asyncio
 import aiofiles
 from loguru import logger
 from rich.prompt import Prompt
+from frameflow.database import DataBase
 from frameflow.show import Show
 from frameflow.manage import Manage
 from frameflow.parameters import Deploy, Option
@@ -205,6 +207,17 @@ class Missions(object):
         logger.debug(f"Restore: {result}")
         reporter.load(result)
 
+        with DataBase(os.path.join(reporter.reset_path, "Framix_Data.db")) as database:
+            database.create(
+                'stocks',
+                'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
+            )
+            stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
+            database.insert(
+                'stocks',
+                reporter.total_path, reporter.title, reporter.query_path, reporter.query, json.dumps(stage), reporter.frame_path, reporter.extra_path, reporter.proto_path
+            )
+
         looper.run_until_complete(
             reporter.ask_create_total_report(
                 os.path.dirname(reporter.total_path), self.major_path, self.total_path
@@ -261,6 +274,17 @@ class Missions(object):
                 }
                 logger.debug(f"Restore: {result}")
                 reporter.load(result)
+
+                with DataBase(os.path.join(reporter.reset_path, "Framix_Data.db")) as database:
+                    database.create(
+                        'stocks',
+                        'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
+                    )
+                    stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
+                    database.insert(
+                        'stocks',
+                        reporter.total_path, reporter.title, reporter.query_path, reporter.query, json.dumps(stage), reporter.frame_path, reporter.extra_path, reporter.proto_path
+                    )
 
         looper.run_until_complete(
             reporter.ask_create_total_report(
@@ -586,7 +610,7 @@ class Missions(object):
 
                 async with aiofiles.open(file=self.proto_path, mode="r", encoding="utf-8") as t:
                     proto_file = await t.read()
-                for (start, end, cost, classifier), (*_, total_path, heading, query_path, query, frame_path, extra_path, proto_path) in zip(futures, todo_list):
+                for (start, end, cost, classifier), (*_, total_path, title, query_path, query, frame_path, extra_path, proto_path) in zip(futures, todo_list):
                     original_inform = reporter.draw(
                         classifier_result=classifier,
                         proto_path=proto_path,
@@ -595,7 +619,7 @@ class Missions(object):
                     )
                     result = {
                         "total_path": total_path,
-                        "title": heading,
+                        "title": title,
                         "query_path": query_path,
                         "query": query,
                         "stage": {"start": start, "end": end, "cost": f"{cost:.5f}"},
@@ -605,6 +629,17 @@ class Missions(object):
                     }
                     logger.debug(f"Restore: {result}")
                     reporter.load(result)
+
+                    with DataBase(os.path.join(os.path.dirname(total_path), "Nexa_Recovery", "Framix_Data.db")) as database:
+                        database.create(
+                            'stocks',
+                            'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
+                        )
+                        stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
+                        database.insert(
+                            'stocks',
+                            total_path, title, query_path, query, json.dumps(stage), frame_path, extra_path, proto_path
+                        )
 
         manage = Manage(self.adb)
         device_list = await manage.operate_device()
@@ -639,13 +674,13 @@ class Missions(object):
                     if "header" in select:
                         if match := re.search(r"(?<=header\s).*", select):
                             if match.group().strip():
-                                src_title = f"Record_{time.strftime('%Y%m%d_%H%M%S')}" if alone else f"Framix_{time.strftime('%Y%m%d_%H%M%S')}"
-                                if title := match.group().strip():
-                                    new_title = f"{src_title}_{title}"
+                                src_hd = f"Record_{time.strftime('%Y%m%d_%H%M%S')}" if alone else f"Framix_{time.strftime('%Y%m%d_%H%M%S')}"
+                                if hd := match.group().strip():
+                                    new_hd = f"{src_hd}_{hd}"
                                 else:
-                                    new_title = f"{src_title}_{random.randint(10000, 99999)}"
+                                    new_hd = f"{src_hd}_{random.randint(10000, 99999)}"
                                 logger.success("新标题设置成功 ...")
-                                reporter.title = new_title
+                                reporter.title = new_hd
                             else:
                                 raise ValueError
                         else:
@@ -654,6 +689,14 @@ class Missions(object):
                     elif select == "serial":
                         device_list = await manage.operate_device()
                         continue
+                    elif select == "create":
+                        if len(reporter.range_list) > 0:
+                            create_list = [os.path.dirname(rs["total_path"]) for rs in reporter.range_list]
+                            await self.combines(create_list)
+                            break
+                        else:
+                            Show.console.print(f"[bold red]没有可以生成的报告 ...[/bold red]")
+                            continue
                     elif select == "deploy":
                         deploy.dump_deploy(self.initial_deploy)
                         logger.warning("修改 deploy.json 文件后请完全退出编辑器进程再继续操作 ...")

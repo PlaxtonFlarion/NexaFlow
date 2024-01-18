@@ -563,13 +563,13 @@ class Missions(object):
                     if "header" in select:
                         if match := re.search(r"(?<=header\s).*", select):
                             if match.group().strip():
-                                src_title = f"Record_{time.strftime('%Y%m%d_%H%M%S')}" if alone else f"Framix_{time.strftime('%Y%m%d_%H%M%S')}"
-                                if title := match.group().strip():
-                                    new_title = f"{src_title}_{title}"
+                                src_hd = f"Record_{time.strftime('%Y%m%d_%H%M%S')}" if alone else f"Framix_{time.strftime('%Y%m%d_%H%M%S')}"
+                                if hd := match.group().strip():
+                                    new_hd = f"{src_hd}_{hd}"
                                 else:
-                                    new_title = f"{src_title}_{random.randint(10000, 99999)}"
+                                    new_hd = f"{src_hd}_{random.randint(10000, 99999)}"
                                 logger.success("新标题设置成功 ...")
-                                reporter.title = new_title
+                                reporter.title = new_hd
                             else:
                                 raise ValueError
                         else:
