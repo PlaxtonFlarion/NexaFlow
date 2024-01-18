@@ -302,9 +302,7 @@ class Missions(object):
 
     async def combines(self, merge):
         tasks = [
-            Report.ask_create_total_report(
-                m, self.total_path, self.major_path
-            ) for m in merge
+            Report.ask_create_total_report(m, self.total_path, self.major_path) for m in merge
         ]
         error = await asyncio.gather(*tasks)
         for e in error:
@@ -561,8 +559,9 @@ class Missions(object):
                         prompt=f"[bold #5FD7FF]<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/bold #D7FF5F] 秒>>>[/bold #5FD7FF]",
                         console=Show.console
                 ):
-                    if "header" in action.strip():
-                        if match := re.search(r"(?<=header\s).*", action):
+                    select = action.strip().lower()
+                    if "header" in select:
+                        if match := re.search(r"(?<=header\s).*", select):
                             if match.group().strip():
                                 src_title = f"Record_{time.strftime('%Y%m%d_%H%M%S')}" if alone else f"Framix_{time.strftime('%Y%m%d_%H%M%S')}"
                                 if title := match.group().strip():
@@ -576,10 +575,10 @@ class Missions(object):
                         else:
                             raise ValueError
                         continue
-                    elif action.strip() == "serial" and len(action.strip()) == 6:
+                    elif select == "serial":
                         device = await mode()
                         continue
-                    elif action.strip() == "deploy" and len(action.strip()) == 6:
+                    elif select == "deploy":
                         deploy.dump_deploy(self.initial_deploy)
                         logger.warning("修改 deploy.json 文件后请完全退出编辑器进程再继续操作 ...")
                         if operation_system == "win32":
@@ -591,8 +590,8 @@ class Missions(object):
                         deploy.load_deploy(self.initial_deploy)
                         deploy.view_deploy()
                         continue
-                    elif action.isdigit():
-                        value, lower_bound, upper_bound = int(action), 5, 300
+                    elif select.isdigit():
+                        value, lower_bound, upper_bound = int(select), 5, 300
                         if value > 300 or value < 5:
                             Show.console.print(
                                 f"[bold #FFFF87]{lower_bound} <= [bold #FFD7AF]Time[/bold #FFD7AF] <= {upper_bound}[/bold #FFFF87]"
@@ -787,8 +786,7 @@ async def analyzer(
             end_frame = classify.data[-1]
 
         time_cost = end_frame.timestamp - start_frame.timestamp
-        before, after, final = start_frame.timestamp, end_frame.timestamp, time_cost
-        logger.info(f"图像分类结果: [开始帧: {before:.5f}] [结束帧: {after:.5f}] [总耗时: {final:.5f}]")
+        logger.info(f"图像分类结果: [开始帧: {start_frame.timestamp:.5f}] [结束帧: {end_frame.timestamp:.5f}] [总耗时: {time_cost:.5f}]")
 
         with open(proto_path, mode="r", encoding="utf-8") as t:
             proto_file = t.read()
@@ -803,14 +801,14 @@ async def analyzer(
             "title": reporter.title,
             "query_path": reporter.query_path,
             "query": reporter.query,
-            "stage": {"start": before, "end": after, "cost": final},
+            "stage": {"start": start_frame.frame_id, "end": end_frame.frame_id, "cost": f"{time_cost:.5f}"},
             "frame": reporter.frame_path,
             "extra": reporter.extra_path,
             "proto": original_inform,
         }
         logger.debug(f"Restore: {result}")
         reporter.load(result)
-        return before, after, final
+        return start_frame.frame_id, end_frame.frame_id, time_cost
 
     async def frame_forge(frame):
         try:

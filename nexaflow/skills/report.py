@@ -97,7 +97,7 @@ class Report(object):
     def load(self, inform: Optional[Dict[str, Union[str | Dict]]]) -> None:
         if inform:
             self.range_list.append(inform)
-        logger.info(f"End -> {self.query}\n")
+        logger.info(f"End -> {inform.get('query', '......')}\n")
 
     def create_report(self) -> None:
 
@@ -525,7 +525,7 @@ class Report(object):
             background_color=constants.BACKGROUND_COLOR,
             cost_dict=cost_dict,
             timestamp=timestamp,
-            version_code="1.0.0"
+            version_code="0.1.0-beta"
         )
 
         default_name = f"{timestamp}.html"

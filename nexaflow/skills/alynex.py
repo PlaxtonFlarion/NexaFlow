@@ -359,8 +359,7 @@ class Alynex(object):
                 end_frame = classify.data[-1]
 
             time_cost = end_frame.timestamp - start_frame.timestamp
-            before, after, final = f"{start_frame.timestamp:.5f}", f"{end_frame.timestamp:.5f}", f"{time_cost:.5f}"
-            logger.info(f"图像分类结果: [开始帧: {before}] [结束帧: {after}] [总耗时: {final}]")
+            logger.info(f"图像分类结果: [开始帧: {start_frame.timestamp:.5f}] [结束帧: {end_frame.timestamp:.5f}] [总耗时: {time_cost:.5f}]")
 
             original_inform = self.report.draw(
                 classifier_result=classify,
@@ -372,18 +371,14 @@ class Alynex(object):
                 "title": self.report.title,
                 "query_path": self.report.query_path,
                 "query": self.report.query,
-                "stage": {
-                    "start": start_frame.frame_id,
-                    "end": end_frame.frame_id,
-                    "cost": f"{time_cost:.5f}"
-                },
+                "stage": {"start": start_frame.frame_id, "end": end_frame.frame_id, "cost": f"{time_cost:.5f}"},
                 "frame": self.report.frame_path,
                 "extra": self.report.extra_path,
                 "proto": original_inform
             }
             logger.debug(f"Restore: {result}")
             self.report.load(result)
-            return before, after, final
+            return start_frame.frame_id, end_frame.frame_id, time_cost
 
         def frame_forge(frame: Union[SingleClassifierResult | Frame]):
             short_timestamp = format(round(frame.timestamp, 5), ".5f")

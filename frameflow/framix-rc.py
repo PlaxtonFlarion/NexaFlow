@@ -347,9 +347,7 @@ class Missions(object):
 
     async def combines(self, merge):
         tasks = [
-            Report.ask_create_total_report(
-                m, self.total_path, self.major_path
-            ) for m in merge
+            Report.ask_create_total_report(m, self.total_path, self.major_path) for m in merge
         ]
         error = await asyncio.gather(*tasks)
         for e in error:
@@ -568,11 +566,10 @@ class Missions(object):
                     *(stop_record(temp_video, transports) for temp_video, transports, *_ in todo_list)
                 )
             else:
-                reporter.query_path = os.path.join(reporter.query_path, time.strftime('%Y%m%d%H%M%S'))
-                os.makedirs(reporter.query_path, exist_ok=True)
+                group_fmt_dirs = reporter.clock()
                 for d in device_list:
                     await asyncio.sleep(0.2)
-                    reporter.query = d.serial
+                    reporter.query = os.path.join(group_fmt_dirs, d.serial)
                     temp_video, transports = await start_record(
                         d.serial, reporter.video_path
                     )
@@ -589,25 +586,25 @@ class Missions(object):
 
                 async with aiofiles.open(file=self.proto_path, mode="r", encoding="utf-8") as t:
                     proto_file = await t.read()
-                    for (start, end, cost, classifier), (*_, total_path, heading, query_path, query, frame_path, extra_path, proto_path) in zip(futures, todo_list):
-                        original_inform = reporter.draw(
-                            classifier_result=classifier,
-                            proto_path=proto_path,
-                            target_size=deploy.target_size,
-                            framix_template=proto_file
-                        )
-                        result = {
-                            "total_path": total_path,
-                            "title": heading,
-                            "query_path": query_path,
-                            "query": query,
-                            "stage": {"start": start, "end": end, "cost": f"{cost:.5f}"},
-                            "frame": frame_path,
-                            "extra": extra_path,
-                            "proto": original_inform,
-                        }
-                        logger.debug(f"Restore: {result}")
-                        reporter.load(result)
+                for (start, end, cost, classifier), (*_, total_path, heading, query_path, query, frame_path, extra_path, proto_path) in zip(futures, todo_list):
+                    original_inform = reporter.draw(
+                        classifier_result=classifier,
+                        proto_path=proto_path,
+                        target_size=deploy.target_size,
+                        framix_template=proto_file
+                    )
+                    result = {
+                        "total_path": total_path,
+                        "title": heading,
+                        "query_path": query_path,
+                        "query": query,
+                        "stage": {"start": start, "end": end, "cost": f"{cost:.5f}"},
+                        "frame": frame_path,
+                        "extra": extra_path,
+                        "proto": original_inform,
+                    }
+                    logger.debug(f"Restore: {result}")
+                    reporter.load(result)
 
         manage = Manage(self.adb)
         device_list = await manage.operate_device()
@@ -638,8 +635,9 @@ class Missions(object):
                         prompt=f"[bold #5FD7FF]<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/bold #D7FF5F] 秒>>>[/bold #5FD7FF]",
                         console=Show.console
                 ):
-                    if "header" in action.strip():
-                        if match := re.search(r"(?<=header\s).*", action):
+                    select = action.strip().lower()
+                    if "header" in select:
+                        if match := re.search(r"(?<=header\s).*", select):
                             if match.group().strip():
                                 src_title = f"Record_{time.strftime('%Y%m%d_%H%M%S')}" if alone else f"Framix_{time.strftime('%Y%m%d_%H%M%S')}"
                                 if title := match.group().strip():
@@ -653,10 +651,10 @@ class Missions(object):
                         else:
                             raise ValueError
                         continue
-                    elif action.strip() == "serial" and len(action.strip()) == 6:
+                    elif select == "serial":
                         device_list = await manage.operate_device()
                         continue
-                    elif action.strip() == "deploy" and len(action.strip()) == 6:
+                    elif select == "deploy":
                         deploy.dump_deploy(self.initial_deploy)
                         logger.warning("修改 deploy.json 文件后请完全退出编辑器进程再继续操作 ...")
                         if operation_system == "win32":
@@ -668,8 +666,8 @@ class Missions(object):
                         deploy.load_deploy(self.initial_deploy)
                         deploy.view_deploy()
                         continue
-                    elif action.isdigit():
-                        value, lower_bound, upper_bound = int(action), 5, 300
+                    elif select.isdigit():
+                        value, lower_bound, upper_bound = int(select), 5, 300
                         if value > 300 or value < 5:
                             Show.console.print(
                                 f"[bold #FFFF87]{lower_bound} <= [bold #FFD7AF]Time[/bold #FFD7AF] <= {upper_bound}[/bold #FFFF87]"
@@ -864,9 +862,8 @@ async def analyzer(
             end_frame = classify.data[-1]
 
         time_cost = end_frame.timestamp - start_frame.timestamp
-        before, after, final = start_frame.timestamp, end_frame.timestamp, time_cost
-        logger.info(f"图像分类结果: [开始帧: {before:.5f}] [结束帧: {after:.5f}] [总耗时: {final:.5f}]")
-        return before, after, final
+        logger.info(f"图像分类结果: [开始帧: {start_frame.timestamp:.5f}] [结束帧: {end_frame.timestamp:.5f}] [总耗时: {time_cost:.5f}]")
+        return start_frame.frame_id, end_frame.frame_id, time_cost
 
     async def frame_forge(frame):
         try:
