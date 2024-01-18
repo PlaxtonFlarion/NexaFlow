@@ -4,6 +4,7 @@ import json
 import time
 import shutil
 import asyncio
+import aiofiles
 import threading
 from loguru import logger
 from collections import defaultdict
@@ -326,17 +327,17 @@ class Report(object):
                 major_environment = Environment(loader=major_loader)
                 major_template = major_environment.get_template("template_main.html")
 
-                html = major_template.render(title=title, images_list=images_list)
-                report_html = os.path.join(query_path, f"{title}.html")
-                with open(file=report_html, mode="w", encoding="utf-8") as f:
-                    f.write(html)
-                    logger.info(f"生成聚合报告: {os.path.basename(report_html)}")
+                range_html_temp = major_template.render(title=title, images_list=images_list)
+                range_html = os.path.join(query_path, f"{title}.html")
+                async with aiofiles.open(file=range_html, mode="w", encoding="utf-8") as range_file:
+                    await range_file.write(range_html_temp)
+                    logger.info(f"生成聚合报告: {os.path.basename(range_html)}")
 
                 cost_list = [cost['stage']['cost'] for cost in images_list]
                 href_path = os.path.join(
                     os.path.basename(total_path),
                     title,
-                    os.path.basename(report_html)
+                    os.path.basename(range_html)
                 )
                 single = {
                     "case": title,
@@ -363,21 +364,21 @@ class Report(object):
             return e
         else:
             match_list = re.findall(r"(?<=Restore: ).*}", open_file)
-            range_list = [json.loads(file.replace("'", '"')) for file in match_list if file]
+            parts_list = [json.loads(file.replace("'", '"')) for file in match_list if file]
             grouped_dict = defaultdict(list)
-            for part in range_list:
-                parts = part.pop("title"), part.pop("total_path"), part.pop("query_path")
+            for part in parts_list:
+                parts = part.pop("total_path"), part.pop("title"), part.pop("query_path")
                 grouped_dict[parts].append(part)
 
             tasks = [
                 Report.ask_create_report(
                     major_loc,
-                    title,
                     os.path.join(file_name, os.path.basename(total_path)),
+                    title,
                     os.path.join(file_name, os.path.basename(total_path), title),
-                    range_list
+                    parts_list
                 )
-                for (title, total_path, query_path), range_list in grouped_dict.items()
+                for (total_path, title, query_path), parts_list in grouped_dict.items()
             ]
             merge_result = await asyncio.gather(*tasks)
             total_list = [merge for merge in merge_result]
@@ -387,10 +388,10 @@ class Report(object):
                 total_environment = Environment(loader=total_loader)
                 total_template = total_environment.get_template("template_information.html")
 
-                html = total_template.render(report_time=report_time, total_list=total_list)
+                total_html_temp = total_template.render(report_time=report_time, total_list=total_list)
                 total_html = os.path.join(file_name, "NexaFlow.html")
-                with open(file=total_html, mode="w", encoding="utf-8") as f:
-                    f.write(html)
+                async with aiofiles.open(file=total_html, mode="w", encoding="utf-8") as total_file:
+                    await total_file.write(total_html_temp)
                     logger.info(f"生成汇总报告: {total_html}")
             else:
                 logger.info("没有可以汇总的报告 ...")
