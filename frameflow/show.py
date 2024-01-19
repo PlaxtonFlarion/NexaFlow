@@ -143,16 +143,22 @@ class Show(object):
 
     @staticmethod
     def tips_document():
-        table = Table(show_header=True, header_style="bold #D7FF00", show_lines=True)
+        table = Table(
+            title="[bold #FF851B]NexaFlow Framix Select Command Line",
+            header_style="bold #D7FF00", title_justify="center",
+            show_header=True, show_lines=True
+        )
         table.add_column("选项", justify="center", width=12)
         table.add_column("参数", justify="center", width=12)
         table.add_column("说明", justify="center", width=44)
         table.add_row("[bold #FFAFAF]header", "[bold #AFD7FF]标题名", "[bold #DADADA]生成一个新标题文件夹")
         table.add_row("[bold #FFAFAF]serial", "[bold #8A8A8A]无参数", "[bold #DADADA]重新选择已连接的设备")
         table.add_row("[bold #FFAFAF]deploy", "[bold #8A8A8A]无参数", "[bold #DADADA]重新部署视频分析配置")
+        table.add_row("[bold #FFAFAF]create", "[bold #8A8A8A]无参数", "[bold #DADADA]生成视频分析汇总报告")
         table.add_row("[bold #FFAFAF]******", "[bold #8A8A8A]无参数", "[bold #DADADA]任意数字代表录制时长")
         Show.console.print(table)
 
 
 if __name__ == '__main__':
+    Show.tips_document()
     pass

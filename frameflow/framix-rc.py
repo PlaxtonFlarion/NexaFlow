@@ -184,6 +184,8 @@ class Missions(object):
                 ffmpeg=self.ffmpeg
             )
         )
+        if futures is None:
+            return None
         start, end, cost, classifier = futures
 
         with open(file=self.proto_path, mode="r", encoding="utf-8") as t:
@@ -208,14 +210,12 @@ class Missions(object):
         reporter.load(result)
 
         with DataBase(os.path.join(reporter.reset_path, "Framix_Data.db")) as database:
-            database.create(
-                'stocks',
-                'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
-            )
+            column_list = ['total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path']
+            database.create('stocks', *column_list)
             stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
             database.insert(
-                'stocks',
-                reporter.total_path, reporter.title, reporter.query_path, reporter.query, json.dumps(stage), reporter.frame_path, reporter.extra_path, reporter.proto_path
+                'stocks', column_list,
+                (reporter.total_path, reporter.title, reporter.query_path, reporter.query, json.dumps(stage), reporter.frame_path, reporter.extra_path, reporter.proto_path)
             )
 
         looper.run_until_complete(
@@ -252,6 +252,8 @@ class Missions(object):
                         ffmpeg=self.ffmpeg
                     )
                 )
+                if futures is None:
+                    continue
                 start, end, cost, classifier = futures
 
                 with open(file=self.proto_path, mode="r", encoding="utf-8") as t:
@@ -276,14 +278,12 @@ class Missions(object):
                 reporter.load(result)
 
                 with DataBase(os.path.join(reporter.reset_path, "Framix_Data.db")) as database:
-                    database.create(
-                        'stocks',
-                        'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
-                    )
+                    column_list = ['total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path']
+                    database.create('stocks', *column_list)
                     stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
                     database.insert(
-                        'stocks',
-                        reporter.total_path, reporter.title, reporter.query_path, reporter.query, json.dumps(stage), reporter.frame_path, reporter.extra_path, reporter.proto_path
+                        'stocks', column_list,
+                        (reporter.total_path, reporter.title, reporter.query_path, reporter.query, json.dumps(stage), reporter.frame_path, reporter.extra_path, reporter.proto_path)
                     )
 
         looper.run_until_complete(
@@ -610,7 +610,11 @@ class Missions(object):
 
                 async with aiofiles.open(file=self.proto_path, mode="r", encoding="utf-8") as t:
                     proto_file = await t.read()
-                for (start, end, cost, classifier), (*_, total_path, title, query_path, query, frame_path, extra_path, proto_path) in zip(futures, todo_list):
+                for future, todo in zip(futures, todo_list):
+                    if future is None:
+                        continue
+                    start, end, cost, classifier = future
+                    *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo
                     original_inform = reporter.draw(
                         classifier_result=classifier,
                         proto_path=proto_path,
@@ -631,14 +635,12 @@ class Missions(object):
                     reporter.load(result)
 
                     with DataBase(os.path.join(os.path.dirname(total_path), "Nexa_Recovery", "Framix_Data.db")) as database:
-                        database.create(
-                            'stocks',
-                            'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
-                        )
+                        column_list = ['total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path']
+                        database.create('stocks', *column_list)
                         stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
                         database.insert(
-                            'stocks',
-                            total_path, title, query_path, query, json.dumps(stage), frame_path, extra_path, proto_path
+                            'stocks', column_list,
+                            (total_path, title, query_path, query, json.dumps(stage), frame_path, extra_path, proto_path)
                         )
 
         manage = Manage(self.adb)
@@ -691,8 +693,7 @@ class Missions(object):
                         continue
                     elif select == "create":
                         if len(reporter.range_list) > 0:
-                            create_list = [os.path.dirname(rs["total_path"]) for rs in reporter.range_list]
-                            await self.combines(create_list)
+                            await self.combines([os.path.dirname(reporter.total_path)])
                             break
                         else:
                             Show.console.print(f"[bold red]没有可以生成的报告 ...[/bold red]")
@@ -1056,7 +1057,7 @@ if __name__ == '__main__':
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
                 results = pool.starmap(missions.video_dir_task, [(i, ) for i in cmd_lines.whole])
-            Report.merge_report(results, _total_path)
+            Report.merge_report(results, missions.total_path)
         sys.exit(0)
     elif cmd_lines.input and len(cmd_lines.input) > 0:
         members = len(cmd_lines.input)

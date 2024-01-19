@@ -958,7 +958,7 @@ if __name__ == '__main__':
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
                 results = pool.starmap(missions.video_dir_task, [(i, ) for i in cmd_lines.whole])
-            Report.merge_report(results, _total_path)
+            Report.merge_report(results, missions.total_path)
         sys.exit(0)
     elif cmd_lines.input and len(cmd_lines.input) > 0:
         members = len(cmd_lines.input)

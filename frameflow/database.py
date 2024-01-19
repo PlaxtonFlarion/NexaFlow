@@ -16,14 +16,15 @@ class DataBase(object):
 
     def create(self, table_name: str, *args):
         columns = ', '.join(args)
-        sql = f'CREATE TABLE IF NOT EXISTS {table_name} ({columns})'
+        sql = f'CREATE TABLE IF NOT EXISTS {table_name} (id INTEGER PRIMARY KEY AUTOINCREMENT, {columns})'
         self.cursor.execute(sql)
         self.conn.commit()
 
-    def insert(self, table_name: str, *args):
-        placeholders = ', '.join(['?'] * len(args))
-        sql = f'INSERT INTO {table_name} VALUES ({placeholders})'
-        self.cursor.execute(sql, args)
+    def insert(self, table_name: str, column_names: list, values: tuple):
+        placeholders = ', '.join(['?'] * len(values))
+        columns = ', '.join(column_names)
+        sql = f'INSERT INTO {table_name} ({columns}) VALUES ({placeholders})'
+        self.cursor.execute(sql, values)
         self.conn.commit()
 
     def demand(self, table_name: str) -> tuple:

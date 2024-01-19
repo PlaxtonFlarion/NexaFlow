@@ -253,7 +253,7 @@ class Report(object):
             logger.info(f"合并汇总报告: {total_html_path}\n\n")
 
     @staticmethod
-    async def ask_create_report(major_loc, title, total_path, query_path, range_list):
+    async def ask_create_report(major_loc, total_path, title, query_path, range_list):
 
         async def handler_inform(result):
             handler_list = []
