@@ -160,5 +160,4 @@ class Show(object):
 
 
 if __name__ == '__main__':
-    Show.tips_document()
     pass
