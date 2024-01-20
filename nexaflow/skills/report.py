@@ -223,37 +223,169 @@ class Report(object):
             logger.info(f"生成汇总报告: {total_html_path}\n\n")
 
     @staticmethod
-    def merge_report(merge_list: List[str], loader_merge_loc: str) -> None:
+    def merge_report(merge_list: List[str], merge_loc: str, quick: bool) -> None:
         merge_path = os.path.join(
             os.path.dirname(os.path.dirname(merge_list[0])),
-            "Merge_Nexa_" + time.strftime("%Y%m%d%H%M%S"),
+            "Merge_Report_" + time.strftime("%Y%m%d%H%M%S"),
             "Nexa_Collection"
         )
         os.makedirs(merge_path, exist_ok=True)
+
+        pattern = "View" if quick else "Recovery"
+        temp = "template_info.html" if quick else "template_information.html"
+        final_name = "NexaFlow_Quick_View.html" if quick else "NexaFlow.html"
+
         log_restore = []
         for merge in merge_list:
             logs = os.path.join(os.path.dirname(merge), "Nexa_Recovery", "nexaflow.log")
             with open(file=logs, mode="r", encoding="utf-8") as f:
-                log_restore.extend(re.findall(r"(?<=Recovery: ).*}", f.read()))
+                log_restore.extend(re.findall(fr"(?<={pattern}: ).*}}", f.read()))
             shutil.copytree(
                 merge, merge_path, dirs_exist_ok=True,
-                ignore=shutil.ignore_patterns("NexaFlow.html", "nexaflow.log")
+                ignore=shutil.ignore_patterns("NexaFlow.html", "NexaFlow_Quick_View.html", "nexaflow.log")
             )
 
-        loader = FileSystemLoader(loader_merge_loc)
+        loader = FileSystemLoader(merge_loc)
         environment = Environment(loader=loader)
-        template = environment.get_template("template_information.html")
-        report_time = time.strftime('%Y.%m.%d %H:%M:%S')
-        total_list = [json.loads(file) for file in log_restore]
-        html = template.render(report_time=report_time, total_list=total_list)
+        template = environment.get_template(temp)
 
-        total_html_path = os.path.join(os.path.dirname(merge_path), "NexaFlow.html")
+        total_list = [json.loads(file) for file in log_restore]
+        html = template.render(
+            report_time=time.strftime("%Y.%m.%d %H:%M:%S"),
+            total_list=total_list
+        )
+
+        total_html_path = os.path.join(os.path.dirname(merge_path), final_name)
         with open(file=total_html_path, mode="w", encoding="utf-8") as f:
             f.write(html)
             logger.info(f"合并汇总报告: {total_html_path}\n\n")
 
     @staticmethod
-    async def ask_create_report(major_loc, total_path, title, query_path, range_list):
+    async def ask_quick_report(total_path: str, title: str, query_path: str, parts_list: list, quick_loc: str):
+
+        async def handler_inform(result):
+            handler_list = []
+            query = result.get("query", "query")
+            frame = result.get("frame", "frame")
+            stage = result.get("stage", {"start": 0, "end": 0, "cost": 0})
+
+            async def handler_frame():
+                handler_image_list = []
+                for img in os.listdir(
+                        os.path.join(
+                            query_path, query, os.path.basename(frame)
+                        )
+                ):
+                    img_idx = int(re.search(r"(?<=frame_)\d+", img).group())
+                    img_src = os.path.join(query, os.path.basename(frame), img)
+                    handler_image_list.append(
+                        {
+                            "src": img_src,
+                            "frames_id": img_idx,
+                        }
+                    )
+                handler_image_list.sort(key=lambda x: x["frames_id"])
+                return handler_image_list
+
+            image_list = await handler_frame()
+
+            handler_list.append(
+                {
+                    "query": query,
+                    "stage": stage,
+                    "image_list": image_list
+                }
+            )
+            return handler_list
+
+        async def handler_start():
+            single = {}
+            if len(parts_list) > 0:
+                tasks = [handler_inform(result) for result in parts_list]
+                results = await asyncio.gather(*tasks)
+                images_list = [ele for res in results for ele in res]
+
+                major_loader = FileSystemLoader(quick_loc)
+                major_environment = Environment(loader=major_loader)
+                major_template = major_environment.get_template("template_view.html")
+
+                range_html_temp = major_template.render(
+                    title="Framix",
+                    report_time=time.strftime('%Y.%m.%d %H:%M:%S'),
+                    images_list=images_list
+                )
+                range_html = os.path.join(query_path, f"{title}.html")
+                async with aiofiles.open(file=range_html, mode="w", encoding="utf-8") as range_file:
+                    await range_file.write(range_html_temp)
+                    logger.info(f"生成聚合报告: {os.path.basename(range_html)}")
+
+                cost_list = [cost['stage']['cost'] for cost in images_list]
+                href_path = os.path.join(
+                    os.path.basename(total_path),
+                    title,
+                    os.path.basename(range_html)
+                )
+                single = {
+                    "case": title,
+                    "cost_list": cost_list,
+                    "href": href_path
+                }
+                logger.debug("View: " + json.dumps(single, ensure_ascii=False))
+            else:
+                logger.info("没有可以聚合的报告 ...")
+
+            logger.info(f"✪✪✪✪✪✪✪✪✪✪ {title} ✪✪✪✪✪✪✪✪✪✪\n\n")
+            return single
+
+        return await handler_start()
+
+    @staticmethod
+    async def ask_quick_total_report(file_name: str, quick_loc: str, total_loc: str):
+        try:
+            with open(file=os.path.join(file_name, "Nexa_Recovery", "nexaflow.log"), mode="r", encoding="utf-8") as f:
+                open_file = f.read()
+        except FileNotFoundError as e:
+            return e
+        else:
+            match_list = re.findall(r"(?<=Quick: ).*}", open_file)
+            parts_list = [json.loads(file.replace("'", '"')) for file in match_list if file]
+            grouped_dict = defaultdict(list)
+            for part in parts_list:
+                parts = part.pop("total_path"), part.pop("title"), part.pop("query_path")
+                grouped_dict[parts].append(part)
+
+            tasks = [
+                Report.ask_quick_report(
+                    os.path.join(file_name, os.path.basename(total_path)),
+                    title,
+                    os.path.join(file_name, os.path.basename(total_path), title),
+                    parts_list,
+                    quick_loc
+                )
+                for (total_path, title, query_path), parts_list in grouped_dict.items()
+            ]
+            merge_result = await asyncio.gather(*tasks)
+            total_list = [merge for merge in merge_result]
+
+            if len(total_list) > 0:
+                total_loader = FileSystemLoader(total_loc)
+                total_environment = Environment(loader=total_loader)
+                total_template = total_environment.get_template("template_info.html")
+
+                report_time = time.strftime('%Y.%m.%d %H:%M:%S')
+                total_html_temp = total_template.render(
+                    report_time=report_time,
+                    total_list=total_list
+                )
+                total_html = os.path.join(file_name, "NexaFlow_Quick_View.html")
+                async with aiofiles.open(file=total_html, mode="w", encoding="utf-8") as total_file:
+                    await total_file.write(total_html_temp)
+                    logger.info(f"生成汇总报告: {total_html}")
+            else:
+                logger.info("没有可以汇总的报告 ...")
+
+    @staticmethod
+    async def ask_create_report(total_path: str, title: str, query_path: str, parts_list: list, major_loc: str):
 
         async def handler_inform(result):
             handler_list = []
@@ -318,8 +450,8 @@ class Report(object):
 
         async def handler_start():
             single = {}
-            if len(range_list) > 0:
-                tasks = [handler_inform(result) for result in range_list]
+            if len(parts_list) > 0:
+                tasks = [handler_inform(result) for result in parts_list]
                 results = await asyncio.gather(*tasks)
                 images_list = [ele for res in results for ele in res]
 
@@ -327,7 +459,10 @@ class Report(object):
                 major_environment = Environment(loader=major_loader)
                 major_template = major_environment.get_template("template_main.html")
 
-                range_html_temp = major_template.render(title=title, images_list=images_list)
+                range_html_temp = major_template.render(
+                    title=title,
+                    images_list=images_list
+                )
                 range_html = os.path.join(query_path, f"{title}.html")
                 async with aiofiles.open(file=range_html, mode="w", encoding="utf-8") as range_file:
                     await range_file.write(range_html_temp)
@@ -355,8 +490,7 @@ class Report(object):
         return await handler_start()
 
     @staticmethod
-    async def ask_create_total_report(file_name: str, major_loc: str, loader_total_loc: str):
-        report_time = time.strftime('%Y.%m.%d %H:%M:%S')
+    async def ask_create_total_report(file_name: str, major_loc: str, total_loc: str):
         try:
             with open(file=os.path.join(file_name, "Nexa_Recovery", "nexaflow.log"), mode="r", encoding="utf-8") as f:
                 open_file = f.read()
@@ -372,11 +506,11 @@ class Report(object):
 
             tasks = [
                 Report.ask_create_report(
-                    major_loc,
                     os.path.join(file_name, os.path.basename(total_path)),
                     title,
                     os.path.join(file_name, os.path.basename(total_path), title),
-                    parts_list
+                    parts_list,
+                    major_loc
                 )
                 for (total_path, title, query_path), parts_list in grouped_dict.items()
             ]
@@ -384,11 +518,15 @@ class Report(object):
             total_list = [merge for merge in merge_result]
 
             if len(total_list) > 0:
-                total_loader = FileSystemLoader(loader_total_loc)
+                total_loader = FileSystemLoader(total_loc)
                 total_environment = Environment(loader=total_loader)
                 total_template = total_environment.get_template("template_information.html")
 
-                total_html_temp = total_template.render(report_time=report_time, total_list=total_list)
+                report_time = time.strftime('%Y.%m.%d %H:%M:%S')
+                total_html_temp = total_template.render(
+                    report_time=report_time,
+                    total_list=total_list
+                )
                 total_html = os.path.join(file_name, "NexaFlow.html")
                 async with aiofiles.open(file=total_html, mode="w", encoding="utf-8") as total_file:
                     await total_file.write(total_html_temp)

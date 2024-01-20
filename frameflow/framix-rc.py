@@ -43,6 +43,7 @@ _tools_path = os.path.join(_job_path, "archivix", "tools")
 _model_path = os.path.join(_job_path, "archivix", "molds", "model.h5")
 _total_path = os.path.join(_job_path, "archivix", "pages")
 _major_path = os.path.join(_job_path, "archivix", "pages")
+_quick_path = os.path.join(_job_path, "archivix", "pages")
 _proto_path = os.path.join(_job_path, "archivix", "pages", "template_extra.html")
 _initial_report = os.path.join(_universal, "framix.report")
 _initial_deploy = os.path.join(_universal, "framix.source")
@@ -114,6 +115,7 @@ class Parser(object):
         parser.add_argument('--boost', action='store_true', help='快速模式')
         parser.add_argument('--color', action='store_true', help='彩色模式')
         parser.add_argument('--focus', action='store_true', help='转换视频')
+        parser.add_argument('--quick', action='store_true', help='直接拆帧')
         parser.add_argument('--shape', nargs='?', const=None, type=parse_shape, help='图片尺寸')
         parser.add_argument('--scale', nargs='?', const=None, type=parse_scale, help='缩放比例')
         parser.add_argument('--crops', action='append', help='获取区域')
@@ -127,11 +129,12 @@ class Parser(object):
 class Missions(object):
 
     def __init__(self, *args, **kwargs):
-        self.boost, self.color, self.focus, self.crops, self.omits, self.shape, self.scale = args
+        self.boost, self.color, self.focus, self.quick, self.crops, self.omits, self.shape, self.scale = args
 
         self.model_path = kwargs["model_path"]
         self.total_path = kwargs["total_path"]
         self.major_path = kwargs["major_path"]
+        self.quick_path = kwargs["quick_path"]
         self.proto_path = kwargs["proto_path"]
         self.initial_report = kwargs["initial_report"]
         self.initial_deploy = kwargs["initial_deploy"]
@@ -158,10 +161,10 @@ class Missions(object):
             for root, _, file in os.walk(folder) if file
         ]
 
-    def video_task(self, input_video):
+    def video_task(self, input_video: str):
         reporter = Report(total_path=self.initial_report)
         reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
-        reporter.query = f"{random.randint(10, 99)}"
+        reporter.query = time.strftime('%Y%m%d%H%M%S')
         new_video_path = os.path.join(reporter.video_path, os.path.basename(input_video))
 
         shutil.copy(input_video, new_video_path)
@@ -172,12 +175,37 @@ class Missions(object):
         )
         deploy.load_deploy(self.initial_deploy)
 
+        looper = asyncio.get_event_loop()
+
+        if self.quick:
+            looper.run_until_complete(
+                ask_video_detach(
+                    self.ffmpeg, deploy.fps, new_video_path, reporter.frame_path
+                )
+            )
+            result = {
+                "total_path": reporter.total_path,
+                "title": reporter.title,
+                "query_path": reporter.query_path,
+                "query": reporter.query,
+                "stage": {"start": 0, "end": 0, "cost": 0},
+                "frame": reporter.frame_path,
+            }
+            logger.debug(f"Quick: {result}")
+            reporter.load(result)
+
+            looper.run_until_complete(
+                reporter.ask_quick_total_report(
+                    os.path.dirname(reporter.total_path), self.quick_path, self.quick_path
+                )
+            )
+            return reporter.total_path
+
         kc = KerasClassifier(
             target_size=deploy.target_size, data_size=deploy.target_size
         )
         kc.load_model(self.model_path)
 
-        looper = asyncio.get_event_loop()
         futures = looper.run_until_complete(
             analyzer(
                 kc, deploy, new_video_path, reporter.frame_path, reporter.extra_path,
@@ -223,8 +251,9 @@ class Missions(object):
                 os.path.dirname(reporter.total_path), self.major_path, self.total_path
             )
         )
+        return reporter.total_path
 
-    def video_dir_task(self, folder):
+    def video_dir_task(self, folder: str):
         reporter = Report(total_path=self.initial_report)
 
         deploy = Deploy(
@@ -233,12 +262,44 @@ class Missions(object):
         )
         deploy.load_deploy(self.initial_deploy)
 
+        looper = asyncio.get_event_loop()
+
+        if self.quick:
+            for video in self.only_video(folder):
+                reporter.title = video.title
+                for path in video.sheet:
+                    reporter.query = os.path.basename(path).split(".")[0]
+                    shutil.copy(path, reporter.video_path)
+                    new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
+
+                    looper.run_until_complete(
+                        ask_video_detach(
+                            self.ffmpeg, deploy.fps, new_video_path, reporter.frame_path
+                        )
+                    )
+                    result = {
+                        "total_path": reporter.total_path,
+                        "title": reporter.title,
+                        "query_path": reporter.query_path,
+                        "query": reporter.query,
+                        "stage": {"start": 0, "end": 0, "cost": 0},
+                        "frame": reporter.frame_path,
+                    }
+                    logger.debug(f"Quick: {result}")
+                    reporter.load(result)
+
+            looper.run_until_complete(
+                reporter.ask_quick_total_report(
+                    os.path.dirname(reporter.total_path), self.quick_path, self.quick_path
+                )
+            )
+            return reporter.total_path
+
         kc = KerasClassifier(
             target_size=deploy.target_size, data_size=deploy.target_size
         )
         kc.load_model(self.model_path)
 
-        looper = asyncio.get_event_loop()
         for video in self.only_video(folder):
             reporter.title = video.title
             for path in video.sheet:
@@ -293,7 +354,7 @@ class Missions(object):
         )
         return reporter.total_path
 
-    def train_model(self, video_file):
+    def train_model(self, video_file: str):
         reporter = Report(total_path=self.initial_report)
         reporter.title = f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
         if not os.path.exists(reporter.query_path):
@@ -340,7 +401,7 @@ class Missions(object):
 
         os.remove(video_temp_file)
 
-    def build_model(self, src):
+    def build_model(self, src: str):
         if os.path.isdir(src):
             real_path, file_list = "", []
             logger.debug(f"搜索文件夹: {src}")
@@ -369,7 +430,7 @@ class Missions(object):
         else:
             logger.error("训练模型需要一个分类文件夹 ...")
 
-    async def combines(self, merge):
+    async def combines(self, merge: list):
         tasks = [
             Report.ask_create_total_report(m, self.total_path, self.major_path) for m in merge
         ]
@@ -504,6 +565,7 @@ class Missions(object):
         stop_event = asyncio.Event()
         fail_event = asyncio.Event()
 
+        # Time
         async def timepiece(amount):
             while True:
                 if head_event.is_set():
@@ -528,6 +590,7 @@ class Missions(object):
                     break
                 await asyncio.sleep(0.2)
 
+        # Stream
         async def input_stream(transports):
             async for line in transports.stdout:
                 logger.info(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
@@ -538,6 +601,7 @@ class Missions(object):
                     done_event.set()
                     break
 
+        # Stream
         async def error_stream(transports):
             async for line in transports.stderr:
                 logger.info(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
@@ -545,6 +609,7 @@ class Missions(object):
                     fail_event.set()
                     break
 
+        # Screen Copy
         async def start_record(serial: str, dst: str):
             temp_video = f"{os.path.join(dst, 'screen')}_{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
             cmd = [
@@ -556,6 +621,7 @@ class Missions(object):
             await asyncio.sleep(1)
             return temp_video, transports
 
+        # Screen Copy
         async def stop_record(temp_video, transports):
             if operation_system == "win32":
                 await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
@@ -572,6 +638,7 @@ class Missions(object):
                 await asyncio.sleep(0.2)
             logger.error("录制视频失败,请重新录制视频 ...")
 
+        # Mode
         async def commence():
             await Terminal.cmd_line(self.adb, "wait-for-device")
             todo_list = []
@@ -589,6 +656,7 @@ class Missions(object):
                 await asyncio.gather(
                     *(stop_record(temp_video, transports) for temp_video, transports, *_ in todo_list)
                 )
+
             else:
                 group_fmt_dirs = reporter.clock()
                 for d in device_list:
@@ -604,6 +672,13 @@ class Missions(object):
                 await asyncio.gather(
                     *(stop_record(temp_video, transports) for temp_video, transports, *_ in todo_list)
                 )
+
+                if self.quick:
+                    await asyncio.gather(
+                        *(ask_video_detach(self.ffmpeg, deploy.fps, temp_video, frame_path) for temp_video, *_, frame_path, *_ in todo_list)
+                    )
+                    return None
+
                 futures = await asyncio.gather(
                     *(analyzer(kc, deploy, temp_video, frame_path, extra_path, ffmpeg=self.ffmpeg) for temp_video, *_, frame_path, extra_path, _ in todo_list)
                 )
@@ -613,6 +688,7 @@ class Missions(object):
                 for future, todo in zip(futures, todo_list):
                     if future is None:
                         continue
+
                     start, end, cost, classifier = future
                     *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo
                     original_inform = reporter.draw(
@@ -643,9 +719,11 @@ class Missions(object):
                             (total_path, title, query_path, query, json.dumps(stage), frame_path, extra_path, proto_path)
                         )
 
+        # Start
         manage = Manage(self.adb)
         device_list = await manage.operate_device()
 
+        # Initialization ===============================================================================================
         reporter = Report(self.initial_report)
         if alone:
             reporter.title = f"Record_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
@@ -662,7 +740,9 @@ class Missions(object):
             target_size=deploy.target_size, data_size=deploy.target_size
         )
         kc.load_model(self.model_path)
+        # Initialization ===============================================================================================
 
+        # Loop
         timer_mode = 5
         while True:
             try:
@@ -740,8 +820,8 @@ def worker_init(log_level: str):
 
 async def ask_video_change(ffmpeg, fps, src, dst):
     cmd = [
-        ffmpeg,
-        "-i", src, "-vf", f"fps={fps}", "-c:v", "libx264", "-crf", "18", "-c:a", "copy",
+        ffmpeg, "-i", src,
+        "-vf", f"fps={fps}", "-c:v", "libx264", "-crf", "18", "-c:a", "copy",
         dst
     ]
     await Terminal.cmd_line(*cmd)
@@ -749,20 +829,14 @@ async def ask_video_change(ffmpeg, fps, src, dst):
 
 async def ask_video_detach(ffmpeg, fps, src, dst):
     cmd = [
-        ffmpeg,
-        "-i", src, "-vf", f"fps={fps}",
+        ffmpeg, "-i", src,
+        "-vf", f"fps={fps}",
         f"{os.path.join(dst, 'frame_%05d.png')}"
     ]
     await Terminal.cmd_line(*cmd)
 
 
-async def analyzer(
-        kc: "KerasClassifier",
-        deploy: "Deploy",
-        vision_path: str,
-        *args,
-        **kwargs
-):
+async def analyzer(kc: "KerasClassifier", deploy: "Deploy", vision_path: str, *args, **kwargs):
 
     frame_path, extra_path = args
     ffmpeg = kwargs["ffmpeg"]
@@ -960,7 +1034,7 @@ async def analyzer(
     return start, end, cost, classifier
 
 
-async def main():
+async def ask_main():
     if cmd_lines.flick or cmd_lines.alone:
         await missions.analysis(cmd_lines.alone)
     elif cmd_lines.paint:
@@ -984,7 +1058,7 @@ if __name__ == '__main__':
     _level = "DEBUG" if cmd_lines.debug else "INFO"
     worker_init(_level)
 
-    # Debug Mode
+    # Debug Mode =======================================================================================================
     logger.debug(f"Level: {_level}")
 
     logger.debug(f"System: {operation_system}")
@@ -994,6 +1068,7 @@ if __name__ == '__main__':
     logger.debug(f"Model: {_model_path}")
     logger.debug(f"Html-Template: {_total_path}")
     logger.debug(f"Html-Template: {_major_path}")
+    logger.debug(f"Html-Template: {_quick_path}")
     logger.debug(f"Html-Template: {_proto_path}")
 
     logger.debug(f"adb: {_adb}")
@@ -1002,12 +1077,16 @@ if __name__ == '__main__':
 
     for env in os.environ["PATH"].split(os.path.pathsep):
         logger.debug(env)
+    # Debug Mode =======================================================================================================
 
     _boost, _color, _focus = cmd_lines.boost, cmd_lines.color, cmd_lines.focus
+    _quick = cmd_lines.quick
     _shape, _scale = cmd_lines.shape, cmd_lines.scale
 
+    # Debug Mode =======================================================================================================
     cpu = os.cpu_count()
     logger.debug(f"CPU Core: {cpu}")
+    # Debug Mode =======================================================================================================
 
     _crops = []
     if cmd_lines.crops and len(cmd_lines.crops) > 0:
@@ -1037,14 +1116,15 @@ if __name__ == '__main__':
     option.dump_option(_initial_option)
     _initial_report = option.total_path if option.total_path else _initial_report
 
-    # Debug Mode
+    # Debug Mode =======================================================================================================
     logger.debug(f"Initial-Report: {_initial_report}")
     logger.debug(f"Initial-Deploy: {_initial_deploy}")
     logger.debug(f"Initial-Option: {_initial_option}")
+    # Debug Mode =======================================================================================================
 
     missions = Missions(
-        _boost, _color, _focus, _crops, _omits, _shape, _scale,
-        model_path=_model_path, total_path=_total_path, major_path=_major_path, proto_path=_proto_path,
+        _boost, _color, _focus, _quick, _crops, _omits, _shape, _scale,
+        model_path=_model_path, total_path=_total_path, major_path=_major_path, quick_path=_quick_path, proto_path=_proto_path,
         initial_report=_initial_report, initial_deploy=_initial_deploy, initial_option=_initial_option,
         adb=_adb, ffmpeg=_ffmpeg, scrcpy=_scrcpy,
     )
@@ -1057,7 +1137,7 @@ if __name__ == '__main__':
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
                 results = pool.starmap(missions.video_dir_task, [(i, ) for i in cmd_lines.whole])
-            Report.merge_report(results, missions.total_path)
+            Report.merge_report(results, missions.total_path, missions.quick)
         sys.exit(0)
     elif cmd_lines.input and len(cmd_lines.input) > 0:
         members = len(cmd_lines.input)
@@ -1066,7 +1146,8 @@ if __name__ == '__main__':
         else:
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
-                pool.starmap(missions.video_task, [(i, ) for i in cmd_lines.input])
+                results = pool.starmap(missions.video_task, [(i, ) for i in cmd_lines.input])
+            Report.merge_report(results, missions.total_path, missions.quick)
         sys.exit(0)
     elif cmd_lines.train and len(cmd_lines.train) > 0:
         members = len(cmd_lines.train)
@@ -1089,7 +1170,7 @@ if __name__ == '__main__':
     else:
         try:
             loop = asyncio.get_event_loop()
-            loop.run_until_complete(main())
+            loop.run_until_complete(ask_main())
             sys.exit(0)
         except KeyboardInterrupt:
             sys.exit(0)
