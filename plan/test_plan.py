@@ -7,6 +7,9 @@ from nexaflow.skills.device import Manage
 AUDIO_DIRS = os.path.join(Constants.WORK, "audio")
 MODELS = os.path.join(Constants.WORK, "model", "model.h5")
 REPORT = os.path.join(Constants.WORK, "report")
+TEMPLATE_MAIN_TOTAL = os.path.join(Constants.NEXA, "template", "template_main_total.html")
+TEMPLATE_MAIN = os.path.join(Constants.NEXA, "template", "template_main.html")
+ALIEN = os.path.join(Constants.NEXA, "template", "template_alien.html")
 
 
 class TestPlan(object):
@@ -43,8 +46,8 @@ class TestPlan(object):
             self.__device.start_app(self.activity)
 
             self.__alynex.framix.crop_hook(0, 0.2, 1, 0.8)
-            self.__alynex.analyzer()
-        self.__alynex.report.create_report()
+            self.__alynex.analyzer(ALIEN)
+        self.__alynex.report.create_report(TEMPLATE_MAIN)
 
     def test_02(self):
         query = "讲个笑话"
@@ -52,8 +55,8 @@ class TestPlan(object):
         for i in range(1):
             self.__alynex.report.query = f"{i + 4}_{query}"
             self.__alynex.framix.crop_hook(0, 0.1, 1, 0.9)
-            self.__alynex.analyzer()
-        self.__alynex.report.create_report()
+            self.__alynex.analyzer(ALIEN)
+        self.__alynex.report.create_report(TEMPLATE_MAIN)
 
     def __enter__(self):
         # self.__device.force_filter(self.application)
@@ -64,7 +67,7 @@ class TestPlan(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         # self.__device.force_filter(self.application)
         # self.__device.force_stop(self.activity)
-        self.__alynex.report.create_total_report()
+        self.__alynex.report.create_total_report(TEMPLATE_MAIN_TOTAL)
 
 
 if __name__ == '__main__':

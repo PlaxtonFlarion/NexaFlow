@@ -90,7 +90,10 @@ class Show(object):
             "[bold #FFDC00]--whole", "[bold #7FDBFF]视频集合", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]分析全部视频"
         )
         table_major.add_row(
-            "[bold #FFDC00]--merge", "[bold #7FDBFF]报告集合", "[bold #FFAFAF]多次", "", "[bold #39CCCC]聚合报告"
+            "[bold #FFDC00]--merge", "[bold #7FDBFF]报告集合", "[bold #FFAFAF]多次", "", "[bold #39CCCC]聚合分析报告"
+        )
+        table_major.add_row(
+            "[bold #FFDC00]--union", "[bold #7FDBFF]报告集合", "[bold #FFAFAF]多次", "", "[bold #39CCCC]聚合拆帧报告"
         )
         table_major.add_row(
             "[bold #FFDC00]--train", "[bold #7FDBFF]视频文件", "[bold #FFAFAF]多次", "", "[bold #39CCCC]归类图片文件"
@@ -155,6 +158,7 @@ class Show(object):
         table.add_row("[bold #FFAFAF]serial", "[bold #8A8A8A]无参数", "[bold #DADADA]重新选择已连接的设备")
         table.add_row("[bold #FFAFAF]deploy", "[bold #8A8A8A]无参数", "[bold #DADADA]重新部署视频分析配置")
         table.add_row("[bold #FFAFAF]create", "[bold #8A8A8A]无参数", "[bold #DADADA]生成视频分析汇总报告")
+        table.add_row("[bold #FFAFAF]invent", "[bold #8A8A8A]无参数", "[bold #DADADA]生成视频拆帧汇总报告")
         table.add_row("[bold #FFAFAF]******", "[bold #8A8A8A]无参数", "[bold #DADADA]任意数字代表录制时长")
         Show.console.print(table)
 

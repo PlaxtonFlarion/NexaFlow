@@ -7,6 +7,9 @@ from nexaflow.skills.alynex import Alynex
 AUDIO_DIRS = os.path.join(Constants.WORK, "audio")
 MODELS = os.path.join(Constants.WORK, "model", "model.h5")
 REPORT = os.path.join(Constants.WORK, "report")
+TEMPLATE_MAIN_TOTAL = os.path.join(Constants.NEXA, "template", "template_main_total.html")
+TEMPLATE_MAIN = os.path.join(Constants.NEXA, "template", "template_main.html")
+ALIEN = os.path.join(Constants.NEXA, "template", "template_alien.html")
 
 
 def multi_audio_task():
@@ -40,9 +43,9 @@ def multi_audio_task():
             device.ask_force_filter(application)
             device.ask_start_app(activity)
             alynex.framix.crop_hook(0, 0.2, 1, 0.8)
-            alynex.analyzer(focus=True)
-        alynex.report.create_report()
-    alynex.report.create_total_report()
+            alynex.analyzer(ALIEN, focus=True)
+        alynex.report.create_report(TEMPLATE_MAIN)
+    alynex.report.create_total_report(TEMPLATE_MAIN_TOTAL)
     print(f"Total Time Cost: {(time.time() - start_time):.2f} 秒")
 
 

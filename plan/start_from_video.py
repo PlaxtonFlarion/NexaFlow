@@ -9,6 +9,9 @@ from nexaflow.skills.report import Report
 MERGE_TEMPLATE = os.path.join(Constants.NEXA, "template")
 MODELS = os.path.join(Constants.WORK, "model", "model.h5")
 REPORT = os.path.join(Constants.WORK, "report")
+TEMPLATE_MAIN_TOTAL = os.path.join(Constants.NEXA, "template", "template_main_total.html")
+TEMPLATE_MAIN = os.path.join(Constants.NEXA, "template", "template_main.html")
+ALIEN = os.path.join(Constants.NEXA, "template", "template_alien.html")
 
 
 def multi_video_task(folder: str) -> str:
@@ -20,9 +23,9 @@ def multi_video_task(folder: str) -> str:
             alynex.report.query = os.path.basename(path).split(".")[0]
             shutil.copy(path, alynex.report.video_path)
             alynex.framix.crop_hook(0, 0.2, 1, 0.8)
-            alynex.analyzer()
-        alynex.report.create_report()
-    alynex.report.create_total_report()
+            alynex.analyzer(ALIEN)
+        alynex.report.create_report(TEMPLATE_MAIN)
+    alynex.report.create_total_report(TEMPLATE_MAIN_TOTAL)
     return alynex.report.total_path
 
 

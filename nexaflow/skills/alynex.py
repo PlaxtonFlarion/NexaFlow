@@ -252,10 +252,11 @@ class Alynex(object):
         __repr__ = __str__
 
     def analyzer(
-            self, boost: bool = True, color: bool = True, focus: bool = False, **kwargs
+            self, alien: str, boost: bool = True, color: bool = True, focus: bool = False, **kwargs
     ) -> Optional["Alynex._Review"]:
         """
         智能分类帧数据
+        :param alien: 报告模版文件
         :param boost: 跳帧模式
         :param color: 彩色模式
         :param focus: 转换视频
@@ -364,6 +365,7 @@ class Alynex(object):
             original_inform = self.report.draw(
                 classifier_result=classify,
                 proto_path=self.report.proto_path,
+                template_file=self.report.get_template(alien),
                 target_size=Alynex.target_size
             )
             result = {
