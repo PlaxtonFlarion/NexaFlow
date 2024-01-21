@@ -109,7 +109,8 @@ class Parser(object):
         parser.add_argument('--paint', action='store_true', help='绘制分割线条')
         parser.add_argument('--input', action='append', help='分析单个视频')
         parser.add_argument('--whole', action='append', help='分析全部视频')
-        parser.add_argument('--merge', action='append', help='聚合报告')
+        parser.add_argument('--merge', action='append', help='聚合时间戳报告')
+        parser.add_argument('--union', action='append', help='聚合视频帧报告')
         parser.add_argument('--train', action='append', help='归类图片文件')
         parser.add_argument('--build', action='append', help='训练模型文件')
 
@@ -117,7 +118,7 @@ class Parser(object):
         parser.add_argument('--boost', action='store_true', help='快速模式')
         parser.add_argument('--color', action='store_true', help='彩色模式')
         parser.add_argument('--focus', action='store_true', help='转换视频')
-        parser.add_argument('--quick', action='store_true', help='直接拆帧')
+        parser.add_argument('--quick', action='store_true', help='快速拆帧')
         parser.add_argument('--shape', nargs='?', const=None, type=parse_shape, help='图片尺寸')
         parser.add_argument('--scale', nargs='?', const=None, type=parse_scale, help='缩放比例')
         parser.add_argument('--crops', action='append', help='获取区域')
