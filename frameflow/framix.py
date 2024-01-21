@@ -113,6 +113,7 @@ class Parser(object):
         parser.add_argument('--train', action='append', help='归类图片文件')
         parser.add_argument('--build', action='append', help='训练模型文件')
 
+        parser.add_argument('--keras', action='store_true', help='智能分类')
         parser.add_argument('--boost', action='store_true', help='快速模式')
         parser.add_argument('--color', action='store_true', help='彩色模式')
         parser.add_argument('--focus', action='store_true', help='转换视频')
@@ -130,7 +131,7 @@ class Parser(object):
 class Missions(object):
 
     def __init__(self, *args, **kwargs):
-        self.boost, self.color, self.focus, self.quick, self.crops, self.omits, self.shape, self.scale = args
+        self.keras, self.boost, self.color, self.focus, self.quick, self.crops, self.omits, self.shape, self.scale = args
 
         self.model_path = kwargs["model_path"]
         self.main_total_temp = kwargs["main_total_temp"]
@@ -204,27 +205,35 @@ class Missions(object):
             )
             return reporter.total_path
 
-        kc = KerasClassifier(
-            target_size=deploy.target_size, data_size=deploy.target_size
-        )
-        kc.load_model(self.model_path)
+        if self.keras:
+            kc = KerasClassifier(
+                target_size=deploy.target_size, data_size=deploy.target_size
+            )
+            kc.load_model(self.model_path)
+        else:
+            kc = None
 
         futures = looper.run_until_complete(
             analyzer(
-                kc, deploy, new_video_path, reporter.frame_path, reporter.extra_path,
+                self.keras, new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
                 ffmpeg=self.ffmpeg
             )
         )
+
         if futures is None:
             return None
         start, end, cost, classifier = futures
 
-        original_inform = reporter.draw(
-            classifier_result=classifier,
-            proto_path=reporter.proto_path,
-            template_file=get_template(self.alien),
-            target_size=deploy.target_size,
-        )
+        if self.keras:
+            original_inform = reporter.draw(
+                classifier_result=classifier,
+                proto_path=reporter.proto_path,
+                template_file=get_template(self.alien),
+                target_size=deploy.target_size,
+            )
+        else:
+            original_inform = ""
+
         result = {
             "total_path": reporter.total_path,
             "title": reporter.title,
@@ -251,7 +260,8 @@ class Missions(object):
             reporter.ask_create_total_report(
                 os.path.dirname(reporter.total_path),
                 get_template(self.main_temp),
-                get_template(self.main_total_temp)
+                get_template(self.main_total_temp),
+                self.keras
             )
         )
         return reporter.total_path
@@ -300,10 +310,13 @@ class Missions(object):
             )
             return reporter.total_path
 
-        kc = KerasClassifier(
-            target_size=deploy.target_size, data_size=deploy.target_size
-        )
-        kc.load_model(self.model_path)
+        if self.keras:
+            kc = KerasClassifier(
+                target_size=deploy.target_size, data_size=deploy.target_size
+            )
+            kc.load_model(self.model_path)
+        else:
+            kc = None
 
         for video in self.only_video(folder):
             reporter.title = video.title
@@ -314,7 +327,7 @@ class Missions(object):
 
                 futures = looper.run_until_complete(
                     analyzer(
-                        kc, deploy, new_video_path, reporter.frame_path, reporter.extra_path,
+                        self.keras, new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
                         ffmpeg=self.ffmpeg
                     )
                 )
@@ -322,12 +335,16 @@ class Missions(object):
                     continue
                 start, end, cost, classifier = futures
 
-                original_inform = reporter.draw(
-                    classifier_result=classifier,
-                    proto_path=reporter.proto_path,
-                    template_file=get_template(self.alien),
-                    target_size=deploy.target_size,
-                )
+                if self.keras:
+                    original_inform = reporter.draw(
+                        classifier_result=classifier,
+                        proto_path=reporter.proto_path,
+                        template_file=get_template(self.alien),
+                        target_size=deploy.target_size,
+                    )
+                else:
+                    original_inform = ""
+
                 result = {
                     "total_path": reporter.total_path,
                     "title": reporter.title,
@@ -354,7 +371,8 @@ class Missions(object):
             reporter.ask_create_total_report(
                 os.path.dirname(reporter.total_path),
                 get_template(self.main_temp),
-                get_template(self.main_total_temp)
+                get_template(self.main_total_temp),
+                self.keras
             )
         )
         return reporter.total_path
@@ -441,7 +459,7 @@ class Missions(object):
             return_exceptions=True
         )
         tasks = [
-            Report.ask_create_total_report(m, total, major) for m in merge
+            Report.ask_create_total_report(m, total, major, self.keras) for m in merge
         ]
         error = await asyncio.gather(*tasks)
         for e in error:
@@ -702,7 +720,7 @@ class Missions(object):
                     return None
 
                 futures = await asyncio.gather(
-                    *(analyzer(kc, deploy, temp_video, frame_path, extra_path, ffmpeg=self.ffmpeg) for temp_video, *_, frame_path, extra_path, _ in todo_list)
+                    *(analyzer(self.keras, temp_video, deploy, kc, frame_path, extra_path, ffmpeg=self.ffmpeg) for temp_video, *_, frame_path, extra_path, _ in todo_list)
                 )
 
                 for future, todo in zip(futures, todo_list):
@@ -711,13 +729,18 @@ class Missions(object):
 
                     start, end, cost, classifier = future
                     *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo
-                    template_file = await ask_get_template(self.alien)
-                    original_inform = reporter.draw(
-                        classifier_result=classifier,
-                        proto_path=proto_path,
-                        template_file=template_file,
-                        target_size=deploy.target_size,
-                    )
+
+                    if self.keras:
+                        template_file = await ask_get_template(self.alien)
+                        original_inform = reporter.draw(
+                            classifier_result=classifier,
+                            proto_path=proto_path,
+                            template_file=template_file,
+                            target_size=deploy.target_size,
+                        )
+                    else:
+                        original_inform = ""
+
                     result = {
                         "total_path": total_path,
                         "title": title,
@@ -757,10 +780,13 @@ class Missions(object):
         )
         deploy.load_deploy(self.initial_deploy)
 
-        kc = KerasClassifier(
-            target_size=deploy.target_size, data_size=deploy.target_size
-        )
-        kc.load_model(self.model_path)
+        if self.keras:
+            kc = KerasClassifier(
+                target_size=deploy.target_size, data_size=deploy.target_size
+            )
+            kc.load_model(self.model_path)
+        else:
+            kc = None
         # Initialization ===============================================================================================
 
         # Loop
@@ -880,7 +906,7 @@ async def ask_video_detach(ffmpeg, fps, src, dst):
     await Terminal.cmd_line(*cmd)
 
 
-async def analyzer(kc: "KerasClassifier", deploy: "Deploy", vision_path: str, *args, **kwargs):
+async def analyzer(keras: bool, vision_path: str, deploy: "Deploy", kc: "KerasClassifier" = None, *args, **kwargs):
 
     frame_path, extra_path = args
     ffmpeg = kwargs["ffmpeg"]
@@ -1038,7 +1064,47 @@ async def analyzer(kc: "KerasClassifier", deploy: "Deploy", vision_path: str, *a
         except Exception as e:
             return e
 
-    async def analytics():
+    async def analytics_quick():
+        video, task, hued = await frame_flip()
+
+        if deploy.color:
+            video.hued_data = tuple(hued.result())
+            logger.info(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
+            task.shutdown()
+            frames = [i for i in video.hued_data]
+        else:
+            frames = [i for i in video.grey_data]
+
+        if operation_system == "win32":
+            logger.debug(f"运行环境: {operation_system}")
+            forge_result = await asyncio.gather(
+                *(frame_forge(frame) for frame in frames),
+                return_exceptions=True
+            )
+        else:
+            logger.debug(f"运行环境: {operation_system}")
+            tasks = [
+                [frame_forge(frame) for frame in chunk]
+                for chunk in
+                [frames[i:i + 100] for i in range(0, len(frames), 100)]
+            ]
+            forge_list = []
+            for task in tasks:
+                task_result = await asyncio.gather(*task, return_exceptions=True)
+                forge_list.extend(task_result)
+            forge_result = tuple(forge_list)
+
+        for result in forge_result:
+            if isinstance(result, Exception):
+                logger.error(f"Error: {result}")
+
+        start_frame = frames[0]
+        end_frame = frames[-1]
+
+        time_cost = end_frame.timestamp - start_frame.timestamp
+        return (start_frame.frame_id, end_frame.frame_id, time_cost), None
+
+    async def analytics_keras():
         classify, frames = await frame_flow()
 
         if operation_system == "win32":
@@ -1074,7 +1140,10 @@ async def analyzer(kc: "KerasClassifier", deploy: "Deploy", vision_path: str, *a
         return None
     logger.info(f"{tag} 可正常播放，准备加载视频 ...")
 
-    (start, end, cost), classifier = await analytics()
+    if keras:
+        (start, end, cost), classifier = await analytics_keras()
+    else:
+        (start, end, cost), classifier = await analytics_quick()
     return start, end, cost, classifier
 
 
@@ -1126,7 +1195,7 @@ if __name__ == '__main__':
         logger.debug(env)
     # Debug Mode =======================================================================================================
 
-    _boost, _color, _focus = cmd_lines.boost, cmd_lines.color, cmd_lines.focus
+    _keras, _boost, _color, _focus = cmd_lines.keras, cmd_lines.boost, cmd_lines.color, cmd_lines.focus
     _quick = cmd_lines.quick
     _shape, _scale = cmd_lines.shape, cmd_lines.scale
 
@@ -1170,7 +1239,7 @@ if __name__ == '__main__':
     # Debug Mode =======================================================================================================
 
     missions = Missions(
-        _boost, _color, _focus, _quick, _crops, _omits, _shape, _scale,
+        _keras, _boost, _color, _focus, _quick, _crops, _omits, _shape, _scale,
         model_path=_model_path,
         main_total_temp=_main_total_temp, main_temp=_main_temp,
         view_total_temp=_view_total_temp, view_temp=_view_temp,

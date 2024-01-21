@@ -371,7 +371,7 @@ class Report(object):
                 logger.info("没有可以汇总的报告 ...")
 
     @staticmethod
-    async def ask_create_report(total_path: str, title: str, query_path: str, parts_list: list, major_loc: str):
+    async def ask_create_report(total_path: str, title: str, query_path: str, parts_list: list, major_loc: str, should_display: bool):
 
         async def handler_inform(result):
             handler_list = []
@@ -444,7 +444,8 @@ class Report(object):
                 major_template = Template(major_loc)
                 range_html_temp = major_template.render(
                     title=title,
-                    images_list=images_list
+                    images_list=images_list,
+                    should_display=should_display
                 )
                 range_html = os.path.join(query_path, f"{title}.html")
                 async with aiofiles.open(file=range_html, mode="w", encoding="utf-8") as range_file:
@@ -473,7 +474,7 @@ class Report(object):
         return await handler_start()
 
     @staticmethod
-    async def ask_create_total_report(file_name: str, major_loc: str, total_loc: str):
+    async def ask_create_total_report(file_name: str, major_loc: str, total_loc: str, should_display: bool):
         try:
             with open(file=os.path.join(file_name, "Nexa_Recovery", "nexaflow.log"), mode="r", encoding="utf-8") as f:
                 open_file = f.read()
@@ -493,7 +494,8 @@ class Report(object):
                     title,
                     os.path.join(file_name, os.path.basename(total_path), title),
                     parts_list,
-                    major_loc
+                    major_loc,
+                    should_display
                 )
                 for (total_path, title, query_path), parts_list in grouped_dict.items()
             ]

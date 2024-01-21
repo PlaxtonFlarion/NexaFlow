@@ -114,6 +114,9 @@ class Show(object):
         table_minor.add_column("功能说明", justify="center", width=22)
 
         table_minor.add_row(
+            "[bold #FFDC00]--keras", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]智能分类"
+        )
+        table_minor.add_row(
             "[bold #FFDC00]--boost", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]快速模式"
         )
         table_minor.add_row(
