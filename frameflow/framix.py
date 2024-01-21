@@ -449,7 +449,7 @@ class Missions(object):
     async def combines_view(self, merge: list):
         tasks = [
             Report.ask_invent_total_report(
-                m, get_template(self.main_total_temp), get_template(self.main_temp)
+                m, get_template(self.view_total_temp), get_template(self.view_temp)
             ) for m in merge
         ]
         error = await asyncio.gather(*tasks)
