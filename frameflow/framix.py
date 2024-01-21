@@ -795,6 +795,13 @@ class Missions(object):
                         else:
                             Show.console.print(f"[bold red]没有可以生成的报告 ...[/bold red]")
                             continue
+                    elif select == "invent":
+                        if len(reporter.range_list) > 0:
+                            await self.combines_view([os.path.dirname(reporter.total_path)])
+                            break
+                        else:
+                            Show.console.print(f"[bold red]没有可以生成的报告 ...[/bold red]")
+                            continue
                     elif select == "deploy":
                         deploy.dump_deploy(self.initial_deploy)
                         logger.warning("修改 deploy.json 文件后请完全退出编辑器进程再继续操作 ...")
