@@ -436,10 +436,12 @@ class Missions(object):
             logger.error("训练模型需要一个分类文件夹 ...")
 
     async def combines_main(self, merge: list):
+        total, major = await asyncio.gather(
+            ask_get_template(self.main_total_temp), ask_get_template(self.main_temp),
+            return_exceptions=True
+        )
         tasks = [
-            Report.ask_create_total_report(
-                m, get_template(self.main_total_temp), get_template(self.main_temp)
-            ) for m in merge
+            Report.ask_create_total_report(m, total, major) for m in merge
         ]
         error = await asyncio.gather(*tasks)
         for e in error:
@@ -447,10 +449,12 @@ class Missions(object):
                 logger.error(e)
 
     async def combines_view(self, merge: list):
+        total, major = await asyncio.gather(
+            ask_get_template(self.view_total_temp), ask_get_template(self.view_temp),
+            return_exceptions=True
+        )
         tasks = [
-            Report.ask_invent_total_report(
-                m, get_template(self.view_total_temp), get_template(self.view_temp)
-            ) for m in merge
+            Report.ask_invent_total_report(m, total, major) for m in merge
         ]
         error = await asyncio.gather(*tasks)
         for e in error:
@@ -849,9 +853,13 @@ def get_template(template_path: str):
 
 
 async def ask_get_template(template_path: str):
-    async with aiofiles.open(template_path, mode="r", encoding="utf-8") as f:
-        template_file = await f.read()
-    return template_file
+    try:
+        async with aiofiles.open(template_path, mode="r", encoding="utf-8") as f:
+            template_file = await f.read()
+    except FileNotFoundError as e:
+        return e
+    else:
+        return template_file
 
 
 async def ask_video_change(ffmpeg, fps, src, dst):
