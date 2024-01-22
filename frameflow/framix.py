@@ -216,7 +216,7 @@ class Missions(object):
 
         futures = looper.run_until_complete(
             analyzer(
-                self.keras, new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
+                new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
                 ffmpeg=self.ffmpeg
             )
         )
@@ -328,7 +328,7 @@ class Missions(object):
 
                 futures = looper.run_until_complete(
                     analyzer(
-                        self.keras, new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
+                        new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
                         ffmpeg=self.ffmpeg
                     )
                 )
@@ -455,12 +455,12 @@ class Missions(object):
             logger.error("训练模型需要一个分类文件夹 ...")
 
     async def combines_main(self, merge: list):
-        total, major = await asyncio.gather(
-            ask_get_template(self.main_total_temp), ask_get_template(self.main_temp),
+        major, total = await asyncio.gather(
+            ask_get_template(self.main_temp), ask_get_template(self.main_total_temp),
             return_exceptions=True
         )
         tasks = [
-            Report.ask_create_total_report(m, total, major, self.keras) for m in merge
+            Report.ask_create_total_report(m, major, total, self.keras) for m in merge
         ]
         error = await asyncio.gather(*tasks)
         for e in error:
@@ -468,12 +468,12 @@ class Missions(object):
                 logger.error(e)
 
     async def combines_view(self, merge: list):
-        total, major = await asyncio.gather(
-            ask_get_template(self.view_total_temp), ask_get_template(self.view_temp),
+        views, total = await asyncio.gather(
+            ask_get_template(self.view_temp), ask_get_template(self.view_total_temp),
             return_exceptions=True
         )
         tasks = [
-            Report.ask_invent_total_report(m, total, major) for m in merge
+            Report.ask_invent_total_report(m, views, total) for m in merge
         ]
         error = await asyncio.gather(*tasks)
         for e in error:
@@ -716,12 +716,23 @@ class Missions(object):
 
                 if self.quick:
                     await asyncio.gather(
-                        *(ask_video_detach(self.ffmpeg, deploy.fps, temp_video, frame_path) for temp_video, *_, frame_path, _, _, _ in todo_list)
+                        *(ask_video_detach(self.ffmpeg, deploy.fps, temp_video, frame_path) for temp_video, *_, frame_path, _, _ in todo_list)
                     )
+                    for *_, total_path, title, query_path, query, frame_path, _, _ in todo_list:
+                        result = {
+                            "total_path": total_path,
+                            "title": title,
+                            "query_path": query_path,
+                            "query": query,
+                            "stage": {"start": 0, "end": 0, "cost": 0},
+                            "frame": frame_path,
+                        }
+                        logger.debug(f"Quick: {result}")
+                        reporter.load(result)
                     return None
 
                 futures = await asyncio.gather(
-                    *(analyzer(self.keras, temp_video, deploy, kc, frame_path, extra_path, ffmpeg=self.ffmpeg) for temp_video, *_, frame_path, extra_path, _ in todo_list)
+                    *(analyzer(temp_video, deploy, kc, frame_path, extra_path, ffmpeg=self.ffmpeg) for temp_video, *_, frame_path, extra_path, _ in todo_list)
                 )
 
                 for future, todo in zip(futures, todo_list):
@@ -889,7 +900,7 @@ async def ask_get_template(template_path: str):
         return template_file
 
 
-async def ask_video_change(ffmpeg, fps, src, dst):
+async def ask_video_change(ffmpeg, fps: int, src: str, dst: str):
     cmd = [
         ffmpeg, "-i", src,
         "-vf", f"fps={fps}", "-c:v", "libx264", "-crf", "18", "-c:a", "copy",
@@ -898,7 +909,7 @@ async def ask_video_change(ffmpeg, fps, src, dst):
     await Terminal.cmd_line(*cmd)
 
 
-async def ask_video_detach(ffmpeg, fps, src, dst):
+async def ask_video_detach(ffmpeg, fps: int, src: str, dst: str):
     cmd = [
         ffmpeg, "-i", src,
         "-vf", f"fps={fps}",
@@ -907,7 +918,9 @@ async def ask_video_detach(ffmpeg, fps, src, dst):
     await Terminal.cmd_line(*cmd)
 
 
-async def analyzer(keras: bool, vision_path: str, deploy: "Deploy", kc: "KerasClassifier" = None, *args, **kwargs):
+async def analyzer(
+        vision_path: str, deploy: "Deploy", kc: "KerasClassifier", *args, **kwargs
+):
 
     frame_path, extra_path = args
     ffmpeg = kwargs["ffmpeg"]
@@ -1141,10 +1154,10 @@ async def analyzer(keras: bool, vision_path: str, deploy: "Deploy", kc: "KerasCl
         return None
     logger.info(f"{tag} 可正常播放，准备加载视频 ...")
 
-    if keras:
-        (start, end, cost), classifier = await analytics_keras()
-    else:
+    if kc is None:
         (start, end, cost), classifier = await analytics_quick()
+    else:
+        (start, end, cost), classifier = await analytics_keras()
     return start, end, cost, classifier
 
 
