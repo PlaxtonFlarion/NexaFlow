@@ -300,7 +300,7 @@ class Alynex(object):
                 change_record = os.path.join(
                     os.path.dirname(screen_record), f"screen_fps60_{random.randint(100, 999)}.mp4"
                 )
-                asyncio.run(self.ffmpeg.video_change(screen_record, change_record))
+                asyncio.run(self.ffmpeg.ask_video_change(screen_record, change_record))
                 logger.info(f"视频转换完成: {os.path.basename(change_record)}")
                 os.remove(screen_record)
                 logger.info(f"移除旧的视频: {os.path.basename(screen_record)}")
