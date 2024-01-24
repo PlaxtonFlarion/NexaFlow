@@ -75,19 +75,16 @@ class Show(object):
         table_major.add_column("功能说明", justify="center", width=22)
 
         table_major.add_row(
-            "[bold #FFDC00]--flick", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #D7FF00]支持", "[bold #39CCCC]录制分析视频帧"
+            "[bold #FFDC00]--flick", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #D7FF00]支持", "[bold #39CCCC]循环分析视频帧"
         )
         table_major.add_row(
-            "[bold #FFDC00]--alone", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "", "[bold #39CCCC]录制视频"
+            "[bold #FFDC00]--paint", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #D7FF00]支持", "[bold #39CCCC]绘制图片分割线条"
         )
         table_major.add_row(
-            "[bold #FFDC00]--paint", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #D7FF00]支持", "[bold #39CCCC]绘制分割线条"
+            "[bold #FFDC00]--video", "[bold #7FDBFF]视频文件", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]分析视频"
         )
         table_major.add_row(
-            "[bold #FFDC00]--input", "[bold #7FDBFF]视频文件", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]分析单个视频"
-        )
-        table_major.add_row(
-            "[bold #FFDC00]--whole", "[bold #7FDBFF]视频集合", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]分析全部视频"
+            "[bold #FFDC00]--stack", "[bold #7FDBFF]视频集合", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]分析视频文件集合"
         )
         table_major.add_row(
             "[bold #FFDC00]--merge", "[bold #7FDBFF]报告集合", "[bold #FFAFAF]多次", "", "[bold #39CCCC]聚合时间戳报告"
@@ -114,6 +111,12 @@ class Show(object):
         table_minor.add_column("功能说明", justify="center", width=22)
 
         table_minor.add_row(
+            "[bold #FFDC00]--alone", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]录制视频"
+        )
+        table_minor.add_row(
+            "[bold #FFDC00]--quick", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]快速拆帧"
+        )
+        table_minor.add_row(
             "[bold #FFDC00]--keras", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]智能分类"
         )
         table_minor.add_row(
@@ -124,9 +127,6 @@ class Show(object):
         )
         table_minor.add_row(
             "[bold #FFDC00]--focus", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]转换视频"
-        )
-        table_minor.add_row(
-            "[bold #FFDC00]--quick", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]快速拆帧"
         )
         table_minor.add_row(
             "[bold #FFDC00]--shape", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #AFAFD7]自动", "[bold #39CCCC]图片尺寸"
@@ -142,13 +142,18 @@ class Show(object):
         )
         Show.major_logo()
         Show.console.print(table_major)
+        with Progress() as progress:
+            task = progress.add_task("[bold #FFFFD7]Framix Terminal Command.", total=100)
+            while not progress.finished:
+                progress.update(task, advance=1)
+                time.sleep(0.05)
         Show.minor_logo()
         Show.console.print(table_minor)
         with Progress() as progress:
             task = progress.add_task("[bold #FFFFD7]Framix Terminal Command.", total=100)
             while not progress.finished:
                 progress.update(task, advance=1)
-                time.sleep(0.1)
+                time.sleep(0.05)
 
     @staticmethod
     def tips_document():
@@ -167,6 +172,11 @@ class Show(object):
         table.add_row("[bold #FFAFAF]invent", "[bold #8A8A8A]无参数", "[bold #DADADA]生成视频拆帧汇总报告")
         table.add_row("[bold #FFAFAF]******", "[bold #8A8A8A]无参数", "[bold #DADADA]任意数字代表录制时长")
         Show.console.print(table)
+        with Progress() as progress:
+            task = progress.add_task("[bold #FFFFD7]Framix Terminal Command.", total=100)
+            while not progress.finished:
+                progress.update(task, advance=1)
+                time.sleep(0.05)
 
 
 if __name__ == '__main__':

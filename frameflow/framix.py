@@ -8,6 +8,7 @@ import shutil
 import random
 import asyncio
 import aiofiles
+import datetime
 from loguru import logger
 from rich.prompt import Prompt
 from frameflow.database import DataBase
@@ -53,10 +54,12 @@ _initial_option = os.path.join(_universal, "framix.source")
 if operation_system == "win32":
     _adb = os.path.join(_tools_path, "win", "platform-tools", "adb.exe")
     _ffmpeg = os.path.join(_tools_path, "win", "ffmpeg", "bin", "ffmpeg.exe")
+    _ffprobe = os.path.join(_tools_path, "win", "ffmpeg", "bin", "ffprobe.exe")
     _scrcpy = os.path.join(_tools_path, "win", "scrcpy", "scrcpy.exe")
 elif operation_system == "darwin":
     _adb = os.path.join(_tools_path, "mac", "platform-tools", "adb")
     _ffmpeg = os.path.join(_tools_path, "mac", "ffmpeg", "bin", "ffmpeg")
+    _ffprobe = os.path.join(_tools_path, "mac", "ffmpeg", "bin", "ffprobe")
     _scrcpy = os.path.join(_tools_path, "mac", "scrcpy", "bin", "scrcpy")
 else:
     Show.console.print("[bold]Only compatible with [bold red]Windows[/bold red] and [bold red]macOS[/bold red] platforms ...[bold]")
@@ -65,6 +68,7 @@ else:
 
 os.environ["PATH"] = os.path.dirname(_adb) + os.path.pathsep + os.environ.get("PATH", "")
 os.environ["PATH"] = os.path.dirname(_ffmpeg) + os.path.pathsep + os.environ.get("PATH", "")
+os.environ["PATH"] = os.path.dirname(_ffprobe) + os.path.pathsep + os.environ.get("PATH", "")
 os.environ["PATH"] = os.path.dirname(_scrcpy) + os.path.pathsep + os.environ.get("PATH", "")
 
 try:
@@ -104,25 +108,27 @@ class Parser(object):
 
         parser = ArgumentParser(description="Command Line Arguments Framix")
 
-        parser.add_argument('--flick', action='store_true', help='录制分析视频帧')
-        parser.add_argument('--alone', action='store_true', help='录制视频')
-        parser.add_argument('--paint', action='store_true', help='绘制分割线条')
-        parser.add_argument('--input', action='append', help='分析单个视频')
-        parser.add_argument('--whole', action='append', help='分析全部视频')
+        parser.add_argument('--flick', action='store_true', help='循环分析视频帧')
+        parser.add_argument('--paint', action='store_true', help='绘制图片分割线条')
+        parser.add_argument('--video', action='append', help='分析视频')
+        parser.add_argument('--stack', action='append', help='分析视频文件集合')
         parser.add_argument('--merge', action='append', help='聚合时间戳报告')
         parser.add_argument('--union', action='append', help='聚合视频帧报告')
         parser.add_argument('--train', action='append', help='归类图片文件')
         parser.add_argument('--build', action='append', help='训练模型文件')
 
+        parser.add_argument('--alone', action='store_true', help='录制视频')
+        parser.add_argument('--quick', action='store_true', help='快速拆帧')
         parser.add_argument('--keras', action='store_true', help='智能分类')
+
         parser.add_argument('--boost', action='store_true', help='快速模式')
         parser.add_argument('--color', action='store_true', help='彩色模式')
         parser.add_argument('--focus', action='store_true', help='转换视频')
-        parser.add_argument('--quick', action='store_true', help='快速拆帧')
-        parser.add_argument('--shape', nargs='?', const=None, type=parse_shape, help='图片尺寸')
-        parser.add_argument('--scale', nargs='?', const=None, type=parse_scale, help='缩放比例')
         parser.add_argument('--crops', action='append', help='获取区域')
         parser.add_argument('--omits', action='append', help='忽略区域')
+
+        parser.add_argument('--shape', nargs='?', const=None, type=parse_shape, help='图片尺寸')
+        parser.add_argument('--scale', nargs='?', const=None, type=parse_scale, help='缩放比例')
 
         parser.add_argument('--debug', action='store_true', help='调试模式')
 
@@ -131,8 +137,9 @@ class Parser(object):
 
 class Missions(object):
 
-    def __init__(self, *args, **kwargs):
-        self.keras, self.boost, self.color, self.focus, self.quick, self.crops, self.omits, self.shape, self.scale = args
+    def __init__(self, alone: bool, quick: bool, keras: bool, *args, **kwargs):
+        self.alone, self.quick, self.keras = alone, quick, keras
+        self.boost, self.color, self.focus, self.crops, self.omits, self.shape, self.scale = args
 
         self.model_path = kwargs["model_path"]
         self.main_total_temp = kwargs["main_total_temp"]
@@ -145,6 +152,7 @@ class Missions(object):
         self.initial_option = kwargs["initial_option"]
         self.adb = kwargs["adb"]
         self.ffmpeg = kwargs["ffmpeg"]
+        self.ffprobe = kwargs["ffprobe"]
         self.scrcpy = kwargs["scrcpy"]
 
     @staticmethod
@@ -165,13 +173,13 @@ class Missions(object):
             for root, _, file in os.walk(folder) if file
         ]
 
-    def video_task(self, input_video: str):
+    def video_task(self, video_file: str):
         reporter = Report(total_path=self.initial_report)
         reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
         reporter.query = time.strftime('%Y%m%d%H%M%S')
-        new_video_path = os.path.join(reporter.video_path, os.path.basename(input_video))
+        new_video_path = os.path.join(reporter.video_path, os.path.basename(video_file))
 
-        shutil.copy(input_video, new_video_path)
+        shutil.copy(video_file, new_video_path)
 
         deploy = Deploy(
             boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
@@ -599,7 +607,7 @@ class Missions(object):
             else:
                 Show.console.print(f"[bold][bold red]没有该选项,请重新输入[/bold red] ...[/bold]\n")
 
-    async def analysis(self, alone: bool):
+    async def analysis(self):
 
         head_event = asyncio.Event()
         done_event = asyncio.Event()
@@ -679,12 +687,31 @@ class Missions(object):
                 await asyncio.sleep(0.2)
             logger.error("录制视频失败,请重新录制视频 ...")
 
-        # Mode
+        # Video_Balance
+        async def video_balance(standard, duration, video_src, video_dst):
+
+            def seconds_to_time(seconds):
+                return str(datetime.timedelta(seconds=int(seconds)))
+
+            start_time_point = duration - standard
+            start_time_str = seconds_to_time(int(start_time_point))
+            end_time_str = seconds_to_time(int(duration))
+            await ask_video_tailor(
+                self.ffmpeg, video_src, video_dst, start_time_str, end_time_str
+            )
+
+        # Record
         async def commence():
-            await Terminal.cmd_line(self.adb, "wait-for-device")
+
+            async def device_online(serial):
+                await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-device")
+
+            await asyncio.gather(
+                *(device_online(d.serial) for d in device_list)
+            )
             todo_list = []
 
-            if alone:
+            if self.alone:
                 for d in device_list:
                     await asyncio.sleep(0.2)
                     temp_video, transports = await start_record(
@@ -714,28 +741,44 @@ class Missions(object):
                     *(stop_record(temp_video, transports) for temp_video, transports, *_ in todo_list)
                 )
 
-                if self.quick:
-                    await asyncio.gather(
-                        *(ask_video_detach(self.ffmpeg, deploy.fps, temp_video, frame_path) for temp_video, *_, frame_path, _, _ in todo_list)
-                    )
-                    for *_, total_path, title, query_path, query, frame_path, _, _ in todo_list:
-                        result = {
-                            "total_path": total_path,
-                            "title": title,
-                            "query_path": query_path,
-                            "query": query,
-                            "stage": {"start": 0, "end": 0, "cost": 0},
-                            "frame": frame_path,
-                        }
-                        logger.debug(f"Quick: {result}")
-                        reporter.load(result)
-                    return None
+            if len(todo_list) > 1:
+                duration_list = await asyncio.gather(
+                    *(ask_video_length(self.ffprobe, temp_video) for temp_video, *_ in todo_list)
+                )
+                standard = min(duration_list)
+                balance_task = [video_balance(standard, duration, video_src, os.path.dirname(video_src)) for duration, (video_src, *_) in zip(duration_list, todo_list)]
+                await asyncio.gather(*balance_task)
 
+            return todo_list
+
+        # Analysis Mode
+        async def analysis_tactics():
+            if self.alone:
+                return
+
+            if self.quick:
+                await asyncio.gather(
+                    *(ask_video_detach(self.ffmpeg, deploy.fps, temp_video, frame_path) for
+                      temp_video, *_, frame_path, _, _ in task_list)
+                )
+                for *_, total_path, title, query_path, query, frame_path, _, _ in task_list:
+                    result = {
+                        "total_path": total_path,
+                        "title": title,
+                        "query_path": query_path,
+                        "query": query,
+                        "stage": {"start": 0, "end": 0, "cost": 0},
+                        "frame": frame_path,
+                    }
+                    logger.debug(f"Quick: {result}")
+                    reporter.load(result)
+
+            else:
                 futures = await asyncio.gather(
-                    *(analyzer(temp_video, deploy, kc, frame_path, extra_path, ffmpeg=self.ffmpeg) for temp_video, *_, frame_path, extra_path, _ in todo_list)
+                    *(analyzer(temp_video, deploy, kc, frame_path, extra_path, ffmpeg=self.ffmpeg) for temp_video, *_, frame_path, extra_path, _ in task_list)
                 )
 
-                for future, todo in zip(futures, todo_list):
+                for future, todo in zip(futures, task_list):
                     if future is None:
                         continue
 
@@ -775,13 +818,22 @@ class Missions(object):
                             (total_path, title, query_path, query, json.dumps(stage), frame_path, extra_path, proto_path)
                         )
 
+        # Device View
+        async def device_mode_view():
+            if len(device_list) == 1:
+                Show.console.print(f"[bold]<Link> <单设备模式>")
+            else:
+                Show.console.print(f"[bold]<Link> <多设备模式>")
+            for d in device_list:
+                Show.console.print(f"[bold #00FFAF]Connect:[/bold #00FFAF] {d}")
+
         # Start
         manage = Manage(self.adb)
         device_list = await manage.operate_device()
 
         # Initialization ===============================================================================================
         reporter = Report(self.initial_report)
-        if alone:
+        if self.alone:
             reporter.title = f"Record_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
         else:
             reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
@@ -792,7 +844,7 @@ class Missions(object):
         )
         deploy.load_deploy(self.initial_deploy)
 
-        if self.keras:
+        if not self.alone and not self.quick and self.keras:
             kc = KerasClassifier(
                 target_size=deploy.target_size, data_size=deploy.target_size
             )
@@ -805,48 +857,40 @@ class Missions(object):
         timer_mode = 5
         while True:
             try:
-                for device in device_list:
-                    Show.console.print(f"[bold #00FFAF]Connect:[/bold #00FFAF] {device}")
-                if action := Prompt.ask(
-                        prompt=f"[bold #5FD7FF]<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/bold #D7FF5F] 秒>>>[/bold #5FD7FF]",
-                        console=Show.console
-                ):
+                await device_mode_view()
+                if action := Prompt.ask(prompt=f"[bold #5FD7FF]<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/bold #D7FF5F] 秒>>>[/bold #5FD7FF]", console=Show.console):
                     select = action.strip().lower()
                     if "header" in select:
                         if match := re.search(r"(?<=header\s).*", select):
                             if match.group().strip():
-                                src_hd = f"Record_{time.strftime('%Y%m%d_%H%M%S')}" if alone else f"Framix_{time.strftime('%Y%m%d_%H%M%S')}"
+                                src_hd = f"Record_{time.strftime('%Y%m%d_%H%M%S')}" if self.alone else f"Framix_{time.strftime('%Y%m%d_%H%M%S')}"
                                 if hd := match.group().strip():
                                     new_hd = f"{src_hd}_{hd}"
                                 else:
                                     new_hd = f"{src_hd}_{random.randint(10000, 99999)}"
                                 logger.success("新标题设置成功 ...")
                                 reporter.title = new_hd
-                            else:
-                                raise ValueError
-                        else:
-                            raise ValueError
+                                continue
+                        Show.tips_document()
                         continue
                     elif select == "serial":
                         device_list = await manage.operate_device()
                         continue
-                    elif select == "create":
+                    elif select == "create" or select == "invent":
                         if len(reporter.range_list) > 0:
-                            await self.combines_main([os.path.dirname(reporter.total_path)])
-                            break
-                        else:
-                            Show.console.print(f"[bold red]没有可以生成的报告 ...[/bold red]")
-                            continue
-                    elif select == "invent":
-                        if len(reporter.range_list) > 0:
-                            await self.combines_view([os.path.dirname(reporter.total_path)])
-                            break
-                        else:
-                            Show.console.print(f"[bold red]没有可以生成的报告 ...[/bold red]")
-                            continue
+                            try:
+                                reporter.range_list[0]["proto"]
+                            except KeyError:
+                                await self.combines_view([os.path.dirname(reporter.total_path)])
+                            else:
+                                await self.combines_main([os.path.dirname(reporter.total_path)])
+                            finally:
+                                break
+                        Show.console.print(f"[bold red]没有可以生成的报告 ...[/bold red]\n")
+                        continue
                     elif select == "deploy":
-                        deploy.dump_deploy(self.initial_deploy)
                         logger.warning("修改 deploy.json 文件后请完全退出编辑器进程再继续操作 ...")
+                        deploy.dump_deploy(self.initial_deploy)
                         if operation_system == "win32":
                             await Terminal.cmd_line("Notepad", self.initial_deploy)
                         else:
@@ -864,12 +908,13 @@ class Missions(object):
                             )
                         timer_mode = max(lower_bound, min(upper_bound, value))
                     else:
-                        raise ValueError
+                        Show.tips_document()
             except ValueError:
                 Show.tips_document()
             else:
-                await commence()
-                if not done_event.is_set():
+                task_list = await commence()
+                await analysis_tactics()
+                if fail_event.is_set():
                     device_list = await manage.operate_device()
             finally:
                 head_event.clear()
@@ -916,6 +961,26 @@ async def ask_video_detach(ffmpeg, fps: int, src: str, dst: str):
         f"{os.path.join(dst, 'frame_%05d.png')}"
     ]
     await Terminal.cmd_line(*cmd)
+
+
+async def ask_video_tailor(ffmpeg, src: str, dst: str, start: str, end: str) -> None:
+    before = os.path.basename(src).split(".")[0]
+    after = os.path.basename(src).split(".")[-1]
+    target = os.path.join(
+        dst,
+        f"{before}_{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.{after}"
+    )
+    cmd = [ffmpeg, "-i", src, "-ss", start, "-t", end, "-c", "copy", target]
+    await Terminal.cmd_line(*cmd)
+
+
+async def ask_video_length(ffprobe, src: str) -> float:
+    cmd = [
+        ffprobe, "-v", "error", "-show_entries", "format=duration",
+        "-of", "default=noprint_wrappers=1:nokey=1", "-i", src
+    ]
+    result = await Terminal.cmd_line(*cmd)
+    return float(result.strip())
 
 
 async def analyzer(
@@ -1162,8 +1227,8 @@ async def analyzer(
 
 
 async def ask_main():
-    if cmd_lines.flick or cmd_lines.alone:
-        await missions.analysis(cmd_lines.alone)
+    if cmd_lines.flick:
+        await missions.analysis()
     elif cmd_lines.paint:
         await missions.painting()
     elif cmd_lines.merge and len(cmd_lines.merge) > 0:
@@ -1203,14 +1268,15 @@ if __name__ == '__main__':
 
     logger.debug(f"adb: {_adb}")
     logger.debug(f"ffmpeg: {_ffmpeg}")
+    logger.debug(f"ffprobe: {_ffprobe}")
     logger.debug(f"scrcpy: {_scrcpy}")
 
     for env in os.environ["PATH"].split(os.path.pathsep):
         logger.debug(env)
     # Debug Mode =======================================================================================================
 
-    _keras, _boost, _color, _focus = cmd_lines.keras, cmd_lines.boost, cmd_lines.color, cmd_lines.focus
-    _quick = cmd_lines.quick
+    _alone, _quick, _keras = cmd_lines.alone, cmd_lines.quick, cmd_lines.keras
+    _boost, _color, _focus = cmd_lines.boost, cmd_lines.color, cmd_lines.focus
     _shape, _scale = cmd_lines.shape, cmd_lines.scale
 
     # Debug Mode =======================================================================================================
@@ -1253,34 +1319,34 @@ if __name__ == '__main__':
     # Debug Mode =======================================================================================================
 
     missions = Missions(
-        _keras, _boost, _color, _focus, _quick, _crops, _omits, _shape, _scale,
+        _alone, _quick, _keras, _boost, _color, _focus, _crops, _omits, _shape, _scale,
         model_path=_model_path,
         main_total_temp=_main_total_temp, main_temp=_main_temp,
         view_total_temp=_view_total_temp, view_temp=_view_temp,
         alien=_alien,
         initial_report=_initial_report, initial_deploy=_initial_deploy, initial_option=_initial_option,
-        adb=_adb, ffmpeg=_ffmpeg, scrcpy=_scrcpy,
+        adb=_adb, ffmpeg=_ffmpeg, ffprobe=_ffprobe, scrcpy=_scrcpy,
     )
 
-    if cmd_lines.whole and len(cmd_lines.whole) > 0:
-        members = len(cmd_lines.whole)
+    if cmd_lines.stack and len(cmd_lines.stack) > 0:
+        members = len(cmd_lines.stack)
         if members == 1:
-            missions.video_dir_task(cmd_lines.whole[0])
+            missions.video_dir_task(cmd_lines.stack[0])
         else:
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
-                results = pool.starmap(missions.video_dir_task, [(i, ) for i in cmd_lines.whole])
+                results = pool.starmap(missions.video_dir_task, [(i, ) for i in cmd_lines.stack])
             template_total = get_template(missions.view_total_temp) if missions.quick else get_template(missions.main_total_temp)
             Report.merge_report(results, template_total, missions.quick)
         sys.exit(0)
-    elif cmd_lines.input and len(cmd_lines.input) > 0:
-        members = len(cmd_lines.input)
+    elif cmd_lines.video and len(cmd_lines.video) > 0:
+        members = len(cmd_lines.video)
         if members == 1:
-            missions.video_task(cmd_lines.input[0])
+            missions.video_task(cmd_lines.video[0])
         else:
             processes = members if members <= cpu else cpu
             with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
-                results = pool.starmap(missions.video_task, [(i, ) for i in cmd_lines.input])
+                results = pool.starmap(missions.video_task, [(i, ) for i in cmd_lines.video])
             template_total = get_template(missions.view_total_temp) if missions.quick else get_template(missions.main_total_temp)
             Report.merge_report(results, template_total, missions.quick)
         sys.exit(0)

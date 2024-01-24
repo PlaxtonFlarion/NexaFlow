@@ -35,9 +35,10 @@ class Manage(object):
             if len(device_dict) > 0:
                 for k, v in device_dict.items():
                     final.append(v)
-                    Show.console.print(f"[bold][bold yellow]已连接设备[/bold yellow] [{k}] {v}")
 
                 if len(device_dict) > 1:
+                    for k, v in device_dict.items():
+                        Show.console.print(f"[bold][bold yellow]Connect:[/bold yellow] [{k}] {v}")
                     try:
                         action = Prompt.ask("[bold #5FD7FF]请输入编号选择一台设备")
                         final = final if action == "000" else [device_dict[action]]
@@ -45,11 +46,6 @@ class Manage(object):
                         final.clear()
                         Show.console.print(f"[bold red]没有该序号,请重新选择 ...[/bold red]\n")
                         continue
-
-                if len(final) == 1:
-                    Show.console.print(f"[bold]<Link> <单设备模式>")
-                else:
-                    Show.console.print(f"[bold]<Link> <多设备模式>")
 
                 return final
 
