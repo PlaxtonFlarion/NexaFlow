@@ -680,25 +680,26 @@ class Missions(object):
 
             for _ in range(10):
                 if done_event.is_set():
-                    logger.success(f"视频录制成功: {temp_video}")
+                    logger.success(f"视频录制成功: {os.path.basename(temp_video)}")
                     return
                 elif fail_event.is_set():
                     break
                 await asyncio.sleep(0.2)
-            logger.error("录制视频失败,请重新录制视频 ...")
+            logger.error(f"录制视频失败: {os.path.basename(temp_video)}")
 
         # Video_Balance
-        async def video_balance(standard, duration, video_src, video_dst):
-
-            def seconds_to_time(seconds):
-                return str(datetime.timedelta(seconds=int(seconds)))
-
+        async def video_balance(standard, duration, video_src):
             start_time_point = duration - standard
-            start_time_str = seconds_to_time(int(start_time_point))
-            end_time_str = seconds_to_time(int(duration))
+            start_time_str = str(datetime.timedelta(seconds=start_time_point))
+            end_time_str = str(datetime.timedelta(seconds=duration))
+            Show.console.print(f"[bold]{os.path.basename(video_src)} {duration} [{start_time_str} - {end_time_str}]")
+            video_dst = os.path.join(
+                os.path.dirname(video_src), f"tailor_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
+            )
             await ask_video_tailor(
                 self.ffmpeg, video_src, video_dst, start_time_str, end_time_str
             )
+            return video_dst
 
         # Record
         async def commence():
@@ -718,7 +719,7 @@ class Missions(object):
                         d.serial, reporter.query_path
                     )
                     todo_list.append(
-                        (temp_video, transports, reporter.total_path, reporter.title, reporter.query_path, reporter.query_path, reporter.frame_path, reporter.extra_path, reporter.proto_path)
+                        [temp_video, transports, reporter.total_path, reporter.title, reporter.query_path, reporter.query_path, reporter.frame_path, reporter.extra_path, reporter.proto_path]
                     )
                 await timepiece(timer_mode)
                 await asyncio.gather(
@@ -734,26 +735,36 @@ class Missions(object):
                         d.serial, reporter.video_path
                     )
                     todo_list.append(
-                        (temp_video, transports, reporter.total_path, reporter.title, reporter.query_path, reporter.query, reporter.frame_path, reporter.extra_path, reporter.proto_path)
+                        [temp_video, transports, reporter.total_path, reporter.title, reporter.query_path, reporter.query, reporter.frame_path, reporter.extra_path, reporter.proto_path]
                     )
                 await timepiece(timer_mode)
                 await asyncio.gather(
                     *(stop_record(temp_video, transports) for temp_video, transports, *_ in todo_list)
                 )
 
-            if len(todo_list) > 1:
-                duration_list = await asyncio.gather(
-                    *(ask_video_length(self.ffprobe, temp_video) for temp_video, *_ in todo_list)
-                )
-                standard = min(duration_list)
-                balance_task = [video_balance(standard, duration, video_src, os.path.dirname(video_src)) for duration, (video_src, *_) in zip(duration_list, todo_list)]
-                await asyncio.gather(*balance_task)
+            duration_list = await asyncio.gather(
+                *(ask_video_length(self.ffprobe, temp_video) for temp_video, *_ in todo_list)
+            )
+            duration_list = [duration for duration in duration_list if not isinstance(duration, Exception)]
+            if len(duration_list) == 0:
+                todo_list.clear()
+                return todo_list
+
+            standard = min(duration_list)
+            Show.console.print(f"[bold]标准录制时间: {standard}")
+            balance_task = [
+                video_balance(standard, duration, video_src) for duration, (video_src, *_) in
+                zip(duration_list, todo_list)
+            ]
+            video_dst_list = await asyncio.gather(*balance_task)
+            for idx, dst in enumerate(video_dst_list):
+                todo_list[idx][0] = dst
 
             return todo_list
 
         # Analysis Mode
         async def analysis_tactics():
-            if self.alone:
+            if len(task_list) == 0 or self.alone:
                 return
 
             if self.quick:
@@ -963,24 +974,27 @@ async def ask_video_detach(ffmpeg, fps: int, src: str, dst: str):
     await Terminal.cmd_line(*cmd)
 
 
-async def ask_video_tailor(ffmpeg, src: str, dst: str, start: str, end: str) -> None:
-    before = os.path.basename(src).split(".")[0]
-    after = os.path.basename(src).split(".")[-1]
-    target = os.path.join(
-        dst,
-        f"{before}_{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.{after}"
-    )
-    cmd = [ffmpeg, "-i", src, "-ss", start, "-t", end, "-c", "copy", target]
+async def ask_video_tailor(ffmpeg, src: str, dst: str, start: str, end: str):
+    cmd = [
+        ffmpeg, "-ss", start,
+        "-i", src,
+        "-t", end,
+        "-c", "copy", dst
+    ]
     await Terminal.cmd_line(*cmd)
 
 
-async def ask_video_length(ffprobe, src: str) -> float:
+async def ask_video_length(ffprobe, src: str):
     cmd = [
         ffprobe, "-v", "error", "-show_entries", "format=duration",
         "-of", "default=noprint_wrappers=1:nokey=1", "-i", src
     ]
     result = await Terminal.cmd_line(*cmd)
-    return float(result.strip())
+    try:
+        fmt_result = float(result.strip())
+    except ValueError as e:
+        return e
+    return fmt_result
 
 
 async def analyzer(
@@ -1017,7 +1031,7 @@ async def analyzer(
         if deploy.focus:
             change_record = os.path.join(
                 os.path.dirname(vision_path),
-                f"screen_fps60_{random.randint(100, 999)}.mp4"
+                f"screen_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
             )
             await ask_video_change(ffmpeg, deploy.fps, vision_path, change_record)
             logger.info(f"视频转换完成: {os.path.basename(change_record)}")
