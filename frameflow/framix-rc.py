@@ -617,8 +617,8 @@ class Missions(object):
 
     async def analysis(self):
 
-        device_events: dict[str, dict[str, asyncio.Event]] = {}
-        all_stop_event: asyncio.Event = asyncio.Event()
+        device_events = {}
+        all_stop_event = asyncio.Event()
 
         # Time
         async def timepiece(amount, serial, events):
@@ -713,6 +713,7 @@ class Missions(object):
         async def commence():
 
             async def device_online(serial):
+                Show.console.print(f"[bold]wait-for-device [{serial}] ...[/bold]")
                 await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-device")
 
             await asyncio.gather(
@@ -725,10 +726,8 @@ class Missions(object):
                 for device in device_list:
                     await asyncio.sleep(0.2)
                     device_events[device.serial] = {
-                        "head_event": asyncio.Event(),
-                        "done_event": asyncio.Event(),
-                        "stop_event": asyncio.Event(),
-                        "fail_event": asyncio.Event()
+                        "head_event": asyncio.Event(), "done_event": asyncio.Event(),
+                        "stop_event": asyncio.Event(), "fail_event": asyncio.Event()
                     }
                     reporter.query = os.path.join(group_fmt_dirs, device.serial)
                     temp_video, transports = await start_record(
@@ -767,25 +766,21 @@ class Missions(object):
                 for device in device_list:
                     await asyncio.sleep(0.2)
                     device_events[device.serial] = {
-                        "head_event": asyncio.Event(),
-                        "done_event": asyncio.Event(),
-                        "stop_event": asyncio.Event(),
-                        "fail_event": asyncio.Event()
+                        "head_event": asyncio.Event(), "done_event": asyncio.Event(),
+                        "stop_event": asyncio.Event(), "fail_event": asyncio.Event()
                     }
                     temp_video, transports = await start_record(
                         device.serial, reporter.query_path, device_events[device.serial]
                     )
                     todo_list.append(
-                        [temp_video, transports, reporter.total_path, reporter.title, reporter.query_path,
-                         reporter.query_path, reporter.frame_path, reporter.extra_path, reporter.proto_path]
+                        [temp_video, transports, reporter.total_path, reporter.title, reporter.query_path, reporter.query_path, reporter.frame_path, reporter.extra_path, reporter.proto_path]
                     )
 
                 await asyncio.gather(
                     *(timepiece(timer_mode, serial, events) for serial, events in device_events.items())
                 )
                 await asyncio.gather(
-                    *(stop_record(temp_video, transports, events) for (_, events), (temp_video, transports, *_) in
-                      zip(device_events.items(), todo_list))
+                    *(stop_record(temp_video, transports, events) for (_, events), (temp_video, transports, *_) in zip(device_events.items(), todo_list))
                 )
 
             return todo_list
