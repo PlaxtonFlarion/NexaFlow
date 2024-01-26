@@ -117,19 +117,22 @@ class Parser(object):
         parser.add_argument('--train', action='append', help='归类图片文件')
         parser.add_argument('--build', action='append', help='训练模型文件')
 
-        parser.add_argument('--alone', action='store_true', help='录制视频')
-        parser.add_argument('--quick', action='store_true', help='快速拆帧')
-        parser.add_argument('--keras', action='store_true', help='智能分类')
+        # --flick
+        parser.add_argument('--alone', action='store_true', help='独立模式')
+        parser.add_argument('--quick', action='store_true', help='快速模式')
+        parser.add_argument('--basic', action='store_true', help='基础模式')
+        parser.add_argument('--keras', action='store_true', help='智能模式')
 
-        parser.add_argument('--boost', action='store_true', help='快速模式')
+        # --keras
+        parser.add_argument('--boost', action='store_true', help='跳帧模式')
         parser.add_argument('--color', action='store_true', help='彩色模式')
-        parser.add_argument('--focus', action='store_true', help='转换视频')
         parser.add_argument('--crops', action='append', help='获取区域')
         parser.add_argument('--omits', action='append', help='忽略区域')
 
         parser.add_argument('--shape', nargs='?', const=None, type=parse_shape, help='图片尺寸')
         parser.add_argument('--scale', nargs='?', const=None, type=parse_scale, help='缩放比例')
 
+        # --debug
         parser.add_argument('--debug', action='store_true', help='调试模式')
 
         return parser.parse_args()
@@ -137,9 +140,11 @@ class Parser(object):
 
 class Missions(object):
 
-    def __init__(self, alone: bool, quick: bool, keras: bool, *args, **kwargs):
-        self.alone, self.quick, self.keras = alone, quick, keras
-        self.boost, self.color, self.focus, self.crops, self.omits, self.shape, self.scale = args
+    _target_size = (350, 700)
+
+    def __init__(self, alone: bool, quick: bool, basic: bool, keras: bool, *args, **kwargs):
+        self.alone, self.quick, self.basic, self.keras = alone, quick, basic, keras
+        self.boost, self.color, self.crops, self.omits, self.shape, self.scale = args
 
         self.model_path = kwargs["model_path"]
         self.main_total_temp = kwargs["main_total_temp"]
@@ -154,6 +159,17 @@ class Missions(object):
         self.ffmpeg = kwargs["ffmpeg"]
         self.ffprobe = kwargs["ffprobe"]
         self.scrcpy = kwargs["scrcpy"]
+
+        if self.shape:
+            self.target_size = self.shape
+
+    @property
+    def target_size(self) -> tuple:
+        return self.target_size
+
+    @target_size.setter
+    def target_size(self, value: tuple):
+        self._target_size = value
 
     @staticmethod
     def only_video(folder: str):
@@ -181,11 +197,11 @@ class Missions(object):
 
         shutil.copy(video_file, new_video_path)
 
-        deploy = Deploy(
-            boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
-            crops=self.crops, omits=self.omits
-        )
-        deploy.load_deploy(self.initial_deploy)
+        deploy = Deploy(self.initial_deploy)
+        deploy.boost = self.boost
+        deploy.color = self.color
+        deploy.crops = self.crops
+        deploy.omits = self.omits
 
         looper = asyncio.get_event_loop()
 
@@ -218,9 +234,9 @@ class Missions(object):
             )
             return reporter.total_path
 
-        if self.keras:
+        if self.keras and not self.basic:
             kc = KerasClassifier(
-                target_size=deploy.target_size, data_size=deploy.target_size
+                target_size=self.target_size, data_size=deploy.model_size
             )
             kc.load_model(self.model_path)
         else:
@@ -229,7 +245,7 @@ class Missions(object):
         futures = looper.run_until_complete(
             analyzer(
                 new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
-                ffmpeg=self.ffmpeg
+                ffmpeg=self.ffmpeg, target_size=self.target_size
             )
         )
 
@@ -237,12 +253,12 @@ class Missions(object):
             return None
         start, end, cost, classifier = futures
 
-        if self.keras:
+        if self.keras and not self.basic:
             original_inform = reporter.draw(
                 classifier_result=classifier,
                 proto_path=reporter.proto_path,
                 template_file=get_template(self.alien),
-                target_size=deploy.target_size,
+                target_size=self.target_size,
             )
         else:
             original_inform = ""
@@ -274,7 +290,6 @@ class Missions(object):
                 os.path.dirname(reporter.total_path),
                 get_template(self.main_temp),
                 get_template(self.main_total_temp),
-                self.keras
             )
         )
         return reporter.total_path
@@ -282,11 +297,11 @@ class Missions(object):
     def video_dir_task(self, folder: str):
         reporter = Report(total_path=self.initial_report)
 
-        deploy = Deploy(
-            boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
-            crops=self.crops, omits=self.omits
-        )
-        deploy.load_deploy(self.initial_deploy)
+        deploy = Deploy(self.initial_deploy)
+        deploy.boost = self.boost
+        deploy.color = self.color
+        deploy.crops = self.crops
+        deploy.omits = self.omits
 
         looper = asyncio.get_event_loop()
 
@@ -327,9 +342,9 @@ class Missions(object):
             )
             return reporter.total_path
 
-        if self.keras:
+        if self.keras and not self.basic:
             kc = KerasClassifier(
-                target_size=deploy.target_size, data_size=deploy.target_size
+                target_size=self.target_size, data_size=deploy.model_size
             )
             kc.load_model(self.model_path)
         else:
@@ -345,19 +360,19 @@ class Missions(object):
                 futures = looper.run_until_complete(
                     analyzer(
                         new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
-                        ffmpeg=self.ffmpeg
+                        ffmpeg=self.ffmpeg, target_size=self.target_size
                     )
                 )
                 if futures is None:
                     continue
                 start, end, cost, classifier = futures
 
-                if self.keras:
+                if self.keras and not self.basic:
                     original_inform = reporter.draw(
                         classifier_result=classifier,
                         proto_path=reporter.proto_path,
                         template_file=get_template(self.alien),
-                        target_size=deploy.target_size,
+                        target_size=self.target_size,
                     )
                 else:
                     original_inform = ""
@@ -389,7 +404,6 @@ class Missions(object):
                 os.path.dirname(reporter.total_path),
                 get_template(self.main_temp),
                 get_template(self.main_total_temp),
-                self.keras
             )
         )
         return reporter.total_path
@@ -400,14 +414,14 @@ class Missions(object):
         if not os.path.exists(reporter.query_path):
             os.makedirs(reporter.query_path)
 
-        deploy = Deploy(
-            boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
-            crops=self.crops, omits=self.omits
-        )
-        deploy.load_deploy(self.initial_deploy)
+        deploy = Deploy(self.initial_deploy)
+        deploy.boost = self.boost
+        deploy.color = self.color
+        deploy.crops = self.crops
+        deploy.omits = self.omits
 
         kc = KerasClassifier(
-            target_size=deploy.target_size, data_size=deploy.target_size
+            target_size=self.target_size, data_size=deploy.model_size
         )
         kc.load_model(self.model_path)
 
@@ -420,7 +434,7 @@ class Missions(object):
         cutter = VideoCutter(
             step=deploy.step,
             compress_rate=deploy.compress_rate,
-            target_size=deploy.target_size
+            target_size=self.target_size
         )
         res = cutter.cut(
             video=video,
@@ -457,13 +471,13 @@ class Missions(object):
                 new_model_path = os.path.join(real_path, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
                 new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
 
-                deploy = Deploy(
-                    boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
-                    crops=self.crops, omits=self.omits
-                )
-                deploy.load_deploy(self.initial_deploy)
+                deploy = Deploy(self.initial_deploy)
+                deploy.boost = self.boost
+                deploy.color = self.color
+                deploy.crops = self.crops
+                deploy.omits = self.omits
 
-                fc = FramixClassifier(data_size=deploy.target_size)
+                fc = FramixClassifier(data_size=deploy.model_size)
                 fc.build(real_path, new_model_path, new_model_name)
             else:
                 logger.error("文件夹未正确分类 ...")
@@ -476,7 +490,7 @@ class Missions(object):
             return_exceptions=True
         )
         tasks = [
-            Report.ask_create_total_report(m, major, total, self.keras) for m in merge
+            Report.ask_create_total_report(m, major, total) for m in merge
         ]
         error = await asyncio.gather(*tasks)
         for e in error:
@@ -622,7 +636,7 @@ class Missions(object):
 
         # Time
         async def timepiece(amount, serial, events):
-            stop_event_control = all_stop_event if self.alone else events["stop_event"]
+            stop_event_control = events["stop_event"] if self.alone else all_stop_event
             while True:
                 if events["head_event"].is_set():
                     for i in range(amount):
@@ -656,7 +670,7 @@ class Missions(object):
                     if "Recording started" in stream:
                         events["head_event"].set()
                     elif "Recording complete" in stream:
-                        events["stop_event"].set()
+                        stop_event_control.set()
                         events["done_event"].set()
                         break
 
@@ -668,6 +682,7 @@ class Missions(object):
                         events["fail_event"].set()
                         break
 
+            stop_event_control = events["stop_event"] if self.alone else all_stop_event
             temp_video = f"{os.path.join(dst, 'screen')}_{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
             cmd = [
                 self.scrcpy, "-s", serial, "--no-audio", "--video-bit-rate", "8M", "--max-fps", f"{deploy.fps}", "--record", temp_video
@@ -721,7 +736,7 @@ class Missions(object):
             )
             todo_list = []
 
-            if self.quick or self.keras:
+            if self.quick or self.basic or self.keras:
                 group_fmt_dirs = reporter.clock()
                 for device in device_list:
                     await asyncio.sleep(0.2)
@@ -787,13 +802,13 @@ class Missions(object):
 
         # Analysis Mode
         async def analysis_tactics():
-            if len(task_list):
-                return None
+            if len(task_list) == 0:
+                return False
 
             if self.quick:
                 video_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
-                image_scale = max(0.1, min(1.0, self.scale if self.scale else 1.0))
-                video_filter.append(f"scale=iw*{image_scale}:ih*{image_scale}")
+                scale = max(0.1, min(1.0, self.scale if self.scale else 1.0))
+                video_filter.append(f"scale=iw*{scale}:ih*{scale}")
 
                 await asyncio.gather(
                     *(ask_video_detach(self.ffmpeg, video_filter, temp_video, frame_path) for
@@ -811,9 +826,12 @@ class Missions(object):
                     logger.debug(f"Quick: {result}")
                     reporter.load(result)
 
-            elif self.keras:
+            elif self.basic or self.keras:
                 futures = await asyncio.gather(
-                    *(analyzer(temp_video, deploy, kc, frame_path, extra_path, ffmpeg=self.ffmpeg) for temp_video, *_, frame_path, extra_path, _ in task_list)
+                    *(analyzer(
+                        temp_video, deploy, kc, frame_path, extra_path,
+                        ffmpeg=self.ffmpeg, target_size=self.target_size
+                    ) for temp_video, *_, frame_path, extra_path, _ in task_list)
                 )
 
                 for future, todo in zip(futures, task_list):
@@ -829,7 +847,7 @@ class Missions(object):
                             classifier_result=classifier,
                             proto_path=proto_path,
                             template_file=template_file,
-                            target_size=deploy.target_size,
+                            target_size=self.target_size,
                         )
                     else:
                         original_inform = ""
@@ -857,7 +875,7 @@ class Missions(object):
                         )
 
             else:
-                return None
+                return False
 
         # Device View
         async def device_mode_view():
@@ -879,15 +897,15 @@ class Missions(object):
         else:
             reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
 
-        deploy = Deploy(
-            boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
-            crops=self.crops, omits=self.omits
-        )
-        deploy.load_deploy(self.initial_deploy)
+        deploy = Deploy(self.initial_deploy)
+        deploy.boost = self.boost
+        deploy.color = self.color
+        deploy.crops = self.crops
+        deploy.omits = self.omits
 
-        if self.keras and not self.quick:
+        if self.keras and not self.quick and not self.basic:
             kc = KerasClassifier(
-                target_size=deploy.target_size, data_size=deploy.target_size
+                target_size=self.target_size, data_size=deploy.model_size
             )
             kc.load_model(self.model_path)
         else:
@@ -936,8 +954,6 @@ class Missions(object):
                             await Terminal.cmd_line("Notepad", self.initial_deploy)
                         else:
                             await Terminal.cmd_line("open", "-W", "-a", "TextEdit", self.initial_deploy)
-                        deploy.crops.clear()
-                        deploy.omits.clear()
                         deploy.load_deploy(self.initial_deploy)
                         deploy.view_deploy()
                         continue
@@ -960,6 +976,7 @@ class Missions(object):
                         device_list = await manage.operate_device()
                         break
             finally:
+                all_stop_event.clear()
                 for _, event in device_events.items():
                     event["head_event"].clear()
                     event["done_event"].clear()
@@ -1032,6 +1049,7 @@ async def analyzer(
 
     frame_path, extra_path = args
     ffmpeg = kwargs["ffmpeg"]
+    target_size = kwargs["target_size"]
 
     async def validate():
         screen_tag, screen_cap = None, None
@@ -1057,17 +1075,14 @@ async def analyzer(
         return screen_tag, screen_cap
 
     async def frame_flip():
-        if deploy.focus:
-            change_record = os.path.join(
-                os.path.dirname(vision_path),
-                f"screen_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
-            )
-            await ask_video_change(ffmpeg, deploy.fps, vision_path, change_record)
-            logger.info(f"视频转换完成: {os.path.basename(change_record)}")
-            os.remove(vision_path)
-            logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
-        else:
-            change_record = screen_record
+        change_record = os.path.join(
+            os.path.dirname(vision_path),
+            f"screen_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
+        )
+        await ask_video_change(ffmpeg, deploy.fps, vision_path, change_record)
+        logger.info(f"视频转换完成: {os.path.basename(change_record)}")
+        os.remove(vision_path)
+        logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
 
         video = VideoObject(change_record)
         task, hued = video.load_frames(deploy.color)
@@ -1078,7 +1093,7 @@ async def analyzer(
         cutter = VideoCutter(
             step=deploy.step,
             compress_rate=deploy.compress_rate,
-            target_size=deploy.target_size
+            target_size=target_size
         )
 
         if len(deploy.crops) > 0:
@@ -1318,8 +1333,8 @@ if __name__ == '__main__':
         logger.debug(env)
     # Debug Mode =======================================================================================================
 
-    _alone, _quick, _keras = cmd_lines.alone, cmd_lines.quick, cmd_lines.keras
-    _boost, _color, _focus = cmd_lines.boost, cmd_lines.color, cmd_lines.focus
+    _alone, _quick, _basic, _keras = cmd_lines.alone, cmd_lines.quick, cmd_lines.basic, cmd_lines.keras
+    _boost, _color = cmd_lines.boost, cmd_lines.color
     _shape, _scale = cmd_lines.shape, cmd_lines.scale
 
     # Debug Mode =======================================================================================================
@@ -1362,7 +1377,7 @@ if __name__ == '__main__':
     # Debug Mode =======================================================================================================
 
     missions = Missions(
-        _alone, _quick, _keras, _boost, _color, _focus, _crops, _omits, _shape, _scale,
+        _alone, _quick, _basic, _keras, _boost, _color, _crops, _omits, _shape, _scale,
         model_path=_model_path,
         main_total_temp=_main_total_temp, main_temp=_main_temp,
         view_total_temp=_view_total_temp, view_temp=_view_temp,

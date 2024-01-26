@@ -11,8 +11,7 @@ class Deploy(object):
     _deploys = {
         "boost": False,
         "color": False,
-        "focus": False,
-        "target_size": (350, 700),
+        "model_size": (350, 700),
         "fps": 60,
         "compress_rate": 0.5,
         "threshold": 0.97,
@@ -25,38 +24,8 @@ class Deploy(object):
         "omits": []
     }
 
-    def __init__(
-            self,
-            boost: bool = None,
-            color: bool = None,
-            focus: bool = None,
-            target_size: tuple = None,
-            fps: int = None,
-            compress_rate: int | float = None,
-            threshold: int | float = None,
-            offset: int = None,
-            window_size: int = None,
-            step: int = None,
-            block: int = None,
-            window_coefficient: int = None,
-            crops: list = None,
-            omits: list = None
-    ):
-
-        self._deploys["boost"] = boost or False
-        self._deploys["color"] = color or False
-        self._deploys["focus"] = focus or False
-        self._deploys["target_size"] = target_size or (350, 700)
-        self._deploys["fps"] = fps or 60
-        self._deploys["compress_rate"] = compress_rate or 0.5
-        self._deploys["threshold"] = threshold or 0.97
-        self._deploys["offset"] = offset or 3
-        self._deploys["window_size"] = window_size or 1
-        self._deploys["step"] = step or 1
-        self._deploys["block"] = block or 6
-        self._deploys["window_coefficient"] = window_coefficient or 2
-        self._deploys["crops"] = crops or []
-        self._deploys["omits"] = omits or []
+    def __init__(self, deploy_file: str):
+        self.load_deploy(deploy_file)
 
     @property
     def boost(self):
@@ -67,12 +36,8 @@ class Deploy(object):
         return self._deploys["color"]
 
     @property
-    def focus(self):
-        return self._deploys["focus"]
-
-    @property
-    def target_size(self):
-        return self._deploys["target_size"]
+    def model_size(self):
+        return self._deploys["model_size"]
 
     @property
     def fps(self):
@@ -114,66 +79,57 @@ class Deploy(object):
     def omits(self):
         return self._deploys["omits"]
 
-    def load_deploy(self, deploy_file: str) -> bool:
-        is_load: bool = False
-        try:
-            with open(file=deploy_file, mode="r", encoding="utf-8") as f:
-                data = json.loads(f.read())
-                boost_mode = boost_data.lower() if isinstance(boost_data := data.get("boost", "false"), str) else "false"
-                color_mode = color_data.lower() if isinstance(color_data := data.get("color", "false"), str) else "false"
-                focus_mode = focus_data.lower() if isinstance(focus_data := data.get("focus", "false"), str) else "false"
-                self._deploys["boost"] = True if boost_mode == "true" else False
-                self._deploys["color"] = True if color_mode == "true" else False
-                self._deploys["focus"] = True if focus_mode == "true" else False
-                size = data.get("target_size", (350, 700))
-                self._deploys["target_size"] = tuple(
-                    max(100, min(3000, int(i))) for i in re.findall(r"-?\d*\.?\d+", size)
-                ) if isinstance(size, str) else size
-                self._deploys["fps"] = max(15, min(60, data.get("fps", 60)))
-                self._deploys["compress_rate"] = max(0, min(1, data.get("compress_rate", 0.5)))
-                self._deploys["threshold"] = max(0, min(1, data.get("threshold", 0.97)))
-                self._deploys["offset"] = max(1, data.get("offset", 3))
-                self._deploys["window_size"] = max(1, data.get("window_size", 1))
-                self._deploys["step"] = max(1, data.get("step", 1))
-                self._deploys["block"] = max(1, min(int(min(self.target_size[0], self.target_size[1]) / 10), data.get("block", 6)))
-                self._deploys["window_coefficient"] = max(2, data.get("window_coefficient", 2))
+    @boost.setter
+    def boost(self, value: bool):
+        self._deploys["boost"] = value
 
-                # Crops Hook
-                crops_list = data.get("crops", [])
-                for hook_dict in crops_list:
-                    if len(
-                            data_list := [
-                                value for value in hook_dict.values() if isinstance(value, int | float)
-                            ]
-                    ) == 4 and sum(data_list) > 0:
-                        self._deploys["crops"].append(
-                            (hook_dict["x"], hook_dict["y"], hook_dict["x_size"], hook_dict["y_size"])
-                        )
-                if len(self.crops) >= 2:
-                    self._deploys["crops"] = list(set(self.crops))
+    @color.setter
+    def color(self, value: bool):
+        self._deploys["color"] = value
 
-                # Omits Hook
-                omits_list = data.get("omits", [])
-                for hook_dict in omits_list:
-                    if len(
-                            data_list := [
-                                value for value in hook_dict.values() if isinstance(value, int | float)
-                            ]
-                    ) == 4 and sum(data_list) > 0:
-                        self._deploys["omits"].append(
-                            (hook_dict["x"], hook_dict["y"], hook_dict["x_size"], hook_dict["y_size"])
-                        )
-                if len(self.omits) >= 2:
-                    self._deploys["omits"] = list(set(self.omits))
-        except FileNotFoundError:
-            logger.debug("未找到部署文件,使用默认参数 ...")
-        except json.decoder.JSONDecodeError:
-            logger.debug("部署文件解析错误,文件格式不正确,使用默认参数 ...")
-        else:
-            logger.debug("读取部署文件,使用部署参数 ...")
-            is_load = True
-        finally:
-            return is_load
+    @model_size.setter
+    def model_size(self, value: tuple[int, int]):
+        self._deploys["model_size"] = value
+
+    @fps.setter
+    def fps(self, value: int):
+        self._deploys["fps"] = value
+
+    @compress_rate.setter
+    def compress_rate(self, value: int | float):
+        self._deploys["compress_rate"] = value
+
+    @threshold.setter
+    def threshold(self, value: int | float):
+        self._deploys["threshold"] = value
+
+    @offset.setter
+    def offset(self, value: int):
+        self._deploys["offset"] = value
+
+    @window_size.setter
+    def window_size(self, value: int):
+        self._deploys["window_size"] = value
+
+    @step.setter
+    def step(self, value: int):
+        self._deploys["step"] = value
+
+    @block.setter
+    def block(self, value: int):
+        self._deploys["block"] = value
+
+    @window_coefficient.setter
+    def window_coefficient(self, value: int):
+        self._deploys["window_coefficient"] = value
+
+    @crops.setter
+    def crops(self, value: list):
+        self._deploys["crops"] = value
+
+    @omits.setter
+    def omits(self, value: list):
+        self._deploys["omits"] = value
 
     def dump_deploy(self, deploy_file: str) -> None:
         os.makedirs(os.path.dirname(deploy_file), exist_ok=True)
@@ -206,6 +162,61 @@ class Deploy(object):
                     f.writelines(f'    "{k}": {v},')
             f.writelines('\n}')
 
+    def load_deploy(self, deploy_file: str) -> None:
+        try:
+            with open(file=deploy_file, mode="r", encoding="utf-8") as f:
+                data = json.loads(f.read())
+        except FileNotFoundError:
+            logger.debug("未找到部署文件,使用默认参数 ...")
+        except json.decoder.JSONDecodeError:
+            logger.debug("部署文件解析错误,文件格式不正确,使用默认参数 ...")
+        else:
+            logger.debug("读取部署文件,使用部署参数 ...")
+            boost_mode = boost_data.lower() if isinstance(boost_data := data.get("boost", "false"), str) else "false"
+            color_mode = color_data.lower() if isinstance(color_data := data.get("color", "false"), str) else "false"
+            self._deploys["boost"] = True if boost_mode == "true" else False
+            self._deploys["color"] = True if color_mode == "true" else False
+            size = data.get("model_size", (350, 700))
+            self._deploys["model_size"] = tuple(
+                max(100, min(3000, int(i))) for i in re.findall(r"-?\d*\.?\d+", size)
+            ) if isinstance(size, str) else size
+            self._deploys["fps"] = max(15, min(60, data.get("fps", 60)))
+            self._deploys["compress_rate"] = max(0, min(1, data.get("compress_rate", 0.5)))
+            self._deploys["threshold"] = max(0, min(1, data.get("threshold", 0.97)))
+            self._deploys["offset"] = max(1, data.get("offset", 3))
+            self._deploys["window_size"] = max(1, data.get("window_size", 1))
+            self._deploys["step"] = max(1, data.get("step", 1))
+            self._deploys["block"] = max(1, min(int(min(self.model_size[0], self.model_size[1]) / 10), data.get("block", 6)))
+            self._deploys["window_coefficient"] = max(2, data.get("window_coefficient", 2))
+
+            # Crops Hook
+            crops_list, crop_effective = data.get("crops", []), []
+            for hook_dict in crops_list:
+                if len(
+                        data_list := [
+                            value for value in hook_dict.values() if isinstance(value, int | float)
+                        ]
+                ) == 4 and sum(data_list) > 0:
+                    crop_effective.append(
+                        (hook_dict["x"], hook_dict["y"], hook_dict["x_size"], hook_dict["y_size"])
+                    )
+            self.crops = list(set(crop_effective)).copy()
+            crop_effective.clear()
+
+            # Omits Hook
+            omits_list, omit_effective = data.get("omits", []), []
+            for hook_dict in omits_list:
+                if len(
+                        data_list := [
+                            value for value in hook_dict.values() if isinstance(value, int | float)
+                        ]
+                ) == 4 and sum(data_list) > 0:
+                    omit_effective.append(
+                        (hook_dict["x"], hook_dict["y"], hook_dict["x_size"], hook_dict["y_size"])
+                    )
+            self.omits = list(set(omit_effective)).copy()
+            omit_effective.clear()
+
     def view_deploy(self) -> None:
 
         title_color = "#af5fd7"
@@ -224,7 +235,7 @@ class Deploy(object):
         table.add_column("效果", no_wrap=True)
 
         table.add_row(
-            f"[bold {col_1_color}]快速模式",
+            f"[bold {col_1_color}]跳帧模式",
             f"[bold {col_2_color}]{self.boost}",
             f"[bold][[bold {col_3_color}]T | F[/bold {col_3_color}] ]",
             f"[bold green]开启[/bold green]" if self.boost else "[bold red]关闭[/bold red]",
@@ -236,16 +247,10 @@ class Deploy(object):
             f"[bold green]开启[/bold green]" if self.color else "[bold red]关闭[/bold red]",
         )
         table.add_row(
-            f"[bold {col_1_color}]视频转换",
-            f"[bold {col_2_color}]{self.focus}",
-            f"[bold][[bold {col_3_color}]T | F[/bold {col_3_color}] ]",
-            f"[bold green]开启[/bold green]" if self.focus else "[bold red]关闭[/bold red]",
-        )
-        table.add_row(
             f"[bold {col_1_color}]图像尺寸",
-            f"[bold {col_2_color}]{self.target_size}",
+            f"[bold {col_2_color}]{self.model_size}",
             f"[bold][[bold {col_3_color}]? , ?[/bold {col_3_color}] ]",
-            f"[bold]宽 [bold red]{self.target_size[0]}[/bold red] 高 [bold red]{self.target_size[1]}[/bold red]",
+            f"[bold]宽 [bold red]{self.model_size[0]}[/bold red] 高 [bold red]{self.model_size[1]}[/bold red]",
         )
         table.add_row(
             f"[bold {col_1_color}]视频帧率",
@@ -286,7 +291,7 @@ class Deploy(object):
         table.add_row(
             f"[bold {col_1_color}]切分程度",
             f"[bold {col_2_color}]{self.block}",
-            f"[bold][[bold {col_3_color}]1 , {int(min(self.target_size[0], self.target_size[1]) / 10)}[/bold {col_3_color}]]",
+            f"[bold][[bold {col_3_color}]1 , {int(min(self.model_size[0], self.model_size[1]) / 10)}[/bold {col_3_color}]]",
             f"[bold]每个帧图像切分为 [bold red]{self.block}[/bold red] 块",
         )
         table.add_row(

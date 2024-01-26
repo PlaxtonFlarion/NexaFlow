@@ -161,7 +161,7 @@ class Report(object):
                     future = executor.map(start_create, self.range_list)
                 images_list = [i for f in future for i in f]
 
-            template = Template(template_file)
+            template = Template(self.get_template(template_file))
             html = template.render(
                 title=self.title,
                 images_list=images_list
@@ -193,7 +193,7 @@ class Report(object):
 
     def create_total_report(self, template_file: str) -> None:
         if len(self.total_list) > 0:
-            template = Template(template_file)
+            template = Template(self.get_template(template_file))
             html = template.render(
                 report_time=time.strftime('%Y.%m.%d %H:%M:%S'),
                 total_list=self.total_list
@@ -371,7 +371,7 @@ class Report(object):
                 logger.info("没有可以汇总的报告 ...")
 
     @staticmethod
-    async def ask_create_report(total_path: str, title: str, query_path: str, parts_list: list, major_loc: str, should_display: bool):
+    async def ask_create_report(total_path: str, title: str, query_path: str, parts_list: list, major_loc: str):
 
         async def handler_inform(result):
             handler_list = []
@@ -429,7 +429,8 @@ class Report(object):
                     "stage": stage,
                     "image_list": image_list,
                     "extra_list": extra_list,
-                    "proto": os.path.join(query, os.path.basename(proto))
+                    "proto": os.path.join(query, os.path.basename(proto)),
+                    "should_display": True if proto else False
                 }
             )
             return handler_list
@@ -445,7 +446,6 @@ class Report(object):
                 range_html_temp = major_template.render(
                     title=title,
                     images_list=images_list,
-                    should_display=should_display
                 )
                 range_html = os.path.join(query_path, f"{title}.html")
                 async with aiofiles.open(file=range_html, mode="w", encoding="utf-8") as range_file:
@@ -474,7 +474,7 @@ class Report(object):
         return await handler_start()
 
     @staticmethod
-    async def ask_create_total_report(file_name: str, major_loc: str, total_loc: str, should_display: bool):
+    async def ask_create_total_report(file_name: str, major_loc: str, total_loc: str):
         try:
             with open(file=os.path.join(file_name, "Nexa_Recovery", "nexaflow.log"), mode="r", encoding="utf-8") as f:
                 open_file = f.read()
@@ -495,7 +495,6 @@ class Report(object):
                     os.path.join(file_name, os.path.basename(total_path), title),
                     parts_list,
                     major_loc,
-                    should_display
                 )
                 for (total_path, title, query_path), parts_list in grouped_dict.items()
             ]

@@ -117,19 +117,22 @@ class Parser(object):
         parser.add_argument('--train', action='append', help='归类图片文件')
         parser.add_argument('--build', action='append', help='训练模型文件')
 
-        parser.add_argument('--alone', action='store_true', help='录制视频')
-        parser.add_argument('--quick', action='store_true', help='快速拆帧')
-        parser.add_argument('--keras', action='store_true', help='智能分类')
+        # --flick
+        parser.add_argument('--alone', action='store_true', help='独立模式')
+        parser.add_argument('--quick', action='store_true', help='快速模式')
+        parser.add_argument('--basic', action='store_true', help='基础模式')
+        parser.add_argument('--keras', action='store_true', help='智能模式')
 
-        parser.add_argument('--boost', action='store_true', help='快速模式')
+        # --keras
+        parser.add_argument('--boost', action='store_true', help='跳帧模式')
         parser.add_argument('--color', action='store_true', help='彩色模式')
-        parser.add_argument('--focus', action='store_true', help='转换视频')
         parser.add_argument('--crops', action='append', help='获取区域')
         parser.add_argument('--omits', action='append', help='忽略区域')
 
         parser.add_argument('--shape', nargs='?', const=None, type=parse_shape, help='图片尺寸')
         parser.add_argument('--scale', nargs='?', const=None, type=parse_scale, help='缩放比例')
 
+        # --debug
         parser.add_argument('--debug', action='store_true', help='调试模式')
 
         return parser.parse_args()
@@ -137,9 +140,11 @@ class Parser(object):
 
 class Missions(object):
 
-    def __init__(self, alone: bool, quick: bool, keras: bool, *args, **kwargs):
-        self.alone, self.quick, self.keras = alone, quick, keras
-        self.boost, self.color, self.focus, self.crops, self.omits, self.shape, self.scale = args
+    _target_size = (350, 700)
+
+    def __init__(self, alone: bool, quick: bool, basic: bool, keras: bool, *args, **kwargs):
+        self.alone, self.quick, self.basic, self.keras = alone, quick, basic, keras
+        self.boost, self.color, self.crops, self.omits, self.shape, self.scale = args
 
         self.model_path = kwargs["model_path"]
         self.main_total_temp = kwargs["main_total_temp"]
@@ -155,6 +160,17 @@ class Missions(object):
         self.ffprobe = kwargs["ffprobe"]
         self.scrcpy = kwargs["scrcpy"]
 
+        if self.shape:
+            self.target_size = self.shape
+
+    @property
+    def target_size(self) -> tuple:
+        return self.target_size
+
+    @target_size.setter
+    def target_size(self, value: tuple):
+        self._target_size = value
+
     @staticmethod
     def only_video(folder: str):
 
@@ -168,7 +184,7 @@ class Missions(object):
         return [
             Entry(
                 os.path.basename(root), root,
-                [os.path.join(root, f) for f in sorted(file) if "log" not in f]
+                [os.path.join(root, f) for f in sorted(file) if "log" not in f.split(".")[-1]]
             )
             for root, _, file in os.walk(folder) if file
         ]
@@ -181,18 +197,22 @@ class Missions(object):
 
         shutil.copy(video_file, new_video_path)
 
-        deploy = Deploy(
-            boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
-            crops=self.crops, omits=self.omits
-        )
-        deploy.load_deploy(self.initial_deploy)
+        deploy = Deploy(self.initial_deploy)
+        deploy.boost = self.boost
+        deploy.color = self.color
+        deploy.crops = self.crops
+        deploy.omits = self.omits
 
         looper = asyncio.get_event_loop()
 
         if self.quick:
+            video_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
+            image_scale = max(0.1, min(1.0, self.scale if self.scale else 1.0))
+            video_filter.append(f"scale=iw*{image_scale}:ih*{image_scale}")
+
             looper.run_until_complete(
                 ask_video_detach(
-                    self.ffmpeg, deploy.fps, new_video_path, reporter.frame_path
+                    self.ffmpeg, video_filter, new_video_path, reporter.frame_path
                 )
             )
             result = {
@@ -214,9 +234,9 @@ class Missions(object):
             )
             return reporter.total_path
 
-        if self.keras:
+        if self.keras and not self.basic:
             kc = KerasClassifier(
-                target_size=deploy.target_size, data_size=deploy.target_size
+                target_size=self.target_size, data_size=deploy.model_size
             )
             kc.load_model(self.model_path)
         else:
@@ -225,7 +245,7 @@ class Missions(object):
         futures = looper.run_until_complete(
             analyzer(
                 new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
-                ffmpeg=self.ffmpeg
+                ffmpeg=self.ffmpeg, target_size=self.target_size
             )
         )
 
@@ -233,12 +253,12 @@ class Missions(object):
             return None
         start, end, cost, classifier = futures
 
-        if self.keras:
+        if self.keras and not self.basic:
             original_inform = reporter.draw(
                 classifier_result=classifier,
                 proto_path=reporter.proto_path,
                 template_file=get_template(self.alien),
-                target_size=deploy.target_size,
+                target_size=self.target_size,
             )
         else:
             original_inform = ""
@@ -270,7 +290,6 @@ class Missions(object):
                 os.path.dirname(reporter.total_path),
                 get_template(self.main_temp),
                 get_template(self.main_total_temp),
-                self.keras
             )
         )
         return reporter.total_path
@@ -278,11 +297,11 @@ class Missions(object):
     def video_dir_task(self, folder: str):
         reporter = Report(total_path=self.initial_report)
 
-        deploy = Deploy(
-            boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
-            crops=self.crops, omits=self.omits
-        )
-        deploy.load_deploy(self.initial_deploy)
+        deploy = Deploy(self.initial_deploy)
+        deploy.boost = self.boost
+        deploy.color = self.color
+        deploy.crops = self.crops
+        deploy.omits = self.omits
 
         looper = asyncio.get_event_loop()
 
@@ -293,6 +312,10 @@ class Missions(object):
                     reporter.query = os.path.basename(path).split(".")[0]
                     shutil.copy(path, reporter.video_path)
                     new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
+
+                    video_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
+                    image_scale = max(0.1, min(1.0, self.scale if self.scale else 1.0))
+                    video_filter.append(f"scale=iw*{image_scale}:ih*{image_scale}")
 
                     looper.run_until_complete(
                         ask_video_detach(
@@ -319,9 +342,9 @@ class Missions(object):
             )
             return reporter.total_path
 
-        if self.keras:
+        if self.keras and not self.basic:
             kc = KerasClassifier(
-                target_size=deploy.target_size, data_size=deploy.target_size
+                target_size=self.target_size, data_size=deploy.model_size
             )
             kc.load_model(self.model_path)
         else:
@@ -337,19 +360,19 @@ class Missions(object):
                 futures = looper.run_until_complete(
                     analyzer(
                         new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
-                        ffmpeg=self.ffmpeg
+                        ffmpeg=self.ffmpeg, target_size=self.target_size
                     )
                 )
                 if futures is None:
                     continue
                 start, end, cost, classifier = futures
 
-                if self.keras:
+                if self.keras and not self.basic:
                     original_inform = reporter.draw(
                         classifier_result=classifier,
                         proto_path=reporter.proto_path,
                         template_file=get_template(self.alien),
-                        target_size=deploy.target_size,
+                        target_size=self.target_size,
                     )
                 else:
                     original_inform = ""
@@ -381,7 +404,6 @@ class Missions(object):
                 os.path.dirname(reporter.total_path),
                 get_template(self.main_temp),
                 get_template(self.main_total_temp),
-                self.keras
             )
         )
         return reporter.total_path
@@ -392,14 +414,14 @@ class Missions(object):
         if not os.path.exists(reporter.query_path):
             os.makedirs(reporter.query_path)
 
-        deploy = Deploy(
-            boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
-            crops=self.crops, omits=self.omits
-        )
-        deploy.load_deploy(self.initial_deploy)
+        deploy = Deploy(self.initial_deploy)
+        deploy.boost = self.boost
+        deploy.color = self.color
+        deploy.crops = self.crops
+        deploy.omits = self.omits
 
         kc = KerasClassifier(
-            target_size=deploy.target_size, data_size=deploy.target_size
+            target_size=self.target_size, data_size=deploy.model_size
         )
         kc.load_model(self.model_path)
 
@@ -412,7 +434,7 @@ class Missions(object):
         cutter = VideoCutter(
             step=deploy.step,
             compress_rate=deploy.compress_rate,
-            target_size=deploy.target_size
+            target_size=self.target_size
         )
         res = cutter.cut(
             video=video,
@@ -449,13 +471,13 @@ class Missions(object):
                 new_model_path = os.path.join(real_path, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
                 new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
 
-                deploy = Deploy(
-                    boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
-                    crops=self.crops, omits=self.omits
-                )
-                deploy.load_deploy(self.initial_deploy)
+                deploy = Deploy(self.initial_deploy)
+                deploy.boost = self.boost
+                deploy.color = self.color
+                deploy.crops = self.crops
+                deploy.omits = self.omits
 
-                fc = FramixClassifier(data_size=deploy.target_size)
+                fc = FramixClassifier(data_size=deploy.model_size)
                 fc.build(real_path, new_model_path, new_model_name)
             else:
                 logger.error("文件夹未正确分类 ...")
@@ -468,7 +490,7 @@ class Missions(object):
             return_exceptions=True
         )
         tasks = [
-            Report.ask_create_total_report(m, major, total, self.keras) for m in merge
+            Report.ask_create_total_report(m, major, total) for m in merge
         ]
         error = await asyncio.gather(*tasks)
         for e in error:
@@ -609,69 +631,70 @@ class Missions(object):
 
     async def analysis(self):
 
-        head_event = asyncio.Event()
-        done_event = asyncio.Event()
-        stop_event = asyncio.Event()
-        fail_event = asyncio.Event()
+        device_events = {}
+        all_stop_event = asyncio.Event()
 
         # Time
-        async def timepiece(amount):
+        async def timepiece(amount, serial, events):
+            stop_event_control = events["stop_event"] if self.alone else all_stop_event
             while True:
-                if head_event.is_set():
+                if events["head_event"].is_set():
                     for i in range(amount):
-                        if stop_event.is_set() and i != amount:
-                            logger.warning(f"主动停止 ...")
-                            logger.warning(f"剩余时间 -> 00 秒")
+                        if stop_event_control.is_set() and i != amount:
+                            logger.success(f"{serial} 主动停止 ...")
+                            logger.warning(f"{serial} 剩余时间 -> 00 秒")
                             return
-                        elif fail_event.is_set():
-                            logger.warning(f"意外停止 ...")
-                            logger.warning(f"剩余时间 -> 00 秒")
+                        elif events["fail_event"].is_set():
+                            logger.error(f"{serial} 意外停止 ...")
+                            logger.warning(f"{serial} 剩余时间 -> 00 秒")
                             return
                         if amount - i <= 10:
-                            logger.warning(f"剩余时间 -> {amount - i:02} 秒 {'----' * (amount - i)}")
+                            logger.warning(f"{serial} 剩余时间 -> {amount - i:02} 秒 {'----' * (amount - i)}")
                         else:
-                            logger.warning(f"剩余时间 -> {amount - i:02} 秒 {'----' * 10} ...")
+                            logger.warning(f"{serial} 剩余时间 -> {amount - i:02} 秒 {'----' * 10} ...")
                         await asyncio.sleep(1)
-                    logger.warning(f"剩余时间 -> 00 秒")
+                    logger.warning(f"{serial} 剩余时间 -> 00 秒")
                     return
-                elif fail_event.is_set():
-                    logger.warning(f"意外停止 ...")
+                elif events["fail_event"].is_set():
+                    logger.error(f"{serial} 意外停止 ...")
                     break
                 await asyncio.sleep(0.2)
 
-        # Stream
-        async def input_stream(transports):
-            async for line in transports.stdout:
-                logger.info(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
-                if "Recording started" in stream:
-                    head_event.set()
-                elif "Recording complete" in stream:
-                    stop_event.set()
-                    done_event.set()
-                    break
-
-        # Stream
-        async def error_stream(transports):
-            async for line in transports.stderr:
-                logger.info(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
-                if "Could not find" in stream or "connection failed" in stream or "Recorder error" in stream:
-                    fail_event.set()
-                    break
-
         # Screen Copy
-        async def start_record(serial: str, dst: str):
+        async def start_record(serial: str, dst: str, events):
+
+            # Stream
+            async def input_stream():
+                async for line in transports.stdout:
+                    logger.info(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
+                    if "Recording started" in stream:
+                        events["head_event"].set()
+                    elif "Recording complete" in stream:
+                        stop_event_control.set()
+                        events["done_event"].set()
+                        break
+
+            # Stream
+            async def error_stream():
+                async for line in transports.stderr:
+                    logger.info(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
+                    if "Could not find" in stream or "connection failed" in stream or "Recorder error" in stream:
+                        events["fail_event"].set()
+                        break
+
+            stop_event_control = events["stop_event"] if self.alone else all_stop_event
             temp_video = f"{os.path.join(dst, 'screen')}_{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
             cmd = [
                 self.scrcpy, "-s", serial, "--no-audio", "--video-bit-rate", "8M", "--max-fps", f"{deploy.fps}", "--record", temp_video
             ]
             transports = await Terminal.cmd_link(*cmd)
-            asyncio.create_task(input_stream(transports))
-            asyncio.create_task(error_stream(transports))
+            asyncio.create_task(input_stream())
+            asyncio.create_task(error_stream())
             await asyncio.sleep(1)
             return temp_video, transports
 
         # Screen Copy
-        async def stop_record(temp_video, transports):
+        async def stop_record(temp_video, transports, events):
             if operation_system == "win32":
                 await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
             else:
@@ -679,10 +702,10 @@ class Missions(object):
                 await transports.wait()
 
             for _ in range(10):
-                if done_event.is_set():
+                if events["done_event"].is_set():
                     logger.success(f"视频录制成功: {os.path.basename(temp_video)}")
                     return
-                elif fail_event.is_set():
+                elif events["fail_event"].is_set():
                     break
                 await asyncio.sleep(0.2)
             logger.error(f"录制视频失败: {os.path.basename(temp_video)}")
@@ -705,71 +728,90 @@ class Missions(object):
         async def commence():
 
             async def device_online(serial):
+                Show.console.print(f"[bold]wait-for-device [{serial}] ...[/bold]")
                 await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-device")
 
             await asyncio.gather(
-                *(device_online(d.serial) for d in device_list)
+                *(device_online(device.serial) for device in device_list)
             )
             todo_list = []
 
-            if self.alone:
-                for d in device_list:
-                    await asyncio.sleep(0.2)
-                    temp_video, transports = await start_record(
-                        d.serial, reporter.query_path
-                    )
-                    todo_list.append(
-                        [temp_video, transports, reporter.total_path, reporter.title, reporter.query_path, reporter.query_path, reporter.frame_path, reporter.extra_path, reporter.proto_path]
-                    )
-                await timepiece(timer_mode)
-                await asyncio.gather(
-                    *(stop_record(temp_video, transports) for temp_video, transports, *_ in todo_list)
-                )
-
-            else:
+            if self.quick or self.basic or self.keras:
                 group_fmt_dirs = reporter.clock()
-                for d in device_list:
+                for device in device_list:
                     await asyncio.sleep(0.2)
-                    reporter.query = os.path.join(group_fmt_dirs, d.serial)
+                    device_events[device.serial] = {
+                        "head_event": asyncio.Event(), "done_event": asyncio.Event(),
+                        "stop_event": asyncio.Event(), "fail_event": asyncio.Event()
+                    }
+                    reporter.query = os.path.join(group_fmt_dirs, device.serial)
                     temp_video, transports = await start_record(
-                        d.serial, reporter.video_path
+                        device.serial, reporter.video_path, device_events[device.serial]
                     )
                     todo_list.append(
                         [temp_video, transports, reporter.total_path, reporter.title, reporter.query_path, reporter.query, reporter.frame_path, reporter.extra_path, reporter.proto_path]
                     )
-                await timepiece(timer_mode)
+
                 await asyncio.gather(
-                    *(stop_record(temp_video, transports) for temp_video, transports, *_ in todo_list)
+                    *(timepiece(timer_mode, serial, events) for serial, events in device_events.items())
+                )
+                await asyncio.gather(
+                    *(stop_record(temp_video, transports, events) for (_, events), (temp_video, transports, *_) in zip(device_events.items(), todo_list))
                 )
 
-            duration_list = await asyncio.gather(
-                *(ask_video_length(self.ffprobe, temp_video) for temp_video, *_ in todo_list)
-            )
-            duration_list = [duration for duration in duration_list if not isinstance(duration, Exception)]
-            if len(duration_list) == 0:
-                todo_list.clear()
-                return todo_list
+                if not self.alone and len(todo_list) > 1:
+                    duration_list = await asyncio.gather(
+                        *(ask_video_length(self.ffprobe, temp_video) for temp_video, *_ in todo_list)
+                    )
+                    duration_list = [duration for duration in duration_list if not isinstance(duration, Exception)]
+                    if len(duration_list) == 0:
+                        todo_list.clear()
+                        return todo_list
 
-            standard = min(duration_list)
-            Show.console.print(f"[bold]标准录制时间: {standard}")
-            balance_task = [
-                video_balance(standard, duration, video_src) for duration, (video_src, *_) in
-                zip(duration_list, todo_list)
-            ]
-            video_dst_list = await asyncio.gather(*balance_task)
-            for idx, dst in enumerate(video_dst_list):
-                todo_list[idx][0] = dst
+                    standard = min(duration_list)
+                    Show.console.print(f"[bold]标准录制时间: {standard}")
+                    balance_task = [
+                        video_balance(standard, duration, video_src) for duration, (video_src, *_) in zip(duration_list, todo_list)
+                    ]
+                    video_dst_list = await asyncio.gather(*balance_task)
+                    for idx, dst in enumerate(video_dst_list):
+                        todo_list[idx][0] = dst
+
+            else:
+                for device in device_list:
+                    await asyncio.sleep(0.2)
+                    device_events[device.serial] = {
+                        "head_event": asyncio.Event(), "done_event": asyncio.Event(),
+                        "stop_event": asyncio.Event(), "fail_event": asyncio.Event()
+                    }
+                    temp_video, transports = await start_record(
+                        device.serial, reporter.query_path, device_events[device.serial]
+                    )
+                    todo_list.append(
+                        [temp_video, transports, reporter.total_path, reporter.title, reporter.query_path, reporter.query_path, reporter.frame_path, reporter.extra_path, reporter.proto_path]
+                    )
+
+                await asyncio.gather(
+                    *(timepiece(timer_mode, serial, events) for serial, events in device_events.items())
+                )
+                await asyncio.gather(
+                    *(stop_record(temp_video, transports, events) for (_, events), (temp_video, transports, *_) in zip(device_events.items(), todo_list))
+                )
 
             return todo_list
 
         # Analysis Mode
         async def analysis_tactics():
-            if len(task_list) == 0 or self.alone:
-                return
+            if len(task_list) == 0:
+                return False
 
             if self.quick:
+                video_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
+                scale = max(0.1, min(1.0, self.scale if self.scale else 1.0))
+                video_filter.append(f"scale=iw*{scale}:ih*{scale}")
+
                 await asyncio.gather(
-                    *(ask_video_detach(self.ffmpeg, deploy.fps, temp_video, frame_path) for
+                    *(ask_video_detach(self.ffmpeg, video_filter, temp_video, frame_path) for
                       temp_video, *_, frame_path, _, _ in task_list)
                 )
                 for *_, total_path, title, query_path, query, frame_path, _, _ in task_list:
@@ -784,9 +826,12 @@ class Missions(object):
                     logger.debug(f"Quick: {result}")
                     reporter.load(result)
 
-            else:
+            elif self.basic or self.keras:
                 futures = await asyncio.gather(
-                    *(analyzer(temp_video, deploy, kc, frame_path, extra_path, ffmpeg=self.ffmpeg) for temp_video, *_, frame_path, extra_path, _ in task_list)
+                    *(analyzer(
+                        temp_video, deploy, kc, frame_path, extra_path,
+                        ffmpeg=self.ffmpeg, target_size=self.target_size
+                    ) for temp_video, *_, frame_path, extra_path, _ in task_list)
                 )
 
                 for future, todo in zip(futures, task_list):
@@ -802,7 +847,7 @@ class Missions(object):
                             classifier_result=classifier,
                             proto_path=proto_path,
                             template_file=template_file,
-                            target_size=deploy.target_size,
+                            target_size=self.target_size,
                         )
                     else:
                         original_inform = ""
@@ -829,6 +874,9 @@ class Missions(object):
                             (total_path, title, query_path, query, json.dumps(stage), frame_path, extra_path, proto_path)
                         )
 
+            else:
+                return False
+
         # Device View
         async def device_mode_view():
             if len(device_list) == 1:
@@ -849,15 +897,15 @@ class Missions(object):
         else:
             reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
 
-        deploy = Deploy(
-            boost=self.boost, color=self.color, focus=self.focus, target_size=self.shape,
-            crops=self.crops, omits=self.omits
-        )
-        deploy.load_deploy(self.initial_deploy)
+        deploy = Deploy(self.initial_deploy)
+        deploy.boost = self.boost
+        deploy.color = self.color
+        deploy.crops = self.crops
+        deploy.omits = self.omits
 
-        if not self.alone and not self.quick and self.keras:
+        if self.keras and not self.quick and not self.basic:
             kc = KerasClassifier(
-                target_size=deploy.target_size, data_size=deploy.target_size
+                target_size=self.target_size, data_size=deploy.model_size
             )
             kc.load_model(self.model_path)
         else:
@@ -906,8 +954,6 @@ class Missions(object):
                             await Terminal.cmd_line("Notepad", self.initial_deploy)
                         else:
                             await Terminal.cmd_line("open", "-W", "-a", "TextEdit", self.initial_deploy)
-                        deploy.crops.clear()
-                        deploy.omits.clear()
                         deploy.load_deploy(self.initial_deploy)
                         deploy.view_deploy()
                         continue
@@ -925,13 +971,18 @@ class Missions(object):
             else:
                 task_list = await commence()
                 await analysis_tactics()
-                if fail_event.is_set():
-                    device_list = await manage.operate_device()
+                for _, event in device_events.items():
+                    if event["fail_event"].is_set():
+                        device_list = await manage.operate_device()
+                        break
             finally:
-                head_event.clear()
-                done_event.clear()
-                stop_event.clear()
-                fail_event.clear()
+                all_stop_event.clear()
+                for _, event in device_events.items():
+                    event["head_event"].clear()
+                    event["done_event"].clear()
+                    event["stop_event"].clear()
+                    event["fail_event"].clear()
+                device_events.clear()
 
 
 def worker_init(log_level: str):
@@ -958,17 +1009,15 @@ async def ask_get_template(template_path: str):
 
 async def ask_video_change(ffmpeg, fps: int, src: str, dst: str):
     cmd = [
-        ffmpeg, "-i", src,
-        "-vf", f"fps={fps}", "-c:v", "libx264", "-crf", "18", "-c:a", "copy",
-        dst
+        ffmpeg, "-i", src, "-vf", f"fps={fps}",
+        "-c:v", "libx264", "-crf", "18", "-c:a", "copy", dst
     ]
     await Terminal.cmd_line(*cmd)
 
 
-async def ask_video_detach(ffmpeg, fps: int, src: str, dst: str):
+async def ask_video_detach(ffmpeg, video_filter: list, src: str, dst: str):
     cmd = [
-        ffmpeg, "-i", src,
-        "-vf", f"fps={fps}",
+        ffmpeg, "-i", src, "-vf", ",".join(video_filter),
         f"{os.path.join(dst, 'frame_%05d.png')}"
     ]
     await Terminal.cmd_line(*cmd)
@@ -976,10 +1025,7 @@ async def ask_video_detach(ffmpeg, fps: int, src: str, dst: str):
 
 async def ask_video_tailor(ffmpeg, src: str, dst: str, start: str, end: str):
     cmd = [
-        ffmpeg, "-ss", start,
-        "-i", src,
-        "-t", end,
-        "-c", "copy", dst
+        ffmpeg, "-ss", start, "-i", src, "-t", end, "-c", "copy", dst
     ]
     await Terminal.cmd_line(*cmd)
 
@@ -1003,6 +1049,7 @@ async def analyzer(
 
     frame_path, extra_path = args
     ffmpeg = kwargs["ffmpeg"]
+    target_size = kwargs["target_size"]
 
     async def validate():
         screen_tag, screen_cap = None, None
@@ -1028,17 +1075,14 @@ async def analyzer(
         return screen_tag, screen_cap
 
     async def frame_flip():
-        if deploy.focus:
-            change_record = os.path.join(
-                os.path.dirname(vision_path),
-                f"screen_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
-            )
-            await ask_video_change(ffmpeg, deploy.fps, vision_path, change_record)
-            logger.info(f"视频转换完成: {os.path.basename(change_record)}")
-            os.remove(vision_path)
-            logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
-        else:
-            change_record = screen_record
+        change_record = os.path.join(
+            os.path.dirname(vision_path),
+            f"screen_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
+        )
+        await ask_video_change(ffmpeg, deploy.fps, vision_path, change_record)
+        logger.info(f"视频转换完成: {os.path.basename(change_record)}")
+        os.remove(vision_path)
+        logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
 
         video = VideoObject(change_record)
         task, hued = video.load_frames(deploy.color)
@@ -1049,7 +1093,7 @@ async def analyzer(
         cutter = VideoCutter(
             step=deploy.step,
             compress_rate=deploy.compress_rate,
-            target_size=deploy.target_size
+            target_size=target_size
         )
 
         if len(deploy.crops) > 0:
@@ -1289,8 +1333,8 @@ if __name__ == '__main__':
         logger.debug(env)
     # Debug Mode =======================================================================================================
 
-    _alone, _quick, _keras = cmd_lines.alone, cmd_lines.quick, cmd_lines.keras
-    _boost, _color, _focus = cmd_lines.boost, cmd_lines.color, cmd_lines.focus
+    _alone, _quick, _basic, _keras = cmd_lines.alone, cmd_lines.quick, cmd_lines.basic, cmd_lines.keras
+    _boost, _color = cmd_lines.boost, cmd_lines.color
     _shape, _scale = cmd_lines.shape, cmd_lines.scale
 
     # Debug Mode =======================================================================================================
@@ -1333,7 +1377,7 @@ if __name__ == '__main__':
     # Debug Mode =======================================================================================================
 
     missions = Missions(
-        _alone, _quick, _keras, _boost, _color, _focus, _crops, _omits, _shape, _scale,
+        _alone, _quick, _basic, _keras, _boost, _color, _crops, _omits, _shape, _scale,
         model_path=_model_path,
         main_total_temp=_main_total_temp, main_temp=_main_temp,
         view_total_temp=_view_total_temp, view_temp=_view_temp,

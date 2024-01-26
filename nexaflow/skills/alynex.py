@@ -92,7 +92,7 @@ class Alynex(object):
         return self.__framix
 
     @staticmethod
-    def only_video(folder: str) -> List:
+    def only_video(folder: str):
 
         class Entry(object):
 
@@ -104,7 +104,7 @@ class Alynex(object):
         return [
             Entry(
                 os.path.basename(root), root,
-                [os.path.join(root, f) for f in sorted(file)]
+                [os.path.join(root, f) for f in sorted(file) if "log" not in f.split(".")[-1]]
             )
             for root, _, file in os.walk(folder) if file
         ]
@@ -252,14 +252,13 @@ class Alynex(object):
         __repr__ = __str__
 
     def analyzer(
-            self, alien: str, boost: bool = True, color: bool = True, focus: bool = False, **kwargs
+            self, alien: str, boost: bool = True, color: bool = True, **kwargs
     ) -> Optional["Alynex._Review"]:
         """
         智能分类帧数据
-        :param alien: 报告模版文件
+        :param alien: 报告模版
         :param boost: 跳帧模式
         :param color: 彩色模式
-        :param focus: 转换视频
         :param kwargs: 视频分析配置
         :return: 分析结果
         """
@@ -296,16 +295,13 @@ class Alynex(object):
             return screen_tag, screen_cap
 
         def frame_flip():
-            if focus:
-                change_record = os.path.join(
-                    os.path.dirname(screen_record), f"screen_fps60_{random.randint(100, 999)}.mp4"
-                )
-                asyncio.run(self.ffmpeg.ask_video_change(screen_record, change_record))
-                logger.info(f"视频转换完成: {os.path.basename(change_record)}")
-                os.remove(screen_record)
-                logger.info(f"移除旧的视频: {os.path.basename(screen_record)}")
-            else:
-                change_record = screen_record
+            change_record = os.path.join(
+                os.path.dirname(screen_record), f"screen_fps60_{random.randint(100, 999)}.mp4"
+            )
+            asyncio.run(self.ffmpeg.ask_video_change(screen_record, change_record))
+            logger.info(f"视频转换完成: {os.path.basename(change_record)}")
+            os.remove(screen_record)
+            logger.info(f"移除旧的视频: {os.path.basename(screen_record)}")
 
             video = VideoObject(change_record)
             task, hued = video.load_frames(color)
