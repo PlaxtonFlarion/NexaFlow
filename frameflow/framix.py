@@ -62,7 +62,8 @@ elif operation_system == "darwin":
     _ffprobe = os.path.join(_tools_path, "mac", "ffmpeg", "bin", "ffprobe")
     _scrcpy = os.path.join(_tools_path, "mac", "scrcpy", "bin", "scrcpy")
 else:
-    Show.console.print("[bold]Only compatible with [bold red]Windows[/bold red] and [bold red]macOS[/bold red] platforms ...[bold]")
+    Show.console.print(
+        "[bold]Only compatible with [bold red]Windows[/bold red] and [bold red]macOS[/bold red] platforms ...[bold]")
     time.sleep(5)
     sys.exit(1)
 
@@ -139,7 +140,6 @@ class Parser(object):
 
 
 class Missions(object):
-
     _target_size = (350, 700)
 
     def __init__(self, alone: bool, quick: bool, basic: bool, keras: bool, *args, **kwargs):
@@ -277,12 +277,14 @@ class Missions(object):
         reporter.load(result)
 
         with DataBase(os.path.join(reporter.reset_path, "Framix_Data.db")) as database:
-            column_list = ['total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path']
+            column_list = ['total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path',
+                           'proto_path']
             database.create('stocks', *column_list)
             stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
             database.insert(
                 'stocks', column_list,
-                (reporter.total_path, reporter.title, reporter.query_path, reporter.query, json.dumps(stage), reporter.frame_path, reporter.extra_path, reporter.proto_path)
+                (reporter.total_path, reporter.title, reporter.query_path, reporter.query, json.dumps(stage),
+                 reporter.frame_path, reporter.extra_path, reporter.proto_path)
             )
 
         looper.run_until_complete(
@@ -391,12 +393,14 @@ class Missions(object):
                 reporter.load(result)
 
                 with DataBase(os.path.join(reporter.reset_path, "Framix_Data.db")) as database:
-                    column_list = ['total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path']
+                    column_list = ['total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path',
+                                   'proto_path']
                     database.create('stocks', *column_list)
                     stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
                     database.insert(
                         'stocks', column_list,
-                        (reporter.total_path, reporter.title, reporter.query_path, reporter.query, json.dumps(stage), reporter.frame_path, reporter.extra_path, reporter.proto_path)
+                        (reporter.total_path, reporter.title, reporter.query_path, reporter.query, json.dumps(stage),
+                         reporter.frame_path, reporter.extra_path, reporter.proto_path)
                     )
 
         looper.run_until_complete(
@@ -425,7 +429,7 @@ class Missions(object):
         )
         kc.load_model(self.model_path)
 
-        video_temp_file = os.path.join(reporter.query_path, f"tmp_fps60_{random.randint(100, 999)}.mp4")
+        video_temp_file = os.path.join(reporter.query_path, f"tmp_fps{deploy.fps}_{random.randint(100, 999)}.mp4")
         asyncio.run(ask_video_change(self.ffmpeg, deploy.fps, video_file, video_temp_file))
 
         video = VideoObject(video_temp_file)
@@ -471,13 +475,7 @@ class Missions(object):
                 new_model_path = os.path.join(real_path, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
                 new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
 
-                deploy = Deploy(self.initial_deploy)
-                deploy.boost = self.boost
-                deploy.color = self.color
-                deploy.crops = self.crops
-                deploy.omits = self.omits
-
-                fc = FramixClassifier(data_size=deploy.model_size)
+                fc = FramixClassifier(data_size=self.target_size)
                 fc.build(real_path, new_model_path, new_model_name)
             else:
                 logger.error("文件夹未正确分类 ...")
@@ -518,11 +516,13 @@ class Missions(object):
             image_folder = "/sdcard/Pictures/Shots"
             image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_" + "Shot.png"
             await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-usb-device", "shell", "mkdir", "-p", image_folder)
-            await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-usb-device", "shell", "screencap", "-p", f"{image_folder}/{image}")
+            await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-usb-device", "shell", "screencap", "-p",
+                                    f"{image_folder}/{image}")
 
             with tempfile.TemporaryDirectory() as temp_dir:
                 image_save_path = os.path.join(temp_dir, image)
-                await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-usb-device", "pull", f"{image_folder}/{image}", image_save_path)
+                await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-usb-device", "pull",
+                                        f"{image_folder}/{image}", image_save_path)
 
                 if self.color:
                     old_image = toolbox.imread(image_save_path)
@@ -560,12 +560,14 @@ class Missions(object):
 
                 min_scale, max_scale = 0.3, 1.0
                 if self.scale:
-                    image_scale = max_scale if self.scale > max_scale else (min_scale if self.scale < min_scale else self.scale)
+                    image_scale = max_scale if self.scale > max_scale else (
+                        min_scale if self.scale < min_scale else self.scale)
                 else:
                     image_scale = min_scale if twist_w == original_w or twist_h == original_h else max_scale
 
                 new_w, new_h = int(twist_w * image_scale), int(twist_h * image_scale)
-                logger.debug(f"原始尺寸: {(original_w, original_h)} 调整尺寸: {(new_w, new_h)} 缩放比例: {int(image_scale * 100)}%")
+                logger.debug(
+                    f"原始尺寸: {(original_w, original_h)} 调整尺寸: {(new_w, new_h)} 缩放比例: {int(image_scale * 100)}%")
 
                 if new_w == new_h:
                     x_line_num, y_line_num = 10, 10
@@ -587,7 +589,8 @@ class Missions(object):
                         text_width = bbox[2] - bbox[0]
                         text_height = bbox[3] - bbox[1]
                         y_text_start = 3
-                        draw.line([(x_line, text_width + 5 + y_text_start), (x_line, new_h)], fill=(0, 255, 255), width=1)
+                        draw.line([(x_line, text_width + 5 + y_text_start), (x_line, new_h)], fill=(0, 255, 255),
+                                  width=1)
                         draw.text((x_line - text_height // 2, y_text_start), text, fill=(0, 255, 255), font=font)
 
                 if x_line_num > 0:
@@ -598,12 +601,14 @@ class Missions(object):
                         text_width = bbox[2] - bbox[0]
                         text_height = bbox[3] - bbox[1]
                         x_text_start = 3
-                        draw.line([(text_width + 5 + x_text_start, y_line), (new_w, y_line)], fill=(255, 182, 193), width=1)
+                        draw.line([(text_width + 5 + x_text_start, y_line), (new_w, y_line)], fill=(255, 182, 193),
+                                  width=1)
                         draw.text((x_text_start, y_line - text_height // 2), text, fill=(255, 182, 193), font=font)
 
                 resized.show()
 
-            await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-usb-device", "shell", "rm", f"{image_folder}/{image}")
+            await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-usb-device", "shell", "rm",
+                                    f"{image_folder}/{image}")
             return resized
 
         manage = Manage(self.adb)
@@ -620,7 +625,8 @@ class Missions(object):
                 reporter = Report(self.initial_report)
                 reporter.title = f"Hooks_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
                 for device, resize_img in zip(device_list, resized_result):
-                    img_save_path = os.path.join(reporter.query_path, f"hook_{device.serial}_{random.randint(10000, 99999)}.png")
+                    img_save_path = os.path.join(reporter.query_path,
+                                                 f"hook_{device.serial}_{random.randint(10000, 99999)}.png")
                     resize_img.save(img_save_path)
                     Show.console.print(f"[bold]保存图片: {[img_save_path]}")
                 break
@@ -685,7 +691,8 @@ class Missions(object):
             stop_event_control = events["stop_event"] if self.alone else all_stop_event
             temp_video = f"{os.path.join(dst, 'screen')}_{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
             cmd = [
-                self.scrcpy, "-s", serial, "--no-audio", "--video-bit-rate", "8M", "--max-fps", f"{deploy.fps}", "--record", temp_video
+                self.scrcpy, "-s", serial, "--no-audio", "--video-bit-rate", "8M", "--max-fps", f"{deploy.fps}",
+                "--record", temp_video
             ]
             transports = await Terminal.cmd_link(*cmd)
             asyncio.create_task(input_stream())
@@ -749,14 +756,16 @@ class Missions(object):
                         device.serial, reporter.video_path, device_events[device.serial]
                     )
                     todo_list.append(
-                        [temp_video, transports, reporter.total_path, reporter.title, reporter.query_path, reporter.query, reporter.frame_path, reporter.extra_path, reporter.proto_path]
+                        [temp_video, transports, reporter.total_path, reporter.title, reporter.query_path,
+                         reporter.query, reporter.frame_path, reporter.extra_path, reporter.proto_path]
                     )
 
                 await asyncio.gather(
                     *(timepiece(timer_mode, serial, events) for serial, events in device_events.items())
                 )
                 await asyncio.gather(
-                    *(stop_record(temp_video, transports, events) for (_, events), (temp_video, transports, *_) in zip(device_events.items(), todo_list))
+                    *(stop_record(temp_video, transports, events) for (_, events), (temp_video, transports, *_) in
+                      zip(device_events.items(), todo_list))
                 )
 
                 if not self.alone and len(todo_list) > 1:
@@ -771,7 +780,8 @@ class Missions(object):
                     standard = min(duration_list)
                     Show.console.print(f"[bold]标准录制时间: {standard}")
                     balance_task = [
-                        video_balance(standard, duration, video_src) for duration, (video_src, *_) in zip(duration_list, todo_list)
+                        video_balance(standard, duration, video_src) for duration, (video_src, *_) in
+                        zip(duration_list, todo_list)
                     ]
                     video_dst_list = await asyncio.gather(*balance_task)
                     for idx, dst in enumerate(video_dst_list):
@@ -788,14 +798,16 @@ class Missions(object):
                         device.serial, reporter.query_path, device_events[device.serial]
                     )
                     todo_list.append(
-                        [temp_video, transports, reporter.total_path, reporter.title, reporter.query_path, reporter.query_path, reporter.frame_path, reporter.extra_path, reporter.proto_path]
+                        [temp_video, transports, reporter.total_path, reporter.title, reporter.query_path,
+                         reporter.query_path, reporter.frame_path, reporter.extra_path, reporter.proto_path]
                     )
 
                 await asyncio.gather(
                     *(timepiece(timer_mode, serial, events) for serial, events in device_events.items())
                 )
                 await asyncio.gather(
-                    *(stop_record(temp_video, transports, events) for (_, events), (temp_video, transports, *_) in zip(device_events.items(), todo_list))
+                    *(stop_record(temp_video, transports, events) for (_, events), (temp_video, transports, *_) in
+                      zip(device_events.items(), todo_list))
                 )
 
             return todo_list
@@ -865,13 +877,16 @@ class Missions(object):
                     logger.debug(f"Restore: {result}")
                     reporter.load(result)
 
-                    with DataBase(os.path.join(os.path.dirname(total_path), "Nexa_Recovery", "Framix_Data.db")) as database:
-                        column_list = ['total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path']
+                    with DataBase(
+                            os.path.join(os.path.dirname(total_path), "Nexa_Recovery", "Framix_Data.db")) as database:
+                        column_list = ['total_path', 'title', 'query_path', 'query', 'stage', 'frame_path',
+                                       'extra_path', 'proto_path']
                         database.create('stocks', *column_list)
                         stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
                         database.insert(
                             'stocks', column_list,
-                            (total_path, title, query_path, query, json.dumps(stage), frame_path, extra_path, proto_path)
+                            (
+                            total_path, title, query_path, query, json.dumps(stage), frame_path, extra_path, proto_path)
                         )
 
             else:
@@ -917,7 +932,9 @@ class Missions(object):
         while True:
             try:
                 await device_mode_view()
-                if action := Prompt.ask(prompt=f"[bold #5FD7FF]<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/bold #D7FF5F] 秒>>>[/bold #5FD7FF]", console=Show.console):
+                if action := Prompt.ask(
+                        prompt=f"[bold #5FD7FF]<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/bold #D7FF5F] 秒>>>[/bold #5FD7FF]",
+                        console=Show.console):
                     select = action.strip().lower()
                     if "header" in select:
                         if match := re.search(r"(?<=header\s).*", select):
@@ -1046,7 +1063,6 @@ async def ask_video_length(ffprobe, src: str):
 async def analyzer(
         vision_path: str, deploy: "Deploy", kc: "KerasClassifier", *args, **kwargs
 ):
-
     frame_path, extra_path = args
     ffmpeg = kwargs["ffmpeg"]
     target_size = kwargs["target_size"]
@@ -1187,7 +1203,8 @@ async def analyzer(
             end_frame = classify.data[-1]
 
         time_cost = end_frame.timestamp - start_frame.timestamp
-        logger.info(f"图像分类结果: [开始帧: {start_frame.timestamp:.5f}] [结束帧: {end_frame.timestamp:.5f}] [总耗时: {time_cost:.5f}]")
+        logger.info(
+            f"图像分类结果: [开始帧: {start_frame.timestamp:.5f}] [结束帧: {end_frame.timestamp:.5f}] [总耗时: {time_cost:.5f}]")
         return start_frame.frame_id, end_frame.frame_id, time_cost
 
     async def frame_forge(frame):
@@ -1303,9 +1320,11 @@ if __name__ == '__main__':
         sys.exit(0)
 
     from multiprocessing import Pool, freeze_support
+
     freeze_support()
 
     from argparse import ArgumentParser
+
     cmd_lines = Parser.parse_cmd()
     _level = "DEBUG" if cmd_lines.debug else "INFO"
     worker_init(_level)
@@ -1392,9 +1411,10 @@ if __name__ == '__main__':
             missions.video_dir_task(cmd_lines.stack[0])
         else:
             processes = members if members <= cpu else cpu
-            with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
-                results = pool.starmap(missions.video_dir_task, [(i, ) for i in cmd_lines.stack])
-            template_total = get_template(missions.view_total_temp) if missions.quick else get_template(missions.main_total_temp)
+            with Pool(processes=processes, initializer=worker_init, initargs=("ERROR",)) as pool:
+                results = pool.starmap(missions.video_dir_task, [(i,) for i in cmd_lines.stack])
+            template_total = get_template(missions.view_total_temp) if missions.quick else get_template(
+                missions.main_total_temp)
             Report.merge_report(results, template_total, missions.quick)
         sys.exit(0)
     elif cmd_lines.video and len(cmd_lines.video) > 0:
@@ -1403,9 +1423,10 @@ if __name__ == '__main__':
             missions.video_task(cmd_lines.video[0])
         else:
             processes = members if members <= cpu else cpu
-            with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
-                results = pool.starmap(missions.video_task, [(i, ) for i in cmd_lines.video])
-            template_total = get_template(missions.view_total_temp) if missions.quick else get_template(missions.main_total_temp)
+            with Pool(processes=processes, initializer=worker_init, initargs=("ERROR",)) as pool:
+                results = pool.starmap(missions.video_task, [(i,) for i in cmd_lines.video])
+            template_total = get_template(missions.view_total_temp) if missions.quick else get_template(
+                missions.main_total_temp)
             Report.merge_report(results, template_total, missions.quick)
         sys.exit(0)
     elif cmd_lines.train and len(cmd_lines.train) > 0:
@@ -1414,8 +1435,8 @@ if __name__ == '__main__':
             missions.train_model(cmd_lines.train[0])
         else:
             processes = members if members <= cpu else cpu
-            with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
-                pool.starmap(missions.train_model, [(i, ) for i in cmd_lines.train])
+            with Pool(processes=processes, initializer=worker_init, initargs=("ERROR",)) as pool:
+                pool.starmap(missions.train_model, [(i,) for i in cmd_lines.train])
         sys.exit(0)
     elif cmd_lines.build and len(cmd_lines.build) > 0:
         members = len(cmd_lines.build)
@@ -1423,8 +1444,8 @@ if __name__ == '__main__':
             missions.build_model(cmd_lines.build[0])
         else:
             processes = members if members <= cpu else cpu
-            with Pool(processes=processes, initializer=worker_init, initargs=("ERROR", )) as pool:
-                pool.starmap(missions.build_model, [(i, ) for i in cmd_lines.build])
+            with Pool(processes=processes, initializer=worker_init, initargs=("ERROR",)) as pool:
+                pool.starmap(missions.build_model, [(i,) for i in cmd_lines.build])
         sys.exit(0)
     else:
         try:
