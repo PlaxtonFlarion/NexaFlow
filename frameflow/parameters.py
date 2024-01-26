@@ -13,7 +13,6 @@ class Deploy(object):
         "color": False,
         "model_size": (350, 700),
         "fps": 60,
-        "compress_rate": 0.5,
         "threshold": 0.97,
         "offset": 3,
         "window_size": 1,
@@ -42,10 +41,6 @@ class Deploy(object):
     @property
     def fps(self):
         return self._deploys["fps"]
-
-    @property
-    def compress_rate(self):
-        return self._deploys["compress_rate"]
 
     @property
     def threshold(self):
@@ -95,10 +90,6 @@ class Deploy(object):
     def fps(self, value: int):
         self._deploys["fps"] = value
 
-    @compress_rate.setter
-    def compress_rate(self, value: int | float):
-        self._deploys["compress_rate"] = value
-
     @threshold.setter
     def threshold(self, value: int | float):
         self._deploys["threshold"] = value
@@ -140,7 +131,7 @@ class Deploy(object):
                 f.writelines('\n')
                 if isinstance(v, bool):
                     f.writelines(f'    "{k}": "{v}",')
-                elif k == "target_size":
+                elif k == "model_size":
                     f.writelines(f'    "{k}": "{v}",')
                 elif k == "crops" or k == "omits":
                     if len(v) == 0:
@@ -181,7 +172,6 @@ class Deploy(object):
                 max(100, min(3000, int(i))) for i in re.findall(r"-?\d*\.?\d+", size)
             ) if isinstance(size, str) else size
             self._deploys["fps"] = max(15, min(60, data.get("fps", 60)))
-            self._deploys["compress_rate"] = max(0, min(1, data.get("compress_rate", 0.5)))
             self._deploys["threshold"] = max(0, min(1, data.get("threshold", 0.97)))
             self._deploys["offset"] = max(1, data.get("offset", 3))
             self._deploys["window_size"] = max(1, data.get("window_size", 1))
@@ -257,12 +247,6 @@ class Deploy(object):
             f"[bold {col_2_color}]{self.fps}",
             f"[bold][[bold {col_3_color}]15, 60[/bold {col_3_color}]]",
             f"[bold]转换视频为 [bold red]{self.fps}[/bold red] 帧每秒",
-        )
-        table.add_row(
-            f"[bold {col_1_color}]压缩率",
-            f"[bold {col_2_color}]{self.compress_rate}",
-            f"[bold][[bold {col_3_color}]0 , 1[/bold {col_3_color}] ]",
-            f"[bold]压缩视频大小为原来的 [bold red]{int(self.compress_rate * 100)}%[/bold red]",
         )
         table.add_row(
             f"[bold {col_1_color}]相似度",

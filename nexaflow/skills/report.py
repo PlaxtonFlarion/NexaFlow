@@ -147,7 +147,8 @@ class Report(object):
                     "stage": stage,
                     "image_list": image_list,
                     "extra_list": extra_list,
-                    "proto": os.path.join(query, os.path.basename(proto))
+                    "proto": os.path.join(query, os.path.basename(proto)),
+                    "should_display": True if proto else False
                 }
             )
 

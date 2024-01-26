@@ -139,8 +139,6 @@ class Parser(object):
 
 class Missions(object):
 
-    _target_size = (350, 700)
-
     def __init__(self, alone: bool, quick: bool, basic: bool, keras: bool, *args, **kwargs):
         self.alone, self.quick, self.basic, self.keras = alone, quick, basic, keras
         self.boost, self.color, self.crops, self.omits, self.shape, self.scale = args
@@ -159,16 +157,8 @@ class Missions(object):
         self.ffprobe = kwargs["ffprobe"]
         self.scrcpy = kwargs["scrcpy"]
 
-        if self.shape:
-            self.target_size = self.shape
-
-    @property
-    def target_size(self) -> tuple:
-        return self.target_size
-
-    @target_size.setter
-    def target_size(self, value: tuple):
-        self._target_size = value
+        if not self.shape and not self.scale:
+            self.shape = (350, 700)
 
     @staticmethod
     def only_video(folder: str):
@@ -238,7 +228,7 @@ class Missions(object):
 
         if self.keras and not self.basic:
             kc = KerasClassifier(
-                target_size=self.target_size, data_size=deploy.model_size
+                target_size=self.shape, data_size=deploy.model_size
             )
             kc.load_model(self.model_path)
         else:
@@ -247,7 +237,7 @@ class Missions(object):
         futures = looper.run_until_complete(
             analyzer(
                 new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
-                ffmpeg=self.ffmpeg, target_size=self.target_size
+                ffmpeg=self.ffmpeg, shape=self.shape, scale=self.scale
             )
         )
 
@@ -260,7 +250,7 @@ class Missions(object):
                 classifier_result=classifier,
                 proto_path=reporter.proto_path,
                 template_file=get_template(self.alien),
-                target_size=self.target_size,
+                target_size=self.shape
             )
         else:
             original_inform = ""
@@ -294,7 +284,7 @@ class Missions(object):
             reporter.ask_create_total_report(
                 os.path.dirname(reporter.total_path),
                 get_template(self.main_temp),
-                get_template(self.main_total_temp),
+                get_template(self.main_total_temp)
             )
         )
         return reporter.total_path
@@ -352,7 +342,7 @@ class Missions(object):
 
         if self.keras and not self.basic:
             kc = KerasClassifier(
-                target_size=self.target_size, data_size=deploy.model_size
+                target_size=self.shape, data_size=deploy.model_size
             )
             kc.load_model(self.model_path)
         else:
@@ -368,7 +358,7 @@ class Missions(object):
                 futures = looper.run_until_complete(
                     analyzer(
                         new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
-                        ffmpeg=self.ffmpeg, target_size=self.target_size
+                        ffmpeg=self.ffmpeg, shape=self.shape, scale=self.scale
                     )
                 )
                 if futures is None:
@@ -380,7 +370,7 @@ class Missions(object):
                         classifier_result=classifier,
                         proto_path=reporter.proto_path,
                         template_file=get_template(self.alien),
-                        target_size=self.target_size,
+                        target_size=self.shape
                     )
                 else:
                     original_inform = ""
@@ -423,7 +413,7 @@ class Missions(object):
         reporter = Report(total_path=self.initial_report)
         reporter.title = f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
         if not os.path.exists(reporter.query_path):
-            os.makedirs(reporter.query_path)
+            os.makedirs(reporter.query_path, exist_ok=True)
 
         deploy = Deploy(self.initial_deploy)
         deploy.boost = self.boost
@@ -431,13 +421,8 @@ class Missions(object):
         deploy.crops = self.crops
         deploy.omits = self.omits
 
-        kc = KerasClassifier(
-            target_size=self.target_size, data_size=deploy.model_size
-        )
-        kc.load_model(self.model_path)
-
         video_temp_file = os.path.join(
-            reporter.query_path, f"tmp_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
+            reporter.query_path, f"tmp_fps{deploy.fps}.mp4"
         )
         asyncio.run(
             ask_video_change(self.ffmpeg, deploy.fps, video_file, video_temp_file)
@@ -448,8 +433,8 @@ class Missions(object):
 
         cutter = VideoCutter(
             step=deploy.step,
-            compress_rate=deploy.compress_rate,
-            target_size=self.target_size
+            compress_rate=self.scale,
+            target_size=self.shape
         )
         res = cutter.cut(
             video=video,
@@ -486,7 +471,7 @@ class Missions(object):
                 new_model_path = os.path.join(real_path, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
                 new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
 
-                fc = FramixClassifier(data_size=self.target_size)
+                fc = FramixClassifier(data_size=self.shape)
                 fc.build(real_path, new_model_path, new_model_name)
             else:
                 logger.error("文件夹未正确分类 ...")
@@ -877,7 +862,7 @@ class Missions(object):
                 futures = await asyncio.gather(
                     *(analyzer(
                         temp_video, deploy, kc, frame_path, extra_path,
-                        ffmpeg=self.ffmpeg, target_size=self.target_size
+                        ffmpeg=self.ffmpeg, shape=self.shape, scale=self.scale
                     ) for temp_video, *_, frame_path, extra_path, _ in task_list)
                 )
 
@@ -894,7 +879,7 @@ class Missions(object):
                             classifier_result=classifier,
                             proto_path=proto_path,
                             template_file=template_file,
-                            target_size=self.target_size,
+                            target_size=self.shape
                         )
                     else:
                         original_inform = ""
@@ -954,7 +939,7 @@ class Missions(object):
 
         if self.keras and not self.quick and not self.basic:
             kc = KerasClassifier(
-                target_size=self.target_size, data_size=deploy.model_size
+                target_size=self.shape, data_size=deploy.model_size
             )
             kc.load_model(self.model_path)
         else:
@@ -1099,7 +1084,7 @@ async def analyzer(
 ):
     frame_path, extra_path = args
     ffmpeg = kwargs["ffmpeg"]
-    target_size = kwargs["target_size"]
+    shape, scale = kwargs["shape"], kwargs["scale"]
 
     async def validate():
         screen_tag, screen_cap = None, None
@@ -1142,8 +1127,8 @@ async def analyzer(
         video, task, hued = await frame_flip()
         cutter = VideoCutter(
             step=deploy.step,
-            compress_rate=deploy.compress_rate,
-            target_size=target_size
+            compress_rate=scale,
+            target_size=shape
         )
 
         if len(deploy.crops) > 0:
