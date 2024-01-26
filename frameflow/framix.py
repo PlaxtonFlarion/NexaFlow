@@ -118,13 +118,11 @@ class Parser(object):
         parser.add_argument('--train', action='append', help='归类图片文件')
         parser.add_argument('--build', action='append', help='训练模型文件')
 
-        # --flick
         parser.add_argument('--alone', action='store_true', help='独立模式')
         parser.add_argument('--quick', action='store_true', help='快速模式')
         parser.add_argument('--basic', action='store_true', help='基础模式')
         parser.add_argument('--keras', action='store_true', help='智能模式')
 
-        # --keras
         parser.add_argument('--boost', action='store_true', help='跳帧模式')
         parser.add_argument('--color', action='store_true', help='彩色模式')
         parser.add_argument('--crops', action='append', help='获取区域')
@@ -133,13 +131,14 @@ class Parser(object):
         parser.add_argument('--shape', nargs='?', const=None, type=parse_shape, help='图片尺寸')
         parser.add_argument('--scale', nargs='?', const=None, type=parse_scale, help='缩放比例')
 
-        # --debug
+        # --debug 不展示
         parser.add_argument('--debug', action='store_true', help='调试模式')
 
         return parser.parse_args()
 
 
 class Missions(object):
+
     _target_size = (350, 700)
 
     def __init__(self, alone: bool, quick: bool, basic: bool, keras: bool, *args, **kwargs):
@@ -206,7 +205,10 @@ class Missions(object):
         looper = asyncio.get_event_loop()
 
         if self.quick:
-            video_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
+            video_filter = [
+                f"fps={deploy.fps}"] if deploy.color else [
+                f"fps={deploy.fps}", "format=gray"
+            ]
             image_scale = max(0.1, min(1.0, self.scale if self.scale else 1.0))
             video_filter.append(f"scale=iw*{image_scale}:ih*{image_scale}")
 
@@ -277,8 +279,9 @@ class Missions(object):
         reporter.load(result)
 
         with DataBase(os.path.join(reporter.reset_path, "Framix_Data.db")) as database:
-            column_list = ['total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path',
-                           'proto_path']
+            column_list = [
+                'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
+            ]
             database.create('stocks', *column_list)
             stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
             database.insert(
@@ -315,9 +318,12 @@ class Missions(object):
                     shutil.copy(path, reporter.video_path)
                     new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
 
-                    video_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
-                    image_scale = max(0.1, min(1.0, self.scale if self.scale else 1.0))
-                    video_filter.append(f"scale=iw*{image_scale}:ih*{image_scale}")
+                    video_filter = [
+                        f"fps={deploy.fps}"] if deploy.color else [
+                        f"fps={deploy.fps}", "format=gray"
+                    ]
+                    scale = max(0.1, min(1.0, self.scale if self.scale else 1.0))
+                    video_filter.append(f"scale=iw*{scale}:ih*{scale}")
 
                     looper.run_until_complete(
                         ask_video_detach(
@@ -393,8 +399,9 @@ class Missions(object):
                 reporter.load(result)
 
                 with DataBase(os.path.join(reporter.reset_path, "Framix_Data.db")) as database:
-                    column_list = ['total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path',
-                                   'proto_path']
+                    column_list = [
+                        'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
+                    ]
                     database.create('stocks', *column_list)
                     stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
                     database.insert(
@@ -429,8 +436,12 @@ class Missions(object):
         )
         kc.load_model(self.model_path)
 
-        video_temp_file = os.path.join(reporter.query_path, f"tmp_fps{deploy.fps}_{random.randint(100, 999)}.mp4")
-        asyncio.run(ask_video_change(self.ffmpeg, deploy.fps, video_file, video_temp_file))
+        video_temp_file = os.path.join(
+            reporter.query_path, f"tmp_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
+        )
+        asyncio.run(
+            ask_video_change(self.ffmpeg, deploy.fps, video_file, video_temp_file)
+        )
 
         video = VideoObject(video_temp_file)
         video.load_frames()
@@ -515,14 +526,21 @@ class Missions(object):
         async def paint_lines(serial):
             image_folder = "/sdcard/Pictures/Shots"
             image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_" + "Shot.png"
-            await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-usb-device", "shell", "mkdir", "-p", image_folder)
-            await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-usb-device", "shell", "screencap", "-p",
-                                    f"{image_folder}/{image}")
+            await Terminal.cmd_line(
+                self.adb, "-s", serial, "wait-for-device"
+            )
+            await Terminal.cmd_line(
+                self.adb, "-s", serial, "shell", "mkdir", "-p", image_folder
+            )
+            await Terminal.cmd_line(
+                self.adb, "-s", serial, "shell", "screencap", "-p", f"{image_folder}/{image}"
+            )
 
             with tempfile.TemporaryDirectory() as temp_dir:
                 image_save_path = os.path.join(temp_dir, image)
-                await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-usb-device", "pull",
-                                        f"{image_folder}/{image}", image_save_path)
+                await Terminal.cmd_line(
+                    self.adb, "-s", serial, "pull", f"{image_folder}/{image}", image_save_path
+                )
 
                 if self.color:
                     old_image = toolbox.imread(image_save_path)
@@ -567,7 +585,8 @@ class Missions(object):
 
                 new_w, new_h = int(twist_w * image_scale), int(twist_h * image_scale)
                 logger.debug(
-                    f"原始尺寸: {(original_w, original_h)} 调整尺寸: {(new_w, new_h)} 缩放比例: {int(image_scale * 100)}%")
+                    f"原始尺寸: {(original_w, original_h)} 调整尺寸: {(new_w, new_h)} 缩放比例: {int(image_scale * 100)}%"
+                )
 
                 if new_w == new_h:
                     x_line_num, y_line_num = 10, 10
@@ -589,9 +608,14 @@ class Missions(object):
                         text_width = bbox[2] - bbox[0]
                         text_height = bbox[3] - bbox[1]
                         y_text_start = 3
-                        draw.line([(x_line, text_width + 5 + y_text_start), (x_line, new_h)], fill=(0, 255, 255),
-                                  width=1)
-                        draw.text((x_line - text_height // 2, y_text_start), text, fill=(0, 255, 255), font=font)
+                        draw.line(
+                            [(x_line, text_width + 5 + y_text_start), (x_line, new_h)],
+                            fill=(0, 255, 255), width=1
+                        )
+                        draw.text(
+                            (x_line - text_height // 2, y_text_start),
+                            text, fill=(0, 255, 255), font=font
+                        )
 
                 if x_line_num > 0:
                     for i in range(1, x_line_num):
@@ -601,14 +625,20 @@ class Missions(object):
                         text_width = bbox[2] - bbox[0]
                         text_height = bbox[3] - bbox[1]
                         x_text_start = 3
-                        draw.line([(text_width + 5 + x_text_start, y_line), (new_w, y_line)], fill=(255, 182, 193),
-                                  width=1)
-                        draw.text((x_text_start, y_line - text_height // 2), text, fill=(255, 182, 193), font=font)
+                        draw.line(
+                            [(text_width + 5 + x_text_start, y_line), (new_w, y_line)],
+                            fill=(255, 182, 193), width=1
+                        )
+                        draw.text(
+                            (x_text_start, y_line - text_height // 2),
+                            text, fill=(255, 182, 193), font=font
+                        )
 
                 resized.show()
 
-            await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-usb-device", "shell", "rm",
-                                    f"{image_folder}/{image}")
+            await Terminal.cmd_line(
+                self.adb, "-s", serial, "shell", "rm", f"{image_folder}/{image}"
+            )
             return resized
 
         manage = Manage(self.adb)
@@ -691,7 +721,8 @@ class Missions(object):
             stop_event_control = events["stop_event"] if self.alone else all_stop_event
             temp_video = f"{os.path.join(dst, 'screen')}_{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
             cmd = [
-                self.scrcpy, "-s", serial, "--no-audio", "--video-bit-rate", "8M", "--max-fps", f"{deploy.fps}",
+                self.scrcpy, "-s", serial,
+                "--no-audio", "--video-bit-rate", "8M", "--max-fps", "60",
                 "--record", temp_video
             ]
             transports = await Terminal.cmd_link(*cmd)
@@ -764,8 +795,8 @@ class Missions(object):
                     *(timepiece(timer_mode, serial, events) for serial, events in device_events.items())
                 )
                 await asyncio.gather(
-                    *(stop_record(temp_video, transports, events) for (_, events), (temp_video, transports, *_) in
-                      zip(device_events.items(), todo_list))
+                    *(stop_record(temp_video, transports, events)
+                      for (_, events), (temp_video, transports, *_) in zip(device_events.items(), todo_list))
                 )
 
                 if not self.alone and len(todo_list) > 1:
@@ -780,8 +811,8 @@ class Missions(object):
                     standard = min(duration_list)
                     Show.console.print(f"[bold]标准录制时间: {standard}")
                     balance_task = [
-                        video_balance(standard, duration, video_src) for duration, (video_src, *_) in
-                        zip(duration_list, todo_list)
+                        video_balance(standard, duration, video_src)
+                        for duration, (video_src, *_) in zip(duration_list, todo_list)
                     ]
                     video_dst_list = await asyncio.gather(*balance_task)
                     for idx, dst in enumerate(video_dst_list):
@@ -803,11 +834,12 @@ class Missions(object):
                     )
 
                 await asyncio.gather(
-                    *(timepiece(timer_mode, serial, events) for serial, events in device_events.items())
+                    *(timepiece(timer_mode, serial, events)
+                      for serial, events in device_events.items())
                 )
                 await asyncio.gather(
-                    *(stop_record(temp_video, transports, events) for (_, events), (temp_video, transports, *_) in
-                      zip(device_events.items(), todo_list))
+                    *(stop_record(temp_video, transports, events)
+                      for (_, events), (temp_video, transports, *_) in zip(device_events.items(), todo_list))
                 )
 
             return todo_list
@@ -818,7 +850,10 @@ class Missions(object):
                 return False
 
             if self.quick:
-                video_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
+                video_filter = [
+                    f"fps={deploy.fps}"] if deploy.color else [
+                    f"fps={deploy.fps}", "format=gray"
+                ]
                 scale = max(0.1, min(1.0, self.scale if self.scale else 1.0))
                 video_filter.append(f"scale=iw*{scale}:ih*{scale}")
 
@@ -877,16 +912,15 @@ class Missions(object):
                     logger.debug(f"Restore: {result}")
                     reporter.load(result)
 
-                    with DataBase(
-                            os.path.join(os.path.dirname(total_path), "Nexa_Recovery", "Framix_Data.db")) as database:
-                        column_list = ['total_path', 'title', 'query_path', 'query', 'stage', 'frame_path',
-                                       'extra_path', 'proto_path']
+                    with DataBase(os.path.join(os.path.dirname(total_path), "Nexa_Recovery", "Framix_Data.db")) as database:
+                        column_list = [
+                            'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
+                        ]
                         database.create('stocks', *column_list)
                         stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
                         database.insert(
                             'stocks', column_list,
-                            (
-                            total_path, title, query_path, query, json.dumps(stage), frame_path, extra_path, proto_path)
+                            (total_path, title, query_path, query, json.dumps(stage), frame_path, extra_path, proto_path)
                         )
 
             else:
@@ -1204,7 +1238,8 @@ async def analyzer(
 
         time_cost = end_frame.timestamp - start_frame.timestamp
         logger.info(
-            f"图像分类结果: [开始帧: {start_frame.timestamp:.5f}] [结束帧: {end_frame.timestamp:.5f}] [总耗时: {time_cost:.5f}]")
+            f"图像分类结果: [开始帧: {start_frame.timestamp:.5f}] [结束帧: {end_frame.timestamp:.5f}] [总耗时: {time_cost:.5f}]"
+        )
         return start_frame.frame_id, end_frame.frame_id, time_cost
 
     async def frame_forge(frame):
@@ -1352,9 +1387,16 @@ if __name__ == '__main__':
         logger.debug(env)
     # Debug Mode =======================================================================================================
 
-    _alone, _quick, _basic, _keras = cmd_lines.alone, cmd_lines.quick, cmd_lines.basic, cmd_lines.keras
-    _boost, _color = cmd_lines.boost, cmd_lines.color
-    _shape, _scale = cmd_lines.shape, cmd_lines.scale
+    _alone = cmd_lines.alone
+    _quick = cmd_lines.quick
+    _basic = cmd_lines.basic
+    _keras = cmd_lines.keras
+
+    _boost = cmd_lines.boost
+    _color = cmd_lines.color
+
+    _shape = cmd_lines.shape
+    _scale = cmd_lines.scale
 
     # Debug Mode =======================================================================================================
     cpu = os.cpu_count()
