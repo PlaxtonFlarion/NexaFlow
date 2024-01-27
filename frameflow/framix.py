@@ -459,7 +459,7 @@ class Missions(object):
         )
 
         video = VideoObject(video_temp_file)
-        video.load_frames()
+        video.load_frames(deploy.color, self.shape, self.scale)
 
         cutter = VideoCutter(
             step=deploy.step,
@@ -480,7 +480,7 @@ class Missions(object):
             range_list=stable,
             frame_count=20,
             to_dir=reporter.query_path,
-            meaningful_name=True
+            meaningful_name=True,
         )
 
         os.remove(video_temp_file)
@@ -670,8 +670,9 @@ class Missions(object):
                 reporter = Report(self.initial_report)
                 reporter.title = f"Hooks_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
                 for device, resize_img in zip(device_list, resized_result):
-                    img_save_path = os.path.join(reporter.query_path,
-                                                 f"hook_{device.serial}_{random.randint(10000, 99999)}.png")
+                    img_save_path = os.path.join(
+                        reporter.query_path, f"hook_{device.serial}_{random.randint(10000, 99999)}.png"
+                    )
                     resize_img.save(img_save_path)
                     Show.console.print(f"[bold]保存图片: {[img_save_path]}")
                 break
