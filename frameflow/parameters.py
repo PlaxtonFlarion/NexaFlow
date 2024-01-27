@@ -305,6 +305,9 @@ class Option(object):
         "Total Path": ""
     }
 
+    def __init__(self, option_file: str):
+        self.load_option(option_file)
+
     @property
     def total_path(self):
         return self._options["Total Path"]
@@ -313,25 +316,21 @@ class Option(object):
     def total_path(self, value: str):
         self._options["Total Path"] = value
 
-    def load_option(self, option_file: str) -> bool:
-        is_load: bool = False
+    def load_option(self, option_file: str) -> None:
         try:
             with open(file=option_file, mode="r", encoding="utf-8") as f:
                 data = json.loads(f.read())
-                data_path = data.get("Total Path", "")
-                if data_path and os.path.isdir(data_path):
-                    if not os.path.exists(data_path):
-                        os.makedirs(data_path, exist_ok=True)
-                    self.total_path = data_path
         except FileNotFoundError:
             logger.debug("未找到配置文件,使用默认路径 ...")
         except json.decoder.JSONDecodeError:
             logger.debug("配置文件解析错误,文件格式不正确,使用默认路径 ...")
         else:
             logger.debug("读取配置文件,使用配置参数 ...")
-            is_load = True
-        finally:
-            return is_load
+            data_path = data.get("Total Path", "")
+            if data_path and os.path.isdir(data_path):
+                if not os.path.exists(data_path):
+                    os.makedirs(data_path, exist_ok=True)
+                self.total_path = data_path
 
     def dump_option(self, option_file: str) -> None:
         os.makedirs(os.path.dirname(option_file), exist_ok=True)

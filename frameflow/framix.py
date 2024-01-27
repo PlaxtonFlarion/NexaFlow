@@ -199,8 +199,8 @@ class Missions(object):
                 f"fps={deploy.fps}"] if deploy.color else [
                 f"fps={deploy.fps}", "format=gray"
             ]
-            image_scale = max(0.1, min(1.0, self.scale if self.scale else 1.0))
-            video_filter.append(f"scale=iw*{image_scale}:ih*{image_scale}")
+            scale = max(0.1, min(1.0, self.scale if self.scale else 1.0))
+            video_filter.append(f"scale=iw*{scale}:ih*{scale}")
 
             looper.run_until_complete(
                 ask_video_detach(
@@ -727,11 +727,11 @@ class Missions(object):
             for _ in range(10):
                 if events["done_event"].is_set():
                     logger.success(f"视频录制成功: {os.path.basename(temp_video)}")
-                    return
+                    return True
                 elif events["fail_event"].is_set():
-                    break
+                    logger.error(f"视频录制失败: {os.path.basename(temp_video)}")
+                    return False
                 await asyncio.sleep(0.2)
-            logger.error(f"录制视频失败: {os.path.basename(temp_video)}")
 
         # Video_Balance
         async def video_balance(standard, duration, video_src):
@@ -779,10 +779,13 @@ class Missions(object):
                 await asyncio.gather(
                     *(timepiece(timer_mode, serial, events) for serial, events in device_events.items())
                 )
-                await asyncio.gather(
+                effective_list = await asyncio.gather(
                     *(stop_record(temp_video, transports, events)
                       for (_, events), (temp_video, transports, *_) in zip(device_events.items(), todo_list))
                 )
+                for idx, effective in enumerate(effective_list):
+                    if not effective:
+                        todo_list.pop(idx)
 
                 if not self.alone and len(todo_list) > 1:
                     duration_list = await asyncio.gather(
@@ -822,10 +825,13 @@ class Missions(object):
                     *(timepiece(timer_mode, serial, events)
                       for serial, events in device_events.items())
                 )
-                await asyncio.gather(
+                effective_list = await asyncio.gather(
                     *(stop_record(temp_video, transports, events)
                       for (_, events), (temp_video, transports, *_) in zip(device_events.items(), todo_list))
                 )
+                for idx, effective in enumerate(effective_list):
+                    if not effective:
+                        todo_list.pop(idx)
 
             return todo_list
 
@@ -926,10 +932,10 @@ class Missions(object):
 
         # Initialization ===============================================================================================
         reporter = Report(self.initial_report)
-        if self.alone:
-            reporter.title = f"Record_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
-        else:
+        if self.quick or self.basic or self.keras:
             reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
+        else:
+            reporter.title = f"Record_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
 
         deploy = Deploy(self.initial_deploy)
         deploy.boost = self.boost
@@ -1002,8 +1008,10 @@ class Missions(object):
                         timer_mode = max(lower_bound, min(upper_bound, value))
                     else:
                         Show.tips_document()
+                        continue
             except ValueError:
                 Show.tips_document()
+                continue
             else:
                 task_list = await commence()
                 await analysis_tactics()
@@ -1238,7 +1246,7 @@ async def analyzer(
         except Exception as e:
             return e
 
-    async def analytics_quick():
+    async def analytics_basic():
         video, task, hued = await frame_flip()
 
         if deploy.color:
@@ -1315,7 +1323,7 @@ async def analyzer(
     logger.info(f"{tag} 可正常播放，准备加载视频 ...")
 
     if kc is None:
-        (start, end, cost), classifier = await analytics_quick()
+        (start, end, cost), classifier = await analytics_basic()
     else:
         (start, end, cost), classifier = await analytics_keras()
     return start, end, cost, classifier
@@ -1411,9 +1419,7 @@ if __name__ == '__main__':
     _initial_deploy = os.path.join(_initial_deploy, "deploy.json")
     _initial_option = os.path.join(_initial_option, "option.json")
 
-    option = Option()
-    option.load_option(_initial_option)
-    option.dump_option(_initial_option)
+    option = Option(_initial_option)
     _initial_report = option.total_path if option.total_path else _initial_report
 
     # Debug Mode =======================================================================================================
