@@ -19,7 +19,7 @@ class Frame(object):
         self.data: np.ndarray = data
 
     @staticmethod
-    def initial(cap: cv2.VideoCapture, frame: np.ndarray) -> "Frame":
+    def initial(cap: cv2.VideoCapture, frame: np.ndarray, shape: tuple = None, scale: int | float = None) -> "Frame":
         raise NotImplementedError
 
     def copy(self) -> "Frame":
@@ -35,10 +35,11 @@ class ColorFrame(Frame):
         return f"<ColorFrame id={self.frame_id} timestamp={self.timestamp}>"
 
     @staticmethod
-    def initial(cap: cv2.VideoCapture, frame: np.ndarray) -> "ColorFrame":
+    def initial(cap: cv2.VideoCapture, frame: np.ndarray, shape: tuple = None, scale: int | float = None) -> "ColorFrame":
         frame_id = toolbox.get_current_frame_id(cap)
         timestamp = toolbox.get_current_frame_time(cap)
-        new_frame = toolbox.compress_frame(frame, 0.5, (350, 700), True)
+        # new_frame = toolbox.compress_frame(frame, 0.5, (350, 700), True)
+        new_frame = toolbox.magic_frame(frame, None, shape, scale)
         return ColorFrame(frame_id, timestamp, new_frame)
 
     def copy(self) -> "ColorFrame":
@@ -54,10 +55,11 @@ class VideoFrame(Frame):
         return f"<VideoFrame id={self.frame_id} timestamp={self.timestamp}>"
 
     @staticmethod
-    def initial(cap: cv2.VideoCapture, frame: np.ndarray) -> "VideoFrame":
+    def initial(cap: cv2.VideoCapture, frame: np.ndarray, shape: tuple = None, scale: int | float = None) -> "VideoFrame":
         frame_id = toolbox.get_current_frame_id(cap)
         timestamp = toolbox.get_current_frame_time(cap)
-        new_frame = toolbox.compress_frame(frame, 0.5, (350, 700), False)
+        # new_frame = toolbox.compress_frame(frame, 0.5, (350, 700), False)
+        new_frame = toolbox.magic_frame(frame, True, shape, scale)
         return VideoFrame(frame_id, timestamp, new_frame)
 
     def copy(self) -> "VideoFrame":
@@ -207,7 +209,7 @@ class VideoObject(object):
         frame_size = frame_type[0].data.shape[::-1]
         return f"{frame_type[0].__class__.__name__}: [{each_cost:.2f} MB] [{total_cost:.2f} MB] {frame_size}"
 
-    def load_frames(self, color: bool = False):
+    def load_frames(self, color: bool = False, shape: tuple = None, scale: int | float = None):
         """
         从文件中加载所有帧到内存
         """
@@ -219,7 +221,7 @@ class VideoObject(object):
             with toolbox.video_capture(self.path) as cap:
                 for success, frame in iter(lambda: cap.read(), (False, None)):
                     if success:
-                        data.append(frames.initial(cap, frame))
+                        data.append(frames.initial(cap, frame, shape, scale))
                         pbar.update(1)
             pbar.close()
             return data
@@ -229,7 +231,7 @@ class VideoObject(object):
             with toolbox.video_capture(self.path) as cap:
                 for success, frame in iter(lambda: cap.read(), (False, None)):
                     if success:
-                        data.append(frames.initial(cap, frame))
+                        data.append(frames.initial(cap, frame, shape, scale))
             return data
 
         def load_stream_sync(brand):

@@ -11,6 +11,8 @@ class Deploy(object):
     _deploys = {
         "boost": False,
         "color": False,
+        "shape": None,
+        "scale": None,
         "model_size": (350, 700),
         "fps": 60,
         "threshold": 0.97,
@@ -33,6 +35,14 @@ class Deploy(object):
     @property
     def color(self):
         return self._deploys["color"]
+
+    @property
+    def shape(self):
+        return self._deploys["shape"]
+
+    @property
+    def scale(self):
+        return self._deploys["scale"]
 
     @property
     def model_size(self):
@@ -81,6 +91,14 @@ class Deploy(object):
     @color.setter
     def color(self, value: bool):
         self._deploys["color"] = value
+
+    @shape.setter
+    def shape(self, value: tuple[int, int]):
+        self._deploys["shape"] = value
+
+    @scale.setter
+    def scale(self, value: int | float):
+        self._deploys["scale"] = value
 
     @model_size.setter
     def model_size(self, value: tuple[int, int]):
@@ -131,6 +149,8 @@ class Deploy(object):
                 f.writelines('\n')
                 if isinstance(v, bool):
                     f.writelines(f'    "{k}": "{v}",')
+                elif v is None:
+                    f.writelines(f'    "{k}": "{v}",')
                 elif k == "model_size":
                     f.writelines(f'    "{k}": "{v}",')
                 elif k == "crops" or k == "omits":
@@ -163,14 +183,25 @@ class Deploy(object):
             logger.debug("部署文件解析错误,文件格式不正确,使用默认参数 ...")
         else:
             logger.debug("读取部署文件,使用部署参数 ...")
+
             boost_mode = boost_data.lower() if isinstance(boost_data := data.get("boost", "false"), str) else "false"
             color_mode = color_data.lower() if isinstance(color_data := data.get("color", "false"), str) else "false"
             self._deploys["boost"] = True if boost_mode == "true" else False
             self._deploys["color"] = True if color_mode == "true" else False
-            size = data.get("model_size", (350, 700))
+
+            if shape_size := data.get("shape", None):
+                if 6 <= len(match_shape_list := re.findall(r"-?\d*\.?\d+", shape_size)) <= 8:
+                    self._deploys["shape"] = match_shape_list[0]
+
+            if scale_size := data.get("scale", None):
+                if scale_size.strip().lower() != "none":
+                    self._deploys["scale"] = max(0.1, min(1.0, float(scale_size)))
+
+            model_size = data.get("model_size", (350, 700))
             self._deploys["model_size"] = tuple(
-                max(100, min(3000, int(i))) for i in re.findall(r"-?\d*\.?\d+", size)
-            ) if isinstance(size, str) else size
+                max(100, min(3000, int(i))) for i in re.findall(r"-?\d*\.?\d+", model_size)
+            ) if isinstance(model_size, str) else model_size
+
             self._deploys["fps"] = max(15, min(60, data.get("fps", 60)))
             self._deploys["threshold"] = max(0, min(1, data.get("threshold", 0.97)))
             self._deploys["offset"] = max(1, data.get("offset", 3))

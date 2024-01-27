@@ -374,5 +374,23 @@ def draw_line(image_path: str, save_path: str = None):
     image.save(save_path) if save_path else image.save(image_path)
 
 
+def magic_frame(
+        image: np.ndarray, grey_mode=None, shape=None, scale=None
+) -> np.ndarray:
+
+    if grey_mode:
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    if shape:
+        return cv2.resize(image, shape, interpolation=cv2.INTER_AREA)
+
+    if scale:
+        height, width = image.shape[:2]
+        new_dimensions = (int(width * scale), int(height * scale))
+        return cv2.resize(image, new_dimensions, interpolation=cv2.INTER_AREA)
+
+    return image
+
+
 if __name__ == '__main__':
     pass

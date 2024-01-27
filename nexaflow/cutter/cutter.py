@@ -9,7 +9,7 @@ from nexaflow import toolbox
 from nexaflow.cutter.cut_range import VideoCutRange
 from nexaflow.cutter.cut_result import VideoCutResult
 from nexaflow.video import VideoObject, VideoFrame
-from nexaflow.hook import BaseHook, GreyHook, CompressHook
+from nexaflow.hook import BaseHook
 
 
 class Window(object):
@@ -67,20 +67,16 @@ class VideoCutter(object):
     ):
 
         self.step = step or 1
-
-        if (not compress_rate) and (not target_size):
-            # logger.debug(
-            #     f"no compress rate or target size received. set compress rate to 0.2"
-            # )
-            compress_rate = 0.2
+        self.compress_rate = compress_rate
+        self.target_size = target_size
 
         self._hook_list: typing.List[BaseHook] = list()
-        compress_hook = CompressHook(
-            overwrite=True, compress_rate=compress_rate, target_size=target_size
-        )
-        grey_hook = GreyHook(overwrite=True)
-        self.add_hook(compress_hook)
-        self.add_hook(grey_hook)
+        # compress_hook = CompressHook(
+        #     overwrite=True, compress_rate=compress_rate, target_size=target_size
+        # )
+        # grey_hook = GreyHook(overwrite=True)
+        # self.add_hook(compress_hook)
+        # self.add_hook(grey_hook)
 
     def add_hook(self, new_hook: BaseHook):
         self._hook_list.append(new_hook)

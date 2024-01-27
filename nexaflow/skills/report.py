@@ -532,8 +532,8 @@ class Report(object):
         thumbnail_list: List[Dict[str, str]] = list()
         extra_dict: Dict[str, str] = dict()
 
-        if not compress_rate:
-            compress_rate = 0.2
+        # if not compress_rate:
+        #     compress_rate = 0.2
 
         try:
             stage_range = classifier_result.get_stage_range()

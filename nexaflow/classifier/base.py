@@ -11,7 +11,7 @@ from collections import OrderedDict
 from nexaflow import toolbox, constants
 from nexaflow.video import VideoFrame, VideoObject
 from nexaflow.cutter.cut_range import VideoCutRange
-from nexaflow.hook import BaseHook, CompressHook, GreyHook
+from nexaflow.hook import BaseHook
 
 
 class SingleClassifierResult(object):
@@ -326,12 +326,12 @@ class BaseClassifier(object):
         self._data: typing.Dict[str, typing.Union[typing.List[pathlib.Path]]] = dict()
 
         self._hook_list: typing.List[BaseHook] = list()
-        compress_hook = CompressHook(
-            overwrite=True, compress_rate=compress_rate, target_size=target_size
-        )
-        grey_hook = GreyHook(overwrite=True)
-        self.add_hook(compress_hook)
-        self.add_hook(grey_hook)
+        # compress_hook = CompressHook(
+        #     overwrite=True, compress_rate=compress_rate, target_size=target_size
+        # )
+        # grey_hook = GreyHook(overwrite=True)
+        # self.add_hook(compress_hook)
+        # self.add_hook(grey_hook)
 
     def add_hook(self, new_hook: BaseHook):
         self._hook_list.append(new_hook)
