@@ -370,8 +370,11 @@ class Option(object):
         return self._options["Total Path"]
 
     @total_path.setter
-    def total_path(self, value: str):
-        self._options["Total Path"] = value
+    def total_path(self, value):
+        if value and os.path.isdir(value):
+            if not os.path.exists(value):
+                os.makedirs(value, exist_ok=True)
+            self._options["Total Path"] = value
 
     def load_option(self, option_file: str) -> None:
         try:
@@ -383,11 +386,7 @@ class Option(object):
             logger.debug("配置文件解析错误,文件格式不正确,使用默认路径 ...")
         else:
             logger.debug("读取配置文件,使用配置参数 ...")
-            data_path = data.get("Total Path", "")
-            if data_path and os.path.isdir(data_path):
-                if not os.path.exists(data_path):
-                    os.makedirs(data_path, exist_ok=True)
-                self.total_path = data_path
+            self.total_path = data.get("Total Path", "")
 
     def dump_option(self, option_file: str) -> None:
         os.makedirs(os.path.dirname(option_file), exist_ok=True)
