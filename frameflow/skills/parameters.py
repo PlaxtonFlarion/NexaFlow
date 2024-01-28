@@ -3,7 +3,7 @@ import re
 import json
 from loguru import logger
 from rich.table import Table
-from frameflow.show import Show
+from frameflow.skills.show import Show
 
 
 class Deploy(object):
@@ -17,10 +17,7 @@ class Deploy(object):
         "fps": 60,
         "threshold": 0.97,
         "offset": 3,
-        "window_size": 1,
-        "step": 1,
         "block": 6,
-        "window_coefficient": 2,
         "crops": [],
         "omits": []
     }
@@ -61,20 +58,8 @@ class Deploy(object):
         return self._deploys["offset"]
 
     @property
-    def window_size(self):
-        return self._deploys["window_size"]
-
-    @property
-    def step(self):
-        return self._deploys["step"]
-
-    @property
     def block(self):
         return self._deploys["block"]
-
-    @property
-    def window_coefficient(self):
-        return self._deploys["window_coefficient"]
 
     @property
     def crops(self):
@@ -85,60 +70,115 @@ class Deploy(object):
         return self._deploys["omits"]
 
     @boost.setter
-    def boost(self, value: bool):
-        self._deploys["boost"] = value
+    def boost(self, value):
+        mode = data.lower() if isinstance(data := value.get("boost", "false"), str) else "false"
+        self._deploys["boost"] = True if mode == "true" else False
 
     @color.setter
-    def color(self, value: bool):
-        self._deploys["color"] = value
+    def color(self, value):
+        mode = data.lower() if isinstance(data := value.get("color", "false"), str) else "false"
+        self._deploys["color"] = True if mode == "true" else False
 
     @shape.setter
-    def shape(self, value: tuple[int, int]):
-        self._deploys["shape"] = value
+    def shape(self, value):
+        if data := value.get("shape", None):
+            # 在字符串中找到所有数字
+            match_list = re.findall(r"-?\d*\.?\d+", data)
+            # 将匹配到的数字转换为整数或浮点数，并形成一个元组
+            if len(match_list) >= 2:
+                converted = []
+                for num in match_list:
+                    # 尽可能将数字转换为整数，否则转换为浮点数
+                    try:
+                        converted_num = int(num)
+                    except ValueError:
+                        converted_num = float(num)
+                    converted.append(converted_num)
+                # 确保元组仅包含两个元素（宽度、高度）
+                self._deploys["shape"] = tuple(converted[:2])
+            else:
+                self._deploys["shape"] = None
 
     @scale.setter
-    def scale(self, value: int | float):
-        self._deploys["scale"] = value
+    def scale(self, value):
+        if data := value.get("scale", None):
+            try:
+                scale_value = float(data)
+                self._deploys["scale"] = max(0.1, min(1.0, scale_value))
+            except ValueError:
+                raise ValueError("Invalid value for scale. It must be a number.")
+        else:
+            self._deploys["scale"] = None
 
     @model_size.setter
-    def model_size(self, value: tuple[int, int]):
-        self._deploys["model_size"] = value
+    def model_size(self, value):
+        if data := value.get("model_size", (350, 700)):
+            # 在字符串中找到所有数字
+            match_list = re.findall(r"-?\d*\.?\d+", data)
+            # 将匹配到的数字转换为整数或浮点数，并形成一个元组
+            if len(match_list) >= 2:
+                converted = []
+                for num in match_list:
+                    # 尽可能将数字转换为整数，否则转换为浮点数
+                    try:
+                        converted_num = int(num)
+                    except ValueError:
+                        converted_num = float(num)
+                    converted.append(converted_num)
+                # 确保元组仅包含两个元素（宽度、高度）
+                self._deploys["model_size"] = tuple(converted[:2])
+            else:
+                self._deploys["model_size"] = (350, 700)
 
     @fps.setter
-    def fps(self, value: int):
-        self._deploys["fps"] = value
+    def fps(self, value):
+        data = value.get("fps", 60)
+        self._deploys["fps"] = max(15, min(60, data))
 
     @threshold.setter
-    def threshold(self, value: int | float):
-        self._deploys["threshold"] = value
+    def threshold(self, value):
+        data = value.get("threshold", 0.97)
+        self._deploys["threshold"] = max(0, min(1, data))
 
     @offset.setter
-    def offset(self, value: int):
-        self._deploys["offset"] = value
-
-    @window_size.setter
-    def window_size(self, value: int):
-        self._deploys["window_size"] = value
-
-    @step.setter
-    def step(self, value: int):
-        self._deploys["step"] = value
+    def offset(self, value):
+        data = value.get("offset", 3)
+        self._deploys["offset"] = max(1, data)
 
     @block.setter
-    def block(self, value: int):
-        self._deploys["block"] = value
-
-    @window_coefficient.setter
-    def window_coefficient(self, value: int):
-        self._deploys["window_coefficient"] = value
+    def block(self, value):
+        data = value.get("block", 6)
+        self._deploys["block"] = max(1, min(6, data))
 
     @crops.setter
-    def crops(self, value: list):
-        self._deploys["crops"] = value
+    def crops(self, value):
+        hooks_list, crop_effective = value.get("crops", []), []
+        for hook_dict in hooks_list:
+            if len(
+                    data_list := [
+                        value for value in hook_dict.values() if isinstance(value, int | float)
+                    ]
+            ) == 4 and sum(data_list) > 0:
+                crop_effective.append(
+                    (hook_dict["x"], hook_dict["y"], hook_dict["x_size"], hook_dict["y_size"])
+                )
+        self._deploys["crops"] = list(set(crop_effective)).copy()
+        crop_effective.clear()
 
     @omits.setter
-    def omits(self, value: list):
-        self._deploys["omits"] = value
+    def omits(self, value):
+        hooks_list, omit_effective = value.get("omits", []), []
+        for hook_dict in hooks_list:
+            if len(
+                    data_list := [
+                        value for value in hook_dict.values() if isinstance(value, int | float)
+                    ]
+            ) == 4 and sum(data_list) > 0:
+                omit_effective.append(
+                    (hook_dict["x"], hook_dict["y"], hook_dict["x_size"], hook_dict["y_size"])
+                )
+        self._deploys["omits"] = list(set(omit_effective)).copy()
+        omit_effective.clear()
 
     def dump_deploy(self, deploy_file: str) -> None:
         os.makedirs(os.path.dirname(deploy_file), exist_ok=True)
@@ -147,9 +187,7 @@ class Deploy(object):
             f.writelines('{')
             for k, v in self._deploys.items():
                 f.writelines('\n')
-                if isinstance(v, bool):
-                    f.writelines(f'    "{k}": "{v}",')
-                elif v is None:
+                if isinstance(v, bool) or v is None:
                     f.writelines(f'    "{k}": "{v}",')
                 elif k == "model_size":
                     f.writelines(f'    "{k}": "{v}",')
@@ -177,66 +215,25 @@ class Deploy(object):
         try:
             with open(file=deploy_file, mode="r", encoding="utf-8") as f:
                 data = json.loads(f.read())
+                self.boost = data
+                self.color = data
+                self.shape = data
+                self.scale = data
+                self.model_size = data
+                self.fps = data
+                self.threshold = data
+                self.offset = data
+                self.block = data
+                self.crops = data
+                self.omits = data
         except FileNotFoundError:
             logger.debug("未找到部署文件,使用默认参数 ...")
         except json.decoder.JSONDecodeError:
             logger.debug("部署文件解析错误,文件格式不正确,使用默认参数 ...")
+        except Exception as e:
+            logger.error(e)
         else:
-            logger.debug("读取部署文件,使用部署参数 ...")
-
-            boost_mode = boost_data.lower() if isinstance(boost_data := data.get("boost", "false"), str) else "false"
-            color_mode = color_data.lower() if isinstance(color_data := data.get("color", "false"), str) else "false"
-            self._deploys["boost"] = True if boost_mode == "true" else False
-            self._deploys["color"] = True if color_mode == "true" else False
-
-            if shape_size := data.get("shape", None):
-                if 6 <= len(match_shape_list := re.findall(r"-?\d*\.?\d+", shape_size)) <= 8:
-                    self._deploys["shape"] = match_shape_list[0]
-
-            if scale_size := data.get("scale", None):
-                if scale_size.strip().lower() != "none":
-                    self._deploys["scale"] = max(0.1, min(1.0, float(scale_size)))
-
-            model_size = data.get("model_size", (350, 700))
-            self._deploys["model_size"] = tuple(
-                max(100, min(3000, int(i))) for i in re.findall(r"-?\d*\.?\d+", model_size)
-            ) if isinstance(model_size, str) else model_size
-
-            self._deploys["fps"] = max(15, min(60, data.get("fps", 60)))
-            self._deploys["threshold"] = max(0, min(1, data.get("threshold", 0.97)))
-            self._deploys["offset"] = max(1, data.get("offset", 3))
-            self._deploys["window_size"] = max(1, data.get("window_size", 1))
-            self._deploys["step"] = max(1, data.get("step", 1))
-            self._deploys["block"] = max(1, min(int(min(self.model_size[0], self.model_size[1]) / 10), data.get("block", 6)))
-            self._deploys["window_coefficient"] = max(2, data.get("window_coefficient", 2))
-
-            # Crops Hook
-            crops_list, crop_effective = data.get("crops", []), []
-            for hook_dict in crops_list:
-                if len(
-                        data_list := [
-                            value for value in hook_dict.values() if isinstance(value, int | float)
-                        ]
-                ) == 4 and sum(data_list) > 0:
-                    crop_effective.append(
-                        (hook_dict["x"], hook_dict["y"], hook_dict["x_size"], hook_dict["y_size"])
-                    )
-            self.crops = list(set(crop_effective)).copy()
-            crop_effective.clear()
-
-            # Omits Hook
-            omits_list, omit_effective = data.get("omits", []), []
-            for hook_dict in omits_list:
-                if len(
-                        data_list := [
-                            value for value in hook_dict.values() if isinstance(value, int | float)
-                        ]
-                ) == 4 and sum(data_list) > 0:
-                    omit_effective.append(
-                        (hook_dict["x"], hook_dict["y"], hook_dict["x_size"], hook_dict["y_size"])
-                    )
-            self.omits = list(set(omit_effective)).copy()
-            omit_effective.clear()
+            logger.info("读取部署文件,使用部署参数 ...")
 
     def view_deploy(self) -> None:
 
@@ -268,16 +265,28 @@ class Deploy(object):
             f"[bold green]开启[/bold green]" if self.color else "[bold red]关闭[/bold red]",
         )
         table.add_row(
-            f"[bold {col_1_color}]图像尺寸",
+            f"[bold {col_1_color}]图片尺寸",
+            f"[bold {col_2_color}]{self.shape}" if self.shape else f"[bold {col_2_color}]Auto",
+            f"[bold][[bold {col_3_color}]? , ?[/bold {col_3_color}] ]",
+            f"[bold]宽 [bold red]{self.shape[0]}[/bold red] 高 [bold red]{self.shape[1]}[/bold red]" if self.shape else f"[bold green]自动[/bold green]",
+        )
+        table.add_row(
+            f"[bold {col_1_color}]压缩比例",
+            f"[bold {col_2_color}]{self.scale}"if self.scale else f"[bold {col_2_color}]Auto",
+            f"[bold][[bold {col_3_color}]0 , 1[/bold {col_3_color}] ]",
+            f"[bold]压缩图片至 [bold red]{self.scale}[/bold red]" if self.scale else f"[bold green]自动[/bold green]",
+        )
+        table.add_row(
+            f"[bold {col_1_color}]模型尺寸",
             f"[bold {col_2_color}]{self.model_size}",
             f"[bold][[bold {col_3_color}]? , ?[/bold {col_3_color}] ]",
             f"[bold]宽 [bold red]{self.model_size[0]}[/bold red] 高 [bold red]{self.model_size[1]}[/bold red]",
         )
         table.add_row(
-            f"[bold {col_1_color}]视频帧率",
+            f"[bold {col_1_color}]帧采样率",
             f"[bold {col_2_color}]{self.fps}",
             f"[bold][[bold {col_3_color}]15, 60[/bold {col_3_color}]]",
-            f"[bold]转换视频为 [bold red]{self.fps}[/bold red] 帧每秒",
+            f"[bold]每秒 [bold red]{self.fps}[/bold red] 帧",
         )
         table.add_row(
             f"[bold {col_1_color}]相似度",
@@ -292,28 +301,10 @@ class Deploy(object):
             f"[bold]合并 [bold red]{self.offset}[/bold red] 个变化不大的稳定区间",
         )
         table.add_row(
-            f"[bold {col_1_color}]片段数量",
-            f"[bold {col_2_color}]{self.window_size}",
-            f"[bold][[bold {col_3_color}]1 , ?[/bold {col_3_color}] ]",
-            f"[bold]每次处理 [bold red]{self.window_size}[/bold red] 个帧片段",
-        )
-        table.add_row(
-            f"[bold {col_1_color}]处理数量",
-            f"[bold {col_2_color}]{self.step}",
-            f"[bold][[bold {col_3_color}]1 , ?[/bold {col_3_color}] ]",
-            f"[bold]每个片段处理 [bold red]{self.step}[/bold red] 个帧图像",
-        )
-        table.add_row(
             f"[bold {col_1_color}]切分程度",
             f"[bold {col_2_color}]{self.block}",
-            f"[bold][[bold {col_3_color}]1 , {int(min(self.model_size[0], self.model_size[1]) / 10)}[/bold {col_3_color}]]",
+            f"[bold][[bold {col_3_color}]1 , 6[/bold {col_3_color}] ]",
             f"[bold]每个帧图像切分为 [bold red]{self.block}[/bold red] 块",
-        )
-        table.add_row(
-            f"[bold {col_1_color}]权重分布",
-            f"[bold {col_2_color}]{self.window_coefficient}",
-            f"[bold][[bold {col_3_color}]2 , ?[/bold {col_3_color}] ]",
-            f"[bold]加权计算 [bold red]{self.window_coefficient}[/bold red]",
         )
         table.add_row(
             f"[bold {col_1_color}]获取区域",
@@ -375,4 +366,7 @@ class Option(object):
 
 
 if __name__ == '__main__':
+    file = "/Users/acekeppel/PycharmProjects/NexaFlow/data/deploy.json"
+    deploy = Deploy(file)
+    deploy.view_deploy()
     pass

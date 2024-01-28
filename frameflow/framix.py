@@ -139,6 +139,11 @@ class Parser(object):
 
 class Missions(object):
 
+    target_size = (350, 700)
+    step = 1
+    window_size = 1
+    window_coefficient = 2
+
     def __init__(self, alone: bool, quick: bool, basic: bool, keras: bool, *args, **kwargs):
         self.alone, self.quick, self.basic, self.keras = alone, quick, basic, keras
         self.boost, self.color, self.crops, self.omits, self.shape, self.scale = args
@@ -158,7 +163,7 @@ class Missions(object):
         self.scrcpy = kwargs["scrcpy"]
 
         if not self.shape and not self.scale:
-            self.shape = (350, 700)
+            self.shape = self.target_size
 
     @staticmethod
     def only_video(folder: str):
@@ -248,7 +253,9 @@ class Missions(object):
         futures = looper.run_until_complete(
             analyzer(
                 new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
-                ffmpeg=self.ffmpeg, shape=self.shape, scale=self.scale
+                ffmpeg=self.ffmpeg,
+                step=self.step, window_size=self.window_size, window_coefficient=self.window_coefficient,
+                shape=self.shape, scale=self.scale
             )
         )
 
@@ -379,7 +386,9 @@ class Missions(object):
                 futures = looper.run_until_complete(
                     analyzer(
                         new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
-                        ffmpeg=self.ffmpeg, shape=self.shape, scale=self.scale
+                        ffmpeg=self.ffmpeg,
+                        step=self.step, window_size=self.window_size, window_coefficient=self.window_coefficient,
+                        shape=self.shape, scale=self.scale
                     )
                 )
                 if futures is None:
@@ -455,15 +464,15 @@ class Missions(object):
         )
 
         cutter = VideoCutter(
-            step=deploy.step,
+            step=self.step,
             compress_rate=self.scale,
             target_size=self.shape
         )
         res = cutter.cut(
             video=video,
             block=deploy.block,
-            window_size=deploy.window_size,
-            window_coefficient=deploy.window_coefficient
+            window_size=self.window_size,
+            window_coefficient=self.window_coefficient
         )
         stable, unstable = res.get_range(
             threshold=deploy.threshold,
@@ -901,7 +910,9 @@ class Missions(object):
                 futures = await asyncio.gather(
                     *(analyzer(
                         temp_video, deploy, kc, frame_path, extra_path,
-                        ffmpeg=self.ffmpeg, shape=self.shape, scale=self.scale
+                        ffmpeg=self.ffmpeg,
+                        step=self.step, window_size=self.window_size, window_coefficient=self.window_coefficient,
+                        shape=self.shape, scale=self.scale
                     ) for temp_video, *_, frame_path, extra_path, _ in task_list)
                 )
 
@@ -1133,6 +1144,9 @@ async def analyzer(
 ):
     frame_path, extra_path = args
     ffmpeg = kwargs["ffmpeg"]
+    step = kwargs["step"]
+    window_size = kwargs["window_size"]
+    window_coefficient = kwargs["window_coefficient"]
     shape, scale = kwargs["shape"], kwargs["scale"]
 
     async def validate():
@@ -1180,7 +1194,7 @@ async def analyzer(
     async def frame_flow():
         video, task, hued = await frame_flip()
         cutter = VideoCutter(
-            step=deploy.step,
+            step=step,
             compress_rate=scale,
             target_size=shape
         )
@@ -1203,8 +1217,8 @@ async def analyzer(
         res = cutter.cut(
             video=video,
             block=deploy.block,
-            window_size=deploy.window_size,
-            window_coefficient=deploy.window_coefficient
+            window_size=window_size,
+            window_coefficient=window_coefficient
         )
 
         stable, unstable = res.get_range(
