@@ -459,7 +459,10 @@ class Missions(object):
         )
 
         video = VideoObject(video_temp_file)
-        video.load_frames(deploy.color, self.shape, self.scale)
+        video.load_frames(
+            silently_load_hued=False,
+            not_transform_gray=True
+        )
 
         cutter = VideoCutter(
             step=deploy.step,
@@ -481,6 +484,9 @@ class Missions(object):
             frame_count=20,
             to_dir=reporter.query_path,
             meaningful_name=True,
+            not_grey=self.color,
+            compress_rate=self.scale,
+            target_size=self.shape
         )
 
         os.remove(video_temp_file)
@@ -1174,7 +1180,12 @@ async def analyzer(
         logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
 
         video = VideoObject(change_record)
-        task, hued = video.load_frames(deploy.color, shape, scale)
+        task, hued = video.load_frames(
+            silently_load_hued=deploy.color,
+            not_transform_gray=False,
+            shape=shape,
+            scale=scale
+        )
         return video, task, hued
 
     async def frame_flow():
