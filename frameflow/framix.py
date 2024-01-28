@@ -11,10 +11,10 @@ import aiofiles
 import datetime
 from loguru import logger
 from rich.prompt import Prompt
-from frameflow.database import DataBase
-from frameflow.show import Show
-from frameflow.manage import Manage
-from frameflow.parameters import Deploy, Option
+from frameflow.skills.database import DataBase
+from frameflow.skills.show import Show
+from frameflow.skills.manage import Manage
+from frameflow.skills.parameters import Deploy, Option
 
 operation_system = sys.platform.strip().lower()
 work_platform = os.path.basename(os.path.abspath(sys.argv[0])).lower()
@@ -232,11 +232,7 @@ class Missions(object):
             )
             return reporter.total_path
 
-        elif self.basic:
-            logger.debug(f"Analyzer: 基础模式 ...")
-            kc = None
-
-        elif self.keras:
+        elif self.keras and not self.basic:
             logger.debug(f"Analyzer: 智能模式 ...")
             kc = KerasClassifier(
                 target_size=self.shape,
@@ -360,11 +356,7 @@ class Missions(object):
             )
             return reporter.total_path
 
-        elif self.basic:
-            logger.debug(f"Analyzer: 基础模式 ...")
-            kc = None
-
-        elif self.keras:
+        elif self.keras and not self.basic:
             logger.debug(f"Analyzer: 智能模式 ...")
             kc = KerasClassifier(
                 target_size=self.shape,
@@ -394,9 +386,7 @@ class Missions(object):
                     continue
                 start, end, cost, classifier = futures
 
-                if self.basic:
-                    original_inform = ""
-                elif self.keras:
+                if self.keras and not self.basic:
                     original_inform = reporter.draw(
                         classifier_result=classifier,
                         proto_path=reporter.proto_path,
@@ -922,10 +912,7 @@ class Missions(object):
                     start, end, cost, classifier = future
                     *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo
 
-                    if self.basic:
-                        logger.debug(f"Analyzer: 基础模式 ...")
-                        original_inform = ""
-                    elif self.keras:
+                    if self.keras and not self.basic:
                         logger.debug(f"Analyzer: 智能模式 ...")
                         template_file = await ask_get_template(self.alien)
                         original_inform = reporter.draw(
@@ -934,6 +921,7 @@ class Missions(object):
                             template_file=template_file,
                         )
                     else:
+                        logger.debug(f"Analyzer: 基础模式 ...")
                         original_inform = ""
 
                     result = {
@@ -961,6 +949,7 @@ class Missions(object):
                         )
 
             else:
+                logger.debug(f"Analyzer: 录制模式 ...")
                 return False
 
         # Device View

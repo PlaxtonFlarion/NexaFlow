@@ -7,7 +7,7 @@ from nexaflow.skills.alynex import Alynex
 from nexaflow.skills.report import Report
 
 MERGE_TEMPLATE = os.path.join(Constants.NEXA, "template")
-MODELS = os.path.join(Constants.WORK, "model", "model.h5")
+MODELS = os.path.join(Constants.WORK, "archivix", "molds", "model.h5")
 REPORT = os.path.join(Constants.WORK, "report")
 TEMPLATE_MAIN_TOTAL = os.path.join(Constants.NEXA, "template", "template_main_total.html")
 TEMPLATE_MAIN = os.path.join(Constants.NEXA, "template", "template_main.html")
