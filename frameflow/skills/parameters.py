@@ -71,19 +71,31 @@ class Deploy(object):
 
     @boost.setter
     def boost(self, value):
-        mode = data.lower() if isinstance(data := value.get("boost", "false"), str) else "false"
-        self._deploys["boost"] = True if mode == "true" else False
+        if isinstance(value, bool):
+            self._deploys["boost"] = value
+        elif isinstance(value, str):
+            mode = value.lower() if isinstance(value, str) else "false"
+            self._deploys["boost"] = True if mode == "true" else False
+        else:
+            self._deploys["boost"] = False
 
     @color.setter
     def color(self, value):
-        mode = data.lower() if isinstance(data := value.get("color", "false"), str) else "false"
-        self._deploys["color"] = True if mode == "true" else False
+        if isinstance(value, bool):
+            self._deploys["color"] = value
+        elif isinstance(value, str):
+            mode = value.lower() if isinstance(value, str) else "false"
+            self._deploys["color"] = True if mode == "true" else False
+        else:
+            self._deploys["color"] = False
 
     @shape.setter
     def shape(self, value):
-        if data := value.get("shape", None):
+        if isinstance(value, tuple):
+            self._deploys["shape"] = value
+        elif isinstance(value, str):
             # 在字符串中找到所有数字
-            match_list = re.findall(r"-?\d*\.?\d+", data)
+            match_list = re.findall(r"-?\d*\.?\d+", value)
             # 将匹配到的数字转换为整数或浮点数，并形成一个元组
             if len(match_list) >= 2:
                 converted = []
@@ -96,25 +108,27 @@ class Deploy(object):
                     converted.append(converted_num)
                 # 确保元组仅包含两个元素（宽度、高度）
                 self._deploys["shape"] = tuple(converted[:2])
-            else:
-                self._deploys["shape"] = None
 
     @scale.setter
     def scale(self, value):
-        if data := value.get("scale", None):
-            try:
-                scale_value = float(data)
-                self._deploys["scale"] = max(0.1, min(1.0, scale_value))
-            except ValueError:
-                raise ValueError("Invalid value for scale. It must be a number.")
-        else:
-            self._deploys["scale"] = None
+        if isinstance(value, int | float):
+            self._deploys["scale"] = max(0.1, min(1.0, value))
+        elif isinstance(value, str):
+            if value.strip().upper() != "NONE":
+                try:
+                    scale_value = float(value)
+                    self._deploys["scale"] = max(0.1, min(1.0, scale_value))
+                except ValueError:
+                    self._deploys["scale"] = None
+                    raise ValueError("scale 的值必须是一个可以转换为浮点数的数值 ...")
 
     @model_size.setter
     def model_size(self, value):
-        if data := value.get("model_size", (350, 700)):
+        if isinstance(value, tuple):
+            self._deploys["model_size"] = value
+        elif isinstance(value, str):
             # 在字符串中找到所有数字
-            match_list = re.findall(r"-?\d*\.?\d+", data)
+            match_list = re.findall(r"-?\d*\.?\d+", value)
             # 将匹配到的数字转换为整数或浮点数，并形成一个元组
             if len(match_list) >= 2:
                 converted = []
@@ -127,32 +141,53 @@ class Deploy(object):
                     converted.append(converted_num)
                 # 确保元组仅包含两个元素（宽度、高度）
                 self._deploys["model_size"] = tuple(converted[:2])
-            else:
-                self._deploys["model_size"] = (350, 700)
 
     @fps.setter
     def fps(self, value):
-        data = value.get("fps", 60)
-        self._deploys["fps"] = max(15, min(60, data))
+        try:
+            fps_value = int(value)
+        except ValueError:
+            self._deploys["fps"] = 60
+            raise ValueError("fps 的值必须是一个可以转换为整数的数值 ...")
+
+        self._deploys["fps"] = max(15, min(60, fps_value))
 
     @threshold.setter
     def threshold(self, value):
-        data = value.get("threshold", 0.97)
-        self._deploys["threshold"] = max(0, min(1, data))
+        try:
+            threshold_value = float(value)
+        except ValueError:
+            self._deploys["threshold"] = 0.97
+            raise ValueError("threshold 的值必须是一个可以转换为浮点数的数值 ...")
+
+        if isinstance(threshold_value, float):
+            threshold_value = round(threshold_value, 2)
+
+        self._deploys["threshold"] = max(0.1, min(1.0, threshold_value))
 
     @offset.setter
     def offset(self, value):
-        data = value.get("offset", 3)
-        self._deploys["offset"] = max(1, data)
+        try:
+            offset_value = int(value)
+        except ValueError:
+            self._deploys["offset"] = 3
+            raise ValueError("offset 的值必须是一个可以转换为整数的数值 ...")
+
+        self._deploys["offset"] = max(1, offset_value)
 
     @block.setter
     def block(self, value):
-        data = value.get("block", 6)
-        self._deploys["block"] = max(1, min(6, data))
+        try:
+            block_value = int(value)
+        except ValueError:
+            self._deploys["block"] = 6
+            raise ValueError("block 的值必须是一个可以转换为整数的数值 ...")
+
+        self._deploys["block"] = max(15, min(60, block_value))
 
     @crops.setter
     def crops(self, value):
-        hooks_list, crop_effective = value.get("crops", []), []
+        hooks_list, crop_effective = value, []
         for hook_dict in hooks_list:
             if len(
                     data_list := [
@@ -167,7 +202,7 @@ class Deploy(object):
 
     @omits.setter
     def omits(self, value):
-        hooks_list, omit_effective = value.get("omits", []), []
+        hooks_list, omit_effective = value, []
         for hook_dict in hooks_list:
             if len(
                     data_list := [
@@ -215,21 +250,21 @@ class Deploy(object):
         try:
             with open(file=deploy_file, mode="r", encoding="utf-8") as f:
                 data = json.loads(f.read())
-                self.boost = data
-                self.color = data
-                self.shape = data
-                self.scale = data
-                self.model_size = data
-                self.fps = data
-                self.threshold = data
-                self.offset = data
-                self.block = data
-                self.crops = data
-                self.omits = data
+                self.boost = data.get("boost", "false")
+                self.color = data.get("color", "false")
+                self.shape = data.get("shape", None)
+                self.scale = data.get("scale", None)
+                self.model_size = data.get("model_size", (350, 700))
+                self.fps = data.get("fps", 60)
+                self.threshold = data.get("threshold", 0.97)
+                self.offset = data.get("offset", 3)
+                self.block = data.get("block", 6)
+                self.crops = data.get("crops", [])
+                self.omits = data.get("omits", [])
         except FileNotFoundError:
             logger.debug("未找到部署文件,使用默认参数 ...")
         except json.decoder.JSONDecodeError:
-            logger.debug("部署文件解析错误,文件格式不正确,使用默认参数 ...")
+            logger.warning("部署文件解析错误,文件格式不正确,使用默认参数 ...")
         except Exception as e:
             logger.error(e)
         else:
@@ -268,55 +303,55 @@ class Deploy(object):
             f"[bold {col_1_color}]图片尺寸",
             f"[bold {col_2_color}]{self.shape}" if self.shape else f"[bold {col_2_color}]Auto",
             f"[bold][[bold {col_3_color}]? , ?[/bold {col_3_color}] ]",
-            f"[bold]宽 [bold red]{self.shape[0]}[/bold red] 高 [bold red]{self.shape[1]}[/bold red]" if self.shape else f"[bold green]自动[/bold green]",
+            f"[bold]宽 [bold yellow]{self.shape[0]}[/bold yellow] 高 [bold yellow]{self.shape[1]}[/bold yellow]" if self.shape else f"[bold green]自动[/bold green]",
         )
         table.add_row(
             f"[bold {col_1_color}]压缩比例",
             f"[bold {col_2_color}]{self.scale}"if self.scale else f"[bold {col_2_color}]Auto",
             f"[bold][[bold {col_3_color}]0 , 1[/bold {col_3_color}] ]",
-            f"[bold]压缩图片至 [bold red]{self.scale}[/bold red]" if self.scale else f"[bold green]自动[/bold green]",
+            f"[bold]压缩图片至 [bold yellow]{self.scale}[/bold yellow]" if self.scale else f"[bold green]自动[/bold green]",
         )
         table.add_row(
             f"[bold {col_1_color}]模型尺寸",
             f"[bold {col_2_color}]{self.model_size}",
             f"[bold][[bold {col_3_color}]? , ?[/bold {col_3_color}] ]",
-            f"[bold]宽 [bold red]{self.model_size[0]}[/bold red] 高 [bold red]{self.model_size[1]}[/bold red]",
+            f"[bold]宽 [bold yellow]{self.model_size[0]}[/bold yellow] 高 [bold yellow]{self.model_size[1]}[/bold yellow]",
         )
         table.add_row(
             f"[bold {col_1_color}]帧采样率",
             f"[bold {col_2_color}]{self.fps}",
             f"[bold][[bold {col_3_color}]15, 60[/bold {col_3_color}]]",
-            f"[bold]每秒 [bold red]{self.fps}[/bold red] 帧",
+            f"[bold]每秒 [bold yellow]{self.fps}[/bold yellow] 帧",
         )
         table.add_row(
             f"[bold {col_1_color}]相似度",
             f"[bold {col_2_color}]{self.threshold}",
             f"[bold][[bold {col_3_color}]0 , 1[/bold {col_3_color}] ]",
-            f"[bold]阈值超过 [bold red]{self.threshold}[/bold red] 的帧为稳定帧",
+            f"[bold]阈值超过 [bold yellow]{self.threshold}[/bold yellow] 的帧为稳定帧",
         )
         table.add_row(
             f"[bold {col_1_color}]补偿值",
             f"[bold {col_2_color}]{self.offset}",
             f"[bold][[bold {col_3_color}]0 , ?[/bold {col_3_color}] ]",
-            f"[bold]合并 [bold red]{self.offset}[/bold red] 个变化不大的稳定区间",
+            f"[bold]合并 [bold yellow]{self.offset}[/bold yellow] 个变化不大的稳定区间",
         )
         table.add_row(
             f"[bold {col_1_color}]切分程度",
             f"[bold {col_2_color}]{self.block}",
             f"[bold][[bold {col_3_color}]1 , 6[/bold {col_3_color}] ]",
-            f"[bold]每个帧图像切分为 [bold red]{self.block}[/bold red] 块",
+            f"[bold]每个帧图像切分为 [bold yellow]{self.block}[/bold yellow] 块",
         )
         table.add_row(
             f"[bold {col_1_color}]获取区域",
             f"[bold {col_2_color}]{['!' for _ in range(len(self.crops))]}",
             f"[bold][[bold {col_3_color}]0 , 1[/bold {col_3_color}] ]",
-            f"[bold]共 [bold red]{len(self.crops)}[/bold red] 个区域的图像参与计算",
+            f"[bold]共 [bold yellow]{len(self.crops)}[/bold yellow] 个区域的图像参与计算",
         )
         table.add_row(
             f"[bold {col_1_color}]忽略区域",
             f"[bold {col_2_color}]{['!' for _ in range(len(self.omits))]}",
             f"[bold][[bold {col_3_color}]0 , 1[/bold {col_3_color}] ]",
-            f"[bold]共 [bold red]{len(self.omits)}[/bold red] 个区域的图像不参与计算",
+            f"[bold]共 [bold yellow]{len(self.omits)}[/bold yellow] 个区域的图像不参与计算",
         )
         Show.console.print(table)
 
@@ -366,7 +401,4 @@ class Option(object):
 
 
 if __name__ == '__main__':
-    file = "/Users/acekeppel/PycharmProjects/NexaFlow/data/deploy.json"
-    deploy = Deploy(file)
-    deploy.view_deploy()
     pass
