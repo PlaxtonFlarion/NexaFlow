@@ -436,6 +436,7 @@
             display: flex;
             overflow-x: auto;
             overflow-y: hidden;
+            height: 35%;
             width: 100%;
             white-space: nowrap;
             transition: all 0.3s ease;
@@ -1379,12 +1380,13 @@
                             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
                         }
                         .extra-image {
+                            width: 350px;
                             flex-basis: calc(100% / 6 - 20px);
                             margin: 10px;
                             text-align: center;
                         }
                         .img-extra {
-                            max-width: 100%;
+                            width: 100%;
                             border-radius: 4px;
                         }
                         .img-extra:hover {
@@ -1408,8 +1410,7 @@
                             left: 50%;
                             transform: translate(-50%, -50%);
                             z-index: 9999;
-                            max-width: 80%;
-                            max-height: 80%;
+                            height: 80%;
                             cursor: zoom-in;
                         }
                         .zoomed-in:hover {

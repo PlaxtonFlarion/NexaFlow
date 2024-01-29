@@ -94,13 +94,14 @@
         background-color: {{ background_color }};
     }
 
-    /* 图片容器 */
+    /* 一组图片容器 */
     .thumbnail-list {
-        width: 1310px;
+        width: 1580px;
         margin-bottom: 30px;
         white-space: nowrap;
         overflow-x: auto;
     }
+    /* 图片容器 */
     .thumbnails {
         display: inline-block;
         text-align: center;
@@ -109,12 +110,14 @@
     }
     /* 图片 */
     .thumbnail {
-        width: 150px;
+        margin-top: 10px;
+        width: 250px;
         cursor: pointer;
     }
     .thumbnail:hover {
-        opacity: 0.5;
+        transform: scale(0.98);
         border-radius: 20px;
+        box-shadow: 0px 0px 2px 2px rgba(5, 156, 149, 0.9);
         transition: all 0.3s ease;
     }
     .thumbnail:active {
@@ -122,18 +125,13 @@
     }
     .thumbnails p {
         margin: 0;
-        font-size: 12px;
         font-weight: bold;
     }
 
     /* 图片被选择 */
     .selected {
-        background-color: rgba(0, 0, 0, 0.2);
-        box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.2);
+        box-shadow: 0px 0px 2px 2px rgba(228, 133, 26, 0.9);
         transition: all 0.3s ease;
-    }
-    .selected:hover {
-        border-radius: 20px;
     }
 
     /* 分割线 */
@@ -212,31 +210,36 @@
         z-index: 999;
     }
     .lightbox-content {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
+        width: 60%;
+        margin: 100px auto;
         padding: 20px;
         border-radius: 10px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        box-shadow: 0px 0px 20px 2px rgba(0, 0, 0, 0.9);
         z-index: 1000;
+    }
+    .btn-div {
+        margin: 20px;
+        display: flex;
+        justify-content: center;
     }
     .image-wrapper {
         display: flex;
+        justify-content: center;
     }
     .image-box {
-        margin-top: 25px;
-        margin-left: 50px;
-        margin-right: 50px;
+        width: 600px;
+        margin: 20px;
         text-align: center;
     }
     .image-box img {
-        width: 90%;
+        margin: 20px;
+        width: 50%;
         border-radius: 10px;
     }
     .img1:hover, .img2:hover {
-        cursor: crosshair;
+        cursor: grab;
         transform: scale(1.02);
+        box-shadow: 0px 0px 10px 2px rgba(228, 133, 26, 0.9);
         transition: transform 0.3s ease;
     }
     .img1:active, .img2:active {
@@ -244,13 +247,10 @@
     }
     .image-box p {
         color: beige;
-        margin: 8px;
+        margin: 0;
+        font-weight: bold;
     }
     #difference {
-        position: absolute;
-        top: 0;  /* 设置距离顶部的距离，您可以根据需要进行调整 */
-        left: 50%;  /* 让按钮居中相对于容器 */
-        transform: translateX(-50%);  /* 修正按钮的位置，使其完全居中 */
         padding: 5px 30px;
         border: none;
         cursor: pointer;
@@ -260,11 +260,11 @@
     }
     #difference:hover {
         background-color: #fff58a;
-        transition: background-color 0.3s;
+        transition: background-color 0.3s ease;
     }
     #difference:active {
-        padding: 5px 50px;
-        transition: padding 0.3s;
+        transform: scale(0.8);
+        transition: transform 0.3s ease;
     }
 </style>
 
@@ -358,7 +358,9 @@
 
 <div id="lightbox">
     <div class="lightbox-content">
-        <button id="difference"></button>
+        <div class="btn-div">
+            <button id="difference"></button>
+        </div>
         <div class="image-wrapper">
             <div class="image-box">
                 <p class="frame1"></p>
@@ -398,14 +400,11 @@
     var thumbs = Array.from(document.querySelectorAll('.thumbnail'));
     thumbs.forEach((thumb, index) => {
         thumb.addEventListener('click', function(e) {
-            // 获取当前 thumb 的父容器下的 P 标签
             let pTag = thumb.parentElement.querySelectorAll('p');
-            // 获取当前 thumb 的父容器
             const parentDiv = thumb.closest('.thumbnail-list');
-            // 在父容器内查找最近的 h5 元素
             const h5Element = parentDiv.previousElementSibling;
-            if (thumb.parentElement.classList.contains('selected')) {
-                thumb.parentElement.classList.remove('selected');
+            if (thumb.classList.contains('selected')) {
+                thumb.classList.remove('selected');
                 pTag.forEach(tag => {
                     tag.style.color = '';
                 });
@@ -413,7 +412,7 @@
             } else {
                 let thumbMark = Array.from(document.querySelectorAll('.selected'));
                 if (thumbMark.length < 2) {
-                    thumb.parentElement.classList.add('selected');
+                    thumb.classList.add('selected');
                     pTag.forEach(tag => {
                         tag.style.color = 'crimson';
                     });
@@ -434,13 +433,12 @@
     });
 
     function calculate(selects) {
-        // 获取帧编号，时间戳，图片文件
-        let frame1 = Number(selects[0].querySelector('.frame').textContent);
-        let frame2 = Number(selects[1].querySelector('.frame').textContent);
-        let timestamp1 = Number(selects[0].querySelector('.timestamp').textContent);
-        let timestamp2 = Number(selects[1].querySelector('.timestamp').textContent);
-        let img1 = selects[0].querySelector('.thumbnail').src
-        let img2 = selects[1].querySelector('.thumbnail').src
+        let frame1 = Number(selects[0].parentElement.querySelector('.frame').textContent);
+        let frame2 = Number(selects[1].parentElement.querySelector('.frame').textContent);
+        let timestamp1 = Number(selects[0].parentElement.querySelector('.timestamp').textContent);
+        let timestamp2 = Number(selects[1].parentElement.querySelector('.timestamp').textContent);
+        let img1 = selects[0].parentElement.querySelector('.thumbnail').src
+        let img2 = selects[1].parentElement.querySelector('.thumbnail').src
         // 计算时间戳差值并取五位小数
         let diff = Math.abs(timestamp2 - timestamp1);
         diff = diff.toFixed(5);
@@ -477,7 +475,7 @@
             let thumbMark = Array.from(document.querySelectorAll('.selected'));
             thumbMark.forEach((thumb, index) => {
                 thumb.classList.remove('selected');
-                let pTag = thumb.querySelectorAll('p');
+                let pTag = thumb.parentElement.querySelectorAll('p');
                 pTag.forEach(tag => {
                     tag.style.color = '';
                 });
@@ -536,7 +534,7 @@
                 loader.style.display = "none";
             }, 500);
         }, 1000); // 强制等待
-      });
+    });
 </script>
 
 <script src="https://cdn.staticfile.org/jquery/3.2.1/jquery.min.js"></script>
