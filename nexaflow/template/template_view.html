@@ -215,20 +215,33 @@
         });
     });
 
-    prevButton.addEventListener('click', function() {
+    function prevButtonAction() {
         if (currentIndex > 0) {
             currentIndex--;
             updateImage();
             updateButtonStatus();
         }
-    });
+    }
 
-    nextButton.addEventListener('click', function() {
+    function nextButtonAction() {
         if (currentIndex < images.length - 1) {
             currentIndex++;
             updateImage();
             updateButtonStatus();
         }
+    }
+
+    function exitBox () {
+        modal.style.display = 'none';
+        currentIndex = 0;
+    }
+
+    prevButton.addEventListener('click', function() {
+        prevButtonAction();
+    });
+
+    nextButton.addEventListener('click', function() {
+        nextButtonAction();
     });
 
     function updateImage() {
@@ -244,24 +257,15 @@
     function keyListener(event) {
         switch (event.key) {
             case "ArrowLeft":
-                if (currentIndex > 0) {
-                    currentIndex--;
-                    updateImage();
-                    updateButtonStatus();
-                }
+                prevButtonAction();
                 break;
             case "ArrowRight":
-                if (currentIndex < images.length - 1) {
-                    currentIndex++;
-                    updateImage();
-                    updateButtonStatus();
-                }
+                nextButtonAction();
                 break;
             case "Enter":
                 break;
             case "Escape":
-                modal.style.display = 'none';
-                currentIndex = 0;
+                exitBox();
                 break;
         }
     }
