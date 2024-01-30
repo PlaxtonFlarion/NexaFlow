@@ -596,7 +596,7 @@ class Missions(object):
                 else:
                     twist_w, twist_h = original_w, original_h
 
-                min_scale, max_scale = 0.3, 1.0
+                min_scale, max_scale = 0.1, 1.0
                 if self.scale:
                     image_scale = max_scale if self.scale > max_scale else (
                         min_scale if self.scale < min_scale else self.scale)
@@ -787,7 +787,7 @@ class Missions(object):
         async def commence():
 
             async def device_online(serial):
-                Show.console.print(f"[bold]wait-for-device [{serial}] ...[/bold]")
+                Show.console.print(f"[bold]wait-for-device {serial} ...[/bold]")
                 await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-device")
 
             await asyncio.gather(

@@ -382,6 +382,7 @@ class Option(object):
                 data = json.loads(f.read())
         except FileNotFoundError:
             logger.debug("未找到配置文件,使用默认路径 ...")
+            self.dump_option(option_file)
         except json.decoder.JSONDecodeError:
             logger.debug("配置文件解析错误,文件格式不正确,使用默认路径 ...")
         else:
