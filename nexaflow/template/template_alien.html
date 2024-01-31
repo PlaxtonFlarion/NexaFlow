@@ -111,7 +111,8 @@
     /* 图片 */
     .thumbnail {
         margin-top: 10px;
-        width: 250px;
+        max-width: 250px;
+        max-height: 500px;
         cursor: pointer;
     }
     .thumbnail:hover {
@@ -211,6 +212,7 @@
     }
     .lightbox-content {
         width: 60%;
+        height: 80%;
         margin: 55px auto;
         padding: 10px;
         border-radius: 10px;
@@ -223,6 +225,8 @@
         justify-content: center;
     }
     .image-wrapper {
+        max-width: 100%;
+        max-height: 90%;
         display: flex;
         justify-content: center;
     }
@@ -232,8 +236,9 @@
         text-align: center;
     }
     .image-box img {
+        max-width: 100%;
+        max-height: 90%;
         margin: 10px;
-        width: 50%;
         border-radius: 10px;
     }
     .img1:hover, .img2:hover {

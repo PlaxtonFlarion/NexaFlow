@@ -216,6 +216,7 @@
         }
         /* 一组图片的容器 */
         .image-container {
+            max-height: 60vh;
             display: flex;
             flex-wrap: no-wrap;
             overflow-x: auto;
@@ -238,7 +239,8 @@
             transition: transform 0.3s ease, box-shadow 0.5s ease;
         }
         .image-box img {
-            width: 90%;
+            max-height: 80%;
+            max-width: 90%;
             margin: 10px 5px;
             border-radius: 10px;
         }
@@ -325,7 +327,6 @@
             border-radius: 10px;
             background: transparent;
             box-shadow: 0px 0px 10px 6px rgb(231 186 13 / 90%);
-            overflow: auto;
             padding: 20px;
         }
         .nav-button {
@@ -412,9 +413,10 @@
             transform: scale(0.95);
         }
         #lightbox-img {
+            max-width: 70%;
             height: 60%;
             margin: 10px;
-            object-fit: contain;
+            object-fit: cover;
             border-radius: 10px;
             box-shadow: 0px 0px 10px 6px rgb(242 242 11 / 45%);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -436,39 +438,63 @@
             display: flex;
             overflow-x: auto;
             overflow-y: hidden;
-            height: 35%;
+            height: 30%;
             width: 100%;
             white-space: nowrap;
             transition: all 0.3s ease;
         }
         .thumbnail {
-            flex: none;
+            max-width: 30%;
             margin: 20px 10px;
             border-radius: 10px;
             cursor: pointer;
         }
         .thumbnail:hover {
-            transform: scale(1.05);
+            transform: scale(0.97);
             transition: transform 0.3s ease;
         }
         .thumbnail.active {
-            transform: scale(1.05);
+            transform: scale(0.97);
             box-shadow: 0px 0px 5px 3px rgb(242 242 11 / 90%);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
         .thumb-selected {
-            transform: scale(1.05);
+            transform: scale(0.97);
             box-shadow: 0px 0px 5px 3px rgb(242 98 11 / 90%);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
         .thumbnail.thumb-selected.active {
-            transform: scale(1.05);
+            transform: scale(0.97);
             box-shadow: 0px 0px 5px 3px rgb(17 184 241 / 90%);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
         .thumbnail.active:hover, .thumb-selected:hover, .thumbnail.thumb-selected.active:hover {
-            transform: scale(1.07);
+            transform: scale(0.95);
             opacity: 0.5;
+        }
+
+        /* 缩略图悬浮提示 */
+        .tooltip {
+            display: contents;
+        }
+        .tooltip .tips {
+            visibility: hidden;
+            max-width: 20%;
+            background-image: linear-gradient(180deg, #e96567, #f19072, #f6b87d, #f9df88);
+            margin: 5px;
+            color: #131313;
+            font-weight: bold;
+            text-align: center;
+            padding: 1px 5px;
+            border-radius: 10px;
+            /* 定位 */
+            position: absolute;
+            z-index: 1;
+            top: 32%;
+            left: 0;
+        }
+        .tooltip:hover .tips {
+            visibility: visible;
         }
 
         /* 警告提示框 */
@@ -625,7 +651,9 @@
             {% for image in res.image_list %}
             <div class="image-box {{ 'selected' if (image.frames_id| int) == res.stage.start or (image.frames_id| int) == res.stage.end else '' }}" style="display: {{ 'none' if (image.frames_id| int) != res.stage.start and (image.frames_id| int) != res.stage.end else '' }}">
                 <img src="{{ image.src }}" class="img-fluid" alt="Image" data-frame="{{ image.frames_id }}" data-timestamp="{{ image.timestamp }}">
-                <button class="mark-button {{ 'marked' if (image.frames_id| int) == res.stage.start or (image.frames_id| int) == res.stage.end else '' }}">标记</button>
+                <div class="mark-button-div">
+                    <button class="mark-button {{ 'marked' if (image.frames_id| int) == res.stage.start or (image.frames_id| int) == res.stage.end else '' }}">标记</button>
+                </div>
                 <div class="info">
                     <span>{{ image.frames_id }} - {{ image.timestamp }}</span>
                 </div>
@@ -719,7 +747,7 @@
             container.querySelectorAll('.mark-button').forEach(markButton => {
                 markButton.addEventListener('click', function(e) {
                     var target = e.target;
-                    var parent = target.parentElement;
+                    var parent = target.closest('.image-box');;
                     var frameId = Number(parent.querySelector('img').getAttribute('data-frame'));
                     var frame = Number(parent.querySelector('img').getAttribute('data-timestamp'));
 
@@ -877,13 +905,13 @@
 
         // 打开灯箱
         function openLightbox() {
-            document.getElementById('lightbox').classList.add('show');
+            lightbox.classList.add('show');
             window.addEventListener('keydown', keyListener); // 启用键盘监听
         }
 
         // 关闭灯箱
         function closeLightbox() {
-            document.getElementById('lightbox').classList.remove('show');
+            lightbox.classList.remove('show');
             window.removeEventListener('keydown', keyListener); // 停止键盘监听
         }
 
@@ -939,9 +967,19 @@
             thumbnailsDiv.innerHTML = ''; // 清空现有的缩略图
 
             images.forEach((image, index) => {
+                let wrapper = document.createElement('div');
+                wrapper.classList.add('tooltip');
+
                 let thumbnail = document.createElement('img');
                 thumbnail.src = image.src;
                 thumbnail.classList.add('thumbnail');
+
+                let tooltipText = document.createElement('span');
+                tooltipText.classList.add('tips');
+                let id = image.getAttribute('data-frame');
+                let time = image.getAttribute('data-timestamp');
+                tooltipText.textContent = id + ' - ' + time;
+
                 if (index === currentImageIndex) {
                     thumbnail.classList.add('active'); // 标记当前显示的图片
                 }
@@ -959,7 +997,9 @@
                     updateButtonStatus();
                     boxVision();
                 });
-                thumbnailsDiv.appendChild(thumbnail);
+                wrapper.appendChild(thumbnail);
+                wrapper.appendChild(tooltipText);
+                thumbnailsDiv.appendChild(wrapper);
             });
         }
 
@@ -993,22 +1033,30 @@
             }
         }
 
-        // 灯箱-上一张标签
-        prevButton.addEventListener('click', function() {
+        function prevButtonAction() {
             if (currentImageIndex > 0) {
                 currentImageIndex--;
                 updateImage();
                 scrollToActive();
             }
-        });
+        }
 
-        // 灯箱-下一张标签
-        nextButton.addEventListener('click', function() {
+        function nextButtonAction() {
             if (currentImageIndex < images.length - 1) {
                 currentImageIndex++;
                 updateImage();
                 scrollToActive();
             }
+        }
+
+        // 灯箱-上一张标签
+        prevButton.addEventListener('click', function() {
+            prevButtonAction();
+        });
+
+        // 灯箱-下一张标签
+        nextButton.addEventListener('click', function() {
+            nextButtonAction();
         });
 
         // 灯箱-关闭标签
@@ -1023,8 +1071,8 @@
             let markButton = container.querySelectorAll('.image-box button');
             markButton.forEach(mark => {
                 mark.classList.remove('marked');
-                mark.parentElement.classList.remove('selected');
-                mark.parentElement.style.display = '';
+                mark.closest('.image-box').classList.remove('selected');
+                mark.closest('.image-box').style.display = '';
             });
 
             setBoxDiff('0 -> 0', 'none', '0.00000', 'none');
@@ -1120,7 +1168,7 @@
                 resDivs[diffIndex].classList.remove('effect-on');
                 resDivs[diffIndex].classList.add('effect-off');
                 options[diffIndex].style.display = 'none';
-                let diff1 = resMark[0].parentElement.querySelector('img');
+                let diff1 = resMark[0].closest('.image-box').querySelector('img');
                 setBoxDiff(diff1.dataset.frame, '', '0.00000', 'none');
 
             } else if (resMark.length === 0) {
@@ -1147,10 +1195,10 @@
                         image.parentElement.style.display = 'none';
                     }
                 });
-                let frame1 = Number(resMark[0].parentElement.querySelector('img').getAttribute('data-frame'));
-                let frame2 = Number(resMark[1].parentElement.querySelector('img').getAttribute('data-frame'));
-                let timestamp1 = Number(resMark[0].parentElement.querySelector('img').getAttribute('data-timestamp'));
-                let timestamp2 = Number(resMark[1].parentElement.querySelector('img').getAttribute('data-timestamp'));
+                let frame1 = Number(resMark[0].closest('.image-box').querySelector('img').getAttribute('data-frame'));
+                let frame2 = Number(resMark[1].closest('.image-box').querySelector('img').getAttribute('data-frame'));
+                let timestamp1 = Number(resMark[0].closest('.image-box').querySelector('img').getAttribute('data-timestamp'));
+                let timestamp2 = Number(resMark[1].closest('.image-box').querySelector('img').getAttribute('data-timestamp'));
                 let diff = Math.abs(timestamp2 - timestamp1);
                 diff = diff.toFixed(5);
                 setBoxDiff(frame1 + ' -> ' + frame2, '', diff, '');
@@ -1380,14 +1428,16 @@
                             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
                         }
                         .extra-image {
-                            width: 350px;
+                            max-width: 350px;
+                            max-height: 700px;
                             flex-basis: calc(100% / 6 - 20px);
                             margin: 10px;
                             text-align: center;
                         }
                         .img-extra {
-                            width: 100%;
-                            border-radius: 4px;
+                            margin: 20px;
+                            max-height: 80%;
+                            max-width: 80%;
                         }
                         .img-extra:hover {
                             cursor: zoom-in;
@@ -1398,19 +1448,20 @@
                             transform: scale(0.98);
                         }
                         p {
-                            margin-top: 12px;
+                            margin: 0;
                             font-size: 20px;
                             font-weight: bold;
                             color: #0d96a7;
                         }
 
                         .zoomed-in {
+                            max-height: 80%;
+                            max-width: 80%;
                             position: fixed;
                             top: 50%;
                             left: 50%;
                             transform: translate(-50%, -50%);
                             z-index: 9999;
-                            height: 80%;
                             cursor: zoom-in;
                         }
                         .zoomed-in:hover {
@@ -1498,16 +1549,6 @@
                 newWindow.document.write(htmlContent);
                 // 将新的 <script> 元素添加到新窗口的 <body>
                 newWindow.document.body.appendChild(scriptElement);
-
-<!--                // 修改复制内容的可见性-->
-<!--                originalContent.style.display = 'block';-->
-<!--                // 将复制内容转换为HTML字符串-->
-<!--                const htmlString = originalContent.outerHTML;-->
-<!--                // 将修改后的内容写入新窗口-->
-<!--                newWindow.document.write(styles + htmlString);-->
-<!--                // 将新的 <script> 元素添加到新窗口的 <body>-->
-<!--                newWindow.document.body.appendChild(scriptElement);-->
-
                 // 创建加载遮罩，创建加载动画
                 const loaderWrapper = newWindow.document.createElement('div');
                 loaderWrapper.className = 'loader-wrapper';
@@ -1545,19 +1586,11 @@
             switch (event.key) {
                 case "ArrowLeft":
                     // 左箭头键被按下时执行的代码
-                    if (currentImageIndex > 0) {
-                        currentImageIndex--;
-                        updateImage();
-                        scrollToActive();
-                    }
+                    prevButtonAction();
                     break;
                 case "ArrowRight":
                     // 右箭头键被按下时执行的代码
-                    if (currentImageIndex < images.length - 1) {
-                        currentImageIndex++;
-                        updateImage();
-                        scrollToActive();
-                    }
+                    nextButtonAction();
                     break;
                 case "Enter":
                     // 回车键被按下时执行的代码
