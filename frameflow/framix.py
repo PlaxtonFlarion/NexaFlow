@@ -140,6 +140,7 @@ class Parser(object):
 class Missions(object):
 
     target_size = (350, 700)
+    compress_rate = 0.4
     step = 1
     window_size = 1
     window_coefficient = 2
@@ -163,7 +164,7 @@ class Missions(object):
         self.scrcpy = kwargs["scrcpy"]
 
         if not self.shape and not self.scale:
-            self.shape = self.target_size
+            self.scale = self.compress_rate
 
     @staticmethod
     def only_video(folder: str):
