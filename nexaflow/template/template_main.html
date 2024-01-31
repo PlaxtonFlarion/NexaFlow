@@ -473,30 +473,6 @@
             opacity: 0.5;
         }
 
-        /* 缩略图悬浮提示 */
-        .tooltip {
-            display: contents;
-        }
-        .tooltip .tips {
-            visibility: hidden;
-            max-width: 20%;
-            background-image: linear-gradient(180deg, #e96567, #f19072, #f6b87d, #f9df88);
-            margin: 5px;
-            color: #131313;
-            font-weight: bold;
-            text-align: center;
-            padding: 1px 5px;
-            border-radius: 10px;
-            /* 定位 */
-            position: absolute;
-            z-index: 1;
-            top: 32%;
-            left: 0;
-        }
-        .tooltip:hover .tips {
-            visibility: visible;
-        }
-
         /* 警告提示框 */
         .alert {
             display: none;
@@ -603,6 +579,7 @@
             color: #616161;
         }
 
+        /* 灯箱-计算结果提示 */
         .box-res {
             width: 8%;
             margin: 5px;
@@ -625,6 +602,40 @@
             color: #8e44ad;
             margin: 5px;
             text-align: center;
+        }
+
+        /* 灯箱-缩略图悬浮提示 */
+        .thumbnail-box {
+            display: contents;
+        }
+        .thumbnail-box .tips {
+            visibility: hidden;
+            max-width: 15%;
+            background-image: linear-gradient(180deg, #e96567, #f19072, #f6b87d, #f9df88);
+            margin: 5px;
+            color: #131313;
+            font-weight: bold;
+            text-align: center;
+            padding: 1px 5px;
+            border-radius: 10px;
+            /* 定位 */
+            position: absolute;
+            z-index: 1;
+            top: 32%;
+            left: 0;
+        }
+        .thumbnail-box:hover .tips {
+            visibility: visible;
+        }
+        #tooltip {
+            color: #131313;
+            font-weight: bold;
+            text-align: center;
+            position: absolute;
+            display: none;
+            background-image: linear-gradient(180deg, #e96567, #f19072, #f6b87d, #f9df88);
+            padding: 1px 5px;
+            border-radius: 10px;
         }
     </style>
 
@@ -734,6 +745,8 @@
             <button class="alert-btn" onclick="closeAlert()">确定</button>
         </div>
     </div>
+
+    <div id="tooltip"></div>
 
     <!--复制提示框-->
     <div id="toast" class="toast"></div>
@@ -896,6 +909,7 @@
         var nextButton = document.getElementById('next');
         var closeButton = document.getElementById('close');
         var reselectButton = document.getElementById('reselect');
+        var tools = document.getElementById('tooltip');
 
         var imageContainers = Array.from(document.querySelectorAll('.image-container'));
         var images = [];
@@ -961,6 +975,11 @@
             });
         });
 
+        document.addEventListener('mousemove', function(e) {
+            tools.style.left = (e.pageX - 80 - 20) + 'px';
+            tools.style.top = (e.pageY - 25 - 10) + 'px';
+        });
+
         // 灯箱-更新缩略图
         function updateThumbnails() {
             let thumbnailsDiv = document.getElementById('thumbnails');
@@ -968,17 +987,17 @@
 
             images.forEach((image, index) => {
                 let wrapper = document.createElement('div');
-                wrapper.classList.add('tooltip');
+                wrapper.classList.add('thumbnail-box');
 
                 let thumbnail = document.createElement('img');
                 thumbnail.src = image.src;
                 thumbnail.classList.add('thumbnail');
 
-                let tooltipText = document.createElement('span');
-                tooltipText.classList.add('tips');
+                let tipText = document.createElement('span');
+                tipText.classList.add('tips');
                 let id = image.getAttribute('data-frame');
                 let time = image.getAttribute('data-timestamp');
-                tooltipText.textContent = id + ' - ' + time;
+                tipText.textContent = id + ' - ' + time;
 
                 if (index === currentImageIndex) {
                     thumbnail.classList.add('active'); // 标记当前显示的图片
@@ -986,6 +1005,19 @@
                 if (image.parentElement.classList.contains('selected')) {
                     thumbnail.classList.add('thumb-selected'); // 标记当前选定的图片
                 }
+
+                // 一个元素需要显示提示
+                thumbnail.addEventListener('mouseover', function() {
+                    let id = image.getAttribute('data-frame');
+                    let time = image.getAttribute('data-timestamp');
+                    tools.textContent = id + ' - ' + time;
+                    tools.style.display = 'block';
+                });
+                // 关闭提示
+                thumbnail.addEventListener('mouseout', function() {
+                    tools.textContent = '';
+                    tools.style.display = 'none';
+                });
 
                 thumbnail.addEventListener('click', function(e) {
                     // 点击缩略图时更新大图
@@ -998,7 +1030,7 @@
                     boxVision();
                 });
                 wrapper.appendChild(thumbnail);
-                wrapper.appendChild(tooltipText);
+                wrapper.appendChild(tipText);
                 thumbnailsDiv.appendChild(wrapper);
             });
         }
