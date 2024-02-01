@@ -216,9 +216,7 @@
         }
         /* 一组图片的容器 */
         .image-container {
-            max-height: 60vh;
             display: flex;
-            flex-wrap: no-wrap;
             overflow-x: auto;
             margin: 20px;
             border-radius: 10px;
@@ -229,7 +227,6 @@
         .image-box {
             width: 100%;
             border-radius: 10px;
-            flex: 0 0 calc(12.5% - 20px);
             margin: 20px 10px;
             text-align: center;
         }
@@ -241,7 +238,7 @@
         .image-box img {
             max-height: 80%;
             max-width: 90%;
-            margin: 10px 5px;
+            margin: 10px auto;
             border-radius: 10px;
         }
         .image-box img:hover {
@@ -413,7 +410,7 @@
             transform: scale(0.95);
         }
         #lightbox-img {
-            max-width: 70%;
+            max-width: 60%;
             height: 60%;
             margin: 10px;
             object-fit: cover;
@@ -438,7 +435,6 @@
             display: flex;
             overflow-x: auto;
             overflow-y: hidden;
-            height: 30%;
             width: 100%;
             white-space: nowrap;
             transition: all 0.3s ease;
@@ -581,7 +577,6 @@
 
         /* 灯箱-计算结果提示 */
         .box-res {
-            width: 8%;
             margin: 5px;
             font-weight: bold;
             padding: 1px 5px;
@@ -636,6 +631,37 @@
             background-image: linear-gradient(180deg, #e96567, #f19072, #f6b87d, #f9df88);
             padding: 1px 5px;
             border-radius: 10px;
+        }
+
+        /* 横屏模式 */
+        @media screen and (orientation: landscape) {
+            .image-container {
+                max-height: 60vh;
+            }
+            .image-box {
+                flex: 0 0 calc(12.5% - 20px);
+            }
+            #thumbnails {
+                height: 30%;
+            }
+            .box-res {
+                width: 10%;
+            }
+        }
+        /* 竖屏模式 */
+        @media screen and (orientation: portrait) {
+            .image-container {
+                max-height: 30vh;
+            }
+            .image-box {
+                flex: 0 0 calc(25% - 20px);
+            }
+            #thumbnails {
+                height: 50%;
+            }
+            .box-res {
+                width: 15%;
+            }
         }
     </style>
 
@@ -1241,7 +1267,6 @@
                 options[diffIndex].style.display = 'flex';
                 resContainers[diffIndex].style.display = 'flex';
 
-                images = allImages;
                 images = allImages.filter(img => img.parentElement.style.display === '');
                 updateIndex();
                 updateThumbnails();

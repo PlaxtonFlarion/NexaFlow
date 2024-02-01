@@ -3,6 +3,22 @@
 <head>
     <title>画帧秀 - View</title>
     <style>
+        .masonry::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        .masonry::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .masonry::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .masonry::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
         #overlay {
             position: fixed;
             top: 0;
@@ -65,14 +81,16 @@
             box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.1);
         }
         .view {
+            display: block;
             width: 100%;
+            overflow: hidden;
+            text-align: center;
             border-radius: 10px;
             margin: 20px 10px;
-            flex: 0 0 calc(12.5% - 20px);
         }
-
         .masonry img {
-            width: 100%;
+            max-width: 90%;
+            max-height: 90%;
             border-radius: 10px;
             transition: all 0.5s;
         }
@@ -95,7 +113,6 @@
             justify-content: center;
         }
         #modal-img {
-            width: 20%;
             border-radius: 10px;
             transition: all 0.5s;
         }
@@ -108,8 +125,6 @@
         #modal-content {
             backdrop-filter: blur(5px);
             position: relative;
-            min-width: 80%;
-            min-height: 95%;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -125,7 +140,7 @@
             padding: 5px 10px;
             font-weight: bold;
             position: absolute;
-            top: 2%;
+            top: 1%;
             background-color: #e6c90f;
             transition: all 0.3s ease;
         }
@@ -142,7 +157,6 @@
         #prev, #next {
             position: absolute;
             cursor: pointer;
-            top: 50%;
             width: auto;
             margin: 0px 10px;
             padding: 30px;
@@ -172,6 +186,37 @@
             margin: 0px 0px 20px;
             font-weight: bold;
             color: #ffafbd;
+        }
+
+        /* 横屏模式 */
+        @media screen and (orientation: landscape) {
+            .view {
+                max-height: 60vh;
+                flex: 0 0 calc(12.5% - 20px);
+            }
+            #modal-content {
+                width: 80%;
+                height: 90%;
+            }
+            #modal-img {
+                max-width: 80%;
+                max-height: 70%;
+            }
+        }
+        /* 竖屏模式 */
+        @media screen and (orientation: portrait) {
+            .view {
+                max-height: 30vh;
+                flex: 0 0 calc(25% - 20px);
+            }
+            #modal-content {
+                width: 90%;
+                height: 80%;
+            }
+            #modal-img {
+                max-width: 70%;
+                max-height: 80%;
+            }
         }
     </style>
 </head>
