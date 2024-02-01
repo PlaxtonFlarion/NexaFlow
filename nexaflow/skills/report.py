@@ -335,8 +335,9 @@ class Report(object):
     @staticmethod
     async def ask_invent_total_report(file_name: str, views_loc: str, total_loc: str):
         try:
-            with open(file=os.path.join(file_name, "Nexa_Recovery", "nexaflow.log"), mode="r", encoding="utf-8") as f:
-                open_file = f.read()
+            file_path = os.path.join(file_name, "Nexa_Recovery", "nexaflow.log")
+            async with aiofiles.open(file=file_path, mode="r", encoding="utf-8") as f:
+                open_file = await f.read()
         except FileNotFoundError as e:
             return e
         else:
@@ -477,8 +478,9 @@ class Report(object):
     @staticmethod
     async def ask_create_total_report(file_name: str, major_loc: str, total_loc: str):
         try:
-            with open(file=os.path.join(file_name, "Nexa_Recovery", "nexaflow.log"), mode="r", encoding="utf-8") as f:
-                open_file = f.read()
+            file_path = os.path.join(file_name, "Nexa_Recovery", "nexaflow.log")
+            async with aiofiles.open(file=file_path, mode="r", encoding="utf-8") as f:
+                open_file = await f.read()
         except FileNotFoundError as e:
             return e
         else:

@@ -187,33 +187,31 @@ class Deploy(object):
 
     @crops.setter
     def crops(self, value):
-        hooks_list, crop_effective = value, []
-        for hook_dict in hooks_list:
-            if len(
-                    data_list := [
-                        value for value in hook_dict.values() if isinstance(value, int | float)
-                    ]
-            ) == 4 and sum(data_list) > 0:
-                crop_effective.append(
-                    (hook_dict["x"], hook_dict["y"], hook_dict["x_size"], hook_dict["y_size"])
-                )
-        self._deploys["crops"] = list(set(crop_effective)).copy()
-        crop_effective.clear()
+        hooks_list, effective = value, []
+        for hook in hooks_list:
+            if isinstance(hook, dict):
+                data_list = [value for value in hook.values() if isinstance(value, int | float)]
+                if len(data_list) == 4 and sum(data_list) > 0:
+                    effective.append((hook["x"], hook["y"], hook["x_size"], hook["y_size"]))
+            elif isinstance(hook, tuple):
+                effective.append(hook)
+
+        self._deploys["crops"] = list(set(effective)).copy()
+        effective.clear()
 
     @omits.setter
     def omits(self, value):
-        hooks_list, omit_effective = value, []
-        for hook_dict in hooks_list:
-            if len(
-                    data_list := [
-                        value for value in hook_dict.values() if isinstance(value, int | float)
-                    ]
-            ) == 4 and sum(data_list) > 0:
-                omit_effective.append(
-                    (hook_dict["x"], hook_dict["y"], hook_dict["x_size"], hook_dict["y_size"])
-                )
-        self._deploys["omits"] = list(set(omit_effective)).copy()
-        omit_effective.clear()
+        hooks_list, effective = value, []
+        for hook in hooks_list:
+            if isinstance(hook, dict):
+                data_list = [value for value in hook.values() if isinstance(value, int | float)]
+                if len(data_list) == 4 and sum(data_list) > 0:
+                    effective.append((hook["x"], hook["y"], hook["x_size"], hook["y_size"]))
+            elif isinstance(hook, tuple):
+                effective.append(hook)
+
+        self._deploys["omits"] = list(set(effective)).copy()
+        effective.clear()
 
     def dump_deploy(self, deploy_file: str) -> None:
         os.makedirs(os.path.dirname(deploy_file), exist_ok=True)
