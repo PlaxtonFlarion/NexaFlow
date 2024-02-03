@@ -93,19 +93,16 @@ class Parser(object):
     def parse_cmd():
 
         def parse_shape(dim_str):
-            if dim_str:
-                shape = [int(i) for i in re.split(r'[\s,;]+', dim_str)]
-                return tuple(shape) if len(shape) == 2 else (shape[0], shape[0])
-            return None
+            match_shape_list = [
+                int(number) for number in re.split(r'[\s,;]+', dim_str) if number.isdigit()
+            ]
+            return tuple(match_shape_list) if len(match_shape_list) == 2 else None
 
         def parse_scale(dim_str):
             try:
-                return int(dim_str)
+                return float(dim_str)
             except ValueError:
-                try:
-                    return float(dim_str)
-                except ValueError:
-                    return None
+                return None
 
         parser = ArgumentParser(description="Command Line Arguments Framix")
 
@@ -125,11 +122,10 @@ class Parser(object):
 
         parser.add_argument('--boost', action='store_true', help='跳帧模式')
         parser.add_argument('--color', action='store_true', help='彩色模式')
-        parser.add_argument('--crops', action='append', help='获取区域')
-        parser.add_argument('--omits', action='append', help='忽略区域')
-
         parser.add_argument('--shape', nargs='?', const=None, type=parse_shape, help='图片尺寸')
         parser.add_argument('--scale', nargs='?', const=None, type=parse_scale, help='缩放比例')
+        parser.add_argument('--crops', action='append', help='获取区域')
+        parser.add_argument('--omits', action='append', help='忽略区域')
 
         # --debug 不展示
         parser.add_argument('--debug', action='store_true', help='调试模式')
@@ -195,6 +191,8 @@ class Missions(object):
         deploy = Deploy(self.initial_deploy)
         deploy.boost = self.boost
         deploy.color = self.color
+        deploy.shape = self.shape
+        deploy.scale = self.scale
         deploy.crops = self.crops
         deploy.omits = self.omits
 
@@ -203,16 +201,20 @@ class Missions(object):
         if self.quick:
             logger.debug(f"Analyzer: 快速模式 ...")
             video_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
-            if self.shape:
-                w, h = self.shape
+            if deploy.shape:
+                original_shape = looper.run_until_complete(
+                    ask_video_larger(self.ffprobe, new_video_path)
+                )
+                w, h, ratio = looper.run_until_complete(
+                    ask_magic_frame(original_shape, deploy.shape)
+                )
                 video_filter.append(f"scale={w}:{h}")
-                logger.debug(f"Image Shape: {self.shape}")
-            elif self.scale:
-                scale = max(0.1, min(1.0, self.scale if self.scale else 1.0))
+            elif deploy.scale:
+                scale = max(0.1, min(1.0, deploy.scale))
                 video_filter.append(f"scale=iw*{scale}:ih*{scale}")
-                logger.debug(f"Image Scale: {self.scale}")
+                logger.debug(f"Image Scale: {deploy.scale}")
             else:
-                video_filter.append(f"scale=iw*0.5:ih*0.5")
+                video_filter.append(f"scale=iw*{self.compress_rate}:ih*{self.compress_rate}")
 
             looper.run_until_complete(
                 ask_video_detach(
@@ -240,11 +242,7 @@ class Missions(object):
 
         elif self.keras and not self.basic:
             logger.debug(f"Analyzer: 智能模式 ...")
-            kc = KerasClassifier(
-                target_size=self.shape,
-                compress_rate=self.scale,
-                data_size=deploy.model_size
-            )
+            kc = KerasClassifier(data_size=deploy.model_size)
             kc.load_model(self.model_path)
 
         else:
@@ -254,9 +252,8 @@ class Missions(object):
         futures = looper.run_until_complete(
             analyzer(
                 new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
-                ffmpeg=self.ffmpeg,
-                step=self.step, window_size=self.window_size, window_coefficient=self.window_coefficient,
-                shape=self.shape, scale=self.scale
+                ffmpeg=self.ffmpeg, ffprobe=self.ffprobe,
+                step=self.step, window_size=self.window_size, window_coefficient=self.window_coefficient
             )
         )
 
@@ -313,6 +310,8 @@ class Missions(object):
         deploy = Deploy(self.initial_deploy)
         deploy.boost = self.boost
         deploy.color = self.color
+        deploy.shape = self.shape
+        deploy.scale = self.scale
         deploy.crops = self.crops
         deploy.omits = self.omits
 
@@ -328,16 +327,20 @@ class Missions(object):
                     new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
 
                     video_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
-                    if self.shape:
-                        w, h = self.shape
+                    if deploy.shape:
+                        original_shape = looper.run_until_complete(
+                            ask_video_larger(self.ffprobe, new_video_path)
+                        )
+                        w, h, ratio = looper.run_until_complete(
+                            ask_magic_frame(original_shape, deploy.shape)
+                        )
                         video_filter.append(f"scale={w}:{h}")
-                        logger.debug(f"Image Shape: {self.shape}")
-                    elif self.scale:
-                        scale = max(0.1, min(1.0, self.scale if self.scale else 1.0))
+                    elif deploy.scale:
+                        scale = max(0.1, min(1.0, deploy.scale))
                         video_filter.append(f"scale=iw*{scale}:ih*{scale}")
-                        logger.debug(f"Image Scale: {self.scale}")
+                        logger.debug(f"Image Scale: {deploy.scale}")
                     else:
-                        video_filter.append(f"scale=iw*0.5:ih*0.5")
+                        video_filter.append(f"scale=iw*{self.compress_rate}:ih*{self.compress_rate}")
 
                     looper.run_until_complete(
                         ask_video_detach(
@@ -366,11 +369,7 @@ class Missions(object):
 
         elif self.keras and not self.basic:
             logger.debug(f"Analyzer: 智能模式 ...")
-            kc = KerasClassifier(
-                target_size=self.shape,
-                compress_rate=self.scale,
-                data_size=deploy.model_size
-            )
+            kc = KerasClassifier(data_size=deploy.model_size)
             kc.load_model(self.model_path)
 
         else:
@@ -387,9 +386,8 @@ class Missions(object):
                 futures = looper.run_until_complete(
                     analyzer(
                         new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
-                        ffmpeg=self.ffmpeg,
-                        step=self.step, window_size=self.window_size, window_coefficient=self.window_coefficient,
-                        shape=self.shape, scale=self.scale
+                        ffmpeg=self.ffmpeg, ffprobe=self.ffprobe,
+                        step=self.step, window_size=self.window_size, window_coefficient=self.window_coefficient
                     )
                 )
                 if futures is None:
@@ -448,6 +446,8 @@ class Missions(object):
         deploy = Deploy(self.initial_deploy)
         deploy.boost = self.boost
         deploy.color = self.color
+        deploy.shape = self.shape
+        deploy.scale = self.scale
         deploy.crops = self.crops
         deploy.omits = self.omits
 
@@ -465,9 +465,7 @@ class Missions(object):
         )
 
         cutter = VideoCutter(
-            step=self.step,
-            compress_rate=self.scale,
-            target_size=self.shape
+            step=self.step
         )
         res = cutter.cut(
             video=video,
@@ -484,9 +482,9 @@ class Missions(object):
             frame_count=20,
             to_dir=reporter.query_path,
             meaningful_name=True,
-            not_grey=self.color,
-            compress_rate=self.scale,
-            target_size=self.shape
+            not_grey=deploy.color,
+            compress_rate=deploy.scale,
+            target_size=deploy.shape
         )
 
         os.remove(video_temp_file)
@@ -743,9 +741,7 @@ class Missions(object):
             stop_event_control = events["stop_event"] if self.alone else all_stop_event
             temp_video = f"{os.path.join(dst, 'screen')}_{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
             cmd = [
-                self.scrcpy, "-s", serial,
-                "--no-audio", "--video-bit-rate", "8M", "--max-fps", "60",
-                "--record", temp_video
+                self.scrcpy, "-s", serial, "--no-audio", "--video-bit-rate", "8M", "--max-fps", "60", "--record", temp_video
             ]
             transports = await Terminal.cmd_link(*cmd)
             asyncio.create_task(input_stream())
@@ -775,7 +771,7 @@ class Missions(object):
             start_time_point = duration - standard
             start_time_str = str(datetime.timedelta(seconds=start_time_point))
             end_time_str = str(datetime.timedelta(seconds=duration))
-            Show.console.print(f"[bold]{os.path.basename(video_src)} {duration} [{start_time_str} - {end_time_str}]")
+            logger.info(f"[bold]{os.path.basename(video_src)} {duration} [{start_time_str} - {end_time_str}]")
             video_dst = os.path.join(
                 os.path.dirname(video_src), f"tailor_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
             )
@@ -787,13 +783,15 @@ class Missions(object):
         # Record
         async def commence():
 
-            async def device_online(serial):
-                Show.console.print(f"[bold]wait-for-device {serial} ...[/bold]")
+            # Wait Device Online
+            async def wait_for_device(serial):
+                logger.info(f"[bold]wait-for-device {serial} ...[/bold]")
                 await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-device")
 
             await asyncio.gather(
-                *(device_online(device.serial) for device in device_list)
+                *(wait_for_device(device.serial) for device in device_list)
             )
+
             todo_list = []
 
             if self.quick or self.basic or self.keras:
@@ -824,25 +822,6 @@ class Missions(object):
                     if not effective:
                         todo_list.pop(idx)
 
-                if not self.alone and len(todo_list) > 1:
-                    duration_list = await asyncio.gather(
-                        *(ask_video_length(self.ffprobe, temp_video) for temp_video, *_ in todo_list)
-                    )
-                    duration_list = [duration for duration in duration_list if not isinstance(duration, Exception)]
-                    if len(duration_list) == 0:
-                        todo_list.clear()
-                        return todo_list
-
-                    standard = min(duration_list)
-                    Show.console.print(f"[bold]标准录制时间: {standard}")
-                    balance_task = [
-                        video_balance(standard, duration, video_src)
-                        for duration, (video_src, *_) in zip(duration_list, todo_list)
-                    ]
-                    video_dst_list = await asyncio.gather(*balance_task)
-                    for idx, dst in enumerate(video_dst_list):
-                        todo_list[idx][0] = dst
-
             else:
                 for device in device_list:
                     await asyncio.sleep(0.2)
@@ -870,6 +849,25 @@ class Missions(object):
                     if not effective:
                         todo_list.pop(idx)
 
+            if not self.alone and len(todo_list) > 1:
+                duration_list = await asyncio.gather(
+                    *(ask_video_length(self.ffprobe, temp_video) for temp_video, *_ in todo_list)
+                )
+                duration_list = [duration for duration in duration_list if not isinstance(duration, Exception)]
+                if len(duration_list) == 0:
+                    todo_list.clear()
+                    return todo_list
+
+                standard = min(duration_list)
+                logger.info(f"[bold]标准录制时间: {standard}")
+                balance_task = [
+                    video_balance(standard, duration, video_src)
+                    for duration, (video_src, *_) in zip(duration_list, todo_list)
+                ]
+                video_dst_list = await asyncio.gather(*balance_task)
+                for idx, dst in enumerate(video_dst_list):
+                    todo_list[idx][0] = dst
+
             return todo_list
 
         # Analysis Mode
@@ -879,21 +877,35 @@ class Missions(object):
 
             if self.quick:
                 logger.debug(f"Analyzer: 快速模式 ...")
-                video_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
-                if self.shape:
-                    w, h = self.shape
-                    video_filter.append(f"scale={w}:{h}")
-                    logger.debug(f"Image Shape: {self.shape}")
-                elif self.scale:
-                    scale = max(0.1, min(1.0, self.scale if self.scale else 1.0))
-                    video_filter.append(f"scale=iw*{scale}:ih*{scale}")
-                    logger.debug(f"Image Scale: {self.scale}")
+                video_filter_list = []
+                default_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
+                if deploy.shape:
+                    original_shape_list = await asyncio.gather(
+                        *(ask_video_larger(self.ffprobe, temp_video) for temp_video, *_ in task_list)
+                    )
+                    final_shape_list = await asyncio.gather(
+                        *(ask_magic_frame(original_shape, deploy.shape) for original_shape in original_shape_list)
+                    )
+                    for final_shape in final_shape_list:
+                        video_filter = default_filter.copy()
+                        w, h, ratio = final_shape
+                        video_filter.append(f"scale={w}:{h}")
+                        video_filter_list.append(video_filter)
+                elif deploy.scale:
+                    for temp_video, *_ in task_list:
+                        video_filter = default_filter.copy()
+                        scale = max(0.1, min(1.0, deploy.scale))
+                        video_filter.append(f"scale=iw*{scale}:ih*{scale}")
+                        video_filter_list.append(video_filter)
                 else:
-                    video_filter.append(f"scale=iw*0.5:ih*0.5")
+                    for temp_video, *_ in task_list:
+                        video_filter = default_filter.copy()
+                        video_filter.append(f"scale=iw*{self.compress_rate}:ih*{self.compress_rate}")
+                        video_filter_list.append(video_filter)
 
                 await asyncio.gather(
                     *(ask_video_detach(self.ffmpeg, video_filter, temp_video, frame_path) for
-                      temp_video, *_, frame_path, _, _ in task_list)
+                      (temp_video, *_, frame_path, _, _), video_filter in zip(task_list, video_filter_list))
                 )
                 for *_, total_path, title, query_path, query, frame_path, _, _ in task_list:
                     result = {
@@ -911,9 +923,8 @@ class Missions(object):
                 futures = await asyncio.gather(
                     *(analyzer(
                         temp_video, deploy, kc, frame_path, extra_path,
-                        ffmpeg=self.ffmpeg,
-                        step=self.step, window_size=self.window_size, window_coefficient=self.window_coefficient,
-                        shape=self.shape, scale=self.scale
+                        ffmpeg=self.ffmpeg, ffprobe=self.ffprobe,
+                        step=self.step, window_size=self.window_size, window_coefficient=self.window_coefficient
                     ) for temp_video, *_, frame_path, extra_path, _ in task_list)
                 )
 
@@ -973,11 +984,10 @@ class Missions(object):
             for device in device_list:
                 Show.console.print(f"[bold #00FFAF]Connect:[/bold #00FFAF] {device}")
 
-        # Start
+        # Initialization ===============================================================================================
         manage = Manage(self.adb)
         device_list = await manage.operate_device()
 
-        # Initialization ===============================================================================================
         reporter = Report(self.initial_report)
         if self.quick:
             reporter.title = f"Quick_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
@@ -991,21 +1001,19 @@ class Missions(object):
         deploy = Deploy(self.initial_deploy)
         deploy.boost = self.boost
         deploy.color = self.color
+        deploy.shape = self.shape
+        deploy.scale = self.scale
         deploy.crops = self.crops
         deploy.omits = self.omits
 
         if self.keras and not self.quick and not self.basic:
-            kc = KerasClassifier(
-                target_size=self.shape,
-                compress_rate=self.scale,
-                data_size=deploy.model_size
-            )
+            kc = KerasClassifier(data_size=deploy.model_size)
             kc.load_model(self.model_path)
         else:
             kc = None
         # Initialization ===============================================================================================
 
-        # Loop
+        # Loop =========================================================================================================
         timer_mode = 5
         while True:
             try:
@@ -1080,17 +1088,21 @@ class Missions(object):
                     event["stop_event"].clear()
                     event["fail_event"].clear()
                 device_events.clear()
+        # Loop =========================================================================================================
 
 
-def worker_init(log_level: str):
+def initializer(log_level: str):
     logger.remove(0)
     log_format = "| <level>{level: <8}</level> | <level>{message}</level>"
     logger.add(sys.stderr, format=log_format, level=log_level.upper())
 
 
 def get_template(template_path: str):
-    with open(template_path, mode="r", encoding="utf-8") as f:
-        template_file = f.read()
+    try:
+        with open(template_path, mode="r", encoding="utf-8") as f:
+            template_file = f.read()
+    except FileNotFoundError as e:
+        return e
     return template_file
 
 
@@ -1100,8 +1112,7 @@ async def ask_get_template(template_path: str):
             template_file = await f.read()
     except FileNotFoundError as e:
         return e
-    else:
-        return template_file
+    return template_file
 
 
 async def ask_video_change(ffmpeg, fps: int, src: str, dst: str):
@@ -1140,15 +1151,57 @@ async def ask_video_length(ffprobe, src: str):
     return fmt_result
 
 
+async def ask_video_larger(ffprobe, src: str):
+    cmd = [
+        ffprobe, "-v", "error", "-select_streams", "v:0", "-show_entries",
+        "stream=width,height", "-of", "default=noprint_wrappers=1", src
+    ]
+    result = await Terminal.cmd_line(*cmd)
+    match_w = re.search(r"(?<=width=)\d+", result)
+    match_h = re.search(r"(?<=height=)\d+", result)
+    try:
+        w, h = int(match_w.group()), int(match_h.group())
+    except (AttributeError, ValueError) as e:
+        return e
+    return w, h
+
+
+async def ask_magic_frame(original_frame_size: tuple, input_frame_size: tuple) -> tuple:
+    # 计算原始宽高比
+    original_w, original_h = original_frame_size
+    original_ratio = original_w / original_h
+
+    if original_frame_size == input_frame_size:
+        return original_w, original_h, original_ratio
+
+    # 检查并调整传入的最大宽度和高度的限制
+    frame_w, frame_h = input_frame_size
+    max_w = max(original_w * 0.1, min(frame_w, original_w))
+    max_h = max(original_h * 0.1, min(frame_h, original_h))
+
+    # 根据原始宽高比调整宽度和高度
+    if max_w / max_h > original_ratio:
+        # 如果调整后的宽高比大于原始宽高比，则以高度为基准调整宽度
+        adjusted_h = max_h
+        adjusted_w = adjusted_h * original_ratio
+    else:
+        # 否则，以宽度为基准调整高度
+        adjusted_w = max_w
+        adjusted_h = adjusted_w / original_ratio
+
+    new_w, new_h = int(adjusted_w), int(adjusted_h)
+    return new_w, new_h, original_ratio
+
+
 async def analyzer(
         vision_path: str, deploy: "Deploy", kc: "KerasClassifier", *args, **kwargs
 ):
     frame_path, extra_path = args
     ffmpeg = kwargs["ffmpeg"]
+    ffprobe = kwargs["ffprobe"]
     step = kwargs["step"]
     window_size = kwargs["window_size"]
     window_coefficient = kwargs["window_coefficient"]
-    shape, scale = kwargs["shape"], kwargs["scale"]
 
     async def validate():
         screen_tag, screen_cap = None, None
@@ -1183,21 +1236,27 @@ async def analyzer(
         os.remove(vision_path)
         logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
 
+        if deploy.shape:
+            original_shape = await ask_video_larger(ffprobe, change_record)
+            w, h, ratio = await ask_magic_frame(original_shape, deploy.shape)
+            target_shape = w, h
+            logger.info(f"调整宽高比: {w} x {h}")
+        else:
+            target_shape = deploy.shape
+
         video = VideoObject(change_record)
         task, hued = video.load_frames(
             silently_load_hued=deploy.color,
             not_transform_gray=False,
-            shape=shape,
-            scale=scale
+            shape=target_shape,
+            scale=deploy.scale
         )
         return video, task, hued
 
     async def frame_flow():
         video, task, hued = await frame_flip()
         cutter = VideoCutter(
-            step=step,
-            compress_rate=scale,
-            target_size=shape
+            step=step
         )
 
         if len(deploy.crops) > 0:
@@ -1383,10 +1442,7 @@ async def analyzer(
         return None
     logger.info(f"{tag} 可正常播放，准备加载视频 ...")
 
-    if kc is None:
-        (start, end, cost), classifier = await analytics_basic()
-    else:
-        (start, end, cost), classifier = await analytics_keras()
+    (start, end, cost), classifier = await analytics_keras() if kc else await analytics_basic()
     return start, end, cost, classifier
 
 
@@ -1416,7 +1472,7 @@ if __name__ == '__main__':
 
     cmd_lines = Parser.parse_cmd()
     _level = "DEBUG" if cmd_lines.debug else "INFO"
-    worker_init(_level)
+    initializer(_level)
 
     # Debug Mode =======================================================================================================
     logger.debug(f"Level: {_level}")
@@ -1505,10 +1561,11 @@ if __name__ == '__main__':
             missions.video_dir_task(cmd_lines.stack[0])
         else:
             processes = members if members <= cpu else cpu
-            with Pool(processes=processes, initializer=worker_init, initargs=("ERROR",)) as pool:
+            with Pool(processes=processes, initializer=initializer, initargs=("ERROR",)) as pool:
                 results = pool.starmap(missions.video_dir_task, [(i,) for i in cmd_lines.stack])
-            template_total = get_template(missions.view_total_temp) if missions.quick else get_template(
-                missions.main_total_temp)
+            template_total = get_template(
+                missions.view_total_temp
+            ) if missions.quick else get_template(missions.main_total_temp)
             Report.merge_report(results, template_total, missions.quick)
         sys.exit(0)
     elif cmd_lines.video and len(cmd_lines.video) > 0:
@@ -1517,10 +1574,11 @@ if __name__ == '__main__':
             missions.video_task(cmd_lines.video[0])
         else:
             processes = members if members <= cpu else cpu
-            with Pool(processes=processes, initializer=worker_init, initargs=("ERROR",)) as pool:
+            with Pool(processes=processes, initializer=initializer, initargs=("ERROR",)) as pool:
                 results = pool.starmap(missions.video_task, [(i,) for i in cmd_lines.video])
-            template_total = get_template(missions.view_total_temp) if missions.quick else get_template(
-                missions.main_total_temp)
+            template_total = get_template(
+                missions.view_total_temp
+            ) if missions.quick else get_template(missions.main_total_temp)
             Report.merge_report(results, template_total, missions.quick)
         sys.exit(0)
     elif cmd_lines.train and len(cmd_lines.train) > 0:
@@ -1529,7 +1587,7 @@ if __name__ == '__main__':
             missions.train_model(cmd_lines.train[0])
         else:
             processes = members if members <= cpu else cpu
-            with Pool(processes=processes, initializer=worker_init, initargs=("ERROR",)) as pool:
+            with Pool(processes=processes, initializer=initializer, initargs=("ERROR",)) as pool:
                 pool.starmap(missions.train_model, [(i,) for i in cmd_lines.train])
         sys.exit(0)
     elif cmd_lines.build and len(cmd_lines.build) > 0:
@@ -1538,7 +1596,7 @@ if __name__ == '__main__':
             missions.build_model(cmd_lines.build[0])
         else:
             processes = members if members <= cpu else cpu
-            with Pool(processes=processes, initializer=worker_init, initargs=("ERROR",)) as pool:
+            with Pool(processes=processes, initializer=initializer, initargs=("ERROR",)) as pool:
                 pool.starmap(missions.build_model, [(i,) for i in cmd_lines.build])
         sys.exit(0)
     else:

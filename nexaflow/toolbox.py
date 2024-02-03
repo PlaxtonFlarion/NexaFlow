@@ -374,29 +374,5 @@ def draw_line(image_path: str, save_path: str = None):
     image.save(save_path) if save_path else image.save(image_path)
 
 
-def magic_frame(original_frame_size: tuple, input_frame_size: tuple) -> tuple:
-    # 计算原始宽高比
-    original_w, original_h = original_frame_size
-    original_ratio = original_w / original_h
-
-    # 检查并调整传入的最大宽度和高度的限制
-    frame_w, frame_h = input_frame_size
-    max_w = max(original_w * 0.1, min(frame_w, original_w))
-    max_h = max(original_h * 0.1, min(frame_h, original_h))
-
-    # 根据原始宽高比调整宽度和高度
-    if max_w / max_h > original_ratio:
-        # 如果调整后的宽高比大于原始宽高比，则以高度为基准调整宽度
-        adjusted_h = max_h
-        adjusted_w = adjusted_h * original_ratio
-    else:
-        # 否则，以宽度为基准调整高度
-        adjusted_w = max_w
-        adjusted_h = adjusted_w / original_ratio
-
-    new_w, new_h = int(adjusted_w), int(adjusted_h)
-    return new_w, new_h, original_ratio
-
-
 if __name__ == '__main__':
     pass
