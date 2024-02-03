@@ -274,7 +274,7 @@
         .mark-button {
             border: none;
             font-size: 12px;
-            padding: 1px 40px;
+            padding: 1px 20%;
             cursor: pointer;
             background-color: #2481e4;
             color: white;
@@ -282,7 +282,7 @@
             transition: background-color 0.3s ease;
         }
         .mark-button:hover {
-            padding: 1px 35px;
+            padding: 1px 18%;
             background-color: #e9b10a;
             transition: padding 0.5s ease, background-color 0.5s ease;
         }
@@ -316,7 +316,6 @@
         .content {
             position: relative;
             width: 95%;
-            height: 95%;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -605,7 +604,6 @@
         }
         .thumbnail-box .tips {
             visibility: hidden;
-            max-width: 15%;
             background-image: linear-gradient(180deg, #e96567, #f19072, #f6b87d, #f9df88);
             margin: 5px;
             color: #131313;
@@ -641,10 +639,16 @@
             .image-box {
                 flex: 0 0 calc(12.5% - 20px);
             }
+            .content {
+                height: 95%;
+            }
             #thumbnails {
                 height: 30%;
             }
             .box-res {
+                width: 10%;
+            }
+            .thumbnail-box .tips {
                 width: 10%;
             }
         }
@@ -656,10 +660,16 @@
             .image-box {
                 flex: 0 0 calc(25% - 20px);
             }
+            .content {
+                height: 55%;
+            }
             #thumbnails {
-                height: 50%;
+                height: 40%;
             }
             .box-res {
+                width: 15%;
+            }
+            .thumbnail-box .tips {
                 width: 15%;
             }
         }
@@ -1498,8 +1508,9 @@
                         }
                         .img-extra:hover {
                             cursor: zoom-in;
-                            transform: scale(1.03); /* 鼠标悬浮时的放大效果 */
-                            transition: transform 0.3s ease; /* 平滑过渡效果 */
+                            box-shadow: 0 0 10px 5px rgb(0 0 0 / 30%);
+                            transform: scale(1.03);
+                            transition: all 0.3s ease;
                         }
                         .img-extra:active {
                             transform: scale(0.98);
@@ -1512,8 +1523,6 @@
                         }
 
                         .zoomed-in {
-                            max-height: 80%;
-                            max-width: 80%;
                             position: fixed;
                             top: 50%;
                             left: 50%;
@@ -1536,6 +1545,19 @@
                             background: rgba(0, 0, 0, 0.3);
                             z-index: 9998;
                             backdrop-filter: blur(30px);
+                        }
+
+                        @media screen and (orientation: landscape) {
+                            .zoomed-in {
+                                max-width: 80%;
+                                max-height: 80%;
+                            }
+                        }
+                        @media screen and (orientation: portrait) {
+                            .zoomed-in {
+                                max-width: 50%;
+                                max-height: 50%;
+                            }
                         }
                     </style>
                 `;

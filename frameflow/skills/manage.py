@@ -13,11 +13,14 @@ class Manage(object):
     async def current_device(self) -> dict[str, "Device"]:
 
         async def check(serial: str) -> "Device":
-            brand, version = await asyncio.gather(
+            brand, version, size = await asyncio.gather(
                 Terminal.cmd_line(self.__adb, "-s", serial, "wait-for-usb-device", "shell", "getprop", "ro.product.brand"),
-                Terminal.cmd_line(self.__adb, "-s", serial, "wait-for-usb-device", "shell", "getprop", "ro.build.version.release")
+                Terminal.cmd_line(self.__adb, "-s", serial, "wait-for-usb-device", "shell", "getprop", "ro.build.version.release"),
+                Terminal.cmd_line(self.__adb, "-s", serial, "wait-for-usb-device", "shell", "wm", "size")
             )
-            return Device(self.__adb, serial, brand, version)
+            match_size = re.search(r"(?<=Physical size:\s)(\d+)x(\d+)", size)
+            screen_size = tuple(match_size.group().split("x")) if match_size else ()
+            return Device(self.__adb, serial, brand, version, screen_size)
 
         device_dict = {}
         devices = await Terminal.cmd_line(self.__adb, "devices")
@@ -56,19 +59,19 @@ class Manage(object):
 
 class Phones(object):
 
-    def __init__(self, serial: str, brand: str, version: str):
-        self.serial, self.brand, self.version = serial, brand, version
+    def __init__(self, serial: str, brand: str, version: str, size: tuple):
+        self.serial, self.brand, self.version, self.size = serial, brand, version, size
 
     def __str__(self):
-        return f"<Phone brand={self.brand} version=OS{self.version} serial={self.serial}>"
+        return f"<Phone brand={self.brand} version=OS{self.version} serial={self.serial} size={self.size}>"
 
     __repr__ = __str__
 
 
 class Device(Phones):
 
-    def __init__(self, adb: str, serial: str, brand: str, version: str):
-        super().__init__(serial, brand, version)
+    def __init__(self, adb: str, serial: str, brand: str, version: str, size: tuple):
+        super().__init__(serial, brand, version, size)
         self.__initial = [adb, "-s", serial, "wait-for-usb-device"]
 
     @staticmethod

@@ -96,7 +96,6 @@
 
     /* 一组图片容器 */
     .thumbnail-list {
-        width: 1320px;
         margin-bottom: 30px;
         white-space: nowrap;
         overflow-x: auto;
@@ -211,8 +210,6 @@
         z-index: 999;
     }
     .lightbox-content {
-        width: 60%;
-        height: 80%;
         margin: 55px auto;
         padding: 10px;
         border-radius: 10px;
@@ -236,9 +233,9 @@
         text-align: center;
     }
     .image-box img {
-        max-width: 100%;
+        max-width: 90%;
         max-height: 90%;
-        margin: 10px;
+        margin-top: 20px;
         border-radius: 10px;
     }
     .img1:hover, .img2:hover {
@@ -270,6 +267,21 @@
     #difference:active {
         transform: scale(0.8);
         transition: transform 0.3s ease;
+    }
+
+    /* 横屏模式 */
+    @media screen and (orientation: landscape) {
+        .lightbox-content {
+            width: 60%;
+            height: 80%;
+        }
+    }
+    /* 竖屏模式 */
+    @media screen and (orientation: portrait) {
+        .lightbox-content {
+            width: 95%;
+            height: 55%;
+        }
     }
 </style>
 
