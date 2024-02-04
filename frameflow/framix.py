@@ -438,6 +438,18 @@ class Missions(object):
         return reporter.total_path
 
     def train_model(self, video_file: str):
+        if not os.path.isfile(video_file):
+            logger.error(f"{video_file} 视频文件未找到 ...")
+            return
+        logger.info(f"视频文件 {video_file} ...")
+
+        screen = cv2.VideoCapture(video_file)
+        if not screen.isOpened():
+            logger.error(f"{video_file} 视频文件损坏 ...")
+            return
+        screen.release()
+        logger.info(f"{video_file} 可正常播放 ...")
+
         reporter = Report(total_path=self.initial_report)
         reporter.title = f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
         if not os.path.exists(reporter.query_path):
@@ -590,17 +602,15 @@ class Missions(object):
 
                 original_w, original_h = image_file.size
                 if self.shape:
-                    shape_w, shape_h = self.shape
-                    twist_w, twist_h = min(original_w, shape_w), min(original_h, shape_h)
+                    twist_w, twist_h, _ = await ask_magic_frame(image_file.size, self.shape)
                 else:
                     twist_w, twist_h = original_w, original_h
 
                 min_scale, max_scale = 0.1, 1.0
                 if self.scale:
-                    image_scale = max_scale if self.scale > max_scale else (
-                        min_scale if self.scale < min_scale else self.scale)
+                    image_scale = max_scale if self.shape else max(min_scale, min(max_scale, self.scale))
                 else:
-                    image_scale = min_scale if twist_w == original_w or twist_h == original_h else max_scale
+                    image_scale = max_scale if self.shape else self.compress_rate
 
                 new_w, new_h = int(twist_w * image_scale), int(twist_h * image_scale)
                 logger.debug(
@@ -771,7 +781,7 @@ class Missions(object):
             start_time_point = duration - standard
             start_time_str = str(datetime.timedelta(seconds=start_time_point))
             end_time_str = str(datetime.timedelta(seconds=duration))
-            logger.info(f"[bold]{os.path.basename(video_src)} {duration} [{start_time_str} - {end_time_str}]")
+            logger.info(f"{os.path.basename(video_src)} {duration} [{start_time_str} - {end_time_str}]")
             video_dst = os.path.join(
                 os.path.dirname(video_src), f"tailor_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
             )
@@ -785,7 +795,7 @@ class Missions(object):
 
             # Wait Device Online
             async def wait_for_device(serial):
-                logger.info(f"[bold]wait-for-device {serial} ...[/bold]")
+                logger.info(f"wait-for-device {serial} ...")
                 await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-device")
 
             await asyncio.gather(
@@ -859,7 +869,7 @@ class Missions(object):
                     return todo_list
 
                 standard = min(duration_list)
-                logger.info(f"[bold]标准录制时间: {standard}")
+                logger.info(f"标准录制时间: {standard}")
                 balance_task = [
                     video_balance(standard, duration, video_src)
                     for duration, (video_src, *_) in zip(duration_list, todo_list)

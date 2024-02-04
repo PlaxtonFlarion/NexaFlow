@@ -116,10 +116,8 @@ class Deploy(object):
         elif isinstance(value, str):
             if value.strip().upper() != "NONE":
                 try:
-                    scale_value = float(value)
-                    self._deploys["scale"] = max(0.1, min(1.0, scale_value))
+                    self._deploys["scale"] = max(0.1, min(1.0, float(value)))
                 except ValueError:
-                    self._deploys["scale"] = None
                     raise ValueError("scale 的值必须是一个可以转换为浮点数的数值 ...")
 
     @model_size.setter
@@ -145,45 +143,30 @@ class Deploy(object):
     @fps.setter
     def fps(self, value):
         try:
-            fps_value = int(value)
+            self._deploys["fps"] = max(15, min(60, int(value)))
         except ValueError:
-            self._deploys["fps"] = 60
             raise ValueError("fps 的值必须是一个可以转换为整数的数值 ...")
-
-        self._deploys["fps"] = max(15, min(60, fps_value))
 
     @threshold.setter
     def threshold(self, value):
         try:
-            threshold_value = float(value)
+            self._deploys["threshold"] = max(0.1, min(1.0, round(float(value), 2)))
         except ValueError:
-            self._deploys["threshold"] = 0.97
             raise ValueError("threshold 的值必须是一个可以转换为浮点数的数值 ...")
-
-        if isinstance(threshold_value, float):
-            threshold_value = round(threshold_value, 2)
-
-        self._deploys["threshold"] = max(0.1, min(1.0, threshold_value))
 
     @offset.setter
     def offset(self, value):
         try:
-            offset_value = int(value)
+            self._deploys["offset"] = max(1, int(value))
         except ValueError:
-            self._deploys["offset"] = 3
             raise ValueError("offset 的值必须是一个可以转换为整数的数值 ...")
-
-        self._deploys["offset"] = max(1, offset_value)
 
     @block.setter
     def block(self, value):
         try:
-            block_value = int(value)
+            self._deploys["block"] = max(1, min(6, int(value)))
         except ValueError:
-            self._deploys["block"] = 6
             raise ValueError("block 的值必须是一个可以转换为整数的数值 ...")
-
-        self._deploys["block"] = max(15, min(60, block_value))
 
     @crops.setter
     def crops(self, value):
