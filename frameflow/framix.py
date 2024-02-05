@@ -9,6 +9,7 @@ import random
 import asyncio
 import aiofiles
 import datetime
+import numpy as np
 from loguru import logger
 from rich.prompt import Prompt
 from frameflow.skills.database import DataBase
@@ -502,27 +503,46 @@ class Missions(object):
         os.remove(video_temp_file)
 
     def build_model(self, src: str):
-        if os.path.isdir(src):
-            real_path, file_list = "", []
-            logger.debug(f"搜索文件夹: {src}")
-            for root, dirs, files in os.walk(src, topdown=False):
-                for name in files:
-                    file_list.append(os.path.join(root, name))
-                for name in dirs:
-                    if len(name) == 1 and re.search(r"0", name):
-                        real_path = os.path.dirname(os.path.join(root, name))
-                        logger.debug(f"分类文件夹: {real_path}")
-                        break
-            if real_path and len(file_list) > 0:
-                new_model_path = os.path.join(real_path, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
-                new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
-
-                fc = FramixClassifier(data_size=self.shape)
-                fc.build(real_path, new_model_path, new_model_name)
-            else:
-                logger.error("文件夹未正确分类 ...")
-        else:
+        if not os.path.isdir(src):
             logger.error("训练模型需要一个分类文件夹 ...")
+            return
+
+        real_path, file_list = "", []
+        logger.debug(f"搜索文件夹: {src}")
+        for root, dirs, files in os.walk(src, topdown=False):
+            for name in files:
+                file_list.append(os.path.join(root, name))
+            for name in dirs:
+                if len(name) == 1 and re.search(r"0", name):
+                    real_path = os.path.join(root, name)
+                    logger.debug(f"分类文件夹: {real_path}")
+                    break
+
+        if not real_path or len(file_list) == 0:
+            logger.error(f"文件夹未正确分类 ...")
+            return
+
+        for image_file in os.listdir(real_path):
+            image_path = os.path.join(real_path, image_file)
+            if not os.path.isfile(image_path):
+                logger.error(f"存在无效的图像文件 ...")
+                return
+            image = cv2.imread(image_path)
+            logger.info(f"图像分辨率: {image.shape}")
+            if image.ndim == 3:
+                if np.array_equal(image[:, :, 0], image[:, :, 1]) and np.array_equal(image[:, :, 1], image[:, :, 2]):
+                    logger.info("The image is grayscale, but stored in RGB format ...")
+                else:
+                    logger.info("The image is a color image ...")
+            else:
+                logger.info("The image is a grayscale image ...")
+            break
+
+        final_path = os.path.dirname(real_path)
+        new_model_path = os.path.join(final_path, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
+        new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
+        fc = FramixClassifier(color=self.color, data_size=self.shape)
+        fc.build(final_path, new_model_path, new_model_name)
 
     async def combines_main(self, merge: list):
         major, total = await asyncio.gather(

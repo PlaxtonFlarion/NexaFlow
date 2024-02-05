@@ -9,30 +9,19 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 class FramixClassifier(object):
 
     MODEL_DENSE = 6
-    __model: keras.Sequential | None = None
 
     def __init__(
             self,
+            color: bool = None,
             data_size: tuple = None,
             batch_size: int = None,
             epochs: int = None
     ):
 
+        self.color: bool = color or False
         self.data_size: tuple = data_size or (200, 200)
         self.batch_size: int = batch_size or 4
         self.epochs: int = epochs or 20
-
-    @property
-    def model(self):
-        return self.__model
-
-    @model.setter
-    def model(self, value):
-        self.__model = value
-
-    @model.deleter
-    def model(self):
-        del self.__model
 
     @property
     def follow_keras_size(self):
@@ -86,10 +75,10 @@ class FramixClassifier(object):
             f"dataset has {number_of_dir} classes (more than " + str(self.MODEL_DENSE) + ")"
         )
 
-        if not self.model:
-            self.model = self.create_model()
+        model = self.create_model()
 
         logger.info("开始训练模型 ...")
+        color_mode = "rgb" if self.color else "grayscale"
 
         datagen = keras.preprocessing.image.ImageDataGenerator(
             rescale=1.0 / 16,
@@ -103,7 +92,7 @@ class FramixClassifier(object):
             data_path,
             target_size=self.follow_keras_size,
             batch_size=self.batch_size,
-            color_mode="grayscale",
+            color_mode=color_mode,
             class_mode="sparse",
             subset="training",
         )
@@ -112,44 +101,32 @@ class FramixClassifier(object):
             data_path,
             target_size=self.follow_keras_size,
             batch_size=self.batch_size,
-            color_mode="grayscale",
+            color_mode=color_mode,
             class_mode="sparse",
             subset="validation",
         )
 
-        self.model.fit(
+        model.fit(
             train_generator,
             epochs=self.epochs,
             validation_data=validation_generator
         )
 
         logger.info("模型训练完成 ...")
-
-    def save_model(self, model_path: str):
-        assert self.model, "model is empty"
-        self.model.save_weights(model_path, save_format="h5")
-        logger.info(f"模型保存完成 {model_path}")
-
-    def load_model(self, model_path: str, overwrite: bool = None):
-        assert os.path.isfile(model_path), f"model file {model_path} not existed"
-        if self.model and not overwrite:
-            raise RuntimeError(
-                f"model is not empty, you can set `overwrite` True to cover it"
-            )
-        self.model = self.create_model()
-        self.model.load_weights(model_path)
+        return model
 
     def build(self, *args):
         src, new_model_path, new_model_name = args
         try:
-            self.train(src)
+            model = self.train(src)
         except AssertionError as e:
             logger.error(e)
         else:
             final_model = os.path.join(new_model_path, new_model_name)
-            if not os.path.exists(new_model_path):
-                os.makedirs(new_model_path, exist_ok=True)
-            self.save_model(final_model)
+            os.makedirs(new_model_path, exist_ok=True)
+            model.save_weights(final_model, save_format="h5")
+            model.summary()
+            logger.info(f"模型保存完成 {final_model}")
 
 
 if __name__ == '__main__':
