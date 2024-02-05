@@ -262,8 +262,8 @@ class Report(object):
         async def handler_inform(result):
             handler_list = []
             query = result.get("query", "query")
-            frame = result.get("frame", "frame")
             stage = result.get("stage", {"start": 0, "end": 0, "cost": 0})
+            frame = result.get("frame", "frame")
 
             async def handler_frame():
                 handler_image_list = []
