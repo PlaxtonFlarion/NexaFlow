@@ -999,14 +999,16 @@ class Missions(object):
         device_list = await manage.operate_device()
 
         reporter = Report(self.initial_report)
+        const_title = f"{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
         if self.quick:
-            reporter.title = f"Quick_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
+            input_title = "Quick"
         elif self.basic:
-            reporter.title = f"Basic_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
+            input_title = "Basic"
         elif self.keras:
-            reporter.title = f"Keras_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
+            input_title = "Keras"
         else:
-            reporter.title = f"Video_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
+            input_title = "Video"
+        reporter.title = f"{input_title}_{const_title}"
 
         deploy = Deploy(self.initial_deploy)
         deploy.boost = self.boost
@@ -1035,7 +1037,7 @@ class Missions(object):
                     if "header" in select:
                         if match := re.search(r"(?<=header\s).*", select):
                             if match.group().strip():
-                                src_hd = f"Record_{time.strftime('%Y%m%d_%H%M%S')}" if self.alone else f"Framix_{time.strftime('%Y%m%d_%H%M%S')}"
+                                src_hd = f"{input_title}_{time.strftime('%Y%m%d_%H%M%S')}"
                                 if hd := match.group().strip():
                                     new_hd = f"{src_hd}_{hd}"
                                 else:

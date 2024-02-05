@@ -164,7 +164,7 @@ class Deploy(object):
     @block.setter
     def block(self, value):
         try:
-            self._deploys["block"] = max(1, min(6, int(value)))
+            self._deploys["block"] = max(1, int(value))
         except ValueError:
             raise ValueError("block 的值必须是一个可以转换为整数的数值 ...")
 
@@ -205,7 +205,7 @@ class Deploy(object):
                 f.writelines('\n')
                 if isinstance(v, bool) or v is None:
                     f.writelines(f'    "{k}": "{v}",')
-                elif k == "model_size":
+                elif k == "model_size" or k == "shape":
                     f.writelines(f'    "{k}": "{v}",')
                 elif k == "crops" or k == "omits":
                     if len(v) == 0:
@@ -319,7 +319,7 @@ class Deploy(object):
         table.add_row(
             f"[bold {col_1_color}]切分程度",
             f"[bold {col_2_color}]{self.block}",
-            f"[bold][[bold {col_3_color}]1 , 6[/bold {col_3_color}] ]",
+            f"[bold][[bold {col_3_color}]1 , ?[/bold {col_3_color}] ]",
             f"[bold]每个帧图像切分为 [bold yellow]{self.block}[/bold yellow] 块",
         )
         table.add_row(
