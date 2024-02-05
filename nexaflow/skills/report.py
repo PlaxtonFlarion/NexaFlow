@@ -350,8 +350,10 @@ class Report(object):
 
             tasks = [
                 Report.ask_invent_report(
-                    os.path.join(file_name, os.path.basename(total_path)), title,
-                    os.path.join(file_name, os.path.basename(total_path), title), parts_list,
+                    os.path.join(file_name, os.path.basename(total_path)),
+                    title,
+                    os.path.join(file_name, os.path.basename(total_path), title),
+                    parts_list,
                     views_loc
                 )
                 for (total_path, title, query_path), parts_list in grouped_dict.items()
