@@ -53,7 +53,7 @@ class KerasClassifier(BaseModelClassifier):
         # logger.debug(f"batch size: {self.batch_size}")
 
     @property
-    def follow_keras_size(self):
+    def follow_tf_size(self):
         return self.data_size[1], self.data_size[0]
 
     @property
@@ -72,7 +72,6 @@ class KerasClassifier(BaseModelClassifier):
             )
         # assert model data is not empty
         assert self._model, "model is empty"
-        print(self._model.summary())
         self._model.save_weights(model_path)
 
     def load_model(self, model_path: str, overwrite: bool = None):
@@ -92,9 +91,9 @@ class KerasClassifier(BaseModelClassifier):
         # logger.info(f"creating Keras sequential model")
         logger.info("Keras神经网络引擎创建图像分析模型 ...")
         if keras.backend.image_data_format() == "channels_first":
-            input_shape = (1, *self.follow_keras_size)
+            input_shape = (1, *self.follow_tf_size)
         else:
-            input_shape = (*self.follow_keras_size, 1)
+            input_shape = (*self.follow_tf_size, 1)
 
         model = keras.Sequential()
 
@@ -151,7 +150,7 @@ class KerasClassifier(BaseModelClassifier):
 
         train_generator = datagen.flow_from_directory(
             data_path,
-            target_size=self.follow_keras_size,
+            target_size=self.follow_tf_size,
             batch_size=self.batch_size,
             color_mode="grayscale",
             class_mode="sparse",
@@ -160,7 +159,7 @@ class KerasClassifier(BaseModelClassifier):
 
         validation_generator = datagen.flow_from_directory(
             data_path,
-            target_size=self.follow_keras_size,
+            target_size=self.follow_tf_size,
             batch_size=self.batch_size,
             color_mode="grayscale",
             class_mode="sparse",

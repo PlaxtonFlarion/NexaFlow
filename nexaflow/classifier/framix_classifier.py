@@ -12,19 +12,21 @@ class FramixClassifier(object):
 
     def __init__(
             self,
-            color: bool = None,
+            color: str = None,
+            aisle: int = None,
             data_size: tuple = None,
             batch_size: int = None,
             epochs: int = None
     ):
 
-        self.color: bool = color or False
+        self.color: str = color or "grayscale"
+        self.aisle: int = aisle or 1
         self.data_size: tuple = data_size or (200, 200)
         self.batch_size: int = batch_size or 4
         self.epochs: int = epochs or 20
 
     @property
-    def follow_keras_size(self):
+    def follow_tf_size(self):
         return self.data_size[1], self.data_size[0]
 
     @property
@@ -34,9 +36,9 @@ class FramixClassifier(object):
     def create_model(self) -> keras.Sequential:
 
         if keras.backend.image_data_format() == "channels_first":
-            input_shape = (1, *self.follow_keras_size)
+            input_shape = (self.aisle, *self.follow_tf_size)
         else:
-            input_shape = (*self.follow_keras_size, 1)
+            input_shape = (*self.follow_tf_size, self.aisle)
 
         model = keras.Sequential()
 
@@ -78,7 +80,6 @@ class FramixClassifier(object):
         model = self.create_model()
 
         logger.info("开始训练模型 ...")
-        color_mode = "rgb" if self.color else "grayscale"
 
         datagen = keras.preprocessing.image.ImageDataGenerator(
             rescale=1.0 / 16,
@@ -90,18 +91,18 @@ class FramixClassifier(object):
 
         train_generator = datagen.flow_from_directory(
             data_path,
-            target_size=self.follow_keras_size,
+            target_size=self.follow_tf_size,
             batch_size=self.batch_size,
-            color_mode=color_mode,
+            color_mode=self.color,
             class_mode="sparse",
             subset="training",
         )
 
         validation_generator = datagen.flow_from_directory(
             data_path,
-            target_size=self.follow_keras_size,
+            target_size=self.follow_tf_size,
             batch_size=self.batch_size,
-            color_mode=color_mode,
+            color_mode=self.color,
             class_mode="sparse",
             subset="validation",
         )
