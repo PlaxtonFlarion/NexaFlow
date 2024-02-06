@@ -37,8 +37,12 @@ elif work_platform == "framix.py" or work_platform == "framix-rc.py":
     _job_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     _universal = os.path.dirname(os.path.abspath(__file__))
 else:
-    Show.console.print("[bold red]Only compatible with Windows and macOS platforms ...")
-    time.sleep(5)
+    Show.console.print(
+        f"[bold]Application name must be [bold red]framix[/bold red] ...[/bold]"
+    )
+    Show.simulation_progress(
+        f"Exit after 5 seconds ...", 1, 0.05
+    )
     sys.exit(1)
 
 _tools_path = os.path.join(_job_path, "archivix", "tools")
@@ -64,8 +68,11 @@ elif operation_system == "darwin":
     _scrcpy = os.path.join(_tools_path, "mac", "scrcpy", "bin", "scrcpy")
 else:
     Show.console.print(
-        "[bold]Only compatible with [bold red]Windows[/bold red] and [bold red]macOS[/bold red] platforms ...[bold]")
-    time.sleep(5)
+        "[bold]Only compatible with [bold red]Windows[/bold red] and [bold red]macOS[/bold red] platforms ...[/bold]"
+    )
+    Show.simulation_progress(
+        f"Exit after 5 seconds ...", 1, 0.05
+    )
     sys.exit(1)
 
 os.environ["PATH"] = os.path.dirname(_adb) + os.path.pathsep + os.environ.get("PATH", "")
@@ -84,7 +91,9 @@ try:
     from nexaflow.classifier.framix_classifier import FramixClassifier
 except (RuntimeError, ModuleNotFoundError) as err:
     Show.console.print(f"[bold red]Error: {err}")
-    time.sleep(5)
+    Show.simulation_progress(
+        f"Exit after 5 seconds ...", 1, 0.05
+    )
     sys.exit(1)
 
 
@@ -136,11 +145,10 @@ class Parser(object):
 
 class Missions(object):
 
-    target_size = (350, 700)
-    compress_rate = 0.4
-    step = 1
-    window_size = 1
-    window_coefficient = 2
+    COMPRESS: int | float = 0.4
+    step: int = 1
+    window_size: int = 1
+    window_coefficient: int = 2
 
     def __init__(self, alone: bool, quick: bool, basic: bool, keras: bool, *args, **kwargs):
         self.alone, self.quick, self.basic, self.keras = alone, quick, basic, keras
@@ -161,7 +169,7 @@ class Missions(object):
         self.scrcpy = kwargs["scrcpy"]
 
         if not self.shape and not self.scale:
-            self.scale = self.compress_rate
+            self.scale = self.COMPRESS
 
     @staticmethod
     def only_video(folder: str):
@@ -215,7 +223,7 @@ class Missions(object):
                 video_filter.append(f"scale=iw*{scale}:ih*{scale}")
                 logger.debug(f"Image Scale: {deploy.scale}")
             else:
-                video_filter.append(f"scale=iw*{self.compress_rate}:ih*{self.compress_rate}")
+                video_filter.append(f"scale=iw*{self.COMPRESS}:ih*{self.COMPRESS}")
 
             looper.run_until_complete(
                 ask_video_detach(
@@ -341,7 +349,7 @@ class Missions(object):
                         video_filter.append(f"scale=iw*{scale}:ih*{scale}")
                         logger.debug(f"Image Scale: {deploy.scale}")
                     else:
-                        video_filter.append(f"scale=iw*{self.compress_rate}:ih*{self.compress_rate}")
+                        video_filter.append(f"scale=iw*{self.COMPRESS}:ih*{self.COMPRESS}")
 
                     looper.run_until_complete(
                         ask_video_detach(
@@ -633,7 +641,7 @@ class Missions(object):
                 if self.scale:
                     image_scale = max_scale if self.shape else max(min_scale, min(max_scale, self.scale))
                 else:
-                    image_scale = max_scale if self.shape else self.compress_rate
+                    image_scale = max_scale if self.shape else self.COMPRESS
 
                 new_w, new_h = int(twist_w * image_scale), int(twist_h * image_scale)
                 logger.debug(
@@ -933,7 +941,7 @@ class Missions(object):
                 else:
                     for temp_video, *_ in task_list:
                         video_filter = default_filter.copy()
-                        video_filter.append(f"scale=iw*{self.compress_rate}:ih*{self.compress_rate}")
+                        video_filter.append(f"scale=iw*{self.COMPRESS}:ih*{self.COMPRESS}")
                         video_filter_list.append(video_filter)
 
                 await asyncio.gather(

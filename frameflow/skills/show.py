@@ -38,6 +38,14 @@ class Show(object):
         Show.console.print(logo)
 
     @staticmethod
+    def simulation_progress(desc: str, advance: int | float, interval: int | float):
+        with Progress() as progress:
+            task = progress.add_task(f"[bold #FFFFD7]{desc}", total=100)
+            while not progress.finished:
+                progress.update(task, advance=advance)
+                time.sleep(interval)
+
+    @staticmethod
     def major_logo():
         logo = """[bold #D0D0D0]
     ███╗   ██╗███████╗██╗  ██╗ █████╗   ███████╗██╗      ██████╗ ██╗    ██╗
@@ -142,18 +150,14 @@ class Show(object):
         )
         Show.major_logo()
         Show.console.print(table_major)
-        with Progress() as progress:
-            task = progress.add_task("[bold #FFFFD7]Framix Terminal Command.", total=100)
-            while not progress.finished:
-                progress.update(task, advance=1)
-                time.sleep(0.05)
+        Show.simulation_progress(
+            f"Framix Terminal Command.", 1, 0.05
+        )
         Show.minor_logo()
         Show.console.print(table_minor)
-        with Progress() as progress:
-            task = progress.add_task("[bold #FFFFD7]Framix Terminal Command.", total=100)
-            while not progress.finished:
-                progress.update(task, advance=1)
-                time.sleep(0.05)
+        Show.simulation_progress(
+            f"Framix Terminal Command.", 1, 0.05
+        )
 
     @staticmethod
     def tips_document():
@@ -172,11 +176,9 @@ class Show(object):
         table.add_row("[bold #FFAFAF]invent", "[bold #8A8A8A]无参数", "[bold #DADADA]生成视频拆帧汇总报告")
         table.add_row("[bold #FFAFAF]******", "[bold #8A8A8A]无参数", "[bold #DADADA]任意数字代表录制时长")
         Show.console.print(table)
-        with Progress() as progress:
-            task = progress.add_task("[bold #FFFFD7]Framix Terminal Command.", total=100)
-            while not progress.finished:
-                progress.update(task, advance=1)
-                time.sleep(0.05)
+        Show.simulation_progress(
+            f"Framix Terminal Command.", 1, 0.05
+        )
 
 
 if __name__ == '__main__':
