@@ -321,6 +321,7 @@ class Report(object):
                 single = {
                     "case": title,
                     "cost_list": cost_list,
+                    "avg": f"{sum(map(float, cost_list)) / len(cost_list):.5f}",
                     "href": href_path
                 }
                 logger.debug("View: " + json.dumps(single, ensure_ascii=False))

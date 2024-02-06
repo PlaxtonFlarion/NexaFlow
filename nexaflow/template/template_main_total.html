@@ -48,7 +48,7 @@
         }
 
         .header {
-            background-color: #333;
+            background-image: linear-gradient(0deg, #fc940a, #e3a965, #bdbda5, #72d0e6);
             color: #fff;
             padding: 20px;
             text-align: center;
@@ -66,22 +66,23 @@
             background-color: #f9f9f9;
             box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
         }
-        .info-box-main {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
         .case {
             display: flex;
+            justify-content: flex-start;
             margin-left: 20px;
         }
         .case h3 {
-            color: #333;
+            color: #333333;
         }
 
+        .device {
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
         .case-other {
             display: flex;
             align-items: center;
+            justify-content: flex-end;
         }
 
         .cost-div {
@@ -175,13 +176,11 @@
             background-color: rgb(212, 249, 24);
         }
         .complete {
-            background: linear-gradient(to bottom, #005aa7, #fffde4);
+            background-image: linear-gradient(0deg, #fc940a, #e3a965, #bdbda5, #72d0e6);
         }
         .finish {
-            opacity: 0.5;
             background-color: #fc8e8e;
         }
-
     </style>
 </head>
 
@@ -202,24 +201,39 @@
 
     {% for total in total_list %}
     <div class="info-box">
+        <div class="case"><h3>{{ total.case }}</h3></div>
         <div class="info-box-main">
-            <div class="case">
-                <h3>{{ total.case }}</h3>
+        {% if 'merge_list' in total %}
+            {% for href, avg, cost in total.merge_list %}
+            <div class="device">
+                <div class="case-other">
+                    <p><span class="cost-avg">{{ avg }}</span></p>
+                    <button class="copy">Copy</button>
+                    <a class="link" href="{{ href }}" target="_blank">View More Details ...</a>
+                </div>
+                <hr class="line">
+                <div class="cost-div">
+                    {% for cost in total.cost_list %}
+                    <p><span class="cost">{{ cost }}</span></p>
+                    {% endfor %}
+                </div>
             </div>
-
-            <div class="case-other">
-                <p><span class="cost-avg">{{ total.avg }}</span></p>
-                <button class="copy">Copy</button>
-                <a class="link" href="{{ total.href }}" target="_blank">View More Details ...</a>
-            </div>
-        </div>
-
-        <hr class="line">
-
-        <div class="cost-div">
-            {% for cost in total.cost_list %}
-            <p><span class="cost">{{ cost }}</span></p>
             {% endfor %}
+        {% else %}
+            <div class="device">
+                <div class="case-other">
+                    <p><span class="cost-avg">{{ total.avg }}</span></p>
+                    <button class="copy">Copy</button>
+                    <a class="link" href="{{ total.href }}" target="_blank">View More Details ...</a>
+                </div>
+                <hr class="line">
+                <div class="cost-div">
+                    {% for cost in total.cost_list %}
+                    <p><span class="cost">{{ cost }}</span></p>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
         </div>
     </div>
     {% endfor %}
@@ -227,6 +241,8 @@
     <div id="notification">数据已复制到剪贴板</div>
 
     <script>
+        var infoBoxContainers = Array.from(document.querySelectorAll('.info-box'));
+
         function showLoadingAnimation() {
             const loading = document.querySelector('.loading');
             loading.style.display = 'flex';
@@ -236,37 +252,41 @@
             }, 1000);
         }
 
-        document.querySelectorAll('.copy').forEach(copyButton => {
-            copyButton.addEventListener('click', (e) => {
-                let btn = e.target;
-                let link = btn.parentElement.querySelector('.link');
-                if (btn.classList.contains('done')) {
-                    btn.classList.remove('done');
-                    link.classList.remove('done');
-                    btn.textContent = 'Copy';
-                } else {
-                    btn.classList.add('done');
-                    link.classList.add('done');
-                    btn.textContent = 'Done';
-                }
+        infoBoxContainers.forEach((infoBox, infoBoxId) => {
+            let deviceContainers = infoBox.querySelectorAll('.device');
+            deviceContainers.forEach((device, deviceId) => {
+                let copyButton = device.querySelector('.copy');
+                copyButton.addEventListener('click', (e) => {
+                    let btn = e.target;
+                    let link = btn.parentElement.querySelector('.link');
+                    if (btn.classList.contains('done')) {
+                        btn.classList.remove('done');
+                        link.classList.remove('done');
+                        btn.textContent = 'Copy';
+                    } else {
+                        btn.classList.add('done');
+                        link.classList.add('done');
+                        btn.textContent = 'Done';
+                    }
 
-                let infoBox = e.currentTarget.closest('.info-box');
-                let title = infoBox.querySelector('.info-box .case h3')
-                let allCost = infoBox.querySelectorAll('.cost');
-                if(infoBox.classList.contains('complete')) {
-                    infoBox.classList.remove('complete');
-                    title.style.color = '#333';
-                    allCost.forEach(cost => {cost.classList.remove('finish');});
-                } else {
-                    infoBox.classList.add('complete');
-                    title.style.color = '#b9b9b9';
-                    let toCopy = '';
-                    allCost.forEach(cost => {
-                        toCopy += cost.textContent + '\t';
-                        cost.classList.add('finish');
-                    });
-                    copyRes(toCopy);
-                }
+                    let title = infoBox.querySelector('.case h3')
+                    let allCost = device.querySelectorAll('.cost');
+                    if(device.classList.contains('complete')) {
+                        device.classList.remove('complete');
+                        allCost.forEach(cost => {cost.classList.remove('finish');});
+                    } else {
+                        device.classList.add('complete');
+                        let toCopy = '';
+                        allCost.forEach(cost => {
+                            toCopy += cost.textContent + '\t';
+                            cost.classList.add('finish');
+                        });
+                        copyRes(toCopy);
+                    }
+
+                    let completeDevice = Array.from(device.parentElement.querySelectorAll('.complete'));
+                    title.style.color = completeDevice.length === deviceContainers.length ? '#b9b9b9' : '#333333';
+                });
             });
         });
 
@@ -289,5 +309,4 @@
     </script>
 
 </body>
-
 </html>

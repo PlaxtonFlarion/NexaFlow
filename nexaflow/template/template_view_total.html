@@ -48,7 +48,6 @@
         }
 
         .header {
-            /* background-color: #333; */
             background: linear-gradient(to top, #c0c0aa, #1cefff);
             color: #fff;
             padding: 20px;
@@ -68,11 +67,6 @@
             box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
             transition: all 0.3s ease;
         }
-        .info-box-main {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
         .info-box:hover {
             transform: scale(1.02);
             background: linear-gradient(to top, #c0c0aa, #1cefff);
@@ -81,15 +75,22 @@
 
         .case {
             display: flex;
+            justify-content: flex-start;
             margin-left: 20px;
         }
+
         .case h3 {
-            color: #333;
+            color: #333333;
+        }
+        .device {
+            border-radius: 10px;
+            margin-bottom: 10px;
         }
 
         .case-other {
             display: flex;
             align-items: center;
+            justify-content: flex-end;
         }
 
         .cost-div {
@@ -117,7 +118,7 @@
             color: #ff2222;
         }
 
-                .line {
+        .line {
             border: 2px solid #b5b6b7;
         }
 
@@ -159,22 +160,35 @@
 
     {% for total in total_list %}
     <div class="info-box">
+        <div class="case"><h3>{{ total.case }}</h3></div>
         <div class="info-box-main">
-            <div class="case">
-                <h3>{{ total.case }}</h3>
-            </div>
-
-            <div class="case-other">
-                <a class="link" href="{{ total.href }}" target="_blank">View More Details ...</a>
-            </div>
-        </div>
-
-        <hr class="line">
-
-        <div class="cost-div">
-            {% for cost in total.cost_list %}
-            <p><span class="cost"></span></p>
-            {% endfor %}
+            {% if 'merge_list' in total %}
+                {% for href, cost in total.merge_list %}
+                <div class="device">
+                    <div class="case-other">
+                        <a class="link" href="{{ href }}" target="_blank">View More Details ...</a>
+                    </div>
+                    <hr class="line">
+                    <div class="cost-div">
+                        {% for c in cost %}
+                        <p><span class="cost"></span></p>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="device">
+                    <div class="case-other">
+                        <a class="link" href="{{ total.href }}" target="_blank">View More Details ...</a>
+                    </div>
+                    <hr class="line">
+                    <div class="cost-div">
+                        {% for cost in total.cost_list %}
+                        <p><span class="cost"></span></p>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
         </div>
     </div>
     {% endfor %}
