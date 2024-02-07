@@ -10,6 +10,7 @@ import asyncio
 import aiofiles
 import datetime
 import numpy as np
+from pathlib import Path
 from loguru import logger
 from rich.prompt import Prompt
 from frameflow.skills.database import DataBase
@@ -114,6 +115,31 @@ class Parser(object):
             except ValueError:
                 return None
 
+        def parse_times(dim_str):
+            if isinstance(dim_str, int | float):
+                if dim_str >= 86400:
+                    raise ValueError("时间不能超过 24 小时 ...")
+                return str(datetime.timedelta(seconds=dim_str))
+
+            seconds_pattern = re.compile(r"^\d+$")
+            time_pattern = re.compile(r"(?:(\d+):)?(\d+):(\d+)(?:\.(\d+))?")
+
+            if seconds_pattern.match(dim_str):
+                time_str = str(datetime.timedelta(seconds=int(dim_str)))
+                return time_str
+
+            if match := time_pattern.match(dim_str):
+                hours = int(match.group(1)) if match.group(1) else 0
+                minutes = int(match.group(2))
+                seconds = int(match.group(3))
+                milliseconds = int(match.group(4)) if match.group(4) else 0
+                time_str = datetime.timedelta(
+                    hours=hours, minutes=minutes, seconds=seconds, milliseconds=milliseconds
+                )
+                return str(time_str)
+
+            return None
+
         parser = ArgumentParser(description="Command Line Arguments Framix")
 
         parser.add_argument('--flick', action='store_true', help='循环分析视频帧')
@@ -129,15 +155,19 @@ class Parser(object):
         parser.add_argument('--quick', action='store_true', help='快速模式')
         parser.add_argument('--basic', action='store_true', help='基础模式')
         parser.add_argument('--keras', action='store_true', help='智能模式')
+        parser.add_argument('--group', action='store_true', help='分组模式')
 
         parser.add_argument('--boost', action='store_true', help='跳帧模式')
         parser.add_argument('--color', action='store_true', help='彩色模式')
         parser.add_argument('--shape', nargs='?', const=None, type=parse_shape, help='图片尺寸')
         parser.add_argument('--scale', nargs='?', const=None, type=parse_scale, help='缩放比例')
+        parser.add_argument('--start', nargs='?', const=None, type=parse_times, help='视频开始')
+        parser.add_argument('--close', nargs='?', const=None, type=parse_times, help='视频结束')
+        parser.add_argument('--limit', nargs='?', const=None, type=parse_times, help='剪切时间')
         parser.add_argument('--crops', action='append', help='获取区域')
         parser.add_argument('--omits', action='append', help='忽略区域')
 
-        # --debug 不展示
+        # 调试模式
         parser.add_argument('--debug', action='store_true', help='调试模式')
 
         return parser.parse_args()
@@ -146,13 +176,12 @@ class Parser(object):
 class Missions(object):
 
     COMPRESS: int | float = 0.4
-    step: int = 1
-    window_size: int = 1
-    window_coefficient: int = 2
 
-    def __init__(self, alone: bool, quick: bool, basic: bool, keras: bool, *args, **kwargs):
-        self.alone, self.quick, self.basic, self.keras = alone, quick, basic, keras
-        self.boost, self.color, self.crops, self.omits, self.shape, self.scale = args
+    def __init__(self, alone: bool, quick: bool, basic: bool, keras: bool, group: bool, *args, **kwargs):
+        self.alone, self.quick, self.basic, self.keras, self.group = alone, quick, basic, keras, group
+        self.boost, self.color, self.shape, self.scale, *_ = args
+        *_, self.start, self.close, self.limit, _, _ = args
+        *_, self.crops, self.omits = args
 
         self.model_path = kwargs["model_path"]
         self.main_total_temp = kwargs["main_total_temp"]
@@ -183,7 +212,7 @@ class Missions(object):
 
         return [
             Entry(
-                os.path.basename(root), root,
+                Path(root).name, root,
                 [os.path.join(root, f) for f in sorted(file) if "log" not in f.split(".")[-1]]
             )
             for root, _, file in os.walk(folder) if file
@@ -200,8 +229,12 @@ class Missions(object):
         deploy = Deploy(self.initial_deploy)
         deploy.boost = self.boost
         deploy.color = self.color
+        deploy.group = self.group
         deploy.shape = self.shape
         deploy.scale = self.scale
+        deploy.start = self.start
+        deploy.close = self.close
+        deploy.limit = self.limit
         deploy.crops = self.crops
         deploy.omits = self.omits
 
@@ -225,18 +258,19 @@ class Missions(object):
             else:
                 video_filter.append(f"scale=iw*{self.COMPRESS}:ih*{self.COMPRESS}")
 
+            deploy.view_deploy()
             looper.run_until_complete(
                 ask_video_detach(
-                    self.ffmpeg, video_filter, new_video_path, reporter.frame_path
+                    self.ffmpeg, video_filter, new_video_path, reporter.frame_path,
+                    start=deploy.start, close=deploy.close, limit=deploy.limit
                 )
             )
             result = {
-                "total_path": reporter.total_path,
+                "total_path": Path(reporter.total_path).name,
                 "title": reporter.title,
-                "query_path": reporter.query_path,
                 "query": reporter.query,
                 "stage": {"start": 0, "end": 0, "cost": 0},
-                "frame": reporter.frame_path,
+                "frame": Path(reporter.frame_path).name
             }
             logger.debug(f"Quick: {result}")
             reporter.load(result)
@@ -261,8 +295,7 @@ class Missions(object):
         futures = looper.run_until_complete(
             analyzer(
                 new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
-                ffmpeg=self.ffmpeg, ffprobe=self.ffprobe,
-                step=self.step, window_size=self.window_size, window_coefficient=self.window_coefficient
+                ffmpeg=self.ffmpeg, ffprobe=self.ffprobe
             )
         )
 
@@ -270,45 +303,56 @@ class Missions(object):
             return None
         start, end, cost, classifier = futures
 
+        result = {
+            "total_path": Path(reporter.total_path).name,
+            "title": reporter.title,
+            "query": reporter.query,
+            "stage": {"start": start, "end": end, "cost": f"{cost:.5f}"},
+            "frame": Path(reporter.frame_path).name
+        }
+
         if self.keras and not self.basic:
             original_inform = reporter.draw(
                 classifier_result=classifier,
                 proto_path=reporter.proto_path,
                 template_file=get_template(self.alien),
             )
-        else:
-            original_inform = ""
+            result["extra"] = Path(reporter.extra_path).name
+            result["proto"] = Path(original_inform).name
 
-        result = {
-            "total_path": reporter.total_path,
-            "title": reporter.title,
-            "query_path": reporter.query_path,
-            "query": reporter.query,
-            "stage": {"start": start, "end": end, "cost": f"{cost:.5f}"},
-            "frame": reporter.frame_path,
-            "extra": reporter.extra_path,
-            "proto": original_inform,
-        }
         logger.debug(f"Restore: {result}")
         reporter.load(result)
 
         with DataBase(os.path.join(reporter.reset_path, "Framix_Data.db")) as database:
-            column_list = [
-                'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
-            ]
-            database.create('stocks', *column_list)
-            stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
-            database.insert(
-                'stocks', column_list,
-                (reporter.total_path, reporter.title, reporter.query_path, reporter.query, json.dumps(stage),
-                 reporter.frame_path, reporter.extra_path, reporter.proto_path)
-            )
+            if self.keras and not self.basic:
+                column_list = [
+                    'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
+                ]
+                database.create('stocks', *column_list)
+                stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
+                database.insert(
+                    'stocks', column_list,
+                    (reporter.total_path, reporter.title, reporter.query_path, reporter.query, json.dumps(stage),
+                     reporter.frame_path, reporter.extra_path, reporter.proto_path)
+                )
+            else:
+                column_list = [
+                    'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path'
+                ]
+                database.create('stocks', *column_list)
+                stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
+                database.insert(
+                    'stocks', column_list,
+                    (reporter.total_path, reporter.title, reporter.query_path, reporter.query, json.dumps(stage),
+                     reporter.frame_path)
+                )
 
         looper.run_until_complete(
             reporter.ask_create_total_report(
                 os.path.dirname(reporter.total_path),
                 get_template(self.main_temp),
-                get_template(self.main_total_temp)
+                get_template(self.main_total_temp),
+                deploy.group
             )
         )
         return reporter.total_path
@@ -319,8 +363,12 @@ class Missions(object):
         deploy = Deploy(self.initial_deploy)
         deploy.boost = self.boost
         deploy.color = self.color
+        deploy.group = self.group
         deploy.shape = self.shape
         deploy.scale = self.scale
+        deploy.start = self.start
+        deploy.close = self.close
+        deploy.limit = self.limit
         deploy.crops = self.crops
         deploy.omits = self.omits
 
@@ -353,16 +401,16 @@ class Missions(object):
 
                     looper.run_until_complete(
                         ask_video_detach(
-                            self.ffmpeg, video_filter, new_video_path, reporter.frame_path
+                            self.ffmpeg, video_filter, new_video_path, reporter.frame_path,
+                            start=deploy.start, close=deploy.close, limit=deploy.limit
                         )
                     )
                     result = {
-                        "total_path": reporter.total_path,
+                        "total_path": Path(reporter.total_path).name,
                         "title": reporter.title,
-                        "query_path": reporter.query_path,
                         "query": reporter.query,
                         "stage": {"start": 0, "end": 0, "cost": 0},
-                        "frame": reporter.frame_path,
+                        "frame": Path(reporter.frame_path).name
                     }
                     logger.debug(f"Quick: {result}")
                     reporter.load(result)
@@ -395,13 +443,20 @@ class Missions(object):
                 futures = looper.run_until_complete(
                     analyzer(
                         new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
-                        ffmpeg=self.ffmpeg, ffprobe=self.ffprobe,
-                        step=self.step, window_size=self.window_size, window_coefficient=self.window_coefficient
+                        ffmpeg=self.ffmpeg, ffprobe=self.ffprobe
                     )
                 )
                 if futures is None:
                     continue
                 start, end, cost, classifier = futures
+
+                result = {
+                    "total_path": Path(reporter.total_path).name,
+                    "title": reporter.title,
+                    "query": reporter.query,
+                    "stage": {"start": start, "end": end, "cost": f"{cost:.5f}"},
+                    "frame": Path(reporter.frame_path).name
+                }
 
                 if self.keras and not self.basic:
                     original_inform = reporter.draw(
@@ -409,39 +464,42 @@ class Missions(object):
                         proto_path=reporter.proto_path,
                         template_file=get_template(self.alien),
                     )
-                else:
-                    original_inform = ""
+                    result["extra"] = Path(reporter.extra_path).name
+                    result["proto"] = Path(original_inform)
 
-                result = {
-                    "total_path": reporter.total_path,
-                    "title": reporter.title,
-                    "query_path": reporter.query_path,
-                    "query": reporter.query,
-                    "stage": {"start": start, "end": end, "cost": f"{cost:.5f}"},
-                    "frame": reporter.frame_path,
-                    "extra": reporter.extra_path,
-                    "proto": original_inform,
-                }
                 logger.debug(f"Restore: {result}")
                 reporter.load(result)
 
                 with DataBase(os.path.join(reporter.reset_path, "Framix_Data.db")) as database:
-                    column_list = [
-                        'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
-                    ]
-                    database.create('stocks', *column_list)
-                    stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
-                    database.insert(
-                        'stocks', column_list,
-                        (reporter.total_path, reporter.title, reporter.query_path, reporter.query, json.dumps(stage),
-                         reporter.frame_path, reporter.extra_path, reporter.proto_path)
-                    )
+                    if self.keras and not self.basic:
+                        column_list = [
+                            'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
+                        ]
+                        database.create('stocks', *column_list)
+                        stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
+                        database.insert(
+                            'stocks', column_list,
+                            (reporter.total_path, reporter.title, reporter.query_path, reporter.query, json.dumps(stage),
+                             reporter.frame_path, reporter.extra_path, reporter.proto_path)
+                        )
+                    else:
+                        column_list = [
+                            'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path'
+                        ]
+                        database.create('stocks', *column_list)
+                        stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
+                        database.insert(
+                            'stocks', column_list,
+                            (reporter.total_path, reporter.title, reporter.query_path, reporter.query, json.dumps(stage),
+                             reporter.frame_path)
+                        )
 
         looper.run_until_complete(
             reporter.ask_create_total_report(
                 os.path.dirname(reporter.total_path),
                 get_template(self.main_temp),
                 get_template(self.main_total_temp),
+                deploy.group
             )
         )
         return reporter.total_path
@@ -467,8 +525,12 @@ class Missions(object):
         deploy = Deploy(self.initial_deploy)
         deploy.boost = self.boost
         deploy.color = self.color
+        deploy.group = self.group
         deploy.shape = self.shape
         deploy.scale = self.scale
+        deploy.start = self.start
+        deploy.close = self.close
+        deploy.limit = self.limit
         deploy.crops = self.crops
         deploy.omits = self.omits
 
@@ -476,7 +538,10 @@ class Missions(object):
             reporter.query_path, f"tmp_fps{deploy.fps}.mp4"
         )
         asyncio.run(
-            ask_video_change(self.ffmpeg, deploy.fps, video_file, video_temp_file)
+            ask_video_change(
+                self.ffmpeg, deploy.fps, video_file, video_temp_file,
+                start=deploy.start, close=deploy.close, limit=deploy.limit
+            )
         )
 
         video = VideoObject(video_temp_file)
@@ -485,14 +550,10 @@ class Missions(object):
             not_transform_gray=True
         )
 
-        cutter = VideoCutter(
-            step=self.step
-        )
+        cutter = VideoCutter()
         res = cutter.cut(
             video=video,
-            block=deploy.block,
-            window_size=self.window_size,
-            window_coefficient=self.window_coefficient
+            block=deploy.block
         )
         stable, unstable = res.get_range(
             threshold=deploy.threshold,
@@ -555,13 +616,13 @@ class Missions(object):
         fc = FramixClassifier(color=image_color, aisle=image_aisle, data_size=self.shape)
         fc.build(final_path, new_model_path, new_model_name)
 
-    async def combines_main(self, merge: list):
+    async def combines_main(self, merge: list, group: bool):
         major, total = await asyncio.gather(
             ask_get_template(self.main_temp), ask_get_template(self.main_total_temp),
             return_exceptions=True
         )
         tasks = [
-            Report.ask_create_total_report(m, major, total) for m in merge
+            Report.ask_create_total_report(m, major, total, group) for m in merge
         ]
         error = await asyncio.gather(*tasks)
         for e in error:
@@ -809,17 +870,32 @@ class Missions(object):
 
         # Video_Balance
         async def video_balance(standard, duration, video_src):
-            start_time_point = duration - standard
+            start_time_point = duration - standard + self.start if self.start else duration - standard
+            if self.limit and not self.close:
+                end_time_point = self.limit
+            else:
+                end_time_point = self.close if self.close else duration
             start_time_str = str(datetime.timedelta(seconds=start_time_point))
-            end_time_str = str(datetime.timedelta(seconds=duration))
+            end_time_str = str(datetime.timedelta(seconds=end_time_point))
             logger.info(f"{os.path.basename(video_src)} {duration} [{start_time_str} - {end_time_str}]")
             video_dst = os.path.join(
                 os.path.dirname(video_src), f"tailor_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
             )
             await ask_video_tailor(
-                self.ffmpeg, video_src, video_dst, start_time_str, end_time_str
+                self.ffmpeg, video_src, video_dst, start=start_time_str, close=None, limit=end_time_str
             )
             return video_dst
+            # start_time_point = duration - standard
+            # start_time_str = str(datetime.timedelta(seconds=start_time_point))
+            # end_time_str = str(datetime.timedelta(seconds=duration))
+            # logger.info(f"{os.path.basename(video_src)} {duration} [{start_time_str} - {end_time_str}]")
+            # video_dst = os.path.join(
+            #     os.path.dirname(video_src), f"tailor_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
+            # )
+            # await ask_video_tailor(
+            #     self.ffmpeg, video_src, video_dst, start_time_str, end_time_str
+            # )
+            # return video_dst
 
         # Record
         async def commence():
@@ -945,17 +1021,19 @@ class Missions(object):
                         video_filter_list.append(video_filter)
 
                 await asyncio.gather(
-                    *(ask_video_detach(self.ffmpeg, video_filter, temp_video, frame_path) for
-                      (temp_video, *_, frame_path, _, _), video_filter in zip(task_list, video_filter_list))
+                    *(ask_video_detach(
+                        self.ffmpeg, video_filter, temp_video, frame_path,
+                        start=deploy.start, close=deploy.close, limit=deploy.limit
+                    )
+                      for (temp_video, *_, frame_path, _, _), video_filter in zip(task_list, video_filter_list))
                 )
                 for *_, total_path, title, query_path, query, frame_path, _, _ in task_list:
                     result = {
-                        "total_path": total_path,
+                        "total_path": Path(total_path).name,
                         "title": title,
-                        "query_path": query_path,
                         "query": query,
                         "stage": {"start": 0, "end": 0, "cost": 0},
-                        "frame": frame_path,
+                        "frame": Path(frame_path).name
                     }
                     logger.debug(f"Quick: {result}")
                     reporter.load(result)
@@ -964,8 +1042,7 @@ class Missions(object):
                 futures = await asyncio.gather(
                     *(analyzer(
                         temp_video, deploy, kc, frame_path, extra_path,
-                        ffmpeg=self.ffmpeg, ffprobe=self.ffprobe,
-                        step=self.step, window_size=self.window_size, window_coefficient=self.window_coefficient
+                        ffmpeg=self.ffmpeg, ffprobe=self.ffprobe
                     ) for temp_video, *_, frame_path, extra_path, _ in task_list)
                 )
 
@@ -976,6 +1053,14 @@ class Missions(object):
                     start, end, cost, classifier = future
                     *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo
 
+                    result = {
+                        "total_path": Path(total_path).name,
+                        "title": title,
+                        "query": query,
+                        "stage": {"start": start, "end": end, "cost": f"{cost:.5f}"},
+                        "frame": Path(frame_path).name
+                    }
+
                     if self.keras and not self.basic:
                         logger.debug(f"Analyzer: 智能模式 ...")
                         template_file = await ask_get_template(self.alien)
@@ -984,33 +1069,35 @@ class Missions(object):
                             proto_path=proto_path,
                             template_file=template_file,
                         )
+                        result["extra"] = Path(extra_path).name
+                        result["proto"] = Path(original_inform)
                     else:
                         logger.debug(f"Analyzer: 基础模式 ...")
-                        original_inform = ""
 
-                    result = {
-                        "total_path": total_path,
-                        "title": title,
-                        "query_path": query_path,
-                        "query": query,
-                        "stage": {"start": start, "end": end, "cost": f"{cost:.5f}"},
-                        "frame": frame_path,
-                        "extra": extra_path,
-                        "proto": original_inform,
-                    }
                     logger.debug(f"Restore: {result}")
                     reporter.load(result)
 
                     with DataBase(os.path.join(os.path.dirname(total_path), "Nexa_Recovery", "Framix_Data.db")) as database:
-                        column_list = [
-                            'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
-                        ]
-                        database.create('stocks', *column_list)
-                        stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
-                        database.insert(
-                            'stocks', column_list,
-                            (total_path, title, query_path, query, json.dumps(stage), frame_path, extra_path, proto_path)
-                        )
+                        if self.keras and not self.basic:
+                            column_list = [
+                                'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
+                            ]
+                            database.create('stocks', *column_list)
+                            stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
+                            database.insert(
+                                'stocks', column_list,
+                                (total_path, title, query_path, query, json.dumps(stage), frame_path, extra_path, proto_path)
+                            )
+                        else:
+                            column_list = [
+                                'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path'
+                            ]
+                            database.create('stocks', *column_list)
+                            stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
+                            database.insert(
+                                'stocks', column_list,
+                                (total_path, title, query_path, query, json.dumps(stage), frame_path)
+                            )
 
             else:
                 logger.debug(f"Analyzer: 录制模式 ...")
@@ -1044,8 +1131,12 @@ class Missions(object):
         deploy = Deploy(self.initial_deploy)
         deploy.boost = self.boost
         deploy.color = self.color
+        deploy.group = self.group
         deploy.shape = self.shape
         deploy.scale = self.scale
+        deploy.start = self.start
+        deploy.close = self.close
+        deploy.limit = self.limit
         deploy.crops = self.crops
         deploy.omits = self.omits
 
@@ -1086,9 +1177,11 @@ class Missions(object):
                             try:
                                 reporter.range_list[0]["proto"]
                             except KeyError:
+                                logger.debug(f"View Report Combines ...")
                                 await self.combines_view([os.path.dirname(reporter.total_path)])
                             else:
-                                await self.combines_main([os.path.dirname(reporter.total_path)])
+                                logger.debug(f"Main Report Combines ...")
+                                await self.combines_main([os.path.dirname(reporter.total_path)], deploy.group)
                             finally:
                                 break
                         Show.console.print(f"[bold red]没有可以生成的报告 ...[/bold red]\n")
@@ -1158,26 +1251,60 @@ async def ask_get_template(template_path: str):
     return template_file
 
 
-async def ask_video_change(ffmpeg, fps: int, src: str, dst: str):
-    cmd = [
-        ffmpeg, "-i", src, "-vf", f"fps={fps}",
-        "-c:v", "libx264", "-crf", "18", "-c:a", "copy", dst
-    ]
+async def ask_video_change(ffmpeg, fps: int, src: str, dst: str, **kwargs):
+    start = kwargs.get("start", None)
+    close = kwargs.get("close", None)
+    limit = kwargs.get("limit", None)
+
+    cmd = [ffmpeg]
+
+    if start:
+        cmd += ["-ss", start]
+    if limit and not close:
+        cmd += ["-t", limit]
+    else:
+        cmd += ["-to", close]
+    cmd += ["-i", src]
+    cmd += ["-vf", f"fps={fps}", "-c:v", "libx264", "-crf", "18", "-c:a", "copy", dst]
+
     await Terminal.cmd_line(*cmd)
 
 
-async def ask_video_detach(ffmpeg, video_filter: list, src: str, dst: str):
-    cmd = [
-        ffmpeg, "-i", src, "-vf", ",".join(video_filter),
-        f"{os.path.join(dst, 'frame_%05d.png')}"
-    ]
+async def ask_video_detach(ffmpeg, video_filter: list, src: str, dst: str, **kwargs):
+    start = kwargs.get("start", None)
+    close = kwargs.get("close", None)
+    limit = kwargs.get("limit", None)
+
+    cmd = [ffmpeg]
+
+    if start:
+        cmd += ["-ss", start]
+    if limit and not close:
+        cmd += ["-t", limit]
+    else:
+        cmd += ["-to", close]
+    cmd += ["-i", src]
+    cmd += ["-vf", ",".join(video_filter), f"{os.path.join(dst, 'frame_%05d.png')}"]
+
     await Terminal.cmd_line(*cmd)
 
 
-async def ask_video_tailor(ffmpeg, src: str, dst: str, start: str, end: str):
-    cmd = [
-        ffmpeg, "-ss", start, "-i", src, "-t", end, "-c", "copy", dst
-    ]
+async def ask_video_tailor(ffmpeg, src: str, dst: str, **kwargs):
+    start = kwargs.get("start", None)
+    close = kwargs.get("close", None)
+    limit = kwargs.get("limit", None)
+
+    cmd = [ffmpeg]
+
+    if start:
+        cmd += ["-ss", start]
+    if limit and not close:
+        cmd += ["-t", limit]
+    else:
+        cmd += ["-to", close]
+    cmd += ["-i", src]
+    cmd += ["-c", "copy", dst]
+
     await Terminal.cmd_line(*cmd)
 
 
@@ -1242,9 +1369,6 @@ async def analyzer(
     frame_path, extra_path = args
     ffmpeg = kwargs["ffmpeg"]
     ffprobe = kwargs["ffprobe"]
-    step = kwargs["step"]
-    window_size = kwargs["window_size"]
-    window_coefficient = kwargs["window_coefficient"]
 
     async def validate():
         screen_tag, screen_cap = None, None
@@ -1274,7 +1398,10 @@ async def analyzer(
             os.path.dirname(vision_path),
             f"screen_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
         )
-        await ask_video_change(ffmpeg, deploy.fps, vision_path, change_record)
+        await ask_video_change(
+            ffmpeg, deploy.fps, vision_path, change_record,
+            start=deploy.start, close=deploy.close, limit=deploy.limit
+        )
         logger.info(f"视频转换完成: {os.path.basename(change_record)}")
         os.remove(vision_path)
         logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
@@ -1298,9 +1425,7 @@ async def analyzer(
 
     async def frame_flow():
         video, task, hued = await frame_flip()
-        cutter = VideoCutter(
-            step=step
-        )
+        cutter = VideoCutter()
 
         if len(deploy.crops) > 0:
             for crop in deploy.crops:
@@ -1319,9 +1444,7 @@ async def analyzer(
 
         res = cutter.cut(
             video=video,
-            block=deploy.block,
-            window_size=window_size,
-            window_coefficient=window_coefficient
+            block=deploy.block
         )
 
         stable, unstable = res.get_range(
@@ -1345,7 +1468,11 @@ async def analyzer(
                 os.path.join(extra_path, draw)
             )
 
-        classify = kc.classify(video=video, valid_range=stable, keep_data=True)
+        classify = kc.classify(
+            video=video,
+            valid_range=stable,
+            keep_data=True
+        )
 
         important_frames = classify.get_important_frame_list()
 
@@ -1495,7 +1622,7 @@ async def ask_main():
     elif cmd_lines.paint:
         await missions.painting()
     elif cmd_lines.merge and len(cmd_lines.merge) > 0:
-        await missions.combines_main(cmd_lines.merge)
+        await missions.combines_main(cmd_lines.merge, missions.group)
     elif cmd_lines.union and len(cmd_lines.union) > 0:
         await missions.combines_view(cmd_lines.union)
     else:
@@ -1545,11 +1672,17 @@ if __name__ == '__main__':
     _basic = cmd_lines.basic
     _keras = cmd_lines.keras
 
+    _group = cmd_lines.group
+
     _boost = cmd_lines.boost
     _color = cmd_lines.color
 
     _shape = cmd_lines.shape
     _scale = cmd_lines.scale
+
+    _start = cmd_lines.start
+    _close = cmd_lines.close
+    _limit = cmd_lines.limit
 
     # Debug Mode =======================================================================================================
     cpu = os.cpu_count()
@@ -1589,13 +1722,14 @@ if __name__ == '__main__':
     # Debug Mode =======================================================================================================
 
     missions = Missions(
-        _alone, _quick, _basic, _keras, _boost, _color, _crops, _omits, _shape, _scale,
+        _alone, _quick, _basic, _keras, _group,
+        _boost, _color, _shape, _scale, _start, _close, _limit, _crops, _omits,
         model_path=_model_path,
         main_total_temp=_main_total_temp, main_temp=_main_temp,
         view_total_temp=_view_total_temp, view_temp=_view_temp,
         alien=_alien,
         initial_report=_initial_report, initial_deploy=_initial_deploy, initial_option=_initial_option,
-        adb=_adb, ffmpeg=_ffmpeg, ffprobe=_ffprobe, scrcpy=_scrcpy,
+        adb=_adb, ffmpeg=_ffmpeg, ffprobe=_ffprobe, scrcpy=_scrcpy
     )
 
     if cmd_lines.stack and len(cmd_lines.stack) > 0:

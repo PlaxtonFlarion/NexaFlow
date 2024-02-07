@@ -719,7 +719,7 @@
                     <button class="all-reselect">全部重选</button>
                     <button class="quick-reselect">快速重选</button>
                 </div>
-                {% if res.should_display %}
+                {% if 'proto' in res %}
                 <div class="option-two">
                     <button class="ex-info">额外帧</button>
                     <a href="{{ res.proto }}" target="_blank" class="proto-link">全部帧</a>
@@ -728,7 +728,7 @@
             </div>
 
             <!--额外帧-->
-            {% if res.should_display %}
+            {% if 'extra_list' in res %}
             <div class="extra" style="display: none;">
                 <div class="extra-container">
                     {% for extra in res.extra_list %}
@@ -782,6 +782,7 @@
         </div>
     </div>
 
+    <!--缩略图悬浮提示-->
     <div id="tooltip"></div>
 
     <!--复制提示框-->

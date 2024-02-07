@@ -3,9 +3,11 @@ import re
 import json
 import time
 import shutil
+import random
 import asyncio
 import aiofiles
 import threading
+from pathlib import Path
 from loguru import logger
 from jinja2 import Template
 from collections import defaultdict
@@ -376,24 +378,20 @@ class Report(object):
                 logger.info("没有可以汇总的报告 ...")
 
     @staticmethod
-    async def ask_create_report(total_path: str, title: str, query_path: str, parts_list: list, major_loc: str):
+    async def ask_create_report(total_path: Path, title: str, serial: str, parts_list: list, major_loc: str):
 
-        async def handler_inform(result):
+        async def deal_with_inform(result):
             handler_list = []
             query = result.get("query", "TimeCost")
             stage = result.get("stage", {"start": 1, "end": 2, "cost": "0.00000"})
-            frame = result.get("frame", "")
-            extra = result.get("extra", "")
-            proto = result.get("proto", "")
+            frame = Path(result.get("frame", ""))
+            extra = Path(result.get("extra", ""))
+            proto = Path(result.get("proto", ""))
 
             async def handler_frame():
                 handler_image_list = []
-                for image in os.listdir(
-                        os.path.join(
-                            query_path, query, os.path.basename(frame)
-                        )
-                ):
-                    image_src = os.path.join(query, "frame", image)
+                for image in os.listdir(os.path.join(total_path, title, query, frame)):
+                    image_src = os.path.join(query, frame, image)
                     image_ids = re.search(r"\d+(?=_)", image).group()
                     timestamp = float(re.search(r"(?<=_).+(?=\.)", image).group())
                     handler_image_list.append(
@@ -408,12 +406,8 @@ class Report(object):
 
             async def handler_extra():
                 handler_extra_list = []
-                for ex in os.listdir(
-                        os.path.join(
-                            query_path, query, os.path.basename(extra)
-                        )
-                ):
-                    extra_src = os.path.join(query, "extra", ex)
+                for ex in os.listdir(os.path.join(total_path, title, query, extra)):
+                    extra_src = os.path.join(query, extra, ex)
                     extra_idx = ex.split("(")[0]
                     handler_extra_list.append(
                         {
@@ -424,44 +418,45 @@ class Report(object):
                 handler_extra_list.sort(key=lambda x: int(x["idx"].split("(")[0]))
                 return handler_extra_list
 
-            image_list, extra_list = await asyncio.gather(
-                handler_frame(), handler_extra()
-            )
+            data = {"query": query, "stage": stage}
 
-            handler_list.append(
-                {
-                    "query": query,
-                    "stage": stage,
-                    "image_list": image_list,
-                    "extra_list": extra_list,
-                    "proto": os.path.join(query, os.path.basename(proto)),
-                    "should_display": True if proto else False
-                }
-            )
+            if extra and proto:
+                image_list, extra_list = await asyncio.gather(
+                    handler_frame(), handler_extra()
+                )
+                data["extra_list"] = extra_list
+                data["proto"] = os.path.join(query, proto)
+            else:
+                image_list = await handler_frame()
+
+            data["image_list"] = image_list
+
+            handler_list.append(data)
             return handler_list
 
         async def handler_start():
             single = {}
             if len(parts_list) > 0:
-                tasks = [handler_inform(result) for result in parts_list]
+                tasks = [deal_with_inform(result) for result in parts_list]
                 results = await asyncio.gather(*tasks)
                 images_list = [ele for res in results for ele in res]
 
                 major_template = Template(major_loc)
                 range_html_temp = major_template.render(
                     title=title,
-                    images_list=images_list,
+                    images_list=images_list
                 )
-                range_html = os.path.join(query_path, f"{title}.html")
+                teams = serial if serial else random.randint(10000, 99999)
+                range_html = os.path.join(total_path, title, f"{title}_{teams}.html")
                 async with aiofiles.open(file=range_html, mode="w", encoding="utf-8") as range_file:
                     await range_file.write(range_html_temp)
-                    logger.info(f"生成聚合报告: {os.path.basename(range_html)}")
+                    logger.info(f"生成聚合报告: {Path(range_html).name}")
 
                 cost_list = [cost['stage']['cost'] for cost in images_list]
                 href_path = os.path.join(
-                    os.path.basename(total_path),
+                    total_path.name,
                     title,
-                    os.path.basename(range_html)
+                    Path(range_html).name
                 )
                 single = {
                     "case": title,
@@ -479,46 +474,76 @@ class Report(object):
         return await handler_start()
 
     @staticmethod
-    async def ask_create_total_report(file_name: str, major_loc: str, total_loc: str):
+    async def ask_create_total_report(file_name: str, major_loc: str, total_loc: str, group: bool):
         try:
             file_path = os.path.join(file_name, "Nexa_Recovery", "nexaflow.log")
             async with aiofiles.open(file=file_path, mode="r", encoding="utf-8") as f:
                 open_file = await f.read()
         except FileNotFoundError as e:
             return e
-        else:
-            match_list = re.findall(r"(?<=Restore: ).*}", open_file)
-            parts_list = [json.loads(file.replace("'", '"')) for file in match_list if file]
-            grouped_dict = defaultdict(list)
-            for part in parts_list:
-                parts = part.pop("total_path"), part.pop("title"), part.pop("query_path")
-                grouped_dict[parts].append(part)
 
-            tasks = [
-                Report.ask_create_report(
-                    os.path.join(file_name, os.path.basename(total_path)),
-                    title,
-                    os.path.join(file_name, os.path.basename(total_path), title),
-                    parts_list,
-                    major_loc,
-                )
-                for (total_path, title, query_path), parts_list in grouped_dict.items()
-            ]
-            merge_result = await asyncio.gather(*tasks)
-            total_list = [merge for merge in merge_result]
+        match_list = re.findall(r"(?<=Restore: ).*}", open_file)
+        parts_list = [json.loads(file.replace("'", '"')) for file in match_list if file]
 
-            if len(total_list) > 0:
-                total_template = Template(total_loc)
-                total_html_temp = total_template.render(
-                    report_time=time.strftime('%Y.%m.%d %H:%M:%S'),
-                    total_list=total_list
-                )
-                total_html = os.path.join(file_name, "NexaFlow.html")
-                async with aiofiles.open(file=total_html, mode="w", encoding="utf-8") as total_file:
-                    await total_file.write(total_html_temp)
-                    logger.info(f"生成汇总报告: {total_html}")
+        grouped_dict = defaultdict(list)
+        for part in parts_list:
+            part["query"] = Path(part["query"])
+            if group:
+                if len(part["query"].parts) == 2:
+                    parts = part.pop("total_path"), part.pop("title"), part["query"].name
+                else:
+                    parts = part.pop("total_path"), part.pop("title")
             else:
-                logger.info("没有可以汇总的报告 ...")
+                parts = part.pop("total_path"), part.pop("title")
+            grouped_dict[parts].append(part)
+
+        tasks = [
+            Report.ask_create_report(
+                total_path=Path(os.path.join(file_name, k[0])), title=k[1], serial=k[2],
+                parts_list=parts_list, major_loc=major_loc
+            ) if len(k) == 3 else
+            Report.ask_create_report(
+                total_path=Path(os.path.join(file_name, k[0])), title=k[1], serial="",
+                parts_list=parts_list, major_loc=major_loc
+            ) for k, parts_list in grouped_dict.items()
+        ]
+        merge_result = await asyncio.gather(*tasks)
+        total_result = [merge for merge in merge_result]
+
+        if group:
+            merged = defaultdict(lambda: defaultdict(list))
+            for case in total_result:
+                for k, v in case.items():
+                    if k != 'case':
+                        merged[case['case']][k].append(v)
+            total_list = [
+                {'case': case, **{k: v for k, v in attrs.items()}}
+                for case, attrs in merged.items()
+            ]
+            for item in total_list:
+                item["merge_list"] = list(zip(item.pop("href"), item.pop("avg"), item.pop("cost_list")))
+            logger.debug("=" * 30)
+            for item in total_list:
+                logger.debug(item["case"])
+                for detail in item["merge_list"]:
+                    logger.debug(detail)
+            logger.debug("=" * 30)
+        else:
+            total_list = total_result
+
+        if len(total_list) == 0:
+            logger.warning("没有可以汇总的报告 ...")
+            return False
+
+        total_template = Template(total_loc)
+        total_html_temp = total_template.render(
+            report_time=time.strftime('%Y.%m.%d %H:%M:%S'),
+            total_list=total_list
+        )
+        total_html = os.path.join(file_name, "NexaFlow.html")
+        async with aiofiles.open(file=total_html, mode="w", encoding="utf-8") as total_file:
+            await total_file.write(total_html_temp)
+            logger.info(f"生成汇总报告: {total_html}")
 
     @staticmethod
     def draw(

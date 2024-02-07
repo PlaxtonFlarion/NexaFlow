@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import datetime
 from loguru import logger
 from rich.table import Table
 from frameflow.skills.show import Show
@@ -11,8 +12,12 @@ class Deploy(object):
     _deploys = {
         "boost": False,
         "color": False,
+        "group": False,
         "shape": None,
         "scale": None,
+        "start": None,
+        "close": None,
+        "limit": None,
         "model_size": (350, 700),
         "fps": 60,
         "threshold": 0.97,
@@ -34,12 +39,28 @@ class Deploy(object):
         return self._deploys["color"]
 
     @property
+    def group(self):
+        return self._deploys["group"]
+
+    @property
     def shape(self):
         return self._deploys["shape"]
 
     @property
     def scale(self):
         return self._deploys["scale"]
+
+    @property
+    def start(self):
+        return self._deploys["start"]
+
+    @property
+    def close(self):
+        return self._deploys["close"]
+
+    @property
+    def limit(self):
+        return self._deploys["limit"]
 
     @property
     def model_size(self):
@@ -71,43 +92,19 @@ class Deploy(object):
 
     @boost.setter
     def boost(self, value):
-        if isinstance(value, bool):
-            self._deploys["boost"] = value
-        elif isinstance(value, str):
-            mode = value.lower() if isinstance(value, str) else "false"
-            self._deploys["boost"] = True if mode == "true" else False
-        else:
-            self._deploys["boost"] = False
+        self._deploys["boost"] = self.parse_bools(value)
 
     @color.setter
     def color(self, value):
-        if isinstance(value, bool):
-            self._deploys["color"] = value
-        elif isinstance(value, str):
-            mode = value.lower() if isinstance(value, str) else "false"
-            self._deploys["color"] = True if mode == "true" else False
-        else:
-            self._deploys["color"] = False
+        self._deploys["color"] = self.parse_bools(value)
+
+    @group.setter
+    def group(self, value):
+        self._deploys["group"] = self.parse_bools(value)
 
     @shape.setter
     def shape(self, value):
-        if isinstance(value, tuple):
-            self._deploys["shape"] = value
-        elif isinstance(value, str):
-            # 在字符串中找到所有数字
-            match_list = re.findall(r"-?\d*\.?\d+", value)
-            # 将匹配到的数字转换为整数或浮点数，并形成一个元组
-            if len(match_list) >= 2:
-                converted = []
-                for num in match_list:
-                    # 尽可能将数字转换为整数，否则转换为浮点数
-                    try:
-                        converted_num = int(num)
-                    except ValueError:
-                        converted_num = float(num)
-                    converted.append(converted_num)
-                # 确保元组仅包含两个元素（宽度、高度）
-                self._deploys["shape"] = tuple(converted[:2])
+        self._deploys["shape"] = self.parse_sizes(value)
 
     @scale.setter
     def scale(self, value):
@@ -120,30 +117,26 @@ class Deploy(object):
                 except ValueError:
                     raise ValueError("scale 的值必须是一个可以转换为浮点数的数值 ...")
 
+    @start.setter
+    def start(self, value):
+        self._deploys["start"] = self.parse_times(value)
+
+    @close.setter
+    def close(self, value):
+        self._deploys["close"] = self.parse_times(value)
+
+    @limit.setter
+    def limit(self, value):
+        self._deploys["limit"] = self.parse_times(value)
+
     @model_size.setter
     def model_size(self, value):
-        if isinstance(value, tuple):
-            self._deploys["model_size"] = value
-        elif isinstance(value, str):
-            # 在字符串中找到所有数字
-            match_list = re.findall(r"-?\d*\.?\d+", value)
-            # 将匹配到的数字转换为整数或浮点数，并形成一个元组
-            if len(match_list) >= 2:
-                converted = []
-                for num in match_list:
-                    # 尽可能将数字转换为整数，否则转换为浮点数
-                    try:
-                        converted_num = int(num)
-                    except ValueError:
-                        converted_num = float(num)
-                    converted.append(converted_num)
-                # 确保元组仅包含两个元素（宽度、高度）
-                self._deploys["model_size"] = tuple(converted[:2])
+        self._deploys["model_size"] = self.parse_sizes(value)
 
     @fps.setter
     def fps(self, value):
         try:
-            self._deploys["fps"] = max(15, min(60, int(value)))
+            self._deploys["fps"] = max(1, min(60, int(value)))
         except ValueError:
             raise ValueError("fps 的值必须是一个可以转换为整数的数值 ...")
 
@@ -170,21 +163,42 @@ class Deploy(object):
 
     @crops.setter
     def crops(self, value):
-        hooks_list, effective = value, []
-        for hook in hooks_list:
-            if isinstance(hook, dict):
-                data_list = [value for value in hook.values() if isinstance(value, int | float)]
-                if len(data_list) == 4 and sum(data_list) > 0:
-                    effective.append((hook["x"], hook["y"], hook["x_size"], hook["y_size"]))
-            elif isinstance(hook, tuple):
-                effective.append(hook)
-
-        self._deploys["crops"] = list(set(effective)).copy()
-        effective.clear()
+        self._deploys["crops"] = self.parse_hooks(value)
 
     @omits.setter
     def omits(self, value):
-        hooks_list, effective = value, []
+        self._deploys["omits"] = self.parse_hooks(value)
+
+    @staticmethod
+    def parse_bools(dim_str):
+        if isinstance(dim_str, bool):
+            return dim_str
+        elif isinstance(dim_str, str):
+            mode = dim_str.lower() if isinstance(dim_str, str) else "false"
+            return True if mode == "true" else False
+        else:
+            return False
+
+    @staticmethod
+    def parse_sizes(dim_str):
+        if isinstance(dim_str, tuple):
+            return dim_str
+        elif isinstance(dim_str, str):
+            match_list = re.findall(r"-?\d*\.?\d+", dim_str)
+            if len(match_list) >= 2:
+                converted = []
+                for num in match_list:
+                    try:
+                        converted_num = int(num)
+                    except ValueError:
+                        converted_num = float(num)
+                    converted.append(converted_num)
+                return tuple(converted[:2])
+        return None
+
+    @staticmethod
+    def parse_hooks(dim_str):
+        hooks_list, effective = dim_str, []
         for hook in hooks_list:
             if isinstance(hook, dict):
                 data_list = [value for value in hook.values() if isinstance(value, int | float)]
@@ -193,8 +207,54 @@ class Deploy(object):
             elif isinstance(hook, tuple):
                 effective.append(hook)
 
-        self._deploys["omits"] = list(set(effective)).copy()
+        effective_list = list(set(effective)).copy()
         effective.clear()
+        return effective_list
+
+    @staticmethod
+    def parse_times(dim_str):
+        if isinstance(dim_str, int | float):
+            if dim_str >= 86400:
+                raise ValueError("时间不能超过 24 小时 ...")
+            return str(datetime.timedelta(seconds=dim_str))
+
+        elif isinstance(dim_str, str):
+            seconds_pattern = re.compile(r"^\d+$")
+            time_pattern = re.compile(r"(?:(\d+):)?(\d+):(\d+)(?:\.(\d+))?")
+
+            if seconds_pattern.match(dim_str):
+                time_str = str(datetime.timedelta(seconds=int(dim_str)))
+                return time_str
+
+            if match := time_pattern.match(dim_str):
+                hours = int(match.group(1)) if match.group(1) else 0
+                minutes = int(match.group(2))
+                seconds = int(match.group(3))
+                milliseconds = int(match.group(4)) if match.group(4) else 0
+                time_str = datetime.timedelta(
+                    hours=hours, minutes=minutes, seconds=seconds, milliseconds=milliseconds
+                )
+                return str(time_str)
+
+        return None
+
+    @staticmethod
+    def parse_mills(dim_str):
+        if isinstance(dim_str, str):
+            seconds_pattern = re.compile(r"^\d+$")
+            full_pattern = re.compile(r"(\d{1,2}):(\d{2}):(\d{2})(\.\d+)?")
+
+            if match := full_pattern.match(dim_str):
+                hours, minutes, seconds, milliseconds = match.groups()
+                total_seconds = int(hours) * 3600 + int(minutes) * 60 + int(seconds)
+                if milliseconds:
+                    total_seconds += float(milliseconds)
+                return total_seconds
+
+            if seconds_pattern.match(dim_str):
+                return int(dim_str)
+
+        return None
 
     def dump_deploy(self, deploy_file: str) -> None:
         os.makedirs(os.path.dirname(deploy_file), exist_ok=True)
@@ -205,7 +265,7 @@ class Deploy(object):
                 f.writelines('\n')
                 if isinstance(v, bool) or v is None:
                     f.writelines(f'    "{k}": "{v}",')
-                elif k == "model_size" or k == "shape":
+                elif k == "model_size" or k == "shape" or k == "start" or k == "close" or k == "limit":
                     f.writelines(f'    "{k}": "{v}",')
                 elif k == "crops" or k == "omits":
                     if len(v) == 0:
@@ -235,6 +295,9 @@ class Deploy(object):
                 self.color = data.get("color", "false")
                 self.shape = data.get("shape", None)
                 self.scale = data.get("scale", None)
+                self.start = data.get("start", None)
+                self.close = data.get("close", None)
+                self.limit = data.get("limit", None)
                 self.model_size = data.get("model_size", (350, 700))
                 self.fps = data.get("fps", 60)
                 self.threshold = data.get("threshold", 0.97)
@@ -281,6 +344,12 @@ class Deploy(object):
             f"[bold green]开启[/bold green]" if self.color else "[bold red]关闭[/bold red]",
         )
         table.add_row(
+            f"[bold {col_1_color}]分组模式",
+            f"[bold {col_2_color}]{self.group}",
+            f"[bold][[bold {col_3_color}]T | F[/bold {col_3_color}] ]",
+            f"[bold green]开启[/bold green]" if self.group else "[bold red]关闭[/bold red]",
+        )
+        table.add_row(
             f"[bold {col_1_color}]图片尺寸",
             f"[bold {col_2_color}]{self.shape}" if self.shape else f"[bold {col_2_color}]Auto",
             f"[bold][[bold {col_3_color}]? , ?[/bold {col_3_color}] ]",
@@ -288,9 +357,27 @@ class Deploy(object):
         )
         table.add_row(
             f"[bold {col_1_color}]压缩比例",
-            f"[bold {col_2_color}]{self.scale}"if self.scale else f"[bold {col_2_color}]Auto",
+            f"[bold {col_2_color}]{self.scale}" if self.scale else f"[bold {col_2_color}]Auto",
             f"[bold][[bold {col_3_color}]0 , 1[/bold {col_3_color}] ]",
-            f"[bold]压缩图片至 [bold yellow]{self.scale}[/bold yellow]" if self.scale else f"[bold green]自动[/bold green]",
+            f"[bold]压缩图片至 [bold yellow]{self.scale}[/bold yellow] 倍" if self.scale else f"[bold green]自动[/bold green]",
+        )
+        table.add_row(
+            f"[bold {col_1_color}]视频开始",
+            f"[bold {col_2_color}]{self.parse_mills(self.start)}" if self.start else f"[bold {col_2_color}]Auto",
+            f"[bold][[bold {col_3_color}]0 , ?[/bold {col_3_color}] ]",
+            f"[bold]开始时间 [bold yellow]{self.start}[/bold yellow]" if self.start else f"[bold green]自动[/bold green]",
+        )
+        table.add_row(
+            f"[bold {col_1_color}]视频结束",
+            f"[bold {col_2_color}]{self.parse_mills(self.close)}" if self.close else f"[bold {col_2_color}]Auto",
+            f"[bold][[bold {col_3_color}]0 , ?[/bold {col_3_color}] ]",
+            f"[bold]结束时间 [bold yellow]{self.close}[/bold yellow]" if self.close else f"[bold green]自动[/bold green]",
+        )
+        table.add_row(
+            f"[bold {col_1_color}]剪切长度",
+            f"[bold {col_2_color}]{self.parse_mills(self.limit)}" if self.limit else f"[bold {col_2_color}]Auto",
+            f"[bold][[bold {col_3_color}]0 , ?[/bold {col_3_color}] ]",
+            f"[bold]剪切时间 [bold yellow]{self.limit}[/bold yellow]" if self.limit else f"[bold green]自动[/bold green]",
         )
         table.add_row(
             f"[bold {col_1_color}]模型尺寸",
@@ -301,7 +388,7 @@ class Deploy(object):
         table.add_row(
             f"[bold {col_1_color}]帧采样率",
             f"[bold {col_2_color}]{self.fps}",
-            f"[bold][[bold {col_3_color}]15, 60[/bold {col_3_color}]]",
+            f"[bold][[bold {col_3_color}]1 , 60[/bold {col_3_color}]]",
             f"[bold]每秒 [bold yellow]{self.fps}[/bold yellow] 帧",
         )
         table.add_row(
@@ -326,13 +413,13 @@ class Deploy(object):
             f"[bold {col_1_color}]获取区域",
             f"[bold {col_2_color}]{['!' for _ in range(len(self.crops))]}",
             f"[bold][[bold {col_3_color}]0 , 1[/bold {col_3_color}] ]",
-            f"[bold]共 [bold yellow]{len(self.crops)}[/bold yellow] 个区域的图像参与计算",
+            f"[bold]获取 [bold yellow]{len(self.crops)}[/bold yellow] 个区域的图像",
         )
         table.add_row(
             f"[bold {col_1_color}]忽略区域",
             f"[bold {col_2_color}]{['!' for _ in range(len(self.omits))]}",
             f"[bold][[bold {col_3_color}]0 , 1[/bold {col_3_color}] ]",
-            f"[bold]共 [bold yellow]{len(self.omits)}[/bold yellow] 个区域的图像不参与计算",
+            f"[bold]忽略 [bold yellow]{len(self.omits)}[/bold yellow] 个区域的图像",
         )
         Show.console.print(table)
 

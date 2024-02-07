@@ -163,7 +163,7 @@
         <div class="case"><h3>{{ total.case }}</h3></div>
         <div class="info-box-main">
             {% if 'merge_list' in total %}
-                {% for href, cost in total.merge_list %}
+                {% for href, avg, cost in total.merge_list %}
                 <div class="device">
                     <div class="case-other">
                         <a class="link" href="{{ href }}" target="_blank">View More Details ...</a>
