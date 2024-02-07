@@ -293,6 +293,7 @@ class Deploy(object):
                 data = json.loads(f.read())
                 self.boost = data.get("boost", "false")
                 self.color = data.get("color", "false")
+                self.group = data.get("group", "false")
                 self.shape = data.get("shape", None)
                 self.scale = data.get("scale", None)
                 self.start = data.get("start", None)
