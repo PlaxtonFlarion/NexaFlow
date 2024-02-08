@@ -117,14 +117,10 @@ class Deploy(object):
 
     @scale.setter
     def scale(self, value):
-        if isinstance(value, int | float):
-            self._deploys["scale"] = max(0.1, min(1.0, value))
-        elif isinstance(value, str):
-            if value.strip().upper() != "NONE":
-                try:
-                    self._deploys["scale"] = max(0.1, min(1.0, float(value)))
-                except ValueError:
-                    raise ValueError("scale 的值必须是一个可以转换为浮点数的数值 ...")
+        try:
+            self._deploys["scale"] = round(max(0.1, min(1.0, float(value))), 2)
+        except ValueError:
+            self._deploys["scale"] = None
 
     @start.setter
     def start(self, value):
@@ -147,28 +143,28 @@ class Deploy(object):
         try:
             self._deploys["fps"] = max(1, min(60, int(value)))
         except ValueError:
-            raise ValueError("fps 的值必须是一个可以转换为整数的数值 ...")
+            self._deploys["fps"] = 60
 
     @threshold.setter
     def threshold(self, value):
         try:
-            self._deploys["threshold"] = max(0.1, min(1.0, round(float(value), 2)))
+            self._deploys["threshold"] = round(max(0.1, min(1.0, float(value))), 2)
         except ValueError:
-            raise ValueError("threshold 的值必须是一个可以转换为浮点数的数值 ...")
+            self._deploys["threshold"] = 0.97
 
     @offset.setter
     def offset(self, value):
         try:
             self._deploys["offset"] = max(1, int(value))
         except ValueError:
-            raise ValueError("offset 的值必须是一个可以转换为整数的数值 ...")
+            self._deploys["offset"] = 3
 
     @block.setter
     def block(self, value):
         try:
             self._deploys["block"] = max(1, int(value))
         except ValueError:
-            raise ValueError("block 的值必须是一个可以转换为整数的数值 ...")
+            self._deploys["block"] = 6
 
     @crops.setter
     def crops(self, value):
@@ -374,22 +370,22 @@ class Deploy(object):
             f"[bold]压缩图片至 [bold yellow]{self.scale}[/bold yellow] 倍" if self.scale else f"[bold green]自动[/bold green]",
         )
         table.add_row(
-            f"[bold {col_1_color}]视频开始",
+            f"[bold {col_1_color}]开始时间",
             f"[bold {col_2_color}]{self.parse_mills(self.start)}" if self.start else f"[bold {col_2_color}]Auto",
             f"[bold][[bold {col_3_color}]0 , ?[/bold {col_3_color}] ]",
             f"[bold]开始时间 [bold yellow]{self.start}[/bold yellow]" if self.start else f"[bold green]自动[/bold green]",
         )
         table.add_row(
-            f"[bold {col_1_color}]视频结束",
+            f"[bold {col_1_color}]结束时间",
             f"[bold {col_2_color}]{self.parse_mills(self.close)}" if self.close else f"[bold {col_2_color}]Auto",
             f"[bold][[bold {col_3_color}]0 , ?[/bold {col_3_color}] ]",
             f"[bold]结束时间 [bold yellow]{self.close}[/bold yellow]" if self.close else f"[bold green]自动[/bold green]",
         )
         table.add_row(
-            f"[bold {col_1_color}]剪切长度",
+            f"[bold {col_1_color}]持续时间",
             f"[bold {col_2_color}]{self.parse_mills(self.limit)}" if self.limit else f"[bold {col_2_color}]Auto",
             f"[bold][[bold {col_3_color}]0 , ?[/bold {col_3_color}] ]",
-            f"[bold]剪切时间 [bold yellow]{self.limit}[/bold yellow]" if self.limit else f"[bold green]自动[/bold green]",
+            f"[bold]持续时间 [bold yellow]{self.limit}[/bold yellow]" if self.limit else f"[bold green]自动[/bold green]",
         )
         table.add_row(
             f"[bold {col_1_color}]模型尺寸",

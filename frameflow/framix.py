@@ -13,6 +13,7 @@ import numpy as np
 from pathlib import Path
 from loguru import logger
 from rich.prompt import Prompt
+from typing import Optional
 from frameflow.skills.database import DataBase
 from frameflow.skills.show import Show
 from frameflow.skills.manage import Manage
@@ -89,6 +90,7 @@ try:
     from nexaflow.cutter.cutter import VideoCutter
     from nexaflow.hook import CompressHook, FrameSaveHook
     from nexaflow.hook import PaintCropHook, PaintOmitHook
+    from nexaflow.classifier.base import ClassifierResult
     from nexaflow.classifier.keras_classifier import KerasClassifier
     from nexaflow.classifier.framix_classifier import FramixClassifier
 except (RuntimeError, ModuleNotFoundError) as err:
@@ -100,6 +102,14 @@ except (RuntimeError, ModuleNotFoundError) as err:
 
 
 class Parser(object):
+
+    @staticmethod
+    def parse_scale(dim_str):
+        try:
+            float_val = float(dim_str) if dim_str else None
+        except ValueError:
+            return None
+        return round(max(0.1, min(1.0, float_val)), 2) if float_val else None
 
     @staticmethod
     def parse_sizes(dim_str):
@@ -157,10 +167,10 @@ class Parser(object):
         parser.add_argument('--boost', action='store_true', help='跳帧模式')
         parser.add_argument('--color', action='store_true', help='彩色模式')
         parser.add_argument('--shape', nargs='?', const=None, type=Parser.parse_sizes, help='图片尺寸')
-        parser.add_argument('--scale', nargs='?', const=None, type=Parser.parse_mills, help='缩放比例')
-        parser.add_argument('--start', nargs='?', const=None, type=Parser.parse_mills, help='视频开始')
-        parser.add_argument('--close', nargs='?', const=None, type=Parser.parse_mills, help='视频结束')
-        parser.add_argument('--limit', nargs='?', const=None, type=Parser.parse_mills, help='剪切时间')
+        parser.add_argument('--scale', nargs='?', const=None, type=Parser.parse_scale, help='缩放比例')
+        parser.add_argument('--start', nargs='?', const=None, type=Parser.parse_mills, help='开始时间')
+        parser.add_argument('--close', nargs='?', const=None, type=Parser.parse_mills, help='结束时间')
+        parser.add_argument('--limit', nargs='?', const=None, type=Parser.parse_mills, help='持续时间')
         parser.add_argument('--crops', action='append', help='获取区域')
         parser.add_argument('--omits', action='append', help='忽略区域')
 
@@ -459,12 +469,12 @@ class Missions(object):
             return reporter.total_path
 
         elif self.keras and not self.basic:
-            logger.debug(f"Analyzer: 智能模式 ...")
+            logger.info(f"Framix Analyzer: 智能模式 ...")
             kc = KerasClassifier(data_size=deploy.model_size)
             kc.load_model(self.model_path)
 
         else:
-            logger.debug(f"Analyzer: 基础模式 ...")
+            logger.info(f"Framix Analyzer: 基础模式 ...")
             kc = None
 
         for video in self.only_video(folder):
@@ -1033,7 +1043,7 @@ class Missions(object):
                 return False
 
             if self.quick:
-                logger.debug(f"Analyzer: 快速模式 ...")
+                logger.debug(f"Framix Analyzer: 快速模式 ...")
                 video_filter_list = []
                 default_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
                 if deploy.shape:
@@ -1059,6 +1069,9 @@ class Missions(object):
                         video_filter = default_filter.copy()
                         video_filter.append(f"scale=iw*{self.COMPRESS}:ih*{self.COMPRESS}")
                         video_filter_list.append(video_filter)
+
+                for filters in video_filter_list:
+                    logger.info(f"应用过滤器: {filters}")
 
                 duration_list = await asyncio.gather(
                     *(ask_video_length(self.ffprobe, temp_video) for temp_video, *_ in task_list)
@@ -1131,7 +1144,7 @@ class Missions(object):
                     }
 
                     if classifier:
-                        logger.debug(f"Analyzer: 智能模式 ...")
+                        logger.debug(f"Framix Analyzer: 智能模式 ...")
                         template_file = await ask_get_template(self.alien)
                         original_inform = reporter.draw(
                             classifier_result=classifier,
@@ -1141,7 +1154,7 @@ class Missions(object):
                         result["extra"] = Path(extra_path).name
                         result["proto"] = Path(original_inform).name
                     else:
-                        logger.debug(f"Analyzer: 基础模式 ...")
+                        logger.debug(f"Framix Analyzer: 基础模式 ...")
 
                     logger.debug(f"Restore: {result}")
                     reporter.load(result)
@@ -1169,7 +1182,7 @@ class Missions(object):
                             )
 
             else:
-                logger.debug(f"Analyzer: 录制模式 ...")
+                logger.debug(f"Framix Analyzer: 录制模式 ...")
                 return False
 
         # Device View
@@ -1254,10 +1267,10 @@ class Missions(object):
                                 await self.combines_main([os.path.dirname(reporter.total_path)], deploy.group)
                             finally:
                                 break
-                        Show.console.print(f"[bold red]没有可以生成的报告 ...[/bold red]\n")
+                        Show.console.print(f"[bold red]没有可以生成的报告 ...\n")
                         continue
                     elif select == "deploy":
-                        logger.warning("修改 deploy.json 文件后请完全退出编辑器进程再继续操作 ...")
+                        Show.console.print("[bold yellow]修改 deploy.json 文件后请完全退出编辑器进程再继续操作 ...")
                         deploy.dump_deploy(self.initial_deploy)
                         if operation_system == "win32":
                             await Terminal.cmd_line("Notepad", self.initial_deploy)
@@ -1297,13 +1310,13 @@ class Missions(object):
         # Loop =========================================================================================================
 
 
-def initializer(log_level: str):
+def initializer(log_level: str) -> None:
     logger.remove(0)
     log_format = "| <level>{level: <8}</level> | <level>{message}</level>"
     logger.add(sys.stderr, format=log_format, level=log_level.upper())
 
 
-def get_template(template_path: str):
+def get_template(template_path: str) -> str | Exception:
     try:
         with open(template_path, mode="r", encoding="utf-8") as f:
             template_file = f.read()
@@ -1312,7 +1325,9 @@ def get_template(template_path: str):
     return template_file
 
 
-def examine_flip(start: int | float, close: int | float, limit: int | float, duration: int | float):
+def examine_flip(
+        start: int | float, close: int | float, limit: int | float, duration: int | float
+) -> tuple[Optional[int | float], Optional[int | float], Optional[int | float]]:
     """
     校验视频剪辑参数
     :param start: 开始时间
@@ -1335,7 +1350,7 @@ def examine_flip(start: int | float, close: int | float, limit: int | float, dur
     return start_point, close_point, limit_point
 
 
-async def ask_get_template(template_path: str):
+async def ask_get_template(template_path: str) -> str | Exception:
     try:
         async with aiofiles.open(template_path, mode="r", encoding="utf-8") as f:
             template_file = await f.read()
@@ -1344,7 +1359,16 @@ async def ask_get_template(template_path: str):
     return template_file
 
 
-async def ask_video_change(ffmpeg, fps: int, src: str, dst: str, **kwargs):
+async def ask_video_change(ffmpeg, fps: int, src: str, dst: str, **kwargs) -> None:
+    """
+    转换视频的帧采样率
+    :param ffmpeg: ffmpeg 可执行文件
+    :param fps: 帧采样率
+    :param src: 输入文件
+    :param dst: 输出文件
+    :param kwargs: [start 开始时间] [close 结束时间] [limit 持续时间]
+    :return:
+    """
     start = kwargs.get("start", None)
     close = kwargs.get("close", None)
     limit = kwargs.get("limit", None)
@@ -1363,7 +1387,7 @@ async def ask_video_change(ffmpeg, fps: int, src: str, dst: str, **kwargs):
     await Terminal.cmd_line(*cmd)
 
 
-async def ask_video_detach(ffmpeg, video_filter: list, src: str, dst: str, **kwargs):
+async def ask_video_detach(ffmpeg, video_filter: list, src: str, dst: str, **kwargs) -> None:
     start = kwargs.get("start", None)
     close = kwargs.get("close", None)
     limit = kwargs.get("limit", None)
@@ -1378,11 +1402,11 @@ async def ask_video_detach(ffmpeg, video_filter: list, src: str, dst: str, **kwa
         cmd += ["-t", limit]
     cmd += ["-i", src]
     cmd += ["-vf", ",".join(video_filter), f"{os.path.join(dst, 'frame_%05d.png')}"]
-    # Show.console.print(cmd)
+
     await Terminal.cmd_line(*cmd)
 
 
-async def ask_video_tailor(ffmpeg, src: str, dst: str, **kwargs):
+async def ask_video_tailor(ffmpeg, src: str, dst: str, **kwargs) -> None:
     start = kwargs.get("start", None)
     close = kwargs.get("close", None)
     limit = kwargs.get("limit", None)
@@ -1401,7 +1425,7 @@ async def ask_video_tailor(ffmpeg, src: str, dst: str, **kwargs):
     await Terminal.cmd_line(*cmd)
 
 
-async def ask_video_length(ffprobe, src: str):
+async def ask_video_length(ffprobe, src: str) -> float | Exception:
     cmd = [
         ffprobe, "-v", "error", "-show_entries", "format=duration",
         "-of", "default=noprint_wrappers=1:nokey=1", "-i", src
@@ -1414,7 +1438,7 @@ async def ask_video_length(ffprobe, src: str):
     return fmt_result
 
 
-async def ask_video_larger(ffprobe, src: str):
+async def ask_video_larger(ffprobe, src: str) -> tuple[int | Exception, int | Exception]:
     cmd = [
         ffprobe, "-v", "error", "-select_streams", "v:0", "-show_entries",
         "stream=width,height", "-of", "default=noprint_wrappers=1", src
@@ -1429,7 +1453,10 @@ async def ask_video_larger(ffprobe, src: str):
     return w, h
 
 
-async def ask_magic_frame(original_frame_size: tuple, input_frame_size: tuple) -> tuple:
+async def ask_magic_frame(
+        original_frame_size: tuple, input_frame_size: tuple
+) -> tuple[int, int, float]:
+
     # 计算原始宽高比
     original_w, original_h = original_frame_size
     original_ratio = original_w / original_h
@@ -1458,7 +1485,8 @@ async def ask_magic_frame(original_frame_size: tuple, input_frame_size: tuple) -
 
 async def analyzer(
         vision_path: str, deploy: "Deploy", kc: "KerasClassifier", *args, **kwargs
-):
+) -> Optional[tuple[float, float, float, Optional[ClassifierResult]]]:
+
     frame_path, extra_path = args
     ffmpeg = kwargs["ffmpeg"]
     ffprobe = kwargs["ffprobe"]
