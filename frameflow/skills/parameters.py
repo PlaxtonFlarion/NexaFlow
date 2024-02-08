@@ -10,6 +10,7 @@ from frameflow.skills.show import Show
 class Deploy(object):
 
     _deploys = {
+        "alone": False,
         "boost": False,
         "color": False,
         "group": False,
@@ -29,6 +30,10 @@ class Deploy(object):
 
     def __init__(self, deploy_file: str):
         self.load_deploy(deploy_file)
+
+    @property
+    def alone(self):
+        return self._deploys["alone"]
 
     @property
     def boost(self):
@@ -89,6 +94,10 @@ class Deploy(object):
     @property
     def omits(self):
         return self._deploys["omits"]
+
+    @alone.setter
+    def alone(self, value):
+        self._deploys["alone"] = self.parse_bools(value)
 
     @boost.setter
     def boost(self, value):
@@ -184,10 +193,10 @@ class Deploy(object):
         if isinstance(dim_str, tuple):
             return dim_str
         elif isinstance(dim_str, str):
-            match_list = re.findall(r"-?\d*\.?\d+", dim_str)
-            if len(match_list) >= 2:
+            match_size_list = re.findall(r"-?\d*\.?\d+", dim_str)
+            if len(match_size_list) >= 2:
                 converted = []
-                for num in match_list:
+                for num in match_size_list:
                     try:
                         converted_num = int(num)
                     except ValueError:
@@ -213,47 +222,42 @@ class Deploy(object):
 
     @staticmethod
     def parse_times(dim_str):
-        if isinstance(dim_str, int | float):
+        if isinstance(dim_str, (int, float)):
             if dim_str >= 86400:
                 raise ValueError("时间不能超过 24 小时 ...")
             return str(datetime.timedelta(seconds=dim_str))
-
         elif isinstance(dim_str, str):
-            seconds_pattern = re.compile(r"^\d+$")
-            time_pattern = re.compile(r"(?:(\d+):)?(\d+):(\d+)(?:\.(\d+))?")
-
-            if seconds_pattern.match(dim_str):
-                time_str = str(datetime.timedelta(seconds=int(dim_str)))
-                return time_str
-
+            time_pattern = re.compile(r"(?:(\d+):)?(\d+):(\d+)(?:\.(\d+))?|^\d*(?:\.\d+)?$")
             if match := time_pattern.match(dim_str):
                 hours = int(match.group(1)) if match.group(1) else 0
-                minutes = int(match.group(2))
-                seconds = int(match.group(3))
-                milliseconds = int(match.group(4)) if match.group(4) else 0
+                minutes = int(match.group(2)) if match.group(2) else 0
+                seconds = int(match.group(3)) if match.group(3) else 0
+                milliseconds = int(float("0." + match.group(4)) * 1000) if match.group(4) else 0
+                if match.group(0) and '.' in match.group(0):
+                    seconds = float(match.group(0))
+                    milliseconds = int((seconds - int(seconds)) * 1000)
+                    seconds = int(seconds)
                 time_str = datetime.timedelta(
                     hours=hours, minutes=minutes, seconds=seconds, milliseconds=milliseconds
                 )
                 return str(time_str)
-
         return None
 
     @staticmethod
     def parse_mills(dim_str):
+        if isinstance(dim_str, int | float):
+            return float(dim_str)
         if isinstance(dim_str, str):
-            seconds_pattern = re.compile(r"^\d+$")
+            seconds_pattern = re.compile(r"^\d+(\.\d+)?$")
             full_pattern = re.compile(r"(\d{1,2}):(\d{2}):(\d{2})(\.\d+)?")
-
             if match := full_pattern.match(dim_str):
                 hours, minutes, seconds, milliseconds = match.groups()
                 total_seconds = int(hours) * 3600 + int(minutes) * 60 + int(seconds)
                 if milliseconds:
                     total_seconds += float(milliseconds)
                 return total_seconds
-
-            if seconds_pattern.match(dim_str):
-                return int(dim_str)
-
+            elif seconds_pattern.match(dim_str):
+                return float(dim_str)
         return None
 
     def dump_deploy(self, deploy_file: str) -> None:
@@ -291,6 +295,7 @@ class Deploy(object):
         try:
             with open(file=deploy_file, mode="r", encoding="utf-8") as f:
                 data = json.loads(f.read())
+                self.alone = data.get("alone", "false")
                 self.boost = data.get("boost", "false")
                 self.color = data.get("color", "false")
                 self.group = data.get("group", "false")
@@ -332,6 +337,12 @@ class Deploy(object):
         table.add_column("范围", no_wrap=True)
         table.add_column("效果", no_wrap=True)
 
+        table.add_row(
+            f"[bold {col_1_color}]独立模式",
+            f"[bold {col_2_color}]{self.alone}",
+            f"[bold][[bold {col_3_color}]T | F[/bold {col_3_color}] ]",
+            f"[bold green]开启[/bold green]" if self.alone else "[bold red]关闭[/bold red]",
+        )
         table.add_row(
             f"[bold {col_1_color}]跳帧模式",
             f"[bold {col_2_color}]{self.boost}",

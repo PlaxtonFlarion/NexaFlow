@@ -87,7 +87,8 @@ try:
     from nexaflow.skills.report import Report
     from nexaflow.video import VideoObject, VideoFrame
     from nexaflow.cutter.cutter import VideoCutter
-    from nexaflow.hook import CropHook, OmitHook, FrameSaveHook, PaintCropHook, PaintOmitHook
+    from nexaflow.hook import CompressHook, FrameSaveHook
+    from nexaflow.hook import PaintCropHook, PaintOmitHook
     from nexaflow.classifier.keras_classifier import KerasClassifier
     from nexaflow.classifier.framix_classifier import FramixClassifier
 except (RuntimeError, ModuleNotFoundError) as err:
@@ -101,45 +102,41 @@ except (RuntimeError, ModuleNotFoundError) as err:
 class Parser(object):
 
     @staticmethod
-    def parse_cmd():
+    def parse_sizes(dim_str):
+        if isinstance(dim_str, tuple):
+            return dim_str
+        elif isinstance(dim_str, str):
+            match_size_list = re.findall(r"-?\d*\.?\d+", dim_str)
+            if len(match_size_list) >= 2:
+                converted = []
+                for num in match_size_list:
+                    try:
+                        converted_num = int(num)
+                    except ValueError:
+                        converted_num = float(num)
+                    converted.append(converted_num)
+                return tuple(converted[:2])
+        return None
 
-        def parse_shape(dim_str):
-            match_shape_list = [
-                int(number) for number in re.split(r'[\s,;]+', dim_str) if number.isdigit()
-            ]
-            return tuple(match_shape_list) if len(match_shape_list) == 2 else None
-
-        def parse_scale(dim_str):
-            try:
+    @staticmethod
+    def parse_mills(dim_str):
+        if isinstance(dim_str, int | float):
+            return float(dim_str)
+        if isinstance(dim_str, str):
+            seconds_pattern = re.compile(r"^\d+(\.\d+)?$")
+            full_pattern = re.compile(r"(\d{1,2}):(\d{2}):(\d{2})(\.\d+)?")
+            if match := full_pattern.match(dim_str):
+                hours, minutes, seconds, milliseconds = match.groups()
+                total_seconds = int(hours) * 3600 + int(minutes) * 60 + int(seconds)
+                if milliseconds:
+                    total_seconds += float(milliseconds)
+                return total_seconds
+            elif seconds_pattern.match(dim_str):
                 return float(dim_str)
-            except ValueError:
-                return None
+        return None
 
-        def parse_times(dim_str):
-            if isinstance(dim_str, int | float):
-                if dim_str >= 86400:
-                    raise ValueError("时间不能超过 24 小时 ...")
-                return str(datetime.timedelta(seconds=dim_str))
-
-            seconds_pattern = re.compile(r"^\d+$")
-            time_pattern = re.compile(r"(?:(\d+):)?(\d+):(\d+)(?:\.(\d+))?")
-
-            if seconds_pattern.match(dim_str):
-                time_str = str(datetime.timedelta(seconds=int(dim_str)))
-                return time_str
-
-            if match := time_pattern.match(dim_str):
-                hours = int(match.group(1)) if match.group(1) else 0
-                minutes = int(match.group(2))
-                seconds = int(match.group(3))
-                milliseconds = int(match.group(4)) if match.group(4) else 0
-                time_str = datetime.timedelta(
-                    hours=hours, minutes=minutes, seconds=seconds, milliseconds=milliseconds
-                )
-                return str(time_str)
-
-            return None
-
+    @staticmethod
+    def parse_cmd():
         parser = ArgumentParser(description="Command Line Arguments Framix")
 
         parser.add_argument('--flick', action='store_true', help='循环分析视频帧')
@@ -159,11 +156,11 @@ class Parser(object):
 
         parser.add_argument('--boost', action='store_true', help='跳帧模式')
         parser.add_argument('--color', action='store_true', help='彩色模式')
-        parser.add_argument('--shape', nargs='?', const=None, type=parse_shape, help='图片尺寸')
-        parser.add_argument('--scale', nargs='?', const=None, type=parse_scale, help='缩放比例')
-        parser.add_argument('--start', nargs='?', const=None, type=parse_times, help='视频开始')
-        parser.add_argument('--close', nargs='?', const=None, type=parse_times, help='视频结束')
-        parser.add_argument('--limit', nargs='?', const=None, type=parse_times, help='剪切时间')
+        parser.add_argument('--shape', nargs='?', const=None, type=Parser.parse_sizes, help='图片尺寸')
+        parser.add_argument('--scale', nargs='?', const=None, type=Parser.parse_mills, help='缩放比例')
+        parser.add_argument('--start', nargs='?', const=None, type=Parser.parse_mills, help='视频开始')
+        parser.add_argument('--close', nargs='?', const=None, type=Parser.parse_mills, help='视频结束')
+        parser.add_argument('--limit', nargs='?', const=None, type=Parser.parse_mills, help='剪切时间')
         parser.add_argument('--crops', action='append', help='获取区域')
         parser.add_argument('--omits', action='append', help='忽略区域')
 
@@ -213,7 +210,7 @@ class Missions(object):
         return [
             Entry(
                 Path(root).name, root,
-                [os.path.join(root, f) for f in sorted(file) if "log" not in f.split(".")[-1]]
+                [os.path.join(root, f) for f in sorted(file) if Path(f).name.split(".")[-1] != "log"]
             )
             for root, _, file in os.walk(folder) if file
         ]
@@ -241,7 +238,7 @@ class Missions(object):
         looper = asyncio.get_event_loop()
 
         if self.quick:
-            logger.debug(f"Analyzer: 快速模式 ...")
+            logger.info(f"Framix Analyzer: 快速模式 ...")
             video_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
             if deploy.shape:
                 original_shape = looper.run_until_complete(
@@ -250,6 +247,7 @@ class Missions(object):
                 w, h, ratio = looper.run_until_complete(
                     ask_magic_frame(original_shape, deploy.shape)
                 )
+                logger.debug(f"Image Shape: [W:{w} H{h} Ratio:{ratio}]")
                 video_filter.append(f"scale={w}:{h}")
             elif deploy.scale:
                 scale = max(0.1, min(1.0, deploy.scale))
@@ -257,12 +255,27 @@ class Missions(object):
                 logger.debug(f"Image Scale: {deploy.scale}")
             else:
                 video_filter.append(f"scale=iw*{self.COMPRESS}:ih*{self.COMPRESS}")
+            logger.info(f"应用过滤器: {video_filter}")
 
-            deploy.view_deploy()
+            duration = looper.run_until_complete(
+                ask_video_length(self.ffprobe, new_video_path)
+            )
+            vision_start, vision_close, vision_limit = examine_flip(
+                deploy.parse_mills(deploy.start),
+                deploy.parse_mills(deploy.close),
+                deploy.parse_mills(deploy.limit),
+                duration
+            )
+            vision_start = deploy.parse_times(vision_start)
+            vision_close = deploy.parse_times(vision_close)
+            vision_limit = deploy.parse_times(vision_limit)
+            logger.info(f"视频时长: [{duration}] [{deploy.parse_times(duration)}]")
+            logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
+
             looper.run_until_complete(
                 ask_video_detach(
                     self.ffmpeg, video_filter, new_video_path, reporter.frame_path,
-                    start=deploy.start, close=deploy.close, limit=deploy.limit
+                    start=vision_start, close=vision_close, limit=vision_limit
                 )
             )
             result = {
@@ -279,17 +292,19 @@ class Missions(object):
                 reporter.ask_invent_total_report(
                     os.path.dirname(reporter.total_path),
                     get_template(self.view_temp),
-                    get_template(self.view_total_temp))
+                    get_template(self.view_total_temp),
+                    deploy.group
+                )
             )
             return reporter.total_path
 
         elif self.keras and not self.basic:
-            logger.debug(f"Analyzer: 智能模式 ...")
+            logger.info(f"Framix Analyzer: 智能模式 ...")
             kc = KerasClassifier(data_size=deploy.model_size)
             kc.load_model(self.model_path)
 
         else:
-            logger.debug(f"Analyzer: 基础模式 ...")
+            logger.info(f"Framix Analyzer: 基础模式 ...")
             kc = None
 
         futures = looper.run_until_complete(
@@ -311,7 +326,7 @@ class Missions(object):
             "frame": Path(reporter.frame_path).name
         }
 
-        if self.keras and not self.basic:
+        if classifier:
             original_inform = reporter.draw(
                 classifier_result=classifier,
                 proto_path=reporter.proto_path,
@@ -324,7 +339,7 @@ class Missions(object):
         reporter.load(result)
 
         with DataBase(os.path.join(reporter.reset_path, "Framix_Data.db")) as database:
-            if self.keras and not self.basic:
+            if classifier:
                 column_list = [
                     'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
                 ]
@@ -361,6 +376,7 @@ class Missions(object):
         reporter = Report(total_path=self.initial_report)
 
         deploy = Deploy(self.initial_deploy)
+        deploy.alone = self.alone
         deploy.boost = self.boost
         deploy.color = self.color
         deploy.group = self.group
@@ -375,7 +391,7 @@ class Missions(object):
         looper = asyncio.get_event_loop()
 
         if self.quick:
-            logger.debug(f"Analyzer: 快速模式 ...")
+            logger.debug(f"Framix Analyzer: 快速模式 ...")
             for video in self.only_video(folder):
                 reporter.title = video.title
                 for path in video.sheet:
@@ -391,6 +407,7 @@ class Missions(object):
                         w, h, ratio = looper.run_until_complete(
                             ask_magic_frame(original_shape, deploy.shape)
                         )
+                        logger.debug(f"Image Shape: [W:{w} H{h} Ratio:{ratio}]")
                         video_filter.append(f"scale={w}:{h}")
                     elif deploy.scale:
                         scale = max(0.1, min(1.0, deploy.scale))
@@ -398,6 +415,22 @@ class Missions(object):
                         logger.debug(f"Image Scale: {deploy.scale}")
                     else:
                         video_filter.append(f"scale=iw*{self.COMPRESS}:ih*{self.COMPRESS}")
+                    logger.info(f"应用过滤器: {video_filter}")
+
+                    duration = looper.run_until_complete(
+                        ask_video_length(self.ffprobe, new_video_path)
+                    )
+                    vision_start, vision_close, vision_limit = examine_flip(
+                        deploy.parse_mills(deploy.start),
+                        deploy.parse_mills(deploy.close),
+                        deploy.parse_mills(deploy.limit),
+                        duration
+                    )
+                    vision_start = deploy.parse_times(vision_start)
+                    vision_close = deploy.parse_times(vision_close)
+                    vision_limit = deploy.parse_times(vision_limit)
+                    logger.info(f"视频时长: [{duration}] [{deploy.parse_times(duration)}]")
+                    logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
 
                     looper.run_until_complete(
                         ask_video_detach(
@@ -419,7 +452,8 @@ class Missions(object):
                 reporter.ask_invent_total_report(
                     os.path.dirname(reporter.total_path),
                     get_template(self.view_temp),
-                    get_template(self.view_total_temp)
+                    get_template(self.view_total_temp),
+                    deploy.group
                 )
             )
             return reporter.total_path
@@ -458,20 +492,20 @@ class Missions(object):
                     "frame": Path(reporter.frame_path).name
                 }
 
-                if self.keras and not self.basic:
+                if classifier:
                     original_inform = reporter.draw(
                         classifier_result=classifier,
                         proto_path=reporter.proto_path,
                         template_file=get_template(self.alien),
                     )
                     result["extra"] = Path(reporter.extra_path).name
-                    result["proto"] = Path(original_inform)
+                    result["proto"] = Path(original_inform).name
 
                 logger.debug(f"Restore: {result}")
                 reporter.load(result)
 
                 with DataBase(os.path.join(reporter.reset_path, "Framix_Data.db")) as database:
-                    if self.keras and not self.basic:
+                    if classifier:
                         column_list = [
                             'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
                         ]
@@ -523,6 +557,7 @@ class Missions(object):
             os.makedirs(reporter.query_path, exist_ok=True)
 
         deploy = Deploy(self.initial_deploy)
+        deploy.alone = self.alone
         deploy.boost = self.boost
         deploy.color = self.color
         deploy.group = self.group
@@ -537,6 +572,23 @@ class Missions(object):
         video_temp_file = os.path.join(
             reporter.query_path, f"tmp_fps{deploy.fps}.mp4"
         )
+
+        looper = asyncio.get_event_loop()
+        duration = looper.run_until_complete(
+            ask_video_length(self.ffprobe, video_file)
+        )
+        vision_start, vision_close, vision_limit = examine_flip(
+            deploy.parse_mills(deploy.start),
+            deploy.parse_mills(deploy.close),
+            deploy.parse_mills(deploy.limit),
+            duration
+        )
+        vision_start = deploy.parse_times(vision_start)
+        vision_close = deploy.parse_times(vision_close)
+        vision_limit = deploy.parse_times(vision_limit)
+        logger.info(f"视频时长: [{duration}] [{deploy.parse_times(duration)}]")
+        logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
+
         asyncio.run(
             ask_video_change(
                 self.ffmpeg, deploy.fps, video_file, video_temp_file,
@@ -629,13 +681,13 @@ class Missions(object):
             if isinstance(e, Exception):
                 logger.error(e)
 
-    async def combines_view(self, merge: list):
+    async def combines_view(self, merge: list, group: bool):
         views, total = await asyncio.gather(
             ask_get_template(self.view_temp), ask_get_template(self.view_total_temp),
             return_exceptions=True
         )
         tasks = [
-            Report.ask_invent_total_report(m, views, total) for m in merge
+            Report.ask_invent_total_report(m, views, total, group) for m in merge
         ]
         error = await asyncio.gather(*tasks)
         for e in error:
@@ -794,7 +846,7 @@ class Missions(object):
 
         # Time
         async def timepiece(amount, serial, events):
-            stop_event_control = events["stop_event"] if self.alone else all_stop_event
+            stop_event_control = events["stop_event"] if deploy.alone else all_stop_event
             while True:
                 if events["head_event"].is_set():
                     for i in range(amount):
@@ -840,7 +892,7 @@ class Missions(object):
                         events["fail_event"].set()
                         break
 
-            stop_event_control = events["stop_event"] if self.alone else all_stop_event
+            stop_event_control = events["stop_event"] if deploy.alone else all_stop_event
             temp_video = f"{os.path.join(dst, 'screen')}_{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
             cmd = [
                 self.scrcpy, "-s", serial, "--no-audio", "--video-bit-rate", "8M", "--max-fps", "60", "--record", temp_video
@@ -870,32 +922,20 @@ class Missions(object):
 
         # Video_Balance
         async def video_balance(standard, duration, video_src):
-            start_time_point = duration - standard + self.start if self.start else duration - standard
-            if self.limit and not self.close:
-                end_time_point = self.limit
-            else:
-                end_time_point = self.close if self.close else duration
+            start_time_point = duration - standard
+            end_time_point = duration
             start_time_str = str(datetime.timedelta(seconds=start_time_point))
             end_time_str = str(datetime.timedelta(seconds=end_time_point))
+
             logger.info(f"{os.path.basename(video_src)} {duration} [{start_time_str} - {end_time_str}]")
             video_dst = os.path.join(
                 os.path.dirname(video_src), f"tailor_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
             )
+
             await ask_video_tailor(
-                self.ffmpeg, video_src, video_dst, start=start_time_str, close=None, limit=end_time_str
+                self.ffmpeg, video_src, video_dst, start=start_time_str, limit=end_time_str
             )
             return video_dst
-            # start_time_point = duration - standard
-            # start_time_str = str(datetime.timedelta(seconds=start_time_point))
-            # end_time_str = str(datetime.timedelta(seconds=duration))
-            # logger.info(f"{os.path.basename(video_src)} {duration} [{start_time_str} - {end_time_str}]")
-            # video_dst = os.path.join(
-            #     os.path.dirname(video_src), f"tailor_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
-            # )
-            # await ask_video_tailor(
-            #     self.ffmpeg, video_src, video_dst, start_time_str, end_time_str
-            # )
-            # return video_dst
 
         # Record
         async def commence():
@@ -966,7 +1006,7 @@ class Missions(object):
                     if not effective:
                         todo_list.pop(idx)
 
-            if not self.alone and len(todo_list) > 1:
+            if not deploy.alone and len(todo_list) > 1:
                 duration_list = await asyncio.gather(
                     *(ask_video_length(self.ffprobe, temp_video) for temp_video, *_ in todo_list)
                 )
@@ -1020,12 +1060,41 @@ class Missions(object):
                         video_filter.append(f"scale=iw*{self.COMPRESS}:ih*{self.COMPRESS}")
                         video_filter_list.append(video_filter)
 
+                duration_list = await asyncio.gather(
+                    *(ask_video_length(self.ffprobe, temp_video) for temp_video, *_ in task_list)
+                )
+                looper = asyncio.get_event_loop()
+                duration_result = [looper.run_in_executor(
+                    None, examine_flip,
+                    deploy.parse_mills(deploy.start), deploy.parse_mills(deploy.close),
+                    deploy.parse_mills(deploy.limit), duration
+                ) for duration in duration_list]
+                duration_result_list = await asyncio.gather(*duration_result)
+
+                all_duration = []
+                for (vision_start, vision_close, vision_limit), duration in zip(duration_result_list, duration_list):
+                    all_duration.append(
+                        (
+                            vision_start := deploy.parse_times(vision_start),
+                            vision_close := deploy.parse_times(vision_close),
+                            vision_limit := deploy.parse_times(vision_limit)
+                        )
+                    )
+                    logger.info(f"视频时长: [{duration}] [{deploy.parse_times(duration)}]")
+                    logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
+
                 await asyncio.gather(
                     *(ask_video_detach(
                         self.ffmpeg, video_filter, temp_video, frame_path,
-                        start=deploy.start, close=deploy.close, limit=deploy.limit
+                        start=vision_start, close=vision_close, limit=vision_limit
                     )
-                      for (temp_video, *_, frame_path, _, _), video_filter in zip(task_list, video_filter_list))
+                      for (
+                        temp_video, *_, frame_path, _, _
+                    ), video_filter, (
+                        vision_start, vision_close, vision_limit
+                    ) in zip(
+                        task_list, video_filter_list, duration_result_list
+                    ))
                 )
                 for *_, total_path, title, query_path, query, frame_path, _, _ in task_list:
                     result = {
@@ -1061,7 +1130,7 @@ class Missions(object):
                         "frame": Path(frame_path).name
                     }
 
-                    if self.keras and not self.basic:
+                    if classifier:
                         logger.debug(f"Analyzer: 智能模式 ...")
                         template_file = await ask_get_template(self.alien)
                         original_inform = reporter.draw(
@@ -1070,7 +1139,7 @@ class Missions(object):
                             template_file=template_file,
                         )
                         result["extra"] = Path(extra_path).name
-                        result["proto"] = Path(original_inform)
+                        result["proto"] = Path(original_inform).name
                     else:
                         logger.debug(f"Analyzer: 基础模式 ...")
 
@@ -1078,7 +1147,7 @@ class Missions(object):
                     reporter.load(result)
 
                     with DataBase(os.path.join(os.path.dirname(total_path), "Nexa_Recovery", "Framix_Data.db")) as database:
-                        if self.keras and not self.basic:
+                        if classifier:
                             column_list = [
                                 'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
                             ]
@@ -1129,6 +1198,7 @@ class Missions(object):
         reporter.title = f"{input_title}_{const_title}"
 
         deploy = Deploy(self.initial_deploy)
+        deploy.alone = self.alone
         deploy.boost = self.boost
         deploy.color = self.color
         deploy.group = self.group
@@ -1178,7 +1248,7 @@ class Missions(object):
                                 reporter.range_list[0]["proto"]
                             except KeyError:
                                 logger.debug(f"View Report Combines ...")
-                                await self.combines_view([os.path.dirname(reporter.total_path)])
+                                await self.combines_view([os.path.dirname(reporter.total_path)], deploy.group)
                             else:
                                 logger.debug(f"Main Report Combines ...")
                                 await self.combines_main([os.path.dirname(reporter.total_path)], deploy.group)
@@ -1242,6 +1312,29 @@ def get_template(template_path: str):
     return template_file
 
 
+def examine_flip(start: int | float, close: int | float, limit: int | float, duration: int | float):
+    """
+    校验视频剪辑参数
+    :param start: 开始时间
+    :param close: 结束时间
+    :param limit: 持续时间
+    :param duration: 视频时间
+    :return: 校验结果
+    """
+    start_point = close_point = limit_point = None
+    if start:
+        if start == duration:
+            return start_point, close_point, limit_point
+        start_point = max(0, min(start, duration))
+
+    if close:
+        close_point = max(start_point, min(close, duration)) if start else max(0, min(close, duration))
+    elif limit:
+        limit_point = max(0, min(limit, duration - start)) if start else max(0, min(limit, duration))
+
+    return start_point, close_point, limit_point
+
+
 async def ask_get_template(template_path: str):
     try:
         async with aiofiles.open(template_path, mode="r", encoding="utf-8") as f:
@@ -1260,10 +1353,10 @@ async def ask_video_change(ffmpeg, fps: int, src: str, dst: str, **kwargs):
 
     if start:
         cmd += ["-ss", start]
-    if limit and not close:
-        cmd += ["-t", limit]
-    else:
+    if close:
         cmd += ["-to", close]
+    elif limit:
+        cmd += ["-t", limit]
     cmd += ["-i", src]
     cmd += ["-vf", f"fps={fps}", "-c:v", "libx264", "-crf", "18", "-c:a", "copy", dst]
 
@@ -1279,13 +1372,13 @@ async def ask_video_detach(ffmpeg, video_filter: list, src: str, dst: str, **kwa
 
     if start:
         cmd += ["-ss", start]
-    if limit and not close:
-        cmd += ["-t", limit]
-    else:
+    if close:
         cmd += ["-to", close]
+    elif limit:
+        cmd += ["-t", limit]
     cmd += ["-i", src]
     cmd += ["-vf", ",".join(video_filter), f"{os.path.join(dst, 'frame_%05d.png')}"]
-
+    # Show.console.print(cmd)
     await Terminal.cmd_line(*cmd)
 
 
@@ -1298,10 +1391,10 @@ async def ask_video_tailor(ffmpeg, src: str, dst: str, **kwargs):
 
     if start:
         cmd += ["-ss", start]
-    if limit and not close:
-        cmd += ["-t", limit]
-    else:
+    if close:
         cmd += ["-to", close]
+    elif limit:
+        cmd += ["-t", limit]
     cmd += ["-i", src]
     cmd += ["-c", "copy", dst]
 
@@ -1398,9 +1491,25 @@ async def analyzer(
             os.path.dirname(vision_path),
             f"screen_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
         )
+
+        duration = await ask_video_length(ffprobe, vision_path)
+        looper = asyncio.get_event_loop()
+        duration_result = looper.run_in_executor(
+            None, examine_flip,
+            deploy.parse_mills(deploy.start),
+            deploy.parse_mills(deploy.close), deploy.parse_mills(deploy.limit),
+            duration
+        )
+        vision_start, vision_close, vision_limit = await duration_result
+        vision_start = deploy.parse_times(vision_start)
+        vision_close = deploy.parse_times(vision_close)
+        vision_limit = deploy.parse_times(vision_limit)
+        logger.info(f"视频时长: [{duration}] [{deploy.parse_times(duration)}]")
+        logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
+
         await ask_video_change(
             ffmpeg, deploy.fps, vision_path, change_record,
-            start=deploy.start, close=deploy.close, limit=deploy.limit
+            start=vision_start, close=vision_close, limit=vision_limit
         )
         logger.info(f"视频转换完成: {os.path.basename(change_record)}")
         os.remove(vision_path)
@@ -1427,16 +1536,23 @@ async def analyzer(
         video, task, hued = await frame_flip()
         cutter = VideoCutter()
 
+        compress_hook = CompressHook(
+            compress_rate=1.0,
+            target_size=None,
+            not_grey=False
+        )
+        cutter.add_hook(compress_hook)
+
         if len(deploy.crops) > 0:
             for crop in deploy.crops:
                 x, y, x_size, y_size = crop
-                crop_hook = CropHook((y_size, x_size), (y, x))
+                crop_hook = PaintCropHook((y_size, x_size), (y, x))
                 cutter.add_hook(crop_hook)
 
         if len(deploy.omits) > 0:
             for omit in deploy.omits:
                 x, y, x_size, y_size = omit
-                omit_hook = OmitHook((y_size, x_size), (y, x))
+                omit_hook = PaintOmitHook((y_size, x_size), (y, x))
                 cutter.add_hook(omit_hook)
 
         save_hook = FrameSaveHook(extra_path)
@@ -1454,19 +1570,26 @@ async def analyzer(
 
         files = os.listdir(extra_path)
         files.sort(key=lambda n: int(n.split("(")[0]))
-        total_images = len(files)
-        interval = total_images // 11 if total_images > 12 else 1
+        total_images, desired_count = len(files), 12
+        # 如果总图片数不超过12张，则无需删除
+        if total_images <= desired_count:
+            retain_indices = range(total_images)
+        else:
+            # 计算每隔多少张图片保留一张
+            interval = total_images / desired_count
+            retain_indices = [int(i * interval) for i in range(desired_count)]
+            # 为了确保恰好得到12张，调整最后一个索引
+            if len(retain_indices) < desired_count:
+                retain_indices.append(total_images - 1)
+            elif len(retain_indices) > desired_count:
+                retain_indices = retain_indices[:desired_count]
+        # 删除未被保留的图片
         for index, file in enumerate(files):
-            if index % interval != 0:
-                os.remove(
-                    os.path.join(extra_path, file)
-                )
-
-        draws = os.listdir(extra_path)
-        for draw in draws:
-            toolbox.draw_line(
-                os.path.join(extra_path, draw)
-            )
+            if index not in retain_indices:
+                os.remove(os.path.join(extra_path, file))
+        # 为保留下来的图片绘制分割线条
+        for draw in os.listdir(extra_path):
+            toolbox.draw_line(os.path.join(extra_path, draw))
 
         classify = kc.classify(
             video=video,
@@ -1624,9 +1747,13 @@ async def ask_main():
     elif cmd_lines.merge and len(cmd_lines.merge) > 0:
         await missions.combines_main(cmd_lines.merge, missions.group)
     elif cmd_lines.union and len(cmd_lines.union) > 0:
-        await missions.combines_view(cmd_lines.union)
+        await missions.combines_view(cmd_lines.union, missions.group)
     else:
         Show.help_document()
+
+
+async def ask_test():
+    pass
 
 
 if __name__ == '__main__':

@@ -42,19 +42,24 @@ class CompressHook(BaseHook):
         self,
         compress_rate: float = None,
         target_size: typing.Tuple[int, int] = None,
+        not_grey: bool = None,
         *_,
         **__,
     ):
         super().__init__(*_, **__)
         self.compress_rate = compress_rate
         self.target_size = target_size
+        self.not_grey = not_grey
         # logger.debug(f"compress rate: {compress_rate}")
         # logger.debug(f"target size: {target_size}")
 
     def do(self, frame: VideoFrame, *_, **__) -> typing.Optional[VideoFrame]:
         super().do(frame, *_, **__)
         frame.data = toolbox.compress_frame(
-            frame.data, compress_rate=self.compress_rate, target_size=self.target_size
+            frame.data,
+            compress_rate=self.compress_rate,
+            target_size=self.target_size,
+            not_grey=self.not_grey
         )
         return frame
 
