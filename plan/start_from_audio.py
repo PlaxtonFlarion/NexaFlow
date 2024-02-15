@@ -5,7 +5,7 @@ from nexaflow.skills.device import Manage
 from nexaflow.skills.alynex import Alynex
 
 AUDIO_DIRS = os.path.join(Constants.WORK, "audio")
-MODELS = os.path.join(Constants.WORK, "archivix", "molds", "model.h5")
+MODELS = os.path.join(Constants.WORK, "archivix", "molds", "Keras_Gray_W256_H256_16888.h5")
 REPORT = os.path.join(Constants.WORK, "report")
 TEMPLATE_MAIN_TOTAL = os.path.join(Constants.NEXA, "template", "template_main_total.html")
 TEMPLATE_MAIN = os.path.join(Constants.NEXA, "template", "template_main.html")

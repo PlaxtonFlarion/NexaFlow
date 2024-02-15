@@ -715,7 +715,7 @@ class Missions(object):
             logger.error(f"文件夹未正确分类 ...")
             return
 
-        image_color, image_aisle = "grayscale", 1
+        image, image_color, image_aisle = None, "grayscale", 1
         for image_file in os.listdir(real_path):
             image_path = os.path.join(real_path, image_file)
             if not os.path.isfile(image_path):
@@ -736,7 +736,9 @@ class Missions(object):
 
         final_path = os.path.dirname(real_path)
         new_model_path = os.path.join(final_path, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
-        new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
+        w, h = self.shape if self.shape else (image.shape if image else (0, 0))
+        name = "Gray" if image_aisle == 1 else "Hued"
+        new_model_name = f"Keras_{name}_W{w}_H{h}_{random.randint(10000, 99999)}.h5"
         fc = FramixClassifier(color=image_color, aisle=image_aisle, data_size=self.shape)
         fc.build(final_path, new_model_path, new_model_name)
 

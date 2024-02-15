@@ -226,7 +226,7 @@ class Report(object):
             logger.info(f"生成汇总报告: {total_html_path}\n\n")
 
     @staticmethod
-    def merge_report(merge_list: List[str], merge_loc: str, quick: bool) -> None:
+    def merge_report(merge_list: List[str], merge_loc: str, quick: bool = False) -> None:
         merge_path = os.path.join(
             os.path.dirname(os.path.dirname(merge_list[0])),
             "Merge_Report_" + time.strftime("%Y%m%d%H%M%S"),
