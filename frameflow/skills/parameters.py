@@ -10,7 +10,7 @@ from frameflow.skills.show import Show
 class Deploy(object):
 
     _deploys = {
-        "alone": False, "quick": False, "basic": False, "keras": False, "boost": False, "color": False, "group": False,
+        "alone": False, "group": False, "quick": False, "basic": False, "keras": False, "boost": False, "color": False,
         "shape": None, "scale": None, "start": None, "close": None, "limit": None, "begin": (0, 1), "final": (-1, -1),
         "model_size": (256, 256), "fps": 60, "threshold": 0.97, "offset": 3, "block": 6,
         "crops": [], "omits": []
@@ -387,10 +387,16 @@ class Deploy(object):
         table.add_column("效果", no_wrap=True)
 
         table.add_row(
-            f"[bold {col_1_color}]独立模式",
+            f"[bold {col_1_color}]独立控制",
             f"[bold {col_2_color}]{self.alone}",
             f"[bold][[bold {col_3_color}]T | F[/bold {col_3_color}] ]",
             f"[bold green]开启[/bold green]" if self.alone else "[bold red]关闭[/bold red]",
+        )
+        table.add_row(
+            f"[bold {col_1_color}]分组报告",
+            f"[bold {col_2_color}]{self.group}",
+            f"[bold][[bold {col_3_color}]T | F[/bold {col_3_color}] ]",
+            f"[bold green]开启[/bold green]" if self.group else "[bold red]关闭[/bold red]",
         )
         table.add_row(
             f"[bold {col_1_color}]快速模式",
@@ -421,12 +427,6 @@ class Deploy(object):
             f"[bold {col_2_color}]{self.color}",
             f"[bold][[bold {col_3_color}]T | F[/bold {col_3_color}] ]",
             f"[bold green]开启[/bold green]" if self.color else "[bold red]关闭[/bold red]",
-        )
-        table.add_row(
-            f"[bold {col_1_color}]分组模式",
-            f"[bold {col_2_color}]{self.group}",
-            f"[bold][[bold {col_3_color}]T | F[/bold {col_3_color}] ]",
-            f"[bold green]开启[/bold green]" if self.group else "[bold red]关闭[/bold red]",
         )
         table.add_row(
             f"[bold {col_1_color}]图片尺寸",
@@ -495,7 +495,7 @@ class Deploy(object):
             f"[bold]合并 [bold yellow]{self.offset}[/bold yellow] 个变化不大的稳定区间",
         )
         table.add_row(
-            f"[bold {col_1_color}]切分程度",
+            f"[bold {col_1_color}]切分图像",
             f"[bold {col_2_color}]{self.block}",
             f"[bold][[bold {col_3_color}]1 , ?[/bold {col_3_color}] ]",
             f"[bold]每个帧图像切分为 [bold yellow]{self.block}[/bold yellow] 块",
@@ -548,8 +548,6 @@ class Option(object):
         try:
             with open(file=option_file, mode="r", encoding="utf-8") as f:
                 data = json.loads(f.read())
-            self.total_path = data.get("Total Path", "")
-            self.model_name = data.get("Model Name", "")
         except FileNotFoundError:
             logger.debug(f"未找到配置文件,使用默认配置 ...")
             self.dump_option(option_file)
@@ -559,6 +557,8 @@ class Option(object):
             logger.error(f"发生未知错误 {e}")
         else:
             logger.info(f"读取配置文件,使用配置参数 ...")
+            self.total_path = data.get("Total Path", "")
+            self.model_name = data.get("Model Name", "")
 
     def dump_option(self, option_file: str) -> None:
         os.makedirs(os.path.dirname(option_file), exist_ok=True)

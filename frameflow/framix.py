@@ -171,11 +171,11 @@ class Parser(object):
         parser.add_argument('--train', action='append', help='归类图片文件')
         parser.add_argument('--build', action='append', help='训练模型文件')
 
-        parser.add_argument('--alone', action='store_true', help='独立模式')
+        parser.add_argument('--alone', action='store_true', help='独立控制')
+        parser.add_argument('--group', action='store_true', help='分组报告')
         parser.add_argument('--quick', action='store_true', help='快速模式')
         parser.add_argument('--basic', action='store_true', help='基础模式')
         parser.add_argument('--keras', action='store_true', help='智能模式')
-        parser.add_argument('--group', action='store_true', help='分组模式')
 
         parser.add_argument('--boost', action='store_true', help='跳帧模式')
         parser.add_argument('--color', action='store_true', help='彩色模式')
@@ -247,14 +247,14 @@ class Missions(object):
         shutil.copy(video_file, new_video_path)
 
         deploy = Deploy(self.initial_deploy)
-
+        deploy.alone = self.alone
+        deploy.group = self.group
         deploy.quick = self.quick
         deploy.basic = self.basic
         deploy.keras = self.keras
 
         deploy.boost = self.boost
         deploy.color = self.color
-        deploy.group = self.group
 
         deploy.shape = self.shape if "--shape" in self.lines else deploy.shape
         deploy.scale = self.scale if "--scale" in self.lines else deploy.scale
@@ -342,9 +342,6 @@ class Missions(object):
             logger.info(f"Framix Analyzer: 基础模式 ...")
             kc = None
 
-        if not deploy.shape and not deploy.scale:
-            deploy.scale = self.COMPRESS
-
         futures = looper.run_until_complete(
             analyzer(
                 new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
@@ -414,14 +411,14 @@ class Missions(object):
         reporter = Report(total_path=self.initial_report)
 
         deploy = Deploy(self.initial_deploy)
-
+        deploy.alone = self.alone
+        deploy.group = self.group
         deploy.quick = self.quick
         deploy.basic = self.basic
         deploy.keras = self.keras
 
         deploy.boost = self.boost
         deploy.color = self.color
-        deploy.group = self.group
 
         deploy.shape = self.shape if "--shape" in self.lines else deploy.shape
         deploy.scale = self.scale if "--scale" in self.lines else deploy.scale
@@ -523,9 +520,6 @@ class Missions(object):
                 shutil.copy(path, reporter.video_path)
                 new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
 
-                if not deploy.shape and not deploy.scale:
-                    deploy.scale = self.COMPRESS
-
                 futures = looper.run_until_complete(
                     analyzer(
                         new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
@@ -609,14 +603,14 @@ class Missions(object):
             os.makedirs(reporter.query_path, exist_ok=True)
 
         deploy = Deploy(self.initial_deploy)
-
+        deploy.alone = self.alone
+        deploy.group = self.group
         deploy.quick = self.quick
         deploy.basic = self.basic
         deploy.keras = self.keras
 
         deploy.boost = self.boost
         deploy.color = self.color
-        deploy.group = self.group
 
         deploy.shape = self.shape if "--shape" in self.lines else deploy.shape
         deploy.scale = self.scale if "--scale" in self.lines else deploy.scale
@@ -672,8 +666,22 @@ class Missions(object):
             offset=deploy.offset
         )
 
-        if not deploy.shape and not deploy.scale:
-            deploy.scale = self.COMPRESS
+        if deploy.shape:
+            original_shape = looper.run_until_complete(
+                ask_video_larger(self.ffprobe, video_file)
+            )
+            w, h, ratio = looper.run_until_complete(
+                ask_magic_frame(original_shape, deploy.shape)
+            )
+            target_shape = w, h
+            target_scale = deploy.scale
+            logger.info(f"调整宽高比: {w} x {h}")
+        elif deploy.scale:
+            target_shape = deploy.shape
+            target_scale = max(0.1, min(1.0, deploy.scale))
+        else:
+            target_shape = deploy.shape
+            target_scale = self.COMPRESS
 
         res.pick_and_save(
             range_list=stable,
@@ -681,8 +689,8 @@ class Missions(object):
             to_dir=reporter.query_path,
             meaningful_name=True,
             not_grey=deploy.color,
-            compress_rate=deploy.scale,
-            target_size=deploy.shape
+            compress_rate=target_scale,
+            target_size=target_shape
         )
 
         os.remove(video_temp_file)
@@ -1177,9 +1185,6 @@ class Missions(object):
 
             # 基础模式 or 智能模式
             elif deploy.basic or deploy.keras:
-                if not deploy.shape and not deploy.scale:
-                    deploy.scale = self.COMPRESS
-
                 futures = await asyncio.gather(
                     *(analyzer(
                         temp_video, deploy, kc, frame_path, extra_path,
@@ -1598,16 +1603,21 @@ async def analyzer(
             original_shape = await ask_video_larger(ffprobe, change_record)
             w, h, ratio = await ask_magic_frame(original_shape, deploy.shape)
             target_shape = w, h
+            target_scale = deploy.scale
             logger.info(f"调整宽高比: {w} x {h}")
+        elif deploy.scale:
+            target_shape = deploy.shape
+            target_scale = max(0.1, min(1.0, deploy.scale))
         else:
             target_shape = deploy.shape
+            target_scale = 0.4
 
         video = VideoObject(change_record)
         task, hued = video.load_frames(
             silently_load_hued=deploy.color,
             not_transform_gray=False,
             shape=target_shape,
-            scale=deploy.scale
+            scale=target_scale
         )
         return video, task, hued
 
@@ -1839,14 +1849,14 @@ async def analyzer(
 
 async def ask_main():
     deploy = Deploy(missions.initial_deploy)
-
+    deploy.alone = missions.alone
+    deploy.group = missions.group
     deploy.quick = missions.quick
     deploy.basic = missions.basic
     deploy.keras = missions.keras
 
     deploy.boost = missions.boost
     deploy.color = missions.color
-    deploy.group = missions.group
 
     deploy.shape = missions.shape if "--shape" in missions.lines else deploy.shape
     deploy.scale = missions.scale if "--scale" in missions.lines else deploy.scale
