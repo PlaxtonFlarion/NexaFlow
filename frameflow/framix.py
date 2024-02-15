@@ -48,7 +48,7 @@ else:
     sys.exit(1)
 
 _tools_path = os.path.join(_job_path, "archivix", "tools")
-_model_path = os.path.join(_job_path, "archivix", "molds", "model.h5")
+_model_path = os.path.join(_job_path, "archivix", "molds")
 _main_total_temp = os.path.join(_job_path, "archivix", "pages", "template_main_total.html")
 _main_temp = os.path.join(_job_path, "archivix", "pages", "template_main.html")
 _view_total_temp = os.path.join(_job_path, "archivix", "pages", "template_view_total.html")
@@ -146,6 +146,19 @@ class Parser(object):
         return None
 
     @staticmethod
+    def parse_stage(dim_str):
+        stage_parts = []
+        parts = re.split(r"[.,;:\s]+", dim_str)
+        match_parts = [part for part in parts if re.match(r"-?\d+(\.\d+)?", part)]
+        for number in match_parts:
+            try:
+                stage_parts.append(int(number))
+            except ValueError:
+                stage_parts = []
+                break
+        return tuple(stage_parts[:2]) if len(stage_parts) >= 2 else None
+
+    @staticmethod
     def parse_cmd():
         parser = ArgumentParser(description="Command Line Arguments Framix")
 
@@ -168,6 +181,8 @@ class Parser(object):
         parser.add_argument('--color', action='store_true', help='彩色模式')
         parser.add_argument('--shape', nargs='?', const=None, type=Parser.parse_sizes, help='图片尺寸')
         parser.add_argument('--scale', nargs='?', const=None, type=Parser.parse_scale, help='缩放比例')
+        parser.add_argument('--begin', nargs='?', const=None, type=Parser.parse_stage, help='开始帧')
+        parser.add_argument('--final', nargs='?', const=None, type=Parser.parse_stage, help='结束帧')
         parser.add_argument('--start', nargs='?', const=None, type=Parser.parse_mills, help='开始时间')
         parser.add_argument('--close', nargs='?', const=None, type=Parser.parse_mills, help='结束时间')
         parser.add_argument('--limit', nargs='?', const=None, type=Parser.parse_mills, help='持续时间')
@@ -182,14 +197,15 @@ class Parser(object):
 
 class Missions(object):
 
-    COMPRESS: int | float = 0.4
+    COMPRESS: int | float = 0.4  # 默认压缩率
 
     def __init__(self, alone: bool, quick: bool, basic: bool, keras: bool, group: bool, *args, **kwargs):
         self.alone, self.quick, self.basic, self.keras, self.group = alone, quick, basic, keras, group
         self.boost, self.color, self.shape, self.scale, *_ = args
-        *_, self.start, self.close, self.limit, _, _ = args
+        *_, self.start, self.close, self.limit, self.begin, self.final, _, _ = args
         *_, self.crops, self.omits = args
 
+        self.lines = kwargs["lines"]
         self.model_path = kwargs["model_path"]
         self.main_total_temp = kwargs["main_total_temp"]
         self.main_temp = kwargs["main_temp"]
@@ -203,9 +219,6 @@ class Missions(object):
         self.ffmpeg = kwargs["ffmpeg"]
         self.ffprobe = kwargs["ffprobe"]
         self.scrcpy = kwargs["scrcpy"]
-
-        if not self.shape and not self.scale:
-            self.scale = self.COMPRESS
 
     @staticmethod
     def only_video(folder: str):
@@ -234,20 +247,29 @@ class Missions(object):
         shutil.copy(video_file, new_video_path)
 
         deploy = Deploy(self.initial_deploy)
+
+        deploy.quick = self.quick
+        deploy.basic = self.basic
+        deploy.keras = self.keras
+
         deploy.boost = self.boost
         deploy.color = self.color
         deploy.group = self.group
-        deploy.shape = self.shape
-        deploy.scale = self.scale
-        deploy.start = self.start
-        deploy.close = self.close
-        deploy.limit = self.limit
-        deploy.crops = self.crops
-        deploy.omits = self.omits
+
+        deploy.shape = self.shape if "--shape" in self.lines else deploy.shape
+        deploy.scale = self.scale if "--scale" in self.lines else deploy.scale
+        deploy.start = self.start if "--start" in self.lines else deploy.start
+        deploy.close = self.close if "--close" in self.lines else deploy.close
+        deploy.limit = self.limit if "--limit" in self.lines else deploy.limit
+        deploy.begin = self.begin if "--begin" in self.lines else deploy.begin
+        deploy.final = self.final if "--final" in self.lines else deploy.final
+
+        deploy.crops = self.crops if "--crops" in self.lines else deploy.crops
+        deploy.omits = self.omits if "--omits" in self.lines else deploy.omits
 
         looper = asyncio.get_event_loop()
 
-        if self.quick:
+        if deploy.quick:
             logger.info(f"Framix Analyzer: 快速模式 ...")
             video_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
             if deploy.shape:
@@ -308,14 +330,20 @@ class Missions(object):
             )
             return reporter.total_path
 
-        elif self.keras and not self.basic:
+        elif deploy.keras and not deploy.basic:
             logger.info(f"Framix Analyzer: 智能模式 ...")
             kc = KerasClassifier(data_size=deploy.model_size)
-            kc.load_model(self.model_path)
-
+            try:
+                kc.load_model(self.model_path)
+            except ValueError as e:
+                logger.error(f"发生 {e}")
+                kc = None
         else:
             logger.info(f"Framix Analyzer: 基础模式 ...")
             kc = None
+
+        if not deploy.shape and not deploy.scale:
+            deploy.scale = self.COMPRESS
 
         futures = looper.run_until_complete(
             analyzer(
@@ -386,21 +414,29 @@ class Missions(object):
         reporter = Report(total_path=self.initial_report)
 
         deploy = Deploy(self.initial_deploy)
-        deploy.alone = self.alone
+
+        deploy.quick = self.quick
+        deploy.basic = self.basic
+        deploy.keras = self.keras
+
         deploy.boost = self.boost
         deploy.color = self.color
         deploy.group = self.group
-        deploy.shape = self.shape
-        deploy.scale = self.scale
-        deploy.start = self.start
-        deploy.close = self.close
-        deploy.limit = self.limit
-        deploy.crops = self.crops
-        deploy.omits = self.omits
+
+        deploy.shape = self.shape if "--shape" in self.lines else deploy.shape
+        deploy.scale = self.scale if "--scale" in self.lines else deploy.scale
+        deploy.start = self.start if "--start" in self.lines else deploy.start
+        deploy.close = self.close if "--close" in self.lines else deploy.close
+        deploy.limit = self.limit if "--limit" in self.lines else deploy.limit
+        deploy.begin = self.begin if "--begin" in self.lines else deploy.begin
+        deploy.final = self.final if "--final" in self.lines else deploy.final
+
+        deploy.crops = self.crops if "--crops" in self.lines else deploy.crops
+        deploy.omits = self.omits if "--omits" in self.lines else deploy.omits
 
         looper = asyncio.get_event_loop()
 
-        if self.quick:
+        if deploy.quick:
             logger.debug(f"Framix Analyzer: 快速模式 ...")
             for video in self.only_video(folder):
                 reporter.title = video.title
@@ -468,11 +504,14 @@ class Missions(object):
             )
             return reporter.total_path
 
-        elif self.keras and not self.basic:
+        elif deploy.keras and not deploy.basic:
             logger.info(f"Framix Analyzer: 智能模式 ...")
             kc = KerasClassifier(data_size=deploy.model_size)
-            kc.load_model(self.model_path)
-
+            try:
+                kc.load_model(self.model_path)
+            except ValueError as e:
+                logger.error(f"{e}")
+                kc = None
         else:
             logger.info(f"Framix Analyzer: 基础模式 ...")
             kc = None
@@ -483,6 +522,9 @@ class Missions(object):
                 reporter.query = os.path.basename(path).split(".")[0]
                 shutil.copy(path, reporter.video_path)
                 new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
+
+                if not deploy.shape and not deploy.scale:
+                    deploy.scale = self.COMPRESS
 
                 futures = looper.run_until_complete(
                     analyzer(
@@ -567,17 +609,25 @@ class Missions(object):
             os.makedirs(reporter.query_path, exist_ok=True)
 
         deploy = Deploy(self.initial_deploy)
-        deploy.alone = self.alone
+
+        deploy.quick = self.quick
+        deploy.basic = self.basic
+        deploy.keras = self.keras
+
         deploy.boost = self.boost
         deploy.color = self.color
         deploy.group = self.group
-        deploy.shape = self.shape
-        deploy.scale = self.scale
-        deploy.start = self.start
-        deploy.close = self.close
-        deploy.limit = self.limit
-        deploy.crops = self.crops
-        deploy.omits = self.omits
+
+        deploy.shape = self.shape if "--shape" in self.lines else deploy.shape
+        deploy.scale = self.scale if "--scale" in self.lines else deploy.scale
+        deploy.start = self.start if "--start" in self.lines else deploy.start
+        deploy.close = self.close if "--close" in self.lines else deploy.close
+        deploy.limit = self.limit if "--limit" in self.lines else deploy.limit
+        deploy.begin = self.begin if "--begin" in self.lines else deploy.begin
+        deploy.final = self.final if "--final" in self.lines else deploy.final
+
+        deploy.crops = self.crops if "--crops" in self.lines else deploy.crops
+        deploy.omits = self.omits if "--omits" in self.lines else deploy.omits
 
         video_temp_file = os.path.join(
             reporter.query_path, f"tmp_fps{deploy.fps}.mp4"
@@ -602,7 +652,7 @@ class Missions(object):
         asyncio.run(
             ask_video_change(
                 self.ffmpeg, deploy.fps, video_file, video_temp_file,
-                start=deploy.start, close=deploy.close, limit=deploy.limit
+                start=vision_start, close=vision_close, limit=vision_limit
             )
         )
 
@@ -621,6 +671,10 @@ class Missions(object):
             threshold=deploy.threshold,
             offset=deploy.offset
         )
+
+        if not deploy.shape and not deploy.scale:
+            deploy.scale = self.COMPRESS
+
         res.pick_and_save(
             range_list=stable,
             frame_count=20,
@@ -704,7 +758,7 @@ class Missions(object):
             if isinstance(e, Exception):
                 logger.error(e)
 
-    async def painting(self):
+    async def painting(self, deploy: Deploy):
         import tempfile
         from PIL import Image, ImageDraw, ImageFont
 
@@ -727,7 +781,7 @@ class Missions(object):
                     self.adb, "-s", serial, "pull", f"{image_folder}/{image}", image_save_path
                 )
 
-                if self.color:
+                if deploy.color:
                     old_image = toolbox.imread(image_save_path)
                     new_image = VideoFrame(0, 0, old_image)
                 else:
@@ -735,15 +789,15 @@ class Missions(object):
                     old_image = toolbox.turn_grey(old_image)
                     new_image = VideoFrame(0, 0, old_image)
 
-                if len(self.crops) > 0:
-                    for crop in self.crops:
+                if len(deploy.crops) > 0:
+                    for crop in deploy.crops:
                         if len(crop) == 4 and sum(crop) > 0:
                             x, y, x_size, y_size = crop
                         paint_crop_hook = PaintCropHook((y_size, x_size), (y, x))
                         paint_crop_hook.do(new_image)
 
-                if len(self.omits) > 0:
-                    for omit in self.omits:
+                if len(deploy.omits) > 0:
+                    for omit in deploy.omits:
                         if len(omit) == 4 and sum(omit) > 0:
                             x, y, x_size, y_size = omit
                             paint_omit_hook = PaintOmitHook((y_size, x_size), (y, x))
@@ -755,16 +809,16 @@ class Missions(object):
                 image_file = image_file.convert("RGB")
 
                 original_w, original_h = image_file.size
-                if self.shape:
-                    twist_w, twist_h, _ = await ask_magic_frame(image_file.size, self.shape)
+                if deploy.shape:
+                    twist_w, twist_h, _ = await ask_magic_frame(image_file.size, deploy.shape)
                 else:
                     twist_w, twist_h = original_w, original_h
 
                 min_scale, max_scale = 0.1, 1.0
-                if self.scale:
-                    image_scale = max_scale if self.shape else max(min_scale, min(max_scale, self.scale))
+                if deploy.scale:
+                    image_scale = max_scale if deploy.shape else max(min_scale, min(max_scale, deploy.scale))
                 else:
-                    image_scale = max_scale if self.shape else self.COMPRESS
+                    image_scale = max_scale if deploy.shape else self.COMPRESS
 
                 new_w, new_h = int(twist_w * image_scale), int(twist_h * image_scale)
                 logger.debug(
@@ -849,7 +903,7 @@ class Missions(object):
             else:
                 Show.console.print(f"[bold][bold red]没有该选项,请重新输入[/bold red] ...[/bold]\n")
 
-    async def analysis(self):
+    async def analysis(self, deploy: Deploy):
 
         device_events = {}
         all_stop_event = asyncio.Event()
@@ -961,7 +1015,7 @@ class Missions(object):
 
             todo_list = []
 
-            if self.quick or self.basic or self.keras:
+            if deploy.quick or deploy.basic or deploy.keras:
                 group_fmt_dirs = reporter.clock()
                 for device in device_list:
                     await asyncio.sleep(0.2)
@@ -1042,7 +1096,8 @@ class Missions(object):
             if len(task_list) == 0:
                 return False
 
-            if self.quick:
+            # 快速模式
+            if deploy.quick:
                 logger.debug(f"Framix Analyzer: 快速模式 ...")
                 video_filter_list = []
                 default_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
@@ -1120,7 +1175,11 @@ class Missions(object):
                     logger.debug(f"Quick: {result}")
                     reporter.load(result)
 
-            elif self.basic or self.keras:
+            # 基础模式 or 智能模式
+            elif deploy.basic or deploy.keras:
+                if not deploy.shape and not deploy.scale:
+                    deploy.scale = self.COMPRESS
+
                 futures = await asyncio.gather(
                     *(analyzer(
                         temp_video, deploy, kc, frame_path, extra_path,
@@ -1181,6 +1240,7 @@ class Missions(object):
                                 (total_path, title, query_path, query, json.dumps(stage), frame_path)
                             )
 
+            # 录制模式
             else:
                 logger.debug(f"Framix Analyzer: 录制模式 ...")
                 return False
@@ -1200,32 +1260,23 @@ class Missions(object):
 
         reporter = Report(self.initial_report)
         const_title = f"{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
-        if self.quick:
+        if deploy.quick:
             input_title = "Quick"
-        elif self.basic:
+        elif deploy.basic:
             input_title = "Basic"
-        elif self.keras:
+        elif deploy.keras:
             input_title = "Keras"
         else:
             input_title = "Video"
         reporter.title = f"{input_title}_{const_title}"
 
-        deploy = Deploy(self.initial_deploy)
-        deploy.alone = self.alone
-        deploy.boost = self.boost
-        deploy.color = self.color
-        deploy.group = self.group
-        deploy.shape = self.shape
-        deploy.scale = self.scale
-        deploy.start = self.start
-        deploy.close = self.close
-        deploy.limit = self.limit
-        deploy.crops = self.crops
-        deploy.omits = self.omits
-
-        if self.keras and not self.quick and not self.basic:
+        if deploy.keras and not deploy.quick and not deploy.basic:
             kc = KerasClassifier(data_size=deploy.model_size)
-            kc.load_model(self.model_path)
+            try:
+                kc.load_model(self.model_path)
+            except ValueError as e:
+                logger.error(f"{e}")
+                kc = None
         else:
             kc = None
         # Initialization ===============================================================================================
@@ -1565,7 +1616,7 @@ async def analyzer(
         cutter = VideoCutter()
 
         compress_hook = CompressHook(
-            compress_rate=1.0,
+            compress_rate=1,
             target_size=None,
             not_grey=False
         )
@@ -1659,16 +1710,35 @@ async def analyzer(
         return classify, frames
 
     async def frame_flick(classify):
+        logger.info(f"阶段划分: {classify.get_ordered_stage_set()}")
+        begin_stage, begin_frame = deploy.begin
+        final_stage, final_frame = deploy.final
         try:
-            start_frame = classify.get_not_stable_stage_range()[0][1]
-            end_frame = classify.get_not_stable_stage_range()[-1][-1]
-        except AssertionError:
+            start_frame = classify.get_not_stable_stage_range()[begin_stage][begin_frame]
+            end_frame = classify.get_not_stable_stage_range()[final_stage][final_frame]
+        except AssertionError as e:
+            logger.error(f"{e}")
             start_frame = classify.get_important_frame_list()[0]
             end_frame = classify.get_important_frame_list()[-1]
+            logger.warning(f"Framix Analyzer recalculate ...")
+        except IndexError as e:
+            logger.error(f"{e}")
+            for i, unstable_stage in enumerate(classify.get_specific_stage_range("-3")):
+                Show.console.print(f"[bold]第 {i:02} 个非稳定阶段:")
+                Show.console.print(f"[bold]{'=' * 30}")
+                for j, frame in enumerate(unstable_stage):
+                    Show.console.print(f"[bold]第 {j:05} 帧: {frame}")
+                Show.console.print(f"[bold]{'=' * 30}")
+                Show.console.print(f"\n")
+            start_frame = classify.get_important_frame_list()[0]
+            end_frame = classify.get_important_frame_list()[-1]
+            logger.warning(f"Framix Analyzer recalculate ...")
 
         if start_frame == end_frame:
+            logger.warning(f"{start_frame} == {end_frame}")
             start_frame = classify.data[0]
             end_frame = classify.data[-1]
+            logger.warning(f"Framix Analyzer recalculate ...")
 
         time_cost = end_frame.timestamp - start_frame.timestamp
         logger.info(
@@ -1768,10 +1838,31 @@ async def analyzer(
 
 
 async def ask_main():
+    deploy = Deploy(missions.initial_deploy)
+
+    deploy.quick = missions.quick
+    deploy.basic = missions.basic
+    deploy.keras = missions.keras
+
+    deploy.boost = missions.boost
+    deploy.color = missions.color
+    deploy.group = missions.group
+
+    deploy.shape = missions.shape if "--shape" in missions.lines else deploy.shape
+    deploy.scale = missions.scale if "--scale" in missions.lines else deploy.scale
+    deploy.start = missions.start if "--start" in missions.lines else deploy.start
+    deploy.close = missions.close if "--close" in missions.lines else deploy.close
+    deploy.limit = missions.limit if "--limit" in missions.lines else deploy.limit
+    deploy.begin = missions.begin if "--begin" in missions.lines else deploy.begin
+    deploy.final = missions.final if "--final" in missions.lines else deploy.final
+
+    deploy.crops = missions.crops if "--crops" in missions.lines else deploy.crops
+    deploy.omits = missions.omits if "--omits" in missions.lines else deploy.omits
+
     if cmd_lines.flick:
-        await missions.analysis()
+        await missions.analysis(deploy)
     elif cmd_lines.paint:
-        await missions.painting()
+        await missions.painting(deploy)
     elif cmd_lines.merge and len(cmd_lines.merge) > 0:
         await missions.combines_main(cmd_lines.merge, missions.group)
     elif cmd_lines.union and len(cmd_lines.union) > 0:
@@ -1789,6 +1880,8 @@ if __name__ == '__main__':
         Show.help_document()
         sys.exit(0)
 
+    lines = sys.argv[1:]
+
     from multiprocessing import Pool, freeze_support
 
     freeze_support()
@@ -1801,6 +1894,7 @@ if __name__ == '__main__':
 
     # Debug Mode =======================================================================================================
     logger.debug(f"Level: {_level}")
+    logger.debug(f"Lines: {lines}")
 
     logger.debug(f"System: {operation_system}")
     logger.debug(f"Worker: {work_platform}")
@@ -1839,6 +1933,9 @@ if __name__ == '__main__':
     _close = cmd_lines.close
     _limit = cmd_lines.limit
 
+    _begin = cmd_lines.begin
+    _final = cmd_lines.final
+
     # Debug Mode =======================================================================================================
     cpu = os.cpu_count()
     logger.debug(f"CPU Core: {cpu}")
@@ -1869,17 +1966,23 @@ if __name__ == '__main__':
 
     option = Option(_initial_option)
     _initial_report = option.total_path if option.total_path else _initial_report
+    _model_path = os.path.join(
+        _model_path, option.model_name
+    ) if option.model_name else os.path.join(
+        _model_path, "model.h5"
+    )
 
     # Debug Mode =======================================================================================================
     logger.debug(f"Initial-Report: {_initial_report}")
     logger.debug(f"Initial-Deploy: {_initial_deploy}")
     logger.debug(f"Initial-Option: {_initial_option}")
+    logger.debug(f"Model-Path: {_model_path}")
     # Debug Mode =======================================================================================================
 
     missions = Missions(
         _alone, _quick, _basic, _keras, _group,
-        _boost, _color, _shape, _scale, _start, _close, _limit, _crops, _omits,
-        model_path=_model_path,
+        _boost, _color, _shape, _scale, _start, _close, _limit, _begin, _final, _crops, _omits,
+        lines=lines, model_path=_model_path,
         main_total_temp=_main_total_temp, main_temp=_main_temp,
         view_total_temp=_view_total_temp, view_temp=_view_temp,
         alien=_alien,

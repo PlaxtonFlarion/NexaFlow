@@ -39,7 +39,7 @@ class KerasClassifier(BaseModelClassifier):
         self._model: typing.Optional[keras.Sequential] = None
         # 配置
         self.score_threshold: float = score_threshold or 0.0
-        self.data_size: typing.Sequence[int] = data_size or (200, 200)
+        self.data_size: typing.Sequence[int] = data_size or (256, 256)
         self.nb_train_samples: int = nb_train_samples or 64
         self.nb_validation_samples: int = nb_validation_samples or 64
         self.epochs: int = epochs or 20

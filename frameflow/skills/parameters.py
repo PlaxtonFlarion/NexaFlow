@@ -10,22 +10,10 @@ from frameflow.skills.show import Show
 class Deploy(object):
 
     _deploys = {
-        "alone": False,
-        "boost": False,
-        "color": False,
-        "group": False,
-        "shape": None,
-        "scale": None,
-        "start": None,
-        "close": None,
-        "limit": None,
-        "model_size": (350, 700),
-        "fps": 60,
-        "threshold": 0.97,
-        "offset": 3,
-        "block": 6,
-        "crops": [],
-        "omits": []
+        "alone": False, "quick": False, "basic": False, "keras": False, "boost": False, "color": False, "group": False,
+        "shape": None, "scale": None, "start": None, "close": None, "limit": None, "begin": (0, 1), "final": (-1, -1),
+        "model_size": (256, 256), "fps": 60, "threshold": 0.97, "offset": 3, "block": 6,
+        "crops": [], "omits": []
     }
 
     def __init__(self, deploy_file: str):
@@ -34,6 +22,18 @@ class Deploy(object):
     @property
     def alone(self):
         return self._deploys["alone"]
+
+    @property
+    def quick(self):
+        return self._deploys["quick"]
+
+    @property
+    def basic(self):
+        return self._deploys["basic"]
+
+    @property
+    def keras(self):
+        return self._deploys["keras"]
 
     @property
     def boost(self):
@@ -68,6 +68,14 @@ class Deploy(object):
         return self._deploys["limit"]
 
     @property
+    def begin(self):
+        return self._deploys["begin"]
+
+    @property
+    def final(self):
+        return self._deploys["final"]
+
+    @property
     def model_size(self):
         return self._deploys["model_size"]
 
@@ -99,6 +107,18 @@ class Deploy(object):
     def alone(self, value):
         self._deploys["alone"] = self.parse_bools(value)
 
+    @quick.setter
+    def quick(self, value):
+        self._deploys["quick"] = self.parse_bools(value)
+
+    @basic.setter
+    def basic(self, value):
+        self._deploys["basic"] = self.parse_bools(value)
+
+    @keras.setter
+    def keras(self, value):
+        self._deploys["keras"] = self.parse_bools(value)
+
     @boost.setter
     def boost(self, value):
         self._deploys["boost"] = self.parse_bools(value)
@@ -119,7 +139,7 @@ class Deploy(object):
     def scale(self, value):
         try:
             self._deploys["scale"] = round(max(0.1, min(1.0, float(value))), 2)
-        except ValueError:
+        except (ValueError, TypeError):
             self._deploys["scale"] = None
 
     @start.setter
@@ -134,6 +154,16 @@ class Deploy(object):
     def limit(self, value):
         self._deploys["limit"] = self.parse_times(value)
 
+    @begin.setter
+    def begin(self, value):
+        if effective := self.parse_stage(value):
+            self._deploys["begin"] = effective
+
+    @final.setter
+    def final(self, value):
+        if effective := self.parse_stage(value):
+            self._deploys["final"] = effective
+
     @model_size.setter
     def model_size(self, value):
         self._deploys["model_size"] = self.parse_sizes(value)
@@ -142,28 +172,28 @@ class Deploy(object):
     def fps(self, value):
         try:
             self._deploys["fps"] = max(1, min(60, int(value)))
-        except ValueError:
+        except (ValueError, TypeError):
             self._deploys["fps"] = 60
 
     @threshold.setter
     def threshold(self, value):
         try:
             self._deploys["threshold"] = round(max(0.1, min(1.0, float(value))), 2)
-        except ValueError:
+        except (ValueError, TypeError):
             self._deploys["threshold"] = 0.97
 
     @offset.setter
     def offset(self, value):
         try:
             self._deploys["offset"] = max(1, int(value))
-        except ValueError:
+        except (ValueError, TypeError):
             self._deploys["offset"] = 3
 
     @block.setter
     def block(self, value):
         try:
             self._deploys["block"] = max(1, int(value))
-        except ValueError:
+        except (ValueError, TypeError):
             self._deploys["block"] = 6
 
     @crops.setter
@@ -256,6 +286,24 @@ class Deploy(object):
                 return float(dim_str)
         return None
 
+    @staticmethod
+    def parse_stage(dim_str):
+        if isinstance(dim_str, tuple):
+            return dim_str
+        elif isinstance(dim_str, str):
+            stage_parts = []
+            parts = re.split(r"[.,;:\s]+", dim_str)
+            match_parts = [part for part in parts if re.match(r"-?\d+(\.\d+)?", part)]
+            for number in match_parts:
+                try:
+                    stage_parts.append(int(number))
+                except ValueError:
+                    stage_parts = []
+                    break
+            return tuple(stage_parts[:2]) if len(stage_parts) >= 2 else None
+        else:
+            return None
+
     def dump_deploy(self, deploy_file: str) -> None:
         os.makedirs(os.path.dirname(deploy_file), exist_ok=True)
 
@@ -265,9 +313,9 @@ class Deploy(object):
                 f.writelines('\n')
                 if isinstance(v, bool) or v is None:
                     f.writelines(f'    "{k}": "{v}",')
-                elif k == "model_size" or k == "shape" or k == "start" or k == "close" or k == "limit":
+                elif isinstance(v, tuple):
                     f.writelines(f'    "{k}": "{v}",')
-                elif k == "crops" or k == "omits":
+                elif isinstance(v, list):
                     if len(v) == 0:
                         default = '{"x": 0, "y": 0, "x_size": 0, "y_size": 0}'
                         f.writelines(f'    "{k}": [\n')
@@ -291,30 +339,35 @@ class Deploy(object):
         try:
             with open(file=deploy_file, mode="r", encoding="utf-8") as f:
                 data = json.loads(f.read())
-                self.alone = data.get("alone", "false")
-                self.boost = data.get("boost", "false")
-                self.color = data.get("color", "false")
-                self.group = data.get("group", "false")
-                self.shape = data.get("shape", None)
-                self.scale = data.get("scale", None)
-                self.start = data.get("start", None)
-                self.close = data.get("close", None)
-                self.limit = data.get("limit", None)
-                self.model_size = data.get("model_size", (350, 700))
-                self.fps = data.get("fps", 60)
-                self.threshold = data.get("threshold", 0.97)
-                self.offset = data.get("offset", 3)
-                self.block = data.get("block", 6)
-                self.crops = data.get("crops", [])
-                self.omits = data.get("omits", [])
+            self.alone = data.get("alone", "false")
+            self.quick = data.get("quick", "false")
+            self.basic = data.get("basic", "false")
+            self.keras = data.get("keras", "false")
+            self.boost = data.get("boost", "false")
+            self.color = data.get("color", "false")
+            self.group = data.get("group", "false")
+            self.shape = data.get("shape", None)
+            self.scale = data.get("scale", None)
+            self.start = data.get("start", None)
+            self.close = data.get("close", None)
+            self.limit = data.get("limit", None)
+            self.begin = data.get("begin", (0, 1))
+            self.final = data.get("final", (-1, -1))
+            self.model_size = data.get("model_size", (256, 256))
+            self.fps = data.get("fps", 60)
+            self.threshold = data.get("threshold", 0.97)
+            self.offset = data.get("offset", 3)
+            self.block = data.get("block", 6)
+            self.crops = data.get("crops", [])
+            self.omits = data.get("omits", [])
         except FileNotFoundError:
-            logger.debug("未找到部署文件,使用默认参数 ...")
+            logger.debug(f"未找到部署文件,使用默认参数 ...")
         except json.decoder.JSONDecodeError:
-            logger.warning("部署文件解析错误,文件格式不正确,使用默认参数 ...")
+            logger.warning(f"部署文件解析错误,文件格式不正确,使用默认参数 ...")
         except Exception as e:
-            logger.error(e)
+            logger.error(f"发生未知错误 {e}")
         else:
-            logger.info("读取部署文件,使用部署参数 ...")
+            logger.info(f"读取部署文件,使用部署参数 ...")
 
     def view_deploy(self) -> None:
 
@@ -338,6 +391,24 @@ class Deploy(object):
             f"[bold {col_2_color}]{self.alone}",
             f"[bold][[bold {col_3_color}]T | F[/bold {col_3_color}] ]",
             f"[bold green]开启[/bold green]" if self.alone else "[bold red]关闭[/bold red]",
+        )
+        table.add_row(
+            f"[bold {col_1_color}]快速模式",
+            f"[bold {col_2_color}]{self.quick}",
+            f"[bold][[bold {col_3_color}]T | F[/bold {col_3_color}] ]",
+            f"[bold green]开启[/bold green]" if self.quick else "[bold red]关闭[/bold red]",
+        )
+        table.add_row(
+            f"[bold {col_1_color}]基础模式",
+            f"[bold {col_2_color}]{self.basic}",
+            f"[bold][[bold {col_3_color}]T | F[/bold {col_3_color}] ]",
+            f"[bold green]开启[/bold green]" if self.basic else "[bold red]关闭[/bold red]",
+        )
+        table.add_row(
+            f"[bold {col_1_color}]智能模式",
+            f"[bold {col_2_color}]{self.keras}",
+            f"[bold][[bold {col_3_color}]T | F[/bold {col_3_color}] ]",
+            f"[bold green]开启[/bold green]" if self.keras else "[bold red]关闭[/bold red]",
         )
         table.add_row(
             f"[bold {col_1_color}]跳帧模式",
@@ -388,6 +459,18 @@ class Deploy(object):
             f"[bold]持续时间 [bold yellow]{self.limit}[/bold yellow]" if self.limit else f"[bold green]自动[/bold green]",
         )
         table.add_row(
+            f"[bold {col_1_color}]开始帧",
+            f"[bold {col_2_color}]{self.begin}",
+            f"[bold][[bold {col_3_color}]? , ?[/bold {col_3_color}] ]",
+            f"[bold]第 [bold yellow]{self.begin[0]}[/bold yellow] 个非稳态,第 [bold yellow]{self.begin[1]}[/bold yellow] 帧",
+        )
+        table.add_row(
+            f"[bold {col_1_color}]结束帧",
+            f"[bold {col_2_color}]{self.final}",
+            f"[bold][[bold {col_3_color}]? , ?[/bold {col_3_color}] ]",
+            f"[bold]第 [bold yellow]{self.final[0]}[/bold yellow] 个非稳态,第 [bold yellow]{self.final[1]}[/bold yellow] 帧",
+        )
+        table.add_row(
             f"[bold {col_1_color}]模型尺寸",
             f"[bold {col_2_color}]{self.model_size}",
             f"[bold][[bold {col_3_color}]? , ?[/bold {col_3_color}] ]",
@@ -435,7 +518,8 @@ class Deploy(object):
 class Option(object):
 
     _options = {
-        "Total Path": ""
+        "Total Path": "",
+        "Model Name": ""
     }
 
     def __init__(self, option_file: str):
@@ -445,6 +529,10 @@ class Option(object):
     def total_path(self):
         return self._options["Total Path"]
 
+    @property
+    def model_name(self):
+        return self._options["Model Name"]
+
     @total_path.setter
     def total_path(self, value):
         if value and os.path.isdir(value):
@@ -452,29 +540,44 @@ class Option(object):
                 os.makedirs(value, exist_ok=True)
             self._options["Total Path"] = value
 
+    @model_name.setter
+    def model_name(self, value):
+        self._options["Model Name"] = value
+
     def load_option(self, option_file: str) -> None:
         try:
             with open(file=option_file, mode="r", encoding="utf-8") as f:
                 data = json.loads(f.read())
+            self.total_path = data.get("Total Path", "")
+            self.model_name = data.get("Model Name", "")
         except FileNotFoundError:
-            logger.debug("未找到配置文件,使用默认路径 ...")
+            logger.debug(f"未找到配置文件,使用默认配置 ...")
             self.dump_option(option_file)
         except json.decoder.JSONDecodeError:
-            logger.debug("配置文件解析错误,文件格式不正确,使用默认路径 ...")
+            logger.warning(f"配置文件解析错误,文件格式不正确,使用默认配置 ...")
+        except Exception as e:
+            logger.error(f"发生未知错误 {e}")
         else:
-            logger.debug("读取配置文件,使用配置参数 ...")
-            self.total_path = data.get("Total Path", "")
+            logger.info(f"读取配置文件,使用配置参数 ...")
 
     def dump_option(self, option_file: str) -> None:
         os.makedirs(os.path.dirname(option_file), exist_ok=True)
+        option_length = len(self._options)
 
         with open(file=option_file, mode="w", encoding="utf-8") as f:
             f.writelines('{')
-            for k, v in self._options.items():
+            for index, (k, v) in enumerate(self._options.items()):
                 f.writelines('\n')
-                f.writelines(f'    "{k}": "{v}"')
+                index += 1
+                if index == option_length:
+                    f.writelines(f'    "{k}": "{v}"')
+                else:
+                    f.writelines(f'    "{k}": "{v}",')
             f.writelines('\n}')
 
 
 if __name__ == '__main__':
+    d = Deploy("/Users/acekeppel/PycharmProjects/NexaFlow/data/deploy.json")
+    d.dump_deploy("/Users/acekeppel/PycharmProjects/NexaFlow/data/deploy.json")
+    d.view_deploy()
     pass

@@ -21,7 +21,7 @@ class FramixClassifier(object):
 
         self.color: str = color or "grayscale"
         self.aisle: int = aisle or 1
-        self.data_size: tuple = data_size or (200, 200)
+        self.data_size: tuple = data_size or (256, 256)
         self.batch_size: int = batch_size or 4
         self.epochs: int = epochs or 20
 
