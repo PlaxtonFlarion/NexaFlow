@@ -12,11 +12,11 @@ import datetime
 import numpy as np
 from pathlib import Path
 from loguru import logger
-from rich.prompt import Prompt
 from typing import Optional
-from frameflow.skills.database import DataBase
+from rich.prompt import Prompt
 from frameflow.skills.show import Show
 from frameflow.skills.manage import Manage
+from frameflow.skills.database import DataBase
 from frameflow.skills.parameters import Deploy, Option
 
 operation_system = sys.platform.strip().lower()
@@ -82,6 +82,15 @@ os.environ["PATH"] = os.path.dirname(_ffmpeg) + os.path.pathsep + os.environ.get
 os.environ["PATH"] = os.path.dirname(_ffprobe) + os.path.pathsep + os.environ.get("PATH", "")
 os.environ["PATH"] = os.path.dirname(_scrcpy) + os.path.pathsep + os.environ.get("PATH", "")
 
+for env in [Path(_adb).name, Path(_ffmpeg).name, Path(_ffprobe).name, Path(_scrcpy).name]:
+    environment_variables = shutil.which(env)
+    if environment_variables is None:
+        Show.console.print(f"[bold]Missing [bold red]{env}[/bold red] environment variables ...[/bold]")
+        Show.simulation_progress(
+            f"Exit after 5 seconds ...", 1, 0.05
+        )
+        sys.exit(1)
+
 try:
     from nexaflow import toolbox
     from nexaflow.terminal import Terminal
@@ -99,6 +108,33 @@ except (RuntimeError, ModuleNotFoundError) as err:
         f"Exit after 5 seconds ...", 1, 0.05
     )
     sys.exit(1)
+
+
+class Review(object):
+
+    __data = tuple()
+
+    def __init__(self, *args):
+        self.data = args
+
+    def __str__(self):
+        start, end, cost, classifier = self.data
+        kc = "KC" if classifier else "None"
+        return f"<Review start={start} end={end} cost={cost} classifier={kc}>"
+
+    __repr__ = __str__
+
+    @property
+    def data(self):
+        return self.__data
+
+    @data.setter
+    def data(self, value):
+        self.__data = value
+
+    @data.deleter
+    def data(self):
+        del self.__data
 
 
 class Parser(object):
@@ -351,7 +387,7 @@ class Missions(object):
 
         if futures is None:
             return None
-        start, end, cost, classifier = futures
+        start, end, cost, classifier = futures.data
 
         result = {
             "total_path": Path(reporter.total_path).name,
@@ -528,7 +564,7 @@ class Missions(object):
                 )
                 if futures is None:
                     continue
-                start, end, cost, classifier = futures
+                start, end, cost, classifier = futures.data
 
                 result = {
                     "total_path": Path(reporter.total_path).name,
@@ -1198,7 +1234,7 @@ class Missions(object):
                     if future is None:
                         continue
 
-                    start, end, cost, classifier = future
+                    start, end, cost, classifier = future.data
                     *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo
 
                     result = {
@@ -1543,11 +1579,11 @@ async def ask_magic_frame(
 
 async def analyzer(
         vision_path: str, deploy: "Deploy", kc: "KerasClassifier", *args, **kwargs
-) -> Optional[tuple[float, float, float, Optional[ClassifierResult]]]:
+) -> Optional["Review"]:
 
     frame_path, extra_path = args
-    ffmpeg = kwargs["ffmpeg"]
-    ffprobe = kwargs["ffprobe"]
+    ffmpeg = kwargs.get("ffmpeg", "ffmpeg")
+    ffprobe = kwargs.get("ffprobe", "ffprobe")
 
     async def validate():
         screen_tag, screen_cap = None, None
@@ -1839,14 +1875,18 @@ async def analyzer(
 
         return flick_result, classify
 
+    # Analyzer first ===================================================================================================
     tag, screen_record = await validate()
     if not tag or not screen_record:
         logger.error(f"{tag} 不是一个标准的mp4视频文件，或视频文件已损坏 ...")
         return None
     logger.info(f"{tag} 可正常播放，准备加载视频 ...")
+    # Analyzer first ===================================================================================================
 
+    # Analyzer last ====================================================================================================
     (start, end, cost), classifier = await analytics_keras() if kc else await analytics_basic()
-    return start, end, cost, classifier
+    return Review(start, end, cost, classifier)
+    # Analyzer last ====================================================================================================
 
 
 async def ask_main():

@@ -339,6 +339,15 @@ class Deploy(object):
         try:
             with open(file=deploy_file, mode="r", encoding="utf-8") as f:
                 data = json.loads(f.read())
+        except FileNotFoundError:
+            logger.debug(f"未找到部署文件,使用默认参数 ...")
+        except json.decoder.JSONDecodeError:
+            logger.debug(f"部署文件解析错误,文件格式不正确,使用默认参数 ...")
+        except Exception as e:
+            logger.error(f"发生未知错误 {e}")
+        else:
+            logger.debug(f"读取部署文件,使用部署参数 ...")
+
             self.alone = data.get("alone", "false")
             self.quick = data.get("quick", "false")
             self.basic = data.get("basic", "false")
@@ -360,14 +369,6 @@ class Deploy(object):
             self.block = data.get("block", 6)
             self.crops = data.get("crops", [])
             self.omits = data.get("omits", [])
-        except FileNotFoundError:
-            logger.debug(f"未找到部署文件,使用默认参数 ...")
-        except json.decoder.JSONDecodeError:
-            logger.warning(f"部署文件解析错误,文件格式不正确,使用默认参数 ...")
-        except Exception as e:
-            logger.error(f"发生未知错误 {e}")
-        else:
-            logger.info(f"读取部署文件,使用部署参数 ...")
 
     def view_deploy(self) -> None:
 
@@ -552,11 +553,12 @@ class Option(object):
             logger.debug(f"未找到配置文件,使用默认配置 ...")
             self.dump_option(option_file)
         except json.decoder.JSONDecodeError:
-            logger.warning(f"配置文件解析错误,文件格式不正确,使用默认配置 ...")
+            logger.debug(f"配置文件解析错误,文件格式不正确,使用默认配置 ...")
         except Exception as e:
             logger.error(f"发生未知错误 {e}")
         else:
-            logger.info(f"读取配置文件,使用配置参数 ...")
+            logger.debug(f"读取配置文件,使用配置参数 ...")
+
             self.total_path = data.get("Total Path", "")
             self.model_name = data.get("Model Name", "")
 
@@ -577,7 +579,4 @@ class Option(object):
 
 
 if __name__ == '__main__':
-    d = Deploy("/Users/acekeppel/PycharmProjects/NexaFlow/data/deploy.json")
-    d.dump_deploy("/Users/acekeppel/PycharmProjects/NexaFlow/data/deploy.json")
-    d.view_deploy()
     pass
