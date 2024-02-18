@@ -1018,7 +1018,7 @@ class Missions(object):
                     return False
                 await asyncio.sleep(0.2)
 
-        # Video_Balance
+        # Video Balance
         async def video_balance(standard, duration, video_src):
             start_time_point = duration - standard
             end_time_point = duration
@@ -1209,6 +1209,7 @@ class Missions(object):
                     reporter.load(result)
 
             elif self.basic or self.keras:
+                logger.debug(f"Framix Analyzer: {'智能模式' if kc else '基础模式'} ...")
                 futures = await asyncio.gather(
                     *(analyzer(
                         temp_video, deploy, kc, frame_path, extra_path,
@@ -1232,7 +1233,6 @@ class Missions(object):
                     }
 
                     if classifier:
-                        logger.debug(f"Framix Analyzer: 智能模式 ...")
                         template_file = await ask_get_template(self.alien)
                         original_inform = reporter.draw(
                             classifier_result=classifier,
@@ -1241,8 +1241,6 @@ class Missions(object):
                         )
                         result["extra"] = Path(extra_path).name
                         result["proto"] = Path(original_inform).name
-                    else:
-                        logger.debug(f"Framix Analyzer: 基础模式 ...")
 
                     logger.debug(f"Restore: {result}")
                     reporter.load(result)
@@ -1275,10 +1273,7 @@ class Missions(object):
 
         # Device View
         async def device_mode_view():
-            if len(device_list) == 1:
-                Show.console.print(f"[bold]<Link> <单设备模式>")
-            else:
-                Show.console.print(f"[bold]<Link> <多设备模式>")
+            Show.console.print(f"[bold]<Link> <{'单设备模式' if len(device_list) == 1 else '多设备模式'}>")
             for device in device_list:
                 Show.console.print(f"[bold #00FFAF]Connect:[/bold #00FFAF] {device}")
 
@@ -1314,9 +1309,8 @@ class Missions(object):
         while True:
             try:
                 await device_mode_view()
-                if action := Prompt.ask(
-                        prompt=f"[bold #5FD7FF]<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/bold #D7FF5F] 秒>>>[/bold #5FD7FF]",
-                        console=Show.console):
+                start_tips = f"<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/bold #D7FF5F] 秒>>>"
+                if action := Prompt.ask(prompt=f"[bold #5FD7FF]{start_tips}[/bold #5FD7FF]", console=Show.console):
                     select = action.strip().lower()
                     if select == "serial":
                         device_list = await manage.operate_device()
@@ -1361,9 +1355,8 @@ class Missions(object):
                     elif select.isdigit():
                         value, lower_bound, upper_bound = int(select), 5, 300
                         if value > 300 or value < 5:
-                            Show.console.print(
-                                f"[bold #FFFF87]{lower_bound} <= [bold #FFD7AF]Time[/bold #FFD7AF] <= {upper_bound}[/bold #FFFF87]"
-                            )
+                            bound_tips = f"{lower_bound} <= [bold #FFD7AF]Time[/bold #FFD7AF] <= {upper_bound}"
+                            Show.console.print(f"[bold #FFFF87]{bound_tips}[/bold #FFFF87]")
                         timer_mode = max(lower_bound, min(upper_bound, value))
                     else:
                         Show.tips_document()
