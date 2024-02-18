@@ -309,30 +309,30 @@ class Deploy(object):
 
         with open(file=deploy_file, mode="w", encoding="utf-8") as f:
             f.writelines('{')
-            for k, v in self._deploys.items():
+            for key, value in self._deploys.items():
                 f.writelines('\n')
-                if isinstance(v, bool) or v is None:
-                    f.writelines(f'    "{k}": "{v}",')
-                elif isinstance(v, tuple):
-                    f.writelines(f'    "{k}": "{v}",')
-                elif isinstance(v, list):
-                    if len(v) == 0:
+                if value is None:
+                    f.writelines(f'    "{key}": "{value}",')
+                elif isinstance(value, int | float):
+                    f.writelines(f'    "{key}": {value},')
+                elif isinstance(value, list):
+                    if len(value) == 0:
                         default = '{"x": 0, "y": 0, "x_size": 0, "y_size": 0}'
-                        f.writelines(f'    "{k}": [\n')
+                        f.writelines(f'    "{key}": [\n')
                         f.writelines(f'        {default}\n')
-                        f.writelines('    ],') if k == "crops" else f.writelines('    ]')
+                        f.writelines('    ],') if key == "crops" else f.writelines('    ]')
                     else:
-                        f.writelines(f'    "{k}": [\n')
-                        for index, i in enumerate(v):
+                        f.writelines(f'    "{key}": [\n')
+                        for index, i in enumerate(value):
                             x, y, x_size, y_size = i
                             new_size = f'{{"x": {x}, "y": {y}, "x_size": {x_size}, "y_size": {y_size}}}'
-                            if (index + 1) == len(v):
+                            if index == len(value) - 1:
                                 f.writelines(f'        {new_size}\n')
                             else:
                                 f.writelines(f'        {new_size},\n')
-                        f.writelines('    ],') if k == "crops" else f.writelines('    ]')
+                        f.writelines('    ],') if key == "crops" else f.writelines('    ]')
                 else:
-                    f.writelines(f'    "{k}": {v},')
+                    f.writelines(f'    "{key}": "{value}",')
             f.writelines('\n}')
 
     def load_deploy(self, deploy_file: str) -> None:
@@ -568,13 +568,12 @@ class Option(object):
 
         with open(file=option_file, mode="w", encoding="utf-8") as f:
             f.writelines('{')
-            for index, (k, v) in enumerate(self._options.items()):
+            for index, (key, value) in enumerate(self._options.items()):
                 f.writelines('\n')
-                index += 1
-                if index == option_length:
-                    f.writelines(f'    "{k}": "{v}"')
+                if index == option_length - 1:
+                    f.writelines(f'    "{key}": "{value}"')
                 else:
-                    f.writelines(f'    "{k}": "{v}",')
+                    f.writelines(f'    "{key}": "{value}",')
             f.writelines('\n}')
 
 

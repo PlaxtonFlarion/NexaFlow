@@ -217,11 +217,11 @@ class Parser(object):
         parser.add_argument('--color', action='store_true', help='彩色模式')
         parser.add_argument('--shape', nargs='?', const=None, type=Parser.parse_sizes, help='图片尺寸')
         parser.add_argument('--scale', nargs='?', const=None, type=Parser.parse_scale, help='缩放比例')
-        parser.add_argument('--begin', nargs='?', const=None, type=Parser.parse_stage, help='开始帧')
-        parser.add_argument('--final', nargs='?', const=None, type=Parser.parse_stage, help='结束帧')
         parser.add_argument('--start', nargs='?', const=None, type=Parser.parse_mills, help='开始时间')
         parser.add_argument('--close', nargs='?', const=None, type=Parser.parse_mills, help='结束时间')
         parser.add_argument('--limit', nargs='?', const=None, type=Parser.parse_mills, help='持续时间')
+        parser.add_argument('--begin', nargs='?', const=None, type=Parser.parse_stage, help='开始帧')
+        parser.add_argument('--final', nargs='?', const=None, type=Parser.parse_stage, help='结束帧')
         parser.add_argument('--crops', action='append', help='获取区域')
         parser.add_argument('--omits', action='append', help='忽略区域')
 
@@ -1142,7 +1142,6 @@ class Missions(object):
             if len(task_list) == 0:
                 return False
 
-            # 快速模式
             if deploy.quick:
                 logger.debug(f"Framix Analyzer: 快速模式 ...")
                 video_filter_list = []
@@ -1221,7 +1220,6 @@ class Missions(object):
                     logger.debug(f"Quick: {result}")
                     reporter.load(result)
 
-            # 基础模式 or 智能模式
             elif deploy.basic or deploy.keras:
                 futures = await asyncio.gather(
                     *(analyzer(
@@ -1283,7 +1281,6 @@ class Missions(object):
                                 (total_path, title, query_path, query, json.dumps(stage), frame_path)
                             )
 
-            # 录制模式
             else:
                 logger.debug(f"Framix Analyzer: 录制模式 ...")
                 return False
@@ -1296,6 +1293,18 @@ class Missions(object):
                 Show.console.print(f"[bold]<Link> <多设备模式>")
             for device in device_list:
                 Show.console.print(f"[bold #00FFAF]Connect:[/bold #00FFAF] {device}")
+
+        # Mode Select
+        async def mode_select():
+            keras_classifier = None
+            if deploy.keras and not deploy.quick and not deploy.basic:
+                keras_classifier = KerasClassifier(data_size=deploy.model_size)
+                try:
+                    keras_classifier.load_model(self.model_path)
+                except ValueError as e:
+                    logger.error(f"{e}")
+                    return None
+            return keras_classifier
 
         # Initialization ===============================================================================================
         manage = Manage(self.adb)
@@ -1313,15 +1322,7 @@ class Missions(object):
             input_title = "Video"
         reporter.title = f"{input_title}_{const_title}"
 
-        if deploy.keras and not deploy.quick and not deploy.basic:
-            kc = KerasClassifier(data_size=deploy.model_size)
-            try:
-                kc.load_model(self.model_path)
-            except ValueError as e:
-                logger.error(f"{e}")
-                kc = None
-        else:
-            kc = None
+        kc = await mode_select()
         # Initialization ===============================================================================================
 
         # Loop =========================================================================================================
@@ -1333,7 +1334,10 @@ class Missions(object):
                         prompt=f"[bold #5FD7FF]<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/bold #D7FF5F] 秒>>>[/bold #5FD7FF]",
                         console=Show.console):
                     select = action.strip().lower()
-                    if "header" in select:
+                    if select == "serial":
+                        device_list = await manage.operate_device()
+                        continue
+                    elif "header" in select:
                         if match := re.search(r"(?<=header\s).*", select):
                             if match.group().strip():
                                 src_hd = f"{input_title}_{time.strftime('%Y%m%d_%H%M%S')}"
@@ -1345,9 +1349,6 @@ class Missions(object):
                                 reporter.title = new_hd
                                 continue
                         Show.tips_document()
-                        continue
-                    elif select == "serial":
-                        device_list = await manage.operate_device()
                         continue
                     elif select == "create" or select == "invent":
                         if len(reporter.range_list) > 0:
@@ -1372,6 +1373,7 @@ class Missions(object):
                             await Terminal.cmd_line("open", "-W", "-a", "TextEdit", self.initial_deploy)
                         deploy.load_deploy(self.initial_deploy)
                         deploy.view_deploy()
+                        kc = await mode_select()
                         continue
                     elif select.isdigit():
                         value, lower_bound, upper_bound = int(select), 5, 300
@@ -2021,7 +2023,7 @@ if __name__ == '__main__':
     _model_path = os.path.join(
         _model_path, option.model_name
     ) if option.model_name else os.path.join(
-        _model_path, "model.h5"
+        _model_path, "Keras_Gray_W256_H256_00000.h5"
     )
 
     # Debug Mode =======================================================================================================
