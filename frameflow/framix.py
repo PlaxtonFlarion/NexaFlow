@@ -285,10 +285,6 @@ class Missions(object):
         deploy = Deploy(self.initial_deploy)
         deploy.alone = self.alone
         deploy.group = self.group
-        deploy.quick = self.quick
-        deploy.basic = self.basic
-        deploy.keras = self.keras
-
         deploy.boost = self.boost
         deploy.color = self.color
 
@@ -305,7 +301,7 @@ class Missions(object):
 
         looper = asyncio.get_event_loop()
 
-        if deploy.quick:
+        if self.quick:
             logger.info(f"Framix Analyzer: 快速模式 ...")
             video_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
             if deploy.shape:
@@ -366,7 +362,7 @@ class Missions(object):
             )
             return reporter.total_path
 
-        elif deploy.keras and not deploy.basic:
+        elif self.keras and self.basic is None:
             logger.info(f"Framix Analyzer: 智能模式 ...")
             kc = KerasClassifier(data_size=deploy.model_size)
             try:
@@ -449,10 +445,6 @@ class Missions(object):
         deploy = Deploy(self.initial_deploy)
         deploy.alone = self.alone
         deploy.group = self.group
-        deploy.quick = self.quick
-        deploy.basic = self.basic
-        deploy.keras = self.keras
-
         deploy.boost = self.boost
         deploy.color = self.color
 
@@ -469,7 +461,7 @@ class Missions(object):
 
         looper = asyncio.get_event_loop()
 
-        if deploy.quick:
+        if self.quick:
             logger.debug(f"Framix Analyzer: 快速模式 ...")
             for video in self.only_video(folder):
                 reporter.title = video.title
@@ -537,7 +529,7 @@ class Missions(object):
             )
             return reporter.total_path
 
-        elif deploy.keras and not deploy.basic:
+        elif self.keras and self.basic is None:
             logger.info(f"Framix Analyzer: 智能模式 ...")
             kc = KerasClassifier(data_size=deploy.model_size)
             try:
@@ -641,10 +633,6 @@ class Missions(object):
         deploy = Deploy(self.initial_deploy)
         deploy.alone = self.alone
         deploy.group = self.group
-        deploy.quick = self.quick
-        deploy.basic = self.basic
-        deploy.keras = self.keras
-
         deploy.boost = self.boost
         deploy.color = self.color
 
@@ -1061,7 +1049,7 @@ class Missions(object):
 
             todo_list = []
 
-            if deploy.quick or deploy.basic or deploy.keras:
+            if self.quick or self.basic or self.keras:
                 group_fmt_dirs = reporter.clock()
                 for device in device_list:
                     await asyncio.sleep(0.2)
@@ -1142,7 +1130,7 @@ class Missions(object):
             if len(task_list) == 0:
                 return False
 
-            if deploy.quick:
+            if self.quick:
                 logger.debug(f"Framix Analyzer: 快速模式 ...")
                 video_filter_list = []
                 default_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
@@ -1220,7 +1208,7 @@ class Missions(object):
                     logger.debug(f"Quick: {result}")
                     reporter.load(result)
 
-            elif deploy.basic or deploy.keras:
+            elif self.basic or self.keras:
                 futures = await asyncio.gather(
                     *(analyzer(
                         temp_video, deploy, kc, frame_path, extra_path,
@@ -1294,35 +1282,31 @@ class Missions(object):
             for device in device_list:
                 Show.console.print(f"[bold #00FFAF]Connect:[/bold #00FFAF] {device}")
 
-        # Mode Select
-        async def mode_select():
-            keras_classifier = None
-            if deploy.keras and not deploy.quick and not deploy.basic:
-                keras_classifier = KerasClassifier(data_size=deploy.model_size)
-                try:
-                    keras_classifier.load_model(self.model_path)
-                except ValueError as e:
-                    logger.error(f"{e}")
-                    return None
-            return keras_classifier
-
         # Initialization ===============================================================================================
         manage = Manage(self.adb)
         device_list = await manage.operate_device()
 
         reporter = Report(self.initial_report)
         const_title = f"{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
-        if deploy.quick:
+        if self.quick:
             input_title = "Quick"
-        elif deploy.basic:
+        elif self.basic:
             input_title = "Basic"
-        elif deploy.keras:
+        elif self.keras:
             input_title = "Keras"
         else:
             input_title = "Video"
         reporter.title = f"{input_title}_{const_title}"
 
-        kc = await mode_select()
+        if self.keras and self.quick is None and self.basic is None:
+            kc = KerasClassifier(data_size=deploy.model_size)
+            try:
+                kc.load_model(self.model_path)
+            except ValueError as e:
+                logger.error(f"{e}")
+                kc = None
+        else:
+            kc = None
         # Initialization ===============================================================================================
 
         # Loop =========================================================================================================
@@ -1373,7 +1357,6 @@ class Missions(object):
                             await Terminal.cmd_line("open", "-W", "-a", "TextEdit", self.initial_deploy)
                         deploy.load_deploy(self.initial_deploy)
                         deploy.view_deploy()
-                        kc = await mode_select()
                         continue
                     elif select.isdigit():
                         value, lower_bound, upper_bound = int(select), 5, 300
@@ -1895,10 +1878,6 @@ async def ask_main():
     deploy = Deploy(missions.initial_deploy)
     deploy.alone = missions.alone
     deploy.group = missions.group
-    deploy.quick = missions.quick
-    deploy.basic = missions.basic
-    deploy.keras = missions.keras
-
     deploy.boost = missions.boost
     deploy.color = missions.color
 

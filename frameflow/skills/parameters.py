@@ -10,8 +10,9 @@ from frameflow.skills.show import Show
 class Deploy(object):
 
     _deploys = {
-        "alone": False, "group": False, "quick": False, "basic": False, "keras": False, "boost": False, "color": False,
-        "shape": None, "scale": None, "start": None, "close": None, "limit": None, "begin": (0, 1), "final": (-1, -1),
+        "alone": False, "group": False, "boost": False, "color": False,
+        "shape": None, "scale": None,
+        "start": None, "close": None, "limit": None, "begin": (0, 1), "final": (-1, -1),
         "model_size": (256, 256), "fps": 60, "threshold": 0.97, "offset": 3, "block": 6,
         "crops": [], "omits": []
     }
@@ -22,18 +23,6 @@ class Deploy(object):
     @property
     def alone(self):
         return self._deploys["alone"]
-
-    @property
-    def quick(self):
-        return self._deploys["quick"]
-
-    @property
-    def basic(self):
-        return self._deploys["basic"]
-
-    @property
-    def keras(self):
-        return self._deploys["keras"]
 
     @property
     def boost(self):
@@ -106,18 +95,6 @@ class Deploy(object):
     @alone.setter
     def alone(self, value):
         self._deploys["alone"] = self.parse_bools(value)
-
-    @quick.setter
-    def quick(self, value):
-        self._deploys["quick"] = self.parse_bools(value)
-
-    @basic.setter
-    def basic(self, value):
-        self._deploys["basic"] = self.parse_bools(value)
-
-    @keras.setter
-    def keras(self, value):
-        self._deploys["keras"] = self.parse_bools(value)
 
     @boost.setter
     def boost(self, value):
@@ -349,9 +326,6 @@ class Deploy(object):
             logger.debug(f"读取部署文件,使用部署参数 ...")
 
             self.alone = data.get("alone", "false")
-            self.quick = data.get("quick", "false")
-            self.basic = data.get("basic", "false")
-            self.keras = data.get("keras", "false")
             self.boost = data.get("boost", "false")
             self.color = data.get("color", "false")
             self.group = data.get("group", "false")
@@ -398,24 +372,6 @@ class Deploy(object):
             f"[bold {col_2_color}]{self.group}",
             f"[bold][[bold {col_3_color}]T | F[/bold {col_3_color}] ]",
             f"[bold green]开启[/bold green]" if self.group else "[bold red]关闭[/bold red]",
-        )
-        table.add_row(
-            f"[bold {col_1_color}]快速模式",
-            f"[bold {col_2_color}]{self.quick}",
-            f"[bold][[bold {col_3_color}]T | F[/bold {col_3_color}] ]",
-            f"[bold green]开启[/bold green]" if self.quick else "[bold red]关闭[/bold red]",
-        )
-        table.add_row(
-            f"[bold {col_1_color}]基础模式",
-            f"[bold {col_2_color}]{self.basic}",
-            f"[bold][[bold {col_3_color}]T | F[/bold {col_3_color}] ]",
-            f"[bold green]开启[/bold green]" if self.basic else "[bold red]关闭[/bold red]",
-        )
-        table.add_row(
-            f"[bold {col_1_color}]智能模式",
-            f"[bold {col_2_color}]{self.keras}",
-            f"[bold][[bold {col_3_color}]T | F[/bold {col_3_color}] ]",
-            f"[bold green]开启[/bold green]" if self.keras else "[bold red]关闭[/bold red]",
         )
         table.add_row(
             f"[bold {col_1_color}]跳帧模式",
