@@ -1406,28 +1406,8 @@ class Missions(object):
             for script in script_data:
                 logger.info(f"Exec: {script['name']}")
                 for _ in range(script["loop"]):
-                    try:
-                        script_time = script["time"]
-                    except KeyError:
-                        timer_mode = 6
-                    else:
-                        if type(script_time) is int or type(script_time) is float:
-                            value, lower_bound, upper_bound = int(script["time"]), 5, 300
-                            if value > 300 or value < 6:
-                                bound_tips = f"{lower_bound} <= [bold #FFD7AF]Time[/bold #FFD7AF] <= {upper_bound}"
-                                Show.console.print(f"[bold #FFFF87]{bound_tips}[/bold #FFFF87]")
-                            timer_mode = max(lower_bound, min(upper_bound, value))
-                        elif type(script_time) is str:
-                            if script_time.isdigit():
-                                value, lower_bound, upper_bound = int(script["time"]), 5, 300
-                                if value > 300 or value < 6:
-                                    bound_tips = f"{lower_bound} <= [bold #FFD7AF]Time[/bold #FFD7AF] <= {upper_bound}"
-                                    Show.console.print(f"[bold #FFFF87]{bound_tips}[/bold #FFFF87]")
-                                timer_mode = max(lower_bound, min(upper_bound, value))
-                            else:
-                                timer_mode = 6
-                        else:
-                            timer_mode = 6
+                    value, lower_bound, upper_bound = script["time"], 5, 300
+                    timer_mode = max(lower_bound, min(upper_bound, value))
 
                     try:
                         task_list = await script_commence()
