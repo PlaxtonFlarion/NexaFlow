@@ -149,36 +149,30 @@ class Parser(object):
 
     @staticmethod
     def parse_sizes(dim_str):
-        if isinstance(dim_str, tuple):
-            return dim_str
-        elif isinstance(dim_str, str):
-            match_size_list = re.findall(r"-?\d*\.?\d+", dim_str)
-            if len(match_size_list) >= 2:
-                converted = []
-                for num in match_size_list:
-                    try:
-                        converted_num = int(num)
-                    except ValueError:
-                        converted_num = float(num)
-                    converted.append(converted_num)
-                return tuple(converted[:2])
+        match_size_list = re.findall(r"-?\d*\.?\d+", dim_str)
+        if len(match_size_list) >= 2:
+            converted = []
+            for num in match_size_list:
+                try:
+                    converted_num = int(num)
+                except ValueError:
+                    converted_num = float(num)
+                converted.append(converted_num)
+            return tuple(converted[:2])
         return None
 
     @staticmethod
     def parse_mills(dim_str):
-        if isinstance(dim_str, int | float):
+        seconds_pattern = re.compile(r"^\d+(\.\d+)?$")
+        full_pattern = re.compile(r"(\d{1,2}):(\d{2}):(\d{2})(\.\d+)?")
+        if match := full_pattern.match(dim_str):
+            hours, minutes, seconds, milliseconds = match.groups()
+            total_seconds = int(hours) * 3600 + int(minutes) * 60 + int(seconds)
+            if milliseconds:
+                total_seconds += float(milliseconds)
+            return total_seconds
+        elif seconds_pattern.match(dim_str):
             return float(dim_str)
-        if isinstance(dim_str, str):
-            seconds_pattern = re.compile(r"^\d+(\.\d+)?$")
-            full_pattern = re.compile(r"(\d{1,2}):(\d{2}):(\d{2})(\.\d+)?")
-            if match := full_pattern.match(dim_str):
-                hours, minutes, seconds, milliseconds = match.groups()
-                total_seconds = int(hours) * 3600 + int(minutes) * 60 + int(seconds)
-                if milliseconds:
-                    total_seconds += float(milliseconds)
-                return total_seconds
-            elif seconds_pattern.match(dim_str):
-                return float(dim_str)
         return None
 
     @staticmethod
@@ -362,7 +356,7 @@ class Missions(object):
             )
             return reporter.total_path
 
-        elif self.keras and self.basic is None:
+        elif self.keras and not self.basic:
             logger.info(f"Framix Analyzer: 智能模式 ...")
             kc = KerasClassifier(data_size=deploy.model_size)
             try:
@@ -529,7 +523,7 @@ class Missions(object):
             )
             return reporter.total_path
 
-        elif self.keras and self.basic is None:
+        elif self.keras and not self.basic:
             logger.info(f"Framix Analyzer: 智能模式 ...")
             kc = KerasClassifier(data_size=deploy.model_size)
             try:
@@ -1293,7 +1287,7 @@ class Missions(object):
             input_title = "Video"
         reporter.title = f"{input_title}_{const_title}"
 
-        if self.keras and self.quick is None and self.basic is None:
+        if self.keras and not self.quick and not self.basic:
             kc = KerasClassifier(data_size=deploy.model_size)
             try:
                 kc.load_model(self.model_path)

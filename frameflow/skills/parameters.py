@@ -183,9 +183,9 @@ class Deploy(object):
 
     @staticmethod
     def parse_bools(dim_str):
-        if isinstance(dim_str, bool):
+        if type(dim_str) is bool:
             return dim_str
-        elif isinstance(dim_str, str):
+        elif type(dim_str) is str:
             mode = dim_str.lower() if isinstance(dim_str, str) else "false"
             return True if mode == "true" else False
         else:
@@ -193,9 +193,9 @@ class Deploy(object):
 
     @staticmethod
     def parse_sizes(dim_str):
-        if isinstance(dim_str, tuple):
+        if type(dim_str) is tuple:
             return dim_str
-        elif isinstance(dim_str, str):
+        elif type(dim_str) is str:
             match_size_list = re.findall(r"-?\d*\.?\d+", dim_str)
             if len(match_size_list) >= 2:
                 converted = []
@@ -212,11 +212,11 @@ class Deploy(object):
     def parse_hooks(dim_str):
         hooks_list, effective = dim_str, []
         for hook in hooks_list:
-            if isinstance(hook, dict):
-                data_list = [value for value in hook.values() if isinstance(value, int | float)]
+            if type(hook) is dict:
+                data_list = [value for value in hook.values() if type(value) is int or type(value) is float]
                 if len(data_list) == 4 and sum(data_list) > 0:
                     effective.append((hook["x"], hook["y"], hook["x_size"], hook["y_size"]))
-            elif isinstance(hook, tuple):
+            elif type(hook) is tuple:
                 effective.append(hook)
 
         effective_list = list(set(effective)).copy()
@@ -225,11 +225,11 @@ class Deploy(object):
 
     @staticmethod
     def parse_times(dim_str):
-        if isinstance(dim_str, (int, float)):
+        if type(dim_str) is int or type(dim_str) is float:
             if dim_str >= 86400:
                 raise ValueError("时间不能超过 24 小时 ...")
             return str(datetime.timedelta(seconds=dim_str))
-        elif isinstance(dim_str, str):
+        elif type(dim_str) is str:
             time_pattern = re.compile(r"(?:(\d+):)?(\d+):(\d+)(?:\.(\d+))?|^\d*(?:\.\d+)?$")
             if match := time_pattern.match(dim_str):
                 hours = int(match.group(1)) if match.group(1) else 0
@@ -248,9 +248,9 @@ class Deploy(object):
 
     @staticmethod
     def parse_mills(dim_str):
-        if isinstance(dim_str, int | float):
+        if type(dim_str) is int or type(dim_str) is float:
             return float(dim_str)
-        if isinstance(dim_str, str):
+        if type(dim_str) is str:
             seconds_pattern = re.compile(r"^\d+(\.\d+)?$")
             full_pattern = re.compile(r"(\d{1,2}):(\d{2}):(\d{2})(\.\d+)?")
             if match := full_pattern.match(dim_str):
@@ -265,9 +265,9 @@ class Deploy(object):
 
     @staticmethod
     def parse_stage(dim_str):
-        if isinstance(dim_str, tuple):
+        if type(dim_str) is tuple:
             return dim_str
-        elif isinstance(dim_str, str):
+        elif type(dim_str) is str:
             stage_parts = []
             parts = re.split(r"[.,;:\s]+", dim_str)
             match_parts = [part for part in parts if re.match(r"-?\d+(\.\d+)?", part)]
@@ -288,25 +288,21 @@ class Deploy(object):
             f.writelines('{')
             for key, value in self._deploys.items():
                 f.writelines('\n')
-                if value is None:
-                    f.writelines(f'    "{key}": "{value}",')
-                elif isinstance(value, int | float):
+                if type(value) is int or type(value) is float:
                     f.writelines(f'    "{key}": {value},')
-                elif isinstance(value, list):
-                    if len(value) == 0:
-                        default = '{"x": 0, "y": 0, "x_size": 0, "y_size": 0}'
-                        f.writelines(f'    "{key}": [\n')
-                        f.writelines(f'        {default}\n')
-                        f.writelines('    ],') if key == "crops" else f.writelines('    ]')
-                    else:
+                elif type(value) is list:
+                    if len(value) > 0:
                         f.writelines(f'    "{key}": [\n')
                         for index, i in enumerate(value):
                             x, y, x_size, y_size = i
                             new_size = f'{{"x": {x}, "y": {y}, "x_size": {x_size}, "y_size": {y_size}}}'
-                            if index == len(value) - 1:
-                                f.writelines(f'        {new_size}\n')
-                            else:
-                                f.writelines(f'        {new_size},\n')
+                            cut = '' if index == len(value) - 1 else ','
+                            f.writelines(f'        {new_size}{cut}\n')
+                        f.writelines('    ],') if key == "crops" else f.writelines('    ]')
+                    else:
+                        default = '{"x": 0, "y": 0, "x_size": 0, "y_size": 0}'
+                        f.writelines(f'    "{key}": [\n')
+                        f.writelines(f'        {default}\n')
                         f.writelines('    ],') if key == "crops" else f.writelines('    ]')
                 else:
                     f.writelines(f'    "{key}": "{value}",')
