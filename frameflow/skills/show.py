@@ -119,6 +119,12 @@ class Show(object):
         table_minor.add_column("功能说明", justify="center", width=22)
 
         table_minor.add_row(
+            "[bold #FFDC00]--carry", "[bold #7FDBFF]名称", "[bold #8A8A8A]多次", "[bold #AFAFD7]关闭", "[bold #39CCCC]指定执行"
+        )
+        table_minor.add_row(
+            "[bold #FFDC00]--fully", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]自动执行"
+        )
+        table_minor.add_row(
             "[bold #FFDC00]--alone", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]独立控制"
         )
         table_minor.add_row(

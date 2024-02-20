@@ -310,8 +310,8 @@ class Deploy(object):
 
     def load_deploy(self, deploy_file: str) -> None:
         try:
-            with open(file=deploy_file, mode="r", encoding="utf-8") as f:
-                data = json.loads(f.read())
+            with open(file=deploy_file, mode="r", encoding="utf-8") as file:
+                data = json.load(file)
         except FileNotFoundError:
             logger.debug(f"未找到部署文件,使用默认参数 ...")
         except json.decoder.JSONDecodeError:
@@ -321,10 +321,10 @@ class Deploy(object):
         else:
             logger.debug(f"读取部署文件,使用部署参数 ...")
 
-            self.alone = data.get("alone", "false")
-            self.boost = data.get("boost", "false")
-            self.color = data.get("color", "false")
-            self.group = data.get("group", "false")
+            self.alone = data.get("alone", False)
+            self.boost = data.get("boost", False)
+            self.color = data.get("color", False)
+            self.group = data.get("group", False)
             self.shape = data.get("shape", None)
             self.scale = data.get("scale", None)
             self.start = data.get("start", None)
@@ -470,7 +470,7 @@ class Deploy(object):
 
 class Option(object):
 
-    _options = {
+    options = {
         "Total Path": "",
         "Model Name": ""
     }
@@ -480,27 +480,16 @@ class Option(object):
 
     @property
     def total_path(self):
-        return self._options["Total Path"]
+        return self.options["Total Path"]
 
     @property
     def model_name(self):
-        return self._options["Model Name"]
-
-    @total_path.setter
-    def total_path(self, value):
-        if value and os.path.isdir(value):
-            if not os.path.exists(value):
-                os.makedirs(value, exist_ok=True)
-            self._options["Total Path"] = value
-
-    @model_name.setter
-    def model_name(self, value):
-        self._options["Model Name"] = value
+        return self.options["Model Name"]
 
     def load_option(self, option_file: str) -> None:
         try:
-            with open(file=option_file, mode="r", encoding="utf-8") as f:
-                data = json.loads(f.read())
+            with open(option_file, "r", encoding="utf-8") as file:
+                self.options = json.load(file)
         except FileNotFoundError:
             logger.debug(f"未找到配置文件,使用默认配置 ...")
             self.dump_option(option_file)
@@ -511,22 +500,45 @@ class Option(object):
         else:
             logger.debug(f"读取配置文件,使用配置参数 ...")
 
-            self.total_path = data.get("Total Path", "")
-            self.model_name = data.get("Model Name", "")
-
     def dump_option(self, option_file: str) -> None:
-        os.makedirs(os.path.dirname(option_file), exist_ok=True)
-        option_length = len(self._options)
+        with open(option_file, "w", encoding="utf-8") as file:
+            json.dump(self.options, file, indent=4, separators=(",", ":"), ensure_ascii=False)
 
-        with open(file=option_file, mode="w", encoding="utf-8") as f:
-            f.writelines('{')
-            for index, (key, value) in enumerate(self._options.items()):
-                f.writelines('\n')
-                if index == option_length - 1:
-                    f.writelines(f'    "{key}": "{value}"')
-                else:
-                    f.writelines(f'    "{key}": "{value}",')
-            f.writelines('\n}')
+
+class Script(object):
+
+    scripts = {
+        "commands": [
+            {
+                "name": "framix script 1",
+                "loop": 1,
+                "actions": [
+                    {"command": "", "args": []},
+                    {"command": "", "args": []}
+                ]
+            },
+            {
+                "name": "framix script 2",
+                "loop": 1,
+                "actions": [
+                    {"command": "", "args": []},
+                    {"command": "", "args": []}
+                ]
+            },
+            {
+                "name": "framix script 3",
+                "loop": 1,
+                "actions": [
+                    {"command": "", "args": []},
+                    {"command": "", "args": []}
+                ]
+            },
+        ]
+    }
+
+    def dump_script(self, script_file: str) -> None:
+        with open(script_file, "w", encoding="utf-8") as file:
+            json.dump(self.scripts, file, indent=4, separators=(",", ":"), ensure_ascii=False)
 
 
 if __name__ == '__main__':
