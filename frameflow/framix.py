@@ -235,8 +235,8 @@ class Missions(object):
     def __init__(
             self,
             carry: list[str],
-            fully: bool, alone: bool, quick: bool,
-            basic: bool, keras: bool, group: bool,
+            fully: bool, alone: bool, group: bool,
+            quick: bool, basic: bool, keras: bool,
             *args, **kwargs
     ):
 
@@ -950,7 +950,6 @@ class Missions(object):
         all_used_event = asyncio.Event()
         all_stop_event = asyncio.Event()
 
-        # Time-
         async def timing_less(amount, serial, events):
             stop_event_control = events["stop_event"] if deploy.alone else all_stop_event
             while True:
@@ -974,7 +973,6 @@ class Missions(object):
                     break
                 await asyncio.sleep(0.2)
 
-        # Time+
         async def timing_many(serial, events):
             stop_event_control = events["stop_event"] if deploy.alone else all_stop_event
             while True:
@@ -992,7 +990,6 @@ class Missions(object):
                     break
                 await asyncio.sleep(0.2)
 
-        # Screen Copy
         async def start_record(serial: str, dst: str, events):
 
             # Stream
@@ -1025,7 +1022,6 @@ class Missions(object):
             await asyncio.sleep(1)
             return temp_video, transports
 
-        # Screen Copy
         async def close_record(temp_video, transports, events):
             if operation_system == "win32":
                 await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
@@ -1042,7 +1038,6 @@ class Missions(object):
                     return False
                 await asyncio.sleep(0.2)
 
-        # Record
         async def commence():
 
             # Wait Device Online
@@ -1074,7 +1069,6 @@ class Missions(object):
                 )
             return todo_list
 
-        # Analysis Mode
         async def analysis_tactics():
             if len(task_list) == 0:
                 return False
@@ -1220,7 +1214,6 @@ class Missions(object):
                 logger.debug(f"Framix Analyzer: 录制模式 ...")
                 return False
 
-        # Device View
         async def device_mode_view():
             Show.console.print(f"[bold]<Link> <{'单设备模式' if len(device_list) == 1 else '多设备模式'}>")
             for device in device_list:
@@ -1238,7 +1231,6 @@ class Missions(object):
 
         async def all_over():
 
-            # Video Balance
             async def balance(duration, video_src):
                 start_time_point = duration - standard
                 end_time_point = duration
@@ -1253,14 +1245,17 @@ class Missions(object):
                 await ask_video_tailor(
                     self.ffmpeg, video_src, video_dst, start=start_time_str, limit=end_time_str
                 )
+                os.remove(video_src)
+                logger.info(f"移除旧的视频 {Path(video_src).name}")
                 return video_dst
 
             effective_list = await asyncio.gather(
                 *(close_record(temp_video, transports, events)
                   for (_, events), (temp_video, transports, *_) in zip(device_events.items(), task_list))
             )
-            for idx, effective in enumerate(effective_list):
+            for (idx, effective), temp_video in zip(enumerate(effective_list), task_list):
                 if not effective:
+                    logger.info(f"移除录制失败的视频: {Path(temp_video).name} ...")
                     task_list.pop(idx)
 
             if deploy.alone:
@@ -1304,6 +1299,14 @@ class Missions(object):
                         v.clear()
             device_events.clear()
 
+        async def combines_report():
+            combined = False
+            if len(reporter.range_list) > 0:
+                combines = getattr(missions, "combines_view") if self.quick else getattr(missions, "combines_main")
+                await combines([os.path.dirname(reporter.total_path)], deploy.group)
+                combined = True
+            return combined
+
         async def load_commands(script):
             try:
                 async with aiofiles.open(script, "r", encoding="utf-8") as f:
@@ -1331,6 +1334,8 @@ class Missions(object):
                     logger.info(f"{device.serial} {device_method.__name__} {method['args']}")
                     device_method(*method["args"])
                     all_used_event.set()
+                else:
+                    logger.warning(f"{device.serial} {method['command']} 方法不存在 ...")
             device_events[device.serial]["stop_event"].set() if deploy.alone else all_stop_event.set()
 
         # Initialization ===============================================================================================
@@ -1347,7 +1352,6 @@ class Missions(object):
             input_title = "Keras"
         else:
             input_title = "Video"
-        reporter.title = f"{input_title}_{const_title}"
 
         if self.keras and not self.quick and not self.basic:
             kc = KerasClassifier(data_size=deploy.model_size)
@@ -1381,24 +1385,31 @@ class Missions(object):
                 script_dict = script_data
 
             for key, value in script_dict.items():
+                reporter.title = f"{key.replace(' ', '')}_{input_title}"
                 logger.info(f"Exec: {key}")
                 for _ in range(value["loop"]):
                     try:
                         task_list = await commence()
+                        device_task_list = [
+                            asyncio.create_task(exec_commands(device)) for device in device_list
+                        ]
                         await all_time("many")
-                        await asyncio.gather(
-                            *(exec_commands(device) for device in device_list)
-                        )
+                        for device_task in device_task_list:
+                            device_task.cancel()
                         await all_over()
                         await analysis_tactics()
                         check = await event_check()
                         device_list = device_list if check else await manage.operate_device()
                     finally:
                         await clean_check()
+            combines_result = await combines_report()
+            if not combines_result:
+                Show.console.print(f"[bold red]没有可以生成的报告 ...\n")
             return True
         # Fully Loop ===================================================================================================
 
         # Flick Loop ===================================================================================================
+        reporter.title = f"{input_title}_{const_title}"
         timer_mode = 5
         while True:
             try:
@@ -1423,12 +1434,11 @@ class Missions(object):
                         Show.tips_document()
                         continue
                     elif select == "create" or select == "invent":
-                        if len(reporter.range_list) > 0:
-                            combines = getattr(missions, "combines_view") if self.quick else getattr(missions, "combines_main")
-                            await combines([os.path.dirname(reporter.total_path)], deploy.group)
-                            break
-                        Show.console.print(f"[bold red]没有可以生成的报告 ...\n")
-                        continue
+                        combines_result = await combines_report()
+                        if not combines_result:
+                            Show.console.print(f"[bold red]没有可以生成的报告 ...\n")
+                            continue
+                        break
                     elif select == "deploy":
                         Show.console.print("[bold yellow]修改 deploy.json 文件后请完全退出编辑器进程再继续操作 ...")
                         deploy.dump_deploy(self.initial_deploy)
@@ -2072,7 +2082,7 @@ if __name__ == '__main__':
 
     _initial_deploy = os.path.join(_initial_deploy, "deploy.json")
     _initial_option = os.path.join(_initial_option, "option.json")
-    _initial_script = os.path.join(_initial_option, "script.json")
+    _initial_script = os.path.join(_initial_script, "script.json")
 
     option = Option(_initial_option)
     _initial_report = option.total_path if option.total_path else _initial_report

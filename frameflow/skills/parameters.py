@@ -510,7 +510,7 @@ class Script(object):
     scripts = {
         "commands": [
             {
-                "name": "framix script 1",
+                "name": "script_1",
                 "loop": 1,
                 "actions": [
                     {"command": "", "args": []},
@@ -518,7 +518,7 @@ class Script(object):
                 ]
             },
             {
-                "name": "framix script 2",
+                "name": "script_2",
                 "loop": 1,
                 "actions": [
                     {"command": "", "args": []},
@@ -526,7 +526,7 @@ class Script(object):
                 ]
             },
             {
-                "name": "framix script 3",
+                "name": "script_3",
                 "loop": 1,
                 "actions": [
                     {"command": "", "args": []},
