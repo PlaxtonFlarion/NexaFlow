@@ -1324,7 +1324,7 @@ class Missions(object):
             return exec_dict
 
         async def exec_commands(device):
-            for method in timer_value["actions"]:
+            for method in value["actions"]:
                 if callable(device_method := getattr(device, method["command"], None)):
                     logger.info(f"{device.serial} {device_method.__name__} {method['args']}")
                     await device_method(*method["args"])
@@ -1377,10 +1377,10 @@ class Missions(object):
             else:
                 script_dict = script_data
 
-            for key, timer_value in script_dict.items():
+            for key, value in script_dict.items():
                 reporter.title = f"{key.replace(' ', '')}_{input_title}"
                 logger.info(f"Exec: {key}")
-                for _ in range(timer_value["loop"]):
+                for _ in range(value["loop"]):
                     try:
                         task_list = await commence()
                         device_task_list = [
