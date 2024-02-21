@@ -1324,7 +1324,7 @@ class Missions(object):
             return exec_dict
 
         async def exec_commands(device):
-            for method in value["actions"]:
+            for method in timer_value["actions"]:
                 if callable(device_method := getattr(device, method["command"], None)):
                     logger.info(f"{device.serial} {device_method.__name__} {method['args']}")
                     await device_method(*method["args"])
@@ -1342,16 +1342,9 @@ class Missions(object):
         manage = Manage(self.adb)
         device_list = await manage.operate_device()
 
+        titles = {"quick": "Quick", "basic": "Basic", "keras": "Keras"}
+        input_title = next((title for key, title in titles.items() if getattr(self, key)), "Video")
         reporter = Report(self.initial_report)
-        const_title = f"{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
-        if self.quick:
-            input_title = "Quick"
-        elif self.basic:
-            input_title = "Basic"
-        elif self.keras:
-            input_title = "Keras"
-        else:
-            input_title = "Video"
 
         if self.keras and not self.quick and not self.basic:
             kc = KerasClassifier(data_size=deploy.model_size)
@@ -1384,10 +1377,10 @@ class Missions(object):
             else:
                 script_dict = script_data
 
-            for key, value in script_dict.items():
+            for key, timer_value in script_dict.items():
                 reporter.title = f"{key.replace(' ', '')}_{input_title}"
                 logger.info(f"Exec: {key}")
-                for _ in range(value["loop"]):
+                for _ in range(timer_value["loop"]):
                     try:
                         task_list = await commence()
                         device_task_list = [
@@ -1402,13 +1395,15 @@ class Missions(object):
                         device_list = device_list if check else await manage.operate_device()
                     finally:
                         await clean_check()
-            combines_result = await combines_report()
-            if not combines_result:
-                Show.console.print(f"[bold red]没有可以生成的报告 ...\n")
-            return True
+
+            if await combines_report():
+                return True
+            Show.console.print(f"[bold red]没有可以生成的报告 ...\n")
+            return False
         # Fully Loop ===================================================================================================
 
         # Flick Loop ===================================================================================================
+        const_title = f"{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
         reporter.title = f"{input_title}_{const_title}"
         timer_mode = 5
         while True:
@@ -1422,42 +1417,34 @@ class Missions(object):
                         continue
                     elif "header" in select:
                         if match := re.search(r"(?<=header\s).*", select):
-                            if match.group().strip():
-                                src_hd = f"{input_title}_{time.strftime('%Y%m%d_%H%M%S')}"
-                                if hd := match.group().strip():
-                                    new_hd = f"{src_hd}_{hd}"
-                                else:
-                                    new_hd = f"{src_hd}_{random.randint(10000, 99999)}"
+                            if hd := match.group().strip():
+                                src_hd, a, b = f"{input_title}_{time.strftime('%Y%m%d_%H%M%S')}", 10000, 99999
                                 logger.success("新标题设置成功 ...")
-                                reporter.title = new_hd
+                                reporter.title = f"{src_hd}_{hd}" if hd else f"{src_hd}_{random.randint(a, b)}"
                                 continue
-                        Show.tips_document()
-                        continue
+                        raise ValueError
                     elif select == "create" or select == "invent":
-                        combines_result = await combines_report()
-                        if not combines_result:
-                            Show.console.print(f"[bold red]没有可以生成的报告 ...\n")
-                            continue
-                        break
+                        if await combines_report():
+                            break
+                        Show.console.print(f"[bold red]没有可以生成的报告 ...\n")
+                        continue
                     elif select == "deploy":
                         Show.console.print("[bold yellow]修改 deploy.json 文件后请完全退出编辑器进程再继续操作 ...")
                         deploy.dump_deploy(self.initial_deploy)
-                        if operation_system == "win32":
-                            await Terminal.cmd_line("Notepad", self.initial_deploy)
-                        else:
-                            await Terminal.cmd_line("open", "-W", "-a", "TextEdit", self.initial_deploy)
+                        first = ["Notepad"] if operation_system == "win32" else ["open", "-W", "-a", "TextEdit"]
+                        first.append(self.initial_deploy)
+                        await Terminal.cmd_line(*first)
                         deploy.load_deploy(self.initial_deploy)
                         deploy.view_deploy()
                         continue
                     elif select.isdigit():
-                        value, lower_bound, upper_bound = int(select), 5, 300
-                        if value > 300 or value < 5:
+                        timer_value, lower_bound, upper_bound = int(select), 5, 300
+                        if timer_value > 300 or timer_value < 5:
                             bound_tips = f"{lower_bound} <= [bold #FFD7AF]Time[/bold #FFD7AF] <= {upper_bound}"
                             Show.console.print(f"[bold #FFFF87]{bound_tips}[/bold #FFFF87]")
-                        timer_mode = max(lower_bound, min(upper_bound, value))
+                        timer_mode = max(lower_bound, min(upper_bound, timer_value))
                     else:
-                        Show.tips_document()
-                        continue
+                        raise ValueError
             except ValueError:
                 Show.tips_document()
                 continue
