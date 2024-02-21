@@ -207,10 +207,9 @@ class Deploy(object):
         if type(dim_str) is tuple:
             return dim_str
         elif type(dim_str) is list:
-            if len(dim_str) < 2:
+            if len(dim_str_list := [dim for dim in dim_str if type(dim) is int]) < 2:
                 return None
-            dim_str_list = [dim for dim in dim_str if type(dim) is int]
-            return None if len(dim_str_list) < 2 else tuple(dim_str)[:2]
+            return tuple(dim_str_list)[:2]
         elif type(dim_str) is str:
             match_size_list = re.findall(r"-?\d*\.?\d+", dim_str)
             if len(match_size_list) >= 2:
@@ -284,10 +283,9 @@ class Deploy(object):
         if type(dim_str) is tuple:
             return dim_str
         elif type(dim_str) is list:
-            if len(dim_str) < 2:
+            if len(dim_str_list := [dim for dim in dim_str if type(dim) is int]) < 2:
                 return None
-            dim_str_list = [dim for dim in dim_str if type(dim) is int]
-            return None if len(dim_str_list) < 2 else tuple(dim_str)[:2]
+            return tuple(dim_str_list)[:2]
         elif type(dim_str) is str:
             stage_parts = []
             parts = re.split(r"[.,;:\s]+", dim_str)
