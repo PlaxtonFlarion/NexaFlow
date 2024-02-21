@@ -7,14 +7,25 @@ from rich.table import Table
 from frameflow.skills.show import Show
 
 
+def dump_parameters(src, dst) -> None:
+    with open(src, "w", encoding="utf-8") as file:
+        json.dump(dst, file, indent=4, separators=(",", ": "), ensure_ascii=False)
+
+
+def load_parameters(src, dst) -> None:
+    with open(src, "r", encoding="utf-8") as file:
+        dst.update(json.load(file))
+
+
 class Deploy(object):
 
-    _deploys = {
+    deploys = {
         "alone": False, "group": False, "boost": False, "color": False,
         "shape": None, "scale": None,
         "start": None, "close": None, "limit": None, "begin": (0, 1), "final": (-1, -1),
         "model_size": (256, 256), "fps": 60, "threshold": 0.97, "offset": 3, "block": 6,
-        "crops": [], "omits": []
+        "crops": [{"x": 0, "y": 0, "x_size": 0, "y_size": 0}],
+        "omits": [{"x": 0, "y": 0, "x_size": 0, "y_size": 0}]
     }
 
     def __init__(self, deploy_file: str):
@@ -22,164 +33,164 @@ class Deploy(object):
 
     @property
     def alone(self):
-        return self._deploys["alone"]
+        return self.deploys["alone"]
 
     @property
     def boost(self):
-        return self._deploys["boost"]
+        return self.deploys["boost"]
 
     @property
     def color(self):
-        return self._deploys["color"]
+        return self.deploys["color"]
 
     @property
     def group(self):
-        return self._deploys["group"]
+        return self.deploys["group"]
 
     @property
     def shape(self):
-        return self._deploys["shape"]
+        return self.deploys["shape"]
 
     @property
     def scale(self):
-        return self._deploys["scale"]
+        return self.deploys["scale"]
 
     @property
     def start(self):
-        return self._deploys["start"]
+        return self.deploys["start"]
 
     @property
     def close(self):
-        return self._deploys["close"]
+        return self.deploys["close"]
 
     @property
     def limit(self):
-        return self._deploys["limit"]
+        return self.deploys["limit"]
 
     @property
     def begin(self):
-        return self._deploys["begin"]
+        return self.deploys["begin"]
 
     @property
     def final(self):
-        return self._deploys["final"]
+        return self.deploys["final"]
 
     @property
     def model_size(self):
-        return self._deploys["model_size"]
+        return self.deploys["model_size"]
 
     @property
     def fps(self):
-        return self._deploys["fps"]
+        return self.deploys["fps"]
 
     @property
     def threshold(self):
-        return self._deploys["threshold"]
+        return self.deploys["threshold"]
 
     @property
     def offset(self):
-        return self._deploys["offset"]
+        return self.deploys["offset"]
 
     @property
     def block(self):
-        return self._deploys["block"]
+        return self.deploys["block"]
 
     @property
     def crops(self):
-        return self._deploys["crops"]
+        return self.deploys["crops"]
 
     @property
     def omits(self):
-        return self._deploys["omits"]
+        return self.deploys["omits"]
 
     @alone.setter
     def alone(self, value):
-        self._deploys["alone"] = self.parse_bools(value)
+        self.deploys["alone"] = self.parse_bools(value)
 
     @boost.setter
     def boost(self, value):
-        self._deploys["boost"] = self.parse_bools(value)
+        self.deploys["boost"] = self.parse_bools(value)
 
     @color.setter
     def color(self, value):
-        self._deploys["color"] = self.parse_bools(value)
+        self.deploys["color"] = self.parse_bools(value)
 
     @group.setter
     def group(self, value):
-        self._deploys["group"] = self.parse_bools(value)
+        self.deploys["group"] = self.parse_bools(value)
 
     @shape.setter
     def shape(self, value):
-        self._deploys["shape"] = self.parse_sizes(value)
+        self.deploys["shape"] = self.parse_sizes(value)
 
     @scale.setter
     def scale(self, value):
         try:
-            self._deploys["scale"] = round(max(0.1, min(1.0, float(value))), 2)
+            self.deploys["scale"] = round(max(0.1, min(1.0, float(value))), 2)
         except (ValueError, TypeError):
-            self._deploys["scale"] = None
+            self.deploys["scale"] = None
 
     @start.setter
     def start(self, value):
-        self._deploys["start"] = self.parse_times(value)
+        self.deploys["start"] = self.parse_times(value)
 
     @close.setter
     def close(self, value):
-        self._deploys["close"] = self.parse_times(value)
+        self.deploys["close"] = self.parse_times(value)
 
     @limit.setter
     def limit(self, value):
-        self._deploys["limit"] = self.parse_times(value)
+        self.deploys["limit"] = self.parse_times(value)
 
     @begin.setter
     def begin(self, value):
         if effective := self.parse_stage(value):
-            self._deploys["begin"] = effective
+            self.deploys["begin"] = effective
 
     @final.setter
     def final(self, value):
         if effective := self.parse_stage(value):
-            self._deploys["final"] = effective
+            self.deploys["final"] = effective
 
     @model_size.setter
     def model_size(self, value):
-        self._deploys["model_size"] = self.parse_sizes(value)
+        self.deploys["model_size"] = self.parse_sizes(value)
 
     @fps.setter
     def fps(self, value):
         try:
-            self._deploys["fps"] = max(1, min(60, int(value)))
+            self.deploys["fps"] = max(1, min(60, int(value)))
         except (ValueError, TypeError):
-            self._deploys["fps"] = 60
+            self.deploys["fps"] = 60
 
     @threshold.setter
     def threshold(self, value):
         try:
-            self._deploys["threshold"] = round(max(0.1, min(1.0, float(value))), 2)
+            self.deploys["threshold"] = round(max(0.1, min(1.0, float(value))), 2)
         except (ValueError, TypeError):
-            self._deploys["threshold"] = 0.97
+            self.deploys["threshold"] = 0.97
 
     @offset.setter
     def offset(self, value):
         try:
-            self._deploys["offset"] = max(1, int(value))
+            self.deploys["offset"] = max(1, int(value))
         except (ValueError, TypeError):
-            self._deploys["offset"] = 3
+            self.deploys["offset"] = 3
 
     @block.setter
     def block(self, value):
         try:
-            self._deploys["block"] = max(1, int(value))
+            self.deploys["block"] = max(1, int(value))
         except (ValueError, TypeError):
-            self._deploys["block"] = 6
+            self.deploys["block"] = 6
 
     @crops.setter
     def crops(self, value):
-        self._deploys["crops"] = self.parse_hooks(value)
+        self.deploys["crops"] = self.parse_hooks(value)
 
     @omits.setter
     def omits(self, value):
-        self._deploys["omits"] = self.parse_hooks(value)
+        self.deploys["omits"] = self.parse_hooks(value)
 
     @staticmethod
     def parse_bools(dim_str):
@@ -195,6 +206,11 @@ class Deploy(object):
     def parse_sizes(dim_str):
         if type(dim_str) is tuple:
             return dim_str
+        elif type(dim_str) is list:
+            if len(dim_str) < 2:
+                return None
+            dim_str_list = [dim for dim in dim_str if type(dim) is int]
+            return None if len(dim_str_list) < 2 else tuple(dim_str)[:2]
         elif type(dim_str) is str:
             match_size_list = re.findall(r"-?\d*\.?\d+", dim_str)
             if len(match_size_list) >= 2:
@@ -267,6 +283,11 @@ class Deploy(object):
     def parse_stage(dim_str):
         if type(dim_str) is tuple:
             return dim_str
+        elif type(dim_str) is list:
+            if len(dim_str) < 2:
+                return None
+            dim_str_list = [dim for dim in dim_str if type(dim) is int]
+            return None if len(dim_str_list) < 2 else tuple(dim_str)[:2]
         elif type(dim_str) is str:
             stage_parts = []
             parts = re.split(r"[.,;:\s]+", dim_str)
@@ -282,63 +303,18 @@ class Deploy(object):
             return None
 
     def dump_deploy(self, deploy_file: str) -> None:
-        os.makedirs(os.path.dirname(deploy_file), exist_ok=True)
-
-        with open(file=deploy_file, mode="w", encoding="utf-8") as f:
-            f.writelines('{')
-            for key, value in self._deploys.items():
-                f.writelines('\n')
-                if type(value) is int or type(value) is float:
-                    f.writelines(f'    "{key}": {value},')
-                elif type(value) is list:
-                    if len(value) > 0:
-                        f.writelines(f'    "{key}": [\n')
-                        for index, i in enumerate(value):
-                            x, y, x_size, y_size = i
-                            new_size = f'{{"x": {x}, "y": {y}, "x_size": {x_size}, "y_size": {y_size}}}'
-                            cut = '' if index == len(value) - 1 else ','
-                            f.writelines(f'        {new_size}{cut}\n')
-                        f.writelines('    ],') if key == "crops" else f.writelines('    ]')
-                    else:
-                        default = '{"x": 0, "y": 0, "x_size": 0, "y_size": 0}'
-                        f.writelines(f'    "{key}": [\n')
-                        f.writelines(f'        {default}\n')
-                        f.writelines('    ],') if key == "crops" else f.writelines('    ]')
-                else:
-                    f.writelines(f'    "{key}": "{value}",')
-            f.writelines('\n}')
+        dump_parameters(deploy_file, self.deploys)
 
     def load_deploy(self, deploy_file: str) -> None:
         try:
-            with open(file=deploy_file, mode="r", encoding="utf-8") as file:
-                data = json.load(file)
-        except FileNotFoundError:
-            logger.debug(f"未找到部署文件,使用默认参数 ...")
-        except json.decoder.JSONDecodeError:
-            logger.debug(f"部署文件解析错误,文件格式不正确,使用默认参数 ...")
+            load_parameters(deploy_file, self.deploys)
+            for k, v in self.deploys.items():
+                setattr(self, k, v)
+            logger.debug(f"读取部署文件，使用部署参数 ...")
+        except (FileNotFoundError, json.decoder.JSONDecodeError):
+            logger.debug(f"未找到部署文件或文件解析错误，使用默认参数 ...")
         except Exception as e:
-            logger.error(f"发生未知错误 {e}")
-        else:
-            logger.debug(f"读取部署文件,使用部署参数 ...")
-
-            self.alone = data.get("alone", False)
-            self.boost = data.get("boost", False)
-            self.color = data.get("color", False)
-            self.group = data.get("group", False)
-            self.shape = data.get("shape", None)
-            self.scale = data.get("scale", None)
-            self.start = data.get("start", None)
-            self.close = data.get("close", None)
-            self.limit = data.get("limit", None)
-            self.begin = data.get("begin", (0, 1))
-            self.final = data.get("final", (-1, -1))
-            self.model_size = data.get("model_size", (256, 256))
-            self.fps = data.get("fps", 60)
-            self.threshold = data.get("threshold", 0.97)
-            self.offset = data.get("offset", 3)
-            self.block = data.get("block", 6)
-            self.crops = data.get("crops", [])
-            self.omits = data.get("omits", [])
+            logger.error(f"发生未知错误: {e}")
 
     def view_deploy(self) -> None:
 
@@ -471,8 +447,7 @@ class Deploy(object):
 class Option(object):
 
     options = {
-        "Total Path": "",
-        "Model Name": ""
+        "Total Path": "", "Model Name": ""
     }
 
     def __init__(self, option_file: str):
@@ -486,59 +461,46 @@ class Option(object):
     def model_name(self):
         return self.options["Model Name"]
 
+    @total_path.setter
+    def total_path(self, value):
+        if type(value) is str and os.path.isdir(value):
+            if not os.path.exists(value):
+                os.makedirs(value, exist_ok=True)
+            self.total_path = value
+
+    @model_name.setter
+    def model_name(self, value):
+        if type(value) is str:
+            self.model_name = value
+
     def load_option(self, option_file: str) -> None:
         try:
-            with open(option_file, "r", encoding="utf-8") as file:
-                self.options = json.load(file)
-        except FileNotFoundError:
-            logger.debug(f"未找到配置文件,使用默认配置 ...")
+            load_parameters(option_file, self.options)
+            for k, v in self.options.items():
+                setattr(self, k, v)
+            logger.debug(f"读取配置文件，使用部署参数 ...")
+        except (FileNotFoundError, json.decoder.JSONDecodeError):
+            logger.debug(f"未找到配置文件或文件解析错误，使用默认参数 ...")
             self.dump_option(option_file)
-        except json.decoder.JSONDecodeError:
-            logger.debug(f"配置文件解析错误,文件格式不正确,使用默认配置 ...")
         except Exception as e:
-            logger.error(f"发生未知错误 {e}")
-        else:
-            logger.debug(f"读取配置文件,使用配置参数 ...")
+            logger.error(f"发生未知错误: {e}")
 
     def dump_option(self, option_file: str) -> None:
-        with open(option_file, "w", encoding="utf-8") as file:
-            json.dump(self.options, file, indent=4, separators=(",", ":"), ensure_ascii=False)
+        dump_parameters(option_file, self.options)
 
 
 class Script(object):
 
     scripts = {
         "commands": [
-            {
-                "name": "script_1",
-                "loop": 1,
-                "actions": [
-                    {"command": "", "args": []},
-                    {"command": "", "args": []}
-                ]
-            },
-            {
-                "name": "script_2",
-                "loop": 1,
-                "actions": [
-                    {"command": "", "args": []},
-                    {"command": "", "args": []}
-                ]
-            },
-            {
-                "name": "script_3",
-                "loop": 1,
-                "actions": [
-                    {"command": "", "args": []},
-                    {"command": "", "args": []}
-                ]
-            },
+            {"name": "script 1", "loop": 1, "actions": [{"command": "", "args": []}, {"command": "", "args": []}]},
+            {"name": "script 2", "loop": 1, "actions": [{"command": "", "args": []}, {"command": "", "args": []}]},
+            {"name": "script 3", "loop": 1, "actions": [{"command": "", "args": []}, {"command": "", "args": []}]},
         ]
     }
 
     def dump_script(self, script_file: str) -> None:
-        with open(script_file, "w", encoding="utf-8") as file:
-            json.dump(self.scripts, file, indent=4, separators=(",", ":"), ensure_ascii=False)
+        dump_parameters(script_file, self.scripts)
 
 
 if __name__ == '__main__':
