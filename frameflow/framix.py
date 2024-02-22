@@ -1476,7 +1476,10 @@ def get_template(template_path: str) -> str | Exception:
 
 
 def examine_flip(
-        start: int | float, close: int | float, limit: int | float, duration: int | float
+        start: Optional[int | float],
+        close: Optional[int | float],
+        limit: Optional[int | float],
+        duration: Optional[int | float]
 ) -> tuple[Optional[int | float], Optional[int | float], Optional[int | float]]:
     """
     校验视频剪辑参数
@@ -1487,15 +1490,20 @@ def examine_flip(
     :return: 校验结果
     """
     start_point = close_point = limit_point = None
+
     if start:
         if start == duration:
-            return start_point, close_point, limit_point
+            return None, None, None
         start_point = max(0, min(start, duration))
 
     if close:
         close_point = max(start_point, min(close, duration)) if start else max(0, min(close, duration))
+        if close_point - start_point < 0.09:
+            return None, None, None
     elif limit:
         limit_point = max(0, min(limit, duration - start)) if start else max(0, min(limit, duration))
+        if limit_point < 0.09:
+            return None, None, None
 
     return start_point, close_point, limit_point
 

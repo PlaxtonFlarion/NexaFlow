@@ -9,7 +9,7 @@ from frameflow.skills.show import Show
 
 def dump_parameters(src, dst) -> None:
     with open(src, "w", encoding="utf-8") as file:
-        json.dump(dst, file, indent=4, separators=(",", ": "), ensure_ascii=False)
+        json.dump(dst, file, indent=4, separators=(",", ":"), ensure_ascii=False)
 
 
 def load_parameters(src, dst) -> None:
@@ -233,10 +233,7 @@ class Deploy(object):
                     effective.append((hook["x"], hook["y"], hook["x_size"], hook["y_size"]))
             elif type(hook) is tuple:
                 effective.append(hook)
-
-        effective_list = list(set(effective)).copy()
-        effective.clear()
-        return effective_list
+        return list(set(effective)) if effective else [{"x": 0, "y": 0, "x_size": 0, "y_size": 0}]
 
     @staticmethod
     def parse_times(dim_str):
