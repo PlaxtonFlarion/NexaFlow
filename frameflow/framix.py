@@ -2091,6 +2091,7 @@ if __name__ == '__main__':
     logger.debug(f"Initial-Report: {_initial_report}")
     logger.debug(f"Initial-Deploy: {_initial_deploy}")
     logger.debug(f"Initial-Option: {_initial_option}")
+    logger.debug(f"Initial-Script: {_initial_script}")
     logger.debug(f"Model-Path: {_model_path}")
     # Debug Mode =======================================================================================================
 
