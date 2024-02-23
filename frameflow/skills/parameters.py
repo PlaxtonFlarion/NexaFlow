@@ -8,6 +8,7 @@ from frameflow.skills.show import Show
 
 
 def dump_parameters(src, dst) -> None:
+    os.makedirs(os.path.dirname(src), exist_ok=True)
     with open(src, "w", encoding="utf-8") as file:
         json.dump(dst, file, indent=4, separators=(",", ":"), ensure_ascii=False)
 
@@ -186,11 +187,13 @@ class Deploy(object):
 
     @crops.setter
     def crops(self, value):
-        self.deploys["crops"] = self.parse_hooks(value)
+        if len(calc_list := self.parse_hooks(value)) > 0:
+            self.deploys["crops"] = calc_list
 
     @omits.setter
     def omits(self, value):
-        self.deploys["omits"] = self.parse_hooks(value)
+        if len(calc_list := self.parse_hooks(value)) > 0:
+            self.deploys["omits"] = calc_list
 
     @staticmethod
     def parse_bools(dim_str):
@@ -228,12 +231,13 @@ class Deploy(object):
         hooks_list, effective = dim_str, []
         for hook in hooks_list:
             if type(hook) is dict:
-                data_list = [value for value in hook.values() if type(value) is int or type(value) is float]
+                data_list = [
+                    v for v in hook.values() if type(v) is int or type(v) is float
+                ]
                 if len(data_list) == 4 and sum(data_list) > 0:
-                    effective.append((hook["x"], hook["y"], hook["x_size"], hook["y_size"]))
-            elif type(hook) is tuple:
-                effective.append(hook)
-        return list(set(effective)) if effective else [{"x": 0, "y": 0, "x_size": 0, "y_size": 0}]
+                    effective.append(hook)
+        unique_hooks = {tuple(i.items()) for i in effective}
+        return [dict(i) for i in unique_hooks]
 
     @staticmethod
     def parse_times(dim_str):
@@ -465,7 +469,7 @@ class Option(object):
 
     @model_name.setter
     def model_name(self, value):
-        if type(value) is str:
+        if type(value) is str and value:
             self.model_name = value
 
     def load_option(self, option_file: str) -> None:

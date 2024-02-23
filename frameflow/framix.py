@@ -55,9 +55,7 @@ _view_total_temp = os.path.join(_job_path, "archivix", "pages", "template_view_t
 _view_temp = os.path.join(_job_path, "archivix", "pages", "template_view.html")
 _alien = os.path.join(_job_path, "archivix", "pages", "template_alien.html")
 _initial_report = os.path.join(_universal, "framix.report")
-_initial_deploy = os.path.join(_universal, "framix.source")
-_initial_option = os.path.join(_universal, "framix.source")
-_initial_script = os.path.join(_universal, "framix.source")
+_initial_source = os.path.join(_universal, "framix.source")
 
 if operation_system == "win32":
     _adb = os.path.join(_tools_path, "win", "platform-tools", "adb.exe")
@@ -113,10 +111,10 @@ except (RuntimeError, ModuleNotFoundError) as err:
 
 class Review(object):
 
-    __data = tuple()
+    data = tuple()
 
-    def __init__(self, *args):
-        self.data = args
+    def __init__(self, start: int, end: int, cost: float, classifier: "ClassifierResult"):
+        self.data = start, end, cost, classifier
 
     def __str__(self):
         start, end, cost, classifier = self.data
@@ -124,18 +122,6 @@ class Review(object):
         return f"<Review start={start} end={end} cost={cost} classifier={kc}>"
 
     __repr__ = __str__
-
-    @property
-    def data(self):
-        return self.__data
-
-    @data.setter
-    def data(self, value):
-        self.__data = value
-
-    @data.deleter
-    def data(self):
-        del self.__data
 
 
 class Parser(object):
@@ -197,8 +183,8 @@ class Parser(object):
         parser.add_argument('--paint', action='store_true', help='绘制图片分割线条')
         parser.add_argument('--video', action='append', help='分析视频')
         parser.add_argument('--stack', action='append', help='分析视频文件集合')
-        parser.add_argument('--merge', action='append', help='聚合时间戳报告')
         parser.add_argument('--union', action='append', help='聚合视频帧报告')
+        parser.add_argument('--merge', action='append', help='聚合时间戳报告')
         parser.add_argument('--train', action='append', help='归类图片文件')
         parser.add_argument('--build', action='append', help='训练模型文件')
 
@@ -248,16 +234,16 @@ class Missions(object):
         *_, self.crops, self.omits = args
 
         self.lines = kwargs["lines"]
-        self.model_path = kwargs["model_path"]
-        self.main_total_temp = kwargs["main_total_temp"]
-        self.main_temp = kwargs["main_temp"]
-        self.view_total_temp = kwargs["view_total_temp"]
-        self.view_temp = kwargs["view_temp"]
         self.alien = kwargs["alien"]
-        self.initial_report = kwargs["initial_report"]
+        self.view_total_temp = kwargs["view_total_temp"]
+        self.main_total_temp = kwargs["main_total_temp"]
+        self.view_temp = kwargs["view_temp"]
+        self.main_temp = kwargs["main_temp"]
         self.initial_deploy = kwargs["initial_deploy"]
         self.initial_option = kwargs["initial_option"]
         self.initial_script = kwargs["initial_script"]
+        self.initial_report = kwargs["initial_report"]
+        self.initial_models = kwargs["initial_models"]
         self.adb = kwargs["adb"]
         self.ffmpeg = kwargs["ffmpeg"]
         self.ffprobe = kwargs["ffprobe"]
@@ -373,7 +359,7 @@ class Missions(object):
             logger.info(f"Framix Analyzer: 智能模式 ...")
             kc = KerasClassifier(data_size=deploy.model_size)
             try:
-                kc.load_model(self.model_path)
+                kc.load_model(self.initial_models)
             except ValueError as e:
                 logger.error(f"发生 {e}")
                 kc = None
@@ -540,7 +526,7 @@ class Missions(object):
             logger.info(f"Framix Analyzer: 智能模式 ...")
             kc = KerasClassifier(data_size=deploy.model_size)
             try:
-                kc.load_model(self.model_path)
+                kc.load_model(self.initial_models)
             except ValueError as e:
                 logger.error(f"{e}")
                 kc = None
@@ -1302,7 +1288,7 @@ class Missions(object):
         async def combines_report():
             combined = False
             if len(reporter.range_list) > 0:
-                combines = getattr(missions, "combines_view") if self.quick else getattr(missions, "combines_main")
+                combines = getattr(_missions, "combines_view") if self.quick else getattr(_missions, "combines_main")
                 await combines([os.path.dirname(reporter.total_path)], deploy.group)
                 combined = True
             return combined
@@ -1349,7 +1335,7 @@ class Missions(object):
         if self.keras and not self.quick and not self.basic:
             kc = KerasClassifier(data_size=deploy.model_size)
             try:
-                kc.load_model(self.model_path)
+                kc.load_model(self.initial_models)
             except ValueError as error:
                 logger.error(f"{error}")
                 kc = None
@@ -1423,7 +1409,7 @@ class Missions(object):
                                 reporter.title = f"{src_hd}_{hd}" if hd else f"{src_hd}_{random.randint(a, b)}"
                                 continue
                         raise ValueError
-                    elif select == "create" or select == "invent":
+                    elif select in ["invent", "create"]:
                         if await combines_report():
                             break
                         Show.console.print(f"[bold red]没有可以生成的报告 ...\n")
@@ -1727,24 +1713,25 @@ async def analyzer(
         video, task, hued = await frame_flip()
         cutter = VideoCutter()
 
-        compress_hook = CompressHook(
-            compress_rate=1,
-            target_size=None,
-            not_grey=False
-        )
+        compress_hook = CompressHook(1, None, False)
         cutter.add_hook(compress_hook)
 
-        if len(deploy.crops) > 0:
-            for crop in deploy.crops:
-                x, y, x_size, y_size = crop
-                crop_hook = PaintCropHook((y_size, x_size), (y, x))
-                cutter.add_hook(crop_hook)
+        async def arrange_hooks(name, hook):
+            if len(hook) > 0 and sum([j for i in hook for j in i.values()]) > 0:
+                for h in hook:
+                    x, y, x_size, y_size = h.values()
+                    scope_hook = PaintCropHook(
+                        (y_size, x_size), (y, x)
+                    ) if name == "crops" else PaintOmitHook(
+                        (y_size, x_size), (y, x)
+                    )
+                    cutter.add_hook(scope_hook)
+                    logger.debug(f"{scope_hook.__class__.__name__}: {x, y, x_size, y_size}")
 
-        if len(deploy.omits) > 0:
-            for omit in deploy.omits:
-                x, y, x_size, y_size = omit
-                omit_hook = PaintOmitHook((y_size, x_size), (y, x))
-                cutter.add_hook(omit_hook)
+        await asyncio.gather(
+            *(arrange_hooks(name, hook)
+              for name, hook in zip(["crops", "omits"], [deploy.crops, deploy.omits]))
+        )
 
         save_hook = FrameSaveHook(extra_path)
         cutter.add_hook(save_hook)
@@ -1954,31 +1941,31 @@ async def analyzer(
 
 
 async def ask_main():
-    deploy = Deploy(missions.initial_deploy)
-    deploy.alone = missions.alone
-    deploy.group = missions.group
-    deploy.boost = missions.boost
-    deploy.color = missions.color
+    deploy = Deploy(_missions.initial_deploy)
+    deploy.alone = _missions.alone
+    deploy.group = _missions.group
+    deploy.boost = _missions.boost
+    deploy.color = _missions.color
 
-    deploy.shape = missions.shape if "--shape" in missions.lines else deploy.shape
-    deploy.scale = missions.scale if "--scale" in missions.lines else deploy.scale
-    deploy.start = missions.start if "--start" in missions.lines else deploy.start
-    deploy.close = missions.close if "--close" in missions.lines else deploy.close
-    deploy.limit = missions.limit if "--limit" in missions.lines else deploy.limit
-    deploy.begin = missions.begin if "--begin" in missions.lines else deploy.begin
-    deploy.final = missions.final if "--final" in missions.lines else deploy.final
+    deploy.shape = _missions.shape if "--shape" in _missions.lines else deploy.shape
+    deploy.scale = _missions.scale if "--scale" in _missions.lines else deploy.scale
+    deploy.start = _missions.start if "--start" in _missions.lines else deploy.start
+    deploy.close = _missions.close if "--close" in _missions.lines else deploy.close
+    deploy.limit = _missions.limit if "--limit" in _missions.lines else deploy.limit
+    deploy.begin = _missions.begin if "--begin" in _missions.lines else deploy.begin
+    deploy.final = _missions.final if "--final" in _missions.lines else deploy.final
 
-    deploy.crops = missions.crops if "--crops" in missions.lines else deploy.crops
-    deploy.omits = missions.omits if "--omits" in missions.lines else deploy.omits
+    deploy.crops = _missions.crops if "--crops" in _missions.lines else deploy.crops
+    deploy.omits = _missions.omits if "--omits" in _missions.lines else deploy.omits
 
-    if cmd_lines.flick:
-        await missions.analysis(deploy)
-    elif cmd_lines.paint:
-        await missions.painting(deploy)
-    elif cmd_lines.merge and len(cmd_lines.merge) > 0:
-        await missions.combines_main(cmd_lines.merge, missions.group)
-    elif cmd_lines.union and len(cmd_lines.union) > 0:
-        await missions.combines_view(cmd_lines.union, missions.group)
+    if _cmd_lines.flick:
+        await _missions.analysis(deploy)
+    elif _cmd_lines.paint:
+        await _missions.painting(deploy)
+    elif _cmd_lines.merge and len(_cmd_lines.merge) > 0:
+        await _missions.combines_main(_cmd_lines.merge, _missions.group)
+    elif _cmd_lines.union and len(_cmd_lines.union) > 0:
+        await _missions.combines_view(_cmd_lines.union, _missions.group)
     else:
         Show.help_document()
 
@@ -1992,27 +1979,26 @@ if __name__ == '__main__':
         Show.help_document()
         sys.exit(0)
 
-    lines = sys.argv[1:]
+    _lines = sys.argv[1:]
 
     from multiprocessing import Pool, freeze_support
-
     freeze_support()
 
     from argparse import ArgumentParser
+    _cmd_lines = Parser.parse_cmd()
 
-    cmd_lines = Parser.parse_cmd()
-    _level = "DEBUG" if cmd_lines.debug else "INFO"
+    _level = "DEBUG" if _cmd_lines.debug else "INFO"
     initializer(_level)
 
     # Debug Mode =======================================================================================================
-    logger.debug(f"Level: {_level}")
-    logger.debug(f"Lines: {lines}")
+    logger.debug(f"日志等级: {_level}")
+    logger.debug(f"命令参数: {_lines}")
 
-    logger.debug(f"System: {operation_system}")
-    logger.debug(f"Worker: {work_platform}")
+    logger.debug(f"操作系统: {operation_system}")
+    logger.debug(f"应用名称: {work_platform}")
 
-    logger.debug(f"Tools: {_tools_path}")
-    logger.debug(f"Model: {_model_path}")
+    logger.debug(f"工具路径: {_tools_path}")
+    logger.debug(f"模型路径: {_model_path}")
     logger.debug(f"Html-Template: {_main_total_temp}")
     logger.debug(f"Html-Template: {_main_temp}")
     logger.debug(f"Html-Template: {_view_total_temp}")
@@ -2024,137 +2010,150 @@ if __name__ == '__main__':
     logger.debug(f"ffprobe: {_ffprobe}")
     logger.debug(f"scrcpy: {_scrcpy}")
 
-    for env in os.environ["PATH"].split(os.path.pathsep):
-        logger.debug(env)
+    for _env in os.environ["PATH"].split(os.path.pathsep):
+        logger.debug(_env)
     # Debug Mode =======================================================================================================
 
-    _carry = cmd_lines.carry
-    _fully = cmd_lines.fully
-    _alone = cmd_lines.alone
-    _group = cmd_lines.group
+    _carry = _cmd_lines.carry
+    _fully = _cmd_lines.fully
+    _alone = _cmd_lines.alone
+    _group = _cmd_lines.group
 
-    _quick = cmd_lines.quick
-    _basic = cmd_lines.basic
-    _keras = cmd_lines.keras
+    _quick = _cmd_lines.quick
+    _basic = _cmd_lines.basic
+    _keras = _cmd_lines.keras
 
-    _boost = cmd_lines.boost
-    _color = cmd_lines.color
+    _boost = _cmd_lines.boost
+    _color = _cmd_lines.color
 
-    _shape = cmd_lines.shape
-    _scale = cmd_lines.scale
+    _shape = _cmd_lines.shape
+    _scale = _cmd_lines.scale
 
-    _start = cmd_lines.start
-    _close = cmd_lines.close
-    _limit = cmd_lines.limit
+    _start = _cmd_lines.start
+    _close = _cmd_lines.close
+    _limit = _cmd_lines.limit
 
-    _begin = cmd_lines.begin
-    _final = cmd_lines.final
+    _begin = _cmd_lines.begin
+    _final = _cmd_lines.final
 
     # Debug Mode =======================================================================================================
-    cpu = os.cpu_count()
-    logger.debug(f"CPU Core: {cpu}")
+    _cpu = os.cpu_count()
+    logger.debug(f"CPU Core: {_cpu}")
     # Debug Mode =======================================================================================================
 
     _crops = []
-    if cmd_lines.crops and len(cmd_lines.crops) > 0:
-        for hook in cmd_lines.crops:
-            if len(match_list := re.findall(r"-?\d*\.?\d+", hook)) == 4:
-                valid_list = [float(num) if "." in num else int(num) for num in match_list]
-                if sum(valid_list) > 0:
-                    _crops.append(tuple(valid_list))
-    if len(_crops) >= 2:
-        _crops = list(set(_crops))
+    if _cmd_lines.crops and len(_cmd_lines.crops) > 0:
+        for _hook in _cmd_lines.crops:
+            if len(match_list := re.findall(r"-?\d*\.?\d+", _hook)) == 4:
+                _valid_list = [
+                    float(num) if "." in num else int(num) for num in match_list
+                ]
+                if len(_valid_list) == 4 and sum(_valid_list) > 0:
+                    _valid_dict = {
+                        _k: _v for _k, _v in zip(["x", "y", "x_size", "y_size"], _valid_list)
+                    }
+                    _crops.append(_valid_dict)
+    _unique_crops = {tuple(_i.items()) for _i in _crops}
+    _crops = [dict(_i) for _i in _unique_crops]
 
     _omits = []
-    if cmd_lines.omits and len(cmd_lines.omits) > 0:
-        for hook in cmd_lines.omits:
-            if len(match_list := re.findall(r"-?\d*\.?\d+", hook)) == 4:
-                valid_list = [float(num) if "." in num else int(num) for num in match_list]
-                if sum(valid_list) > 0:
-                    _omits.append(tuple(valid_list))
-    if len(_omits) >= 2:
-        _omits = list(set(_omits))
+    if _cmd_lines.omits and len(_cmd_lines.omits) > 0:
+        for _hook in _cmd_lines.omits:
+            if len(match_list := re.findall(r"-?\d*\.?\d+", _hook)) == 4:
+                _valid_list = [
+                    float(num) if "." in num else int(num) for num in match_list
+                ]
+                if len(_valid_list) == 4 and sum(_valid_list) > 0:
+                    _valid_dict = {
+                        _k: _v for _k, _v in zip(["x", "y", "x_size", "y_size"], _valid_list)
+                    }
+                    _omits.append(_valid_dict)
+    _unique_omits = {tuple(_i.items()) for _i in _omits}
+    _omits = [dict(_i) for _i in _unique_omits]
 
-    _initial_deploy = os.path.join(_initial_deploy, "deploy.json")
-    _initial_option = os.path.join(_initial_option, "option.json")
-    _initial_script = os.path.join(_initial_script, "script.json")
+    _initial_deploy = os.path.join(_initial_source, "deploy.json")
+    _initial_option = os.path.join(_initial_source, "option.json")
+    _initial_script = os.path.join(_initial_source, "script.json")
 
-    option = Option(_initial_option)
-    _initial_report = option.total_path if option.total_path else _initial_report
-    _model_path = os.path.join(
-        _model_path, option.model_name
-    ) if option.model_name else os.path.join(
-        _model_path, "Keras_Gray_W256_H256_00000.h5"
+    _option = Option(_initial_option)
+    _initial_report = _option.total_path if _option.total_path else _initial_report
+    _initial_models = os.path.join(
+        _model_path, _option.model_name if _option.model_name else "Keras_Gray_W256_H256_00000.h5"
     )
 
     # Debug Mode =======================================================================================================
-    logger.debug(f"Initial-Report: {_initial_report}")
-    logger.debug(f"Initial-Deploy: {_initial_deploy}")
-    logger.debug(f"Initial-Option: {_initial_option}")
-    logger.debug(f"Initial-Script: {_initial_script}")
-    logger.debug(f"Model-Path: {_model_path}")
+    logger.debug(f"部署文件路径: {_initial_deploy}")
+    logger.debug(f"配置文件路径: {_initial_option}")
+    logger.debug(f"脚本文件路径: {_initial_script}")
+    logger.debug(f"报告文件路径: {_initial_report}")
+    logger.debug(f"模型文件路径: {_initial_models}")
     # Debug Mode =======================================================================================================
 
-    missions = Missions(
+    _missions = Missions(
         _carry, _fully, _alone, _group, _quick, _basic, _keras,
         _boost, _color, _shape, _scale, _start, _close, _limit, _begin, _final, _crops, _omits,
-        lines=lines, model_path=_model_path,
-        main_total_temp=_main_total_temp, main_temp=_main_temp,
-        view_total_temp=_view_total_temp, view_temp=_view_temp,
+        lines=_lines,
         alien=_alien,
-        initial_report=_initial_report, initial_deploy=_initial_deploy,
-        initial_option=_initial_option, initial_script=_initial_script,
+        view_total_temp=_view_total_temp,
+        main_total_temp=_main_total_temp,
+        view_temp=_view_temp,
+        main_temp=_main_temp,
+        initial_deploy=_initial_deploy,
+        initial_option=_initial_option,
+        initial_script=_initial_script,
+        initial_report=_initial_report,
+        initial_models=_initial_models,
         adb=_adb, ffmpeg=_ffmpeg, ffprobe=_ffprobe, scrcpy=_scrcpy
     )
 
-    if cmd_lines.stack and len(cmd_lines.stack) > 0:
-        members = len(cmd_lines.stack)
-        if members == 1:
-            missions.video_dir_task(cmd_lines.stack[0])
+    if _cmd_lines.stack and len(_cmd_lines.stack) > 0:
+        _members = len(_cmd_lines.stack)
+        if _members == 1:
+            _missions.video_dir_task(_cmd_lines.stack[0])
         else:
-            processes = members if members <= cpu else cpu
-            with Pool(processes=processes, initializer=initializer, initargs=("ERROR",)) as pool:
-                results = pool.starmap(missions.video_dir_task, [(i,) for i in cmd_lines.stack])
+            processes = _members if _members <= _cpu else _cpu
+            with Pool(processes=processes, initializer=initializer, initargs=("ERROR",)) as _pool:
+                results = _pool.starmap(_missions.video_dir_task, [(i,) for i in _cmd_lines.stack])
             template_total = get_template(
-                missions.view_total_temp
-            ) if missions.quick else get_template(missions.main_total_temp)
-            Report.merge_report(results, template_total, missions.quick)
+                _missions.view_total_temp
+            ) if _missions.quick else get_template(_missions.main_total_temp)
+            Report.merge_report(results, template_total, _missions.quick)
         sys.exit(0)
-    elif cmd_lines.video and len(cmd_lines.video) > 0:
-        members = len(cmd_lines.video)
-        if members == 1:
-            missions.video_task(cmd_lines.video[0])
+    elif _cmd_lines.video and len(_cmd_lines.video) > 0:
+        _members = len(_cmd_lines.video)
+        if _members == 1:
+            _missions.video_task(_cmd_lines.video[0])
         else:
-            processes = members if members <= cpu else cpu
-            with Pool(processes=processes, initializer=initializer, initargs=("ERROR",)) as pool:
-                results = pool.starmap(missions.video_task, [(i,) for i in cmd_lines.video])
+            processes = _members if _members <= _cpu else _cpu
+            with Pool(processes=processes, initializer=initializer, initargs=("ERROR",)) as _pool:
+                results = _pool.starmap(_missions.video_task, [(i,) for i in _cmd_lines.video])
             template_total = get_template(
-                missions.view_total_temp
-            ) if missions.quick else get_template(missions.main_total_temp)
-            Report.merge_report(results, template_total, missions.quick)
+                _missions.view_total_temp
+            ) if _missions.quick else get_template(_missions.main_total_temp)
+            Report.merge_report(results, template_total, _missions.quick)
         sys.exit(0)
-    elif cmd_lines.train and len(cmd_lines.train) > 0:
-        members = len(cmd_lines.train)
-        if members == 1:
-            missions.train_model(cmd_lines.train[0])
+    elif _cmd_lines.train and len(_cmd_lines.train) > 0:
+        _members = len(_cmd_lines.train)
+        if _members == 1:
+            _missions.train_model(_cmd_lines.train[0])
         else:
-            processes = members if members <= cpu else cpu
-            with Pool(processes=processes, initializer=initializer, initargs=("ERROR",)) as pool:
-                pool.starmap(missions.train_model, [(i,) for i in cmd_lines.train])
+            processes = _members if _members <= _cpu else _cpu
+            with Pool(processes=processes, initializer=initializer, initargs=("ERROR",)) as _pool:
+                _pool.starmap(_missions.train_model, [(i,) for i in _cmd_lines.train])
         sys.exit(0)
-    elif cmd_lines.build and len(cmd_lines.build) > 0:
-        members = len(cmd_lines.build)
-        if members == 1:
-            missions.build_model(cmd_lines.build[0])
+    elif _cmd_lines.build and len(_cmd_lines.build) > 0:
+        _members = len(_cmd_lines.build)
+        if _members == 1:
+            _missions.build_model(_cmd_lines.build[0])
         else:
-            processes = members if members <= cpu else cpu
-            with Pool(processes=processes, initializer=initializer, initargs=("ERROR",)) as pool:
-                pool.starmap(missions.build_model, [(i,) for i in cmd_lines.build])
+            processes = _members if _members <= _cpu else _cpu
+            with Pool(processes=processes, initializer=initializer, initargs=("ERROR",)) as _pool:
+                _pool.starmap(_missions.build_model, [(i,) for i in _cmd_lines.build])
         sys.exit(0)
     else:
         try:
-            loop = asyncio.get_event_loop()
-            loop.run_until_complete(ask_main())
+            _loop = asyncio.get_event_loop()
+            _loop.run_until_complete(ask_main())
             sys.exit(0)
         except KeyboardInterrupt:
             sys.exit(0)
