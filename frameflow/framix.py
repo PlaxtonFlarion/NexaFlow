@@ -1956,10 +1956,10 @@ async def ask_main():
         await _missions.analysis(deploy)
     elif _cmd_lines.paint:
         await _missions.painting(deploy)
-    elif _cmd_lines.merge and len(_cmd_lines.merge) > 0:
-        await _missions.combines_main(_cmd_lines.merge, _missions.group)
     elif _cmd_lines.union and len(_cmd_lines.union) > 0:
         await _missions.combines_view(_cmd_lines.union, _missions.group)
+    elif _cmd_lines.merge and len(_cmd_lines.merge) > 0:
+        await _missions.combines_main(_cmd_lines.merge, _missions.group)
     else:
         Show.help_document()
 
@@ -1981,7 +1981,7 @@ if __name__ == '__main__':
     from argparse import ArgumentParser
     _cmd_lines = Parser.parse_cmd()
 
-    _level = "DEBUG" if _cmd_lines.debug else "INFO"
+    _level, _multi_level = "DEBUG" if _cmd_lines.debug else "INFO", "ERROR"
     initializer(_level)
 
     # Debug Mode =======================================================================================================
@@ -2100,50 +2100,59 @@ if __name__ == '__main__':
         adb=_adb, ffmpeg=_ffmpeg, ffprobe=_ffprobe, scrcpy=_scrcpy
     )
 
+    # --stack ==========================================================================================================
     if _cmd_lines.stack and len(_cmd_lines.stack) > 0:
         _members = len(_cmd_lines.stack)
         if _members == 1:
             _missions.video_dir_task(_cmd_lines.stack[0])
         else:
             processes = _members if _members <= _cpu else _cpu
-            with Pool(processes=processes, initializer=initializer, initargs=("ERROR",)) as _pool:
-                results = _pool.starmap(_missions.video_dir_task, [(i,) for i in _cmd_lines.stack])
-            template_total = get_template(
+            with Pool(processes=processes, initializer=initializer, initargs=(_multi_level,)) as _pool:
+                _results = _pool.starmap(_missions.video_dir_task, [(i,) for i in _cmd_lines.stack])
+            _template_total = get_template(
                 _missions.view_total_temp
             ) if _missions.quick else get_template(_missions.main_total_temp)
-            Report.merge_report(results, template_total, _missions.quick)
+            Report.merge_report(_results, _template_total, _missions.quick)
         sys.exit(0)
+
+    # --video ==========================================================================================================
     elif _cmd_lines.video and len(_cmd_lines.video) > 0:
         _members = len(_cmd_lines.video)
         if _members == 1:
             _missions.video_task(_cmd_lines.video[0])
         else:
             processes = _members if _members <= _cpu else _cpu
-            with Pool(processes=processes, initializer=initializer, initargs=("ERROR",)) as _pool:
-                results = _pool.starmap(_missions.video_task, [(i,) for i in _cmd_lines.video])
-            template_total = get_template(
+            with Pool(processes=processes, initializer=initializer, initargs=(_multi_level,)) as _pool:
+                _results = _pool.starmap(_missions.video_task, [(i,) for i in _cmd_lines.video])
+            _template_total = get_template(
                 _missions.view_total_temp
             ) if _missions.quick else get_template(_missions.main_total_temp)
-            Report.merge_report(results, template_total, _missions.quick)
+            Report.merge_report(_results, _template_total, _missions.quick)
         sys.exit(0)
+
+    # --train ==========================================================================================================
     elif _cmd_lines.train and len(_cmd_lines.train) > 0:
         _members = len(_cmd_lines.train)
         if _members == 1:
             _missions.train_model(_cmd_lines.train[0])
         else:
             processes = _members if _members <= _cpu else _cpu
-            with Pool(processes=processes, initializer=initializer, initargs=("ERROR",)) as _pool:
+            with Pool(processes=processes, initializer=initializer, initargs=(_multi_level,)) as _pool:
                 _pool.starmap(_missions.train_model, [(i,) for i in _cmd_lines.train])
         sys.exit(0)
+
+    # --build ==========================================================================================================
     elif _cmd_lines.build and len(_cmd_lines.build) > 0:
         _members = len(_cmd_lines.build)
         if _members == 1:
             _missions.build_model(_cmd_lines.build[0])
         else:
             processes = _members if _members <= _cpu else _cpu
-            with Pool(processes=processes, initializer=initializer, initargs=("ERROR",)) as _pool:
+            with Pool(processes=processes, initializer=initializer, initargs=(_multi_level,)) as _pool:
                 _pool.starmap(_missions.build_model, [(i,) for i in _cmd_lines.build])
         sys.exit(0)
+
+    # --flick --paint --union --merge ==================================================================================
     else:
         try:
             _loop = asyncio.get_event_loop()
