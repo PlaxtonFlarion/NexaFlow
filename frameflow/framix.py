@@ -1636,27 +1636,22 @@ async def analyzer(
     ffprobe = kwargs.get("ffprobe", "ffprobe")
 
     async def validate():
-        screen_tag, screen_cap = None, None
+        screen_cap = None
         if os.path.isfile(vision_path):
             screen = cv2.VideoCapture(vision_path)
             if screen.isOpened():
-                screen_tag = os.path.basename(vision_path)
-                screen_cap = vision_path
+                screen_cap = Path(vision_path)
             screen.release()
         elif os.path.isdir(vision_path):
-            if len(
-                    file_list := [
-                        file for file in os.listdir(vision_path) if os.path.isfile(
-                            os.path.join(vision_path, file)
-                        )
-                    ]
-            ) > 1 or len(file_list) == 1:
-                screen = cv2.VideoCapture(os.path.join(vision_path, file_list[0]))
+            file_list = [
+                file for file in os.listdir(vision_path) if os.path.isfile(os.path.join(vision_path, file))
+            ]
+            if len(file_list) >= 1:
+                screen = cv2.VideoCapture(open_file := os.path.join(vision_path, file_list[0]))
                 if screen.isOpened():
-                    screen_tag = os.path.basename(file_list[0])
-                    screen_cap = os.path.join(vision_path, file_list[0])
+                    screen_cap = Path(open_file)
                 screen.release()
-        return screen_tag, screen_cap
+        return screen_cap
 
     async def frame_flip():
         change_record = os.path.join(
@@ -1927,11 +1922,10 @@ async def analyzer(
         return flick_result, classify
 
     # Analyzer first ===================================================================================================
-    tag, screen_record = await validate()
-    if not tag or not screen_record:
-        logger.error(f"{tag} 不是一个标准的mp4视频文件，或视频文件已损坏 ...")
-        return None
-    logger.info(f"{tag} 可正常播放，准备加载视频 ...")
+    screen_record = await validate()
+    if screen_record is None:
+        return logger.error(f"{vision_path} 不是一个标准的视频文件或视频文件已损坏 ...")
+    logger.info(f"{screen_record.name} 可正常播放，准备加载视频 ...")
     # Analyzer first ===================================================================================================
 
     # Analyzer last ====================================================================================================
