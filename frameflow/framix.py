@@ -49,11 +49,11 @@ else:
 
 _tools_path = os.path.join(_job_path, "archivix", "tools")
 _model_path = os.path.join(_job_path, "archivix", "molds")
-_main_total_temp = os.path.join(_job_path, "archivix", "pages", "template_main_total.html")
-_main_temp = os.path.join(_job_path, "archivix", "pages", "template_main.html")
-_view_total_temp = os.path.join(_job_path, "archivix", "pages", "template_view_total.html")
-_view_temp = os.path.join(_job_path, "archivix", "pages", "template_view.html")
 _alien = os.path.join(_job_path, "archivix", "pages", "template_alien.html")
+_view_total_temp = os.path.join(_job_path, "archivix", "pages", "template_view_total.html")
+_main_total_temp = os.path.join(_job_path, "archivix", "pages", "template_main_total.html")
+_view_temp = os.path.join(_job_path, "archivix", "pages", "template_view.html")
+_main_temp = os.path.join(_job_path, "archivix", "pages", "template_main.html")
 _initial_report = os.path.join(_universal, "framix.report")
 _initial_source = os.path.join(_universal, "framix.source")
 
