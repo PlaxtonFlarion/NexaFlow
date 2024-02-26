@@ -1023,6 +1023,7 @@ class Missions(object):
                     logger.error(f"视频录制失败: {os.path.basename(temp_video)}")
                     return False
                 await asyncio.sleep(0.2)
+            return False
 
         async def commence():
 
@@ -1532,6 +1533,15 @@ async def ask_video_change(ffmpeg, fps: int, src: str, dst: str, **kwargs) -> No
 
 
 async def ask_video_detach(ffmpeg, video_filter: list, src: str, dst: str, **kwargs) -> None:
+    """
+    视频拆帧
+    :param ffmpeg: ffmpeg 可执行文件
+    :param video_filter: 过滤器
+    :param src: 输入文件
+    :param dst: 输出文件
+    :param kwargs: [start 开始时间] [close 结束时间] [limit 持续时间]
+    :return:
+    """
     start = kwargs.get("start", None)
     close = kwargs.get("close", None)
     limit = kwargs.get("limit", None)
@@ -1551,6 +1561,14 @@ async def ask_video_detach(ffmpeg, video_filter: list, src: str, dst: str, **kwa
 
 
 async def ask_video_tailor(ffmpeg, src: str, dst: str, **kwargs) -> None:
+    """
+    截取视频
+    :param ffmpeg: ffmpeg 可执行文件
+    :param src: 输入文件
+    :param dst: 输出文件
+    :param kwargs: [start 开始时间] [close 结束时间] [limit 持续时间]
+    :return:
+    """
     start = kwargs.get("start", None)
     close = kwargs.get("close", None)
     limit = kwargs.get("limit", None)
@@ -1570,6 +1588,12 @@ async def ask_video_tailor(ffmpeg, src: str, dst: str, **kwargs) -> None:
 
 
 async def ask_video_length(ffprobe, src: str) -> float | Exception:
+    """
+    获取视频长度
+    :param ffprobe: ffprobe 可执行文件
+    :param src: 输入文件
+    :return: 视频长度 | Exception
+    """
     cmd = [
         ffprobe, "-v", "error", "-show_entries", "format=duration",
         "-of", "default=noprint_wrappers=1:nokey=1", "-i", src
@@ -1582,7 +1606,13 @@ async def ask_video_length(ffprobe, src: str) -> float | Exception:
     return fmt_result
 
 
-async def ask_video_larger(ffprobe, src: str) -> tuple[int | Exception, int | Exception]:
+async def ask_video_larger(ffprobe, src: str) -> tuple[int, int] | Exception:
+    """
+    获取视频帧尺寸
+    :param ffprobe: ffprobe 可执行文件
+    :param src: 输入文件
+    :return: (宽, 高) | Exception
+    """
     cmd = [
         ffprobe, "-v", "error", "-select_streams", "v:0", "-show_entries",
         "stream=width,height", "-of", "default=noprint_wrappers=1", src
