@@ -1312,17 +1312,21 @@ class Missions(object):
 
         async def exec_commands(device):
             for method in value["actions"]:
-                if callable(device_method := getattr(device, method["command"], None)):
-                    logger.info(f"{device.serial} {device_method.__name__} {method['args']}")
-                    await device_method(*method["args"])
-                elif callable(device_method := getattr(player, method["command"], None)):
-                    if all_used_event.is_set():
-                        continue
-                    logger.info(f"{device.serial} {device_method.__name__} {method['args']}")
-                    device_method(*method["args"])
-                    all_used_event.set()
+                if cmds := method["command"]:
+                    args = method["args"]
+                    if callable(device_method := getattr(device, cmds, None)):
+                        logger.info(f"{device.serial} {device_method.__name__} {args}")
+                        await device_method(*args) if args else await device_method()
+                    elif callable(device_method := getattr(player, cmds, None)):
+                        if all_used_event.is_set():
+                            continue
+                        logger.info(f"{device.serial} {device_method.__name__} {args}")
+                        device_method(*args) if args else device_method()
+                        all_used_event.set()
+                    else:
+                        logger.warning(f"{device.serial} {cmds} No Such Method ...")
                 else:
-                    logger.warning(f"{device.serial} {method['command']} 方法不存在 ...")
+                    logger.warning(f"{device.serial} No Order ...")
             device_events[device.serial]["stop_event"].set() if deploy.alone else all_stop_event.set()
 
         # Initialization ===============================================================================================
