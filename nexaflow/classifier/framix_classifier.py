@@ -10,20 +10,12 @@ class FramixClassifier(object):
 
     MODEL_DENSE = 6
 
-    def __init__(
-            self,
-            color: str = None,
-            aisle: int = None,
-            data_size: tuple = None,
-            batch_size: int = None,
-            epochs: int = None
-    ):
-
-        self.color: str = color or "grayscale"
-        self.aisle: int = aisle or 1
-        self.data_size: tuple = data_size or (256, 256)
-        self.batch_size: int = batch_size or 4
-        self.epochs: int = epochs or 20
+    def __init__(self, *_, **kwargs):
+        self.color: str = kwargs.get("color", "grayscale")
+        self.aisle: int = kwargs.get("aisle", 1)
+        self.data_size: tuple = kwargs.get("data_size", (256, 256))
+        self.batch_size: int = kwargs.get("batch_size", 4)
+        self.epochs: int = kwargs.get("epochs", 20)
 
     @property
     def follow_tf_size(self):

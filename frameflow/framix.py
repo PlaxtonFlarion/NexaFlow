@@ -357,7 +357,7 @@ class Missions(object):
 
         elif self.keras and not self.basic:
             logger.info(f"Framix Analyzer: 智能模式 ...")
-            kc = KerasClassifier(data_size=deploy.model_size)
+            kc = KerasClassifier(data_size=deploy.model_size, aisle=deploy.aisle)
             try:
                 kc.load_model(self.initial_models)
             except ValueError as e:
@@ -524,7 +524,7 @@ class Missions(object):
 
         elif self.keras and not self.basic:
             logger.info(f"Framix Analyzer: 智能模式 ...")
-            kc = KerasClassifier(data_size=deploy.model_size)
+            kc = KerasClassifier(data_size=deploy.model_size, aisle=deploy.aisle)
             try:
                 kc.load_model(self.initial_models)
             except ValueError as e:
@@ -1338,7 +1338,7 @@ class Missions(object):
         reporter = Report(self.initial_report)
 
         if self.keras and not self.quick and not self.basic:
-            kc = KerasClassifier(data_size=deploy.model_size)
+            kc = KerasClassifier(data_size=deploy.model_size, aisle=deploy.aisle)
             try:
                 kc.load_model(self.initial_models)
             except ValueError as error:

@@ -22,28 +22,19 @@ class KerasClassifier(BaseModelClassifier):
     UNKNOWN_STAGE_NAME = constants.UNKNOWN_STAGE_FLAG
     MODEL_DENSE = 6
 
-    def __init__(
-        self,
-        score_threshold: float = None,
-        data_size: typing.Sequence[int] = None,
-        nb_train_samples: int = None,
-        nb_validation_samples: int = None,
-        epochs: int = None,
-        batch_size: int = None,
-        *_,
-        **__,
-    ):
-        super(KerasClassifier, self).__init__(*_, **__)
+    def __init__(self, *_, **kwargs):
+        super(KerasClassifier, self).__init__(*_, **kwargs)
 
         # 模型
         self._model: typing.Optional[keras.Sequential] = None
         # 配置
-        self.score_threshold: float = score_threshold or 0.0
-        self.data_size: typing.Sequence[int] = data_size or (256, 256)
-        self.nb_train_samples: int = nb_train_samples or 64
-        self.nb_validation_samples: int = nb_validation_samples or 64
-        self.epochs: int = epochs or 20
-        self.batch_size: int = batch_size or 4
+        self.aisle: int = kwargs.get("aisle", 1)
+        self.score_threshold: float = kwargs.get("score_threshold", 0.0)
+        self.data_size: typing.Sequence[int] = kwargs.get("data_size", (256, 256))
+        self.nb_train_samples: int = kwargs.get("nb_train_samples", 64)
+        self.nb_validation_samples: int = kwargs.get("nb_validation_samples", 64)
+        self.epochs: int = kwargs.get("epochs", 20)
+        self.batch_size: int = kwargs.get("batch_size", 4)
 
         # logger.debug(f"score threshold: {self.score_threshold}")
         # logger.debug(f"data size: {self.data_size}")
@@ -91,9 +82,9 @@ class KerasClassifier(BaseModelClassifier):
         # logger.info(f"creating Keras sequential model")
         logger.info("Keras神经网络引擎创建图像分析模型 ...")
         if keras.backend.image_data_format() == "channels_first":
-            input_shape = (1, *self.follow_tf_size)
+            input_shape = (self.aisle, *self.follow_tf_size)
         else:
-            input_shape = (*self.follow_tf_size, 1)
+            input_shape = (*self.follow_tf_size, self.aisle)
 
         model = keras.Sequential()
 

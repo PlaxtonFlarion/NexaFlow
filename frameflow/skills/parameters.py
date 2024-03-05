@@ -24,7 +24,7 @@ class Deploy(object):
         "alone": False, "group": False, "boost": False, "color": False,
         "shape": None, "scale": None,
         "start": None, "close": None, "limit": None, "begin": (0, 1), "final": (-1, -1),
-        "model_size": (256, 256), "fps": 60, "threshold": 0.97, "offset": 3, "block": 6,
+        "model_size": (256, 256), "aisle": 1, "fps": 60, "threshold": 0.97, "offset": 3, "block": 6,
         "crops": [{"x": 0, "y": 0, "x_size": 0, "y_size": 0}],
         "omits": [{"x": 0, "y": 0, "x_size": 0, "y_size": 0}]
     }
@@ -79,6 +79,10 @@ class Deploy(object):
     @property
     def model_size(self):
         return self.deploys["model_size"]
+
+    @property
+    def aisle(self):
+        return self.deploys["aisle"]
 
     @property
     def fps(self):
@@ -156,6 +160,13 @@ class Deploy(object):
     @model_size.setter
     def model_size(self, value):
         self.deploys["model_size"] = self.parse_sizes(value)
+
+    @aisle.setter
+    def aisle(self, value):
+        try:
+            self.deploys["aisle"] = int(value) if int(value) in [1, 3] else 1
+        except (ValueError, TypeError):
+            self.deploys["aisle"] = 1
 
     @fps.setter
     def fps(self, value):
@@ -405,6 +416,12 @@ class Deploy(object):
             f"[bold]宽 [bold yellow]{self.model_size[0]}[/bold yellow] 高 [bold yellow]{self.model_size[1]}[/bold yellow]",
         )
         table.add_row(
+            f"[bold {col_1_color}]模型色彩",
+            f"[bold {col_2_color}]{self.aisle}",
+            f"[bold][[bold {col_3_color}]1 | 3[/bold {col_3_color}] ]",
+            f"[bold][bold yellow]{'灰度' if self.aisle == 1 else '彩色'}[/bold yellow] 模型",
+        )
+        table.add_row(
             f"[bold {col_1_color}]帧采样率",
             f"[bold {col_2_color}]{self.fps}",
             f"[bold][[bold {col_3_color}]1 , 60[/bold {col_3_color}]]",
@@ -503,4 +520,7 @@ class Script(object):
 
 
 if __name__ == '__main__':
+    file = "/Users/acekeppel/PycharmProjects/NexaFlow/data/deploy.json"
+    deploy = Deploy(file)
+    deploy.view_deploy()
     pass
