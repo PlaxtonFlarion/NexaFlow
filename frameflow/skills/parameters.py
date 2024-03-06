@@ -252,9 +252,10 @@ class Deploy(object):
 
     @staticmethod
     def parse_times(dim_str):
+        hour_scope, second_scope = 24, 86400
         if type(dim_str) is int or type(dim_str) is float:
-            if dim_str >= 86400:
-                raise ValueError("时间不能超过 24 小时 ...")
+            if dim_str >= second_scope:
+                return None
             return str(datetime.timedelta(seconds=dim_str))
         elif type(dim_str) is str:
             time_pattern = re.compile(r"(?:(\d+):)?(\d+):(\d+)(?:\.(\d+))?|^\d*(?:\.\d+)?$")
@@ -270,7 +271,7 @@ class Deploy(object):
                 time_str = datetime.timedelta(
                     hours=hours, minutes=minutes, seconds=seconds, milliseconds=milliseconds
                 )
-                return str(time_str)
+                return str(time_str) if hours <= hour_scope else None
         return None
 
     @staticmethod
@@ -520,7 +521,4 @@ class Script(object):
 
 
 if __name__ == '__main__':
-    file = "/Users/acekeppel/PycharmProjects/NexaFlow/data/deploy.json"
-    deploy = Deploy(file)
-    deploy.view_deploy()
     pass

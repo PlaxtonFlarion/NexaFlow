@@ -20,11 +20,8 @@ from frameflow.skills.database import DataBase
 from frameflow.skills.parameters import Deploy, Option, Script
 
 operation_system = sys.platform.strip().lower()
-work_platform = os.path.basename(os.path.abspath(sys.argv[0])).lower()
-exec_platform = [
-    "framix.exe", "framix.bin", "framix", "framix.py",
-    "framix-rc.exe", "framix-rc.bin", "framix-rc", "framix-rc.py",
-]
+operation_symbol = os.path.pathsep
+work_platform = Path(os.path.abspath(sys.argv[0])).name.lower()
 
 if work_platform == "framix.exe" or work_platform == "framix-rc.exe":
     _job_path = os.path.dirname(os.path.abspath(sys.argv[0]))
@@ -76,10 +73,10 @@ else:
     )
     sys.exit(1)
 
-os.environ["PATH"] = os.path.dirname(_adb) + os.path.pathsep + os.environ.get("PATH", "")
-os.environ["PATH"] = os.path.dirname(_ffmpeg) + os.path.pathsep + os.environ.get("PATH", "")
-os.environ["PATH"] = os.path.dirname(_ffprobe) + os.path.pathsep + os.environ.get("PATH", "")
-os.environ["PATH"] = os.path.dirname(_scrcpy) + os.path.pathsep + os.environ.get("PATH", "")
+os.environ["PATH"] = os.path.dirname(_adb) + operation_symbol + os.environ.get("PATH", "")
+os.environ["PATH"] = os.path.dirname(_ffmpeg) + operation_symbol + os.environ.get("PATH", "")
+os.environ["PATH"] = os.path.dirname(_ffprobe) + operation_symbol + os.environ.get("PATH", "")
+os.environ["PATH"] = os.path.dirname(_scrcpy) + operation_symbol + os.environ.get("PATH", "")
 
 for env in [Path(_adb).name, Path(_ffmpeg).name, Path(_ffprobe).name, Path(_scrcpy).name]:
     environment_variables = shutil.which(env)
@@ -101,8 +98,8 @@ try:
     from nexaflow.classifier.base import ClassifierResult
     from nexaflow.classifier.keras_classifier import KerasClassifier
     from nexaflow.classifier.framix_classifier import FramixClassifier
-except (RuntimeError, ModuleNotFoundError) as err:
-    Show.console.print(f"[bold red]Error: {err}")
+except (RuntimeError, ModuleNotFoundError) as error:
+    Show.console.print(f"[bold red]Error: {error}")
     Show.simulation_progress(
         f"Exit after 5 seconds ...", 1, 0.05
     )
@@ -292,16 +289,16 @@ class Missions(object):
         deploy.crops = self.crops if "--crops" in self.lines else deploy.crops
         deploy.omits = self.omits if "--omits" in self.lines else deploy.omits
 
-        looper = asyncio.get_event_loop()
+        loop = asyncio.get_event_loop()
 
         if self.quick:
             logger.info(f"Framix Analyzer: 快速模式 ...")
             video_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
             if deploy.shape:
-                original_shape = looper.run_until_complete(
+                original_shape = loop.run_until_complete(
                     ask_video_larger(self.ffprobe, new_video_path)
                 )
-                w, h, ratio = looper.run_until_complete(
+                w, h, ratio = loop.run_until_complete(
                     ask_magic_frame(original_shape, deploy.shape)
                 )
                 logger.debug(f"Image Shape: [W:{w} H{h} Ratio:{ratio}]")
@@ -314,7 +311,7 @@ class Missions(object):
                 video_filter.append(f"scale=iw*{self.COMPRESS}:ih*{self.COMPRESS}")
             logger.info(f"应用过滤器: {video_filter}")
 
-            duration = looper.run_until_complete(
+            duration = loop.run_until_complete(
                 ask_video_length(self.ffprobe, new_video_path)
             )
             vision_start, vision_close, vision_limit = examine_flip(
@@ -329,7 +326,7 @@ class Missions(object):
             logger.info(f"视频时长: [{duration}] [{deploy.parse_times(duration)}]")
             logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
 
-            looper.run_until_complete(
+            loop.run_until_complete(
                 ask_video_detach(
                     self.ffmpeg, video_filter, new_video_path, reporter.frame_path,
                     start=vision_start, close=vision_close, limit=vision_limit
@@ -345,11 +342,11 @@ class Missions(object):
             logger.debug(f"Quick: {result}")
             reporter.load(result)
 
-            looper.run_until_complete(
+            loop.run_until_complete(
                 reporter.ask_invent_total_report(
                     os.path.dirname(reporter.total_path),
-                    get_template(self.view_temp),
-                    get_template(self.view_total_temp),
+                    loop.run_until_complete(ask_get_template(self.view_temp)),
+                    loop.run_until_complete(ask_get_template(self.view_total_temp)),
                     deploy.group
                 )
             )
@@ -360,14 +357,14 @@ class Missions(object):
             kc = KerasClassifier(data_size=deploy.model_size, aisle=deploy.aisle)
             try:
                 kc.load_model(self.initial_models)
-            except ValueError as e:
-                logger.error(f"发生 {e}")
+            except ValueError as err:
+                logger.error(f"发生 {err}")
                 kc = None
         else:
             logger.info(f"Framix Analyzer: 基础模式 ...")
             kc = None
 
-        futures = looper.run_until_complete(
+        futures = loop.run_until_complete(
             analyzer(
                 new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
                 ffmpeg=self.ffmpeg, ffprobe=self.ffprobe
@@ -390,7 +387,7 @@ class Missions(object):
             original_inform = reporter.draw(
                 classifier_result=classifier,
                 proto_path=reporter.proto_path,
-                template_file=get_template(self.alien),
+                template_file=loop.run_until_complete(ask_get_template(self.alien)),
             )
             result["extra"] = Path(reporter.extra_path).name
             result["proto"] = Path(original_inform).name
@@ -422,11 +419,11 @@ class Missions(object):
                      reporter.frame_path)
                 )
 
-        looper.run_until_complete(
+        loop.run_until_complete(
             reporter.ask_create_total_report(
                 os.path.dirname(reporter.total_path),
-                get_template(self.main_temp),
-                get_template(self.main_total_temp),
+                loop.run_until_complete(ask_get_template(self.main_temp)),
+                loop.run_until_complete(ask_get_template(self.main_total_temp)),
                 deploy.group
             )
         )
@@ -452,7 +449,7 @@ class Missions(object):
         deploy.crops = self.crops if "--crops" in self.lines else deploy.crops
         deploy.omits = self.omits if "--omits" in self.lines else deploy.omits
 
-        looper = asyncio.get_event_loop()
+        loop = asyncio.get_event_loop()
 
         if self.quick:
             logger.debug(f"Framix Analyzer: 快速模式 ...")
@@ -465,10 +462,10 @@ class Missions(object):
 
                     video_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
                     if deploy.shape:
-                        original_shape = looper.run_until_complete(
+                        original_shape = loop.run_until_complete(
                             ask_video_larger(self.ffprobe, new_video_path)
                         )
-                        w, h, ratio = looper.run_until_complete(
+                        w, h, ratio = loop.run_until_complete(
                             ask_magic_frame(original_shape, deploy.shape)
                         )
                         logger.debug(f"Image Shape: [W:{w} H{h} Ratio:{ratio}]")
@@ -481,7 +478,7 @@ class Missions(object):
                         video_filter.append(f"scale=iw*{self.COMPRESS}:ih*{self.COMPRESS}")
                     logger.info(f"应用过滤器: {video_filter}")
 
-                    duration = looper.run_until_complete(
+                    duration = loop.run_until_complete(
                         ask_video_length(self.ffprobe, new_video_path)
                     )
                     vision_start, vision_close, vision_limit = examine_flip(
@@ -496,7 +493,7 @@ class Missions(object):
                     logger.info(f"视频时长: [{duration}] [{deploy.parse_times(duration)}]")
                     logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
 
-                    looper.run_until_complete(
+                    loop.run_until_complete(
                         ask_video_detach(
                             self.ffmpeg, video_filter, new_video_path, reporter.frame_path,
                             start=deploy.start, close=deploy.close, limit=deploy.limit
@@ -512,11 +509,11 @@ class Missions(object):
                     logger.debug(f"Quick: {result}")
                     reporter.load(result)
 
-            looper.run_until_complete(
+            loop.run_until_complete(
                 reporter.ask_invent_total_report(
                     os.path.dirname(reporter.total_path),
-                    get_template(self.view_temp),
-                    get_template(self.view_total_temp),
+                    loop.run_until_complete(ask_get_template(self.view_temp)),
+                    loop.run_until_complete(ask_get_template(self.view_total_temp)),
                     deploy.group
                 )
             )
@@ -527,8 +524,8 @@ class Missions(object):
             kc = KerasClassifier(data_size=deploy.model_size, aisle=deploy.aisle)
             try:
                 kc.load_model(self.initial_models)
-            except ValueError as e:
-                logger.error(f"{e}")
+            except ValueError as err:
+                logger.error(f"{err}")
                 kc = None
         else:
             logger.info(f"Framix Analyzer: 基础模式 ...")
@@ -541,7 +538,7 @@ class Missions(object):
                 shutil.copy(path, reporter.video_path)
                 new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
 
-                futures = looper.run_until_complete(
+                futures = loop.run_until_complete(
                     analyzer(
                         new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
                         ffmpeg=self.ffmpeg, ffprobe=self.ffprobe
@@ -563,7 +560,7 @@ class Missions(object):
                     original_inform = reporter.draw(
                         classifier_result=classifier,
                         proto_path=reporter.proto_path,
-                        template_file=get_template(self.alien),
+                        template_file=loop.run_until_complete(ask_get_template(self.alien)),
                     )
                     result["extra"] = Path(reporter.extra_path).name
                     result["proto"] = Path(original_inform).name
@@ -595,11 +592,11 @@ class Missions(object):
                              reporter.frame_path)
                         )
 
-        looper.run_until_complete(
+        loop.run_until_complete(
             reporter.ask_create_total_report(
                 os.path.dirname(reporter.total_path),
-                get_template(self.main_temp),
-                get_template(self.main_total_temp),
+                loop.run_until_complete(ask_get_template(self.main_temp)),
+                loop.run_until_complete(ask_get_template(self.main_total_temp)),
                 deploy.group
             )
         )
@@ -767,8 +764,8 @@ class Missions(object):
         tasks = [
             Report.ask_create_total_report(m, major, total, group) for m in merge
         ]
-        error = await asyncio.gather(*tasks)
-        for e in error:
+        error_list = await asyncio.gather(*tasks)
+        for e in error_list:
             if isinstance(e, Exception):
                 logger.error(e)
 
@@ -780,12 +777,13 @@ class Missions(object):
         tasks = [
             Report.ask_invent_total_report(m, views, total, group) for m in merge
         ]
-        error = await asyncio.gather(*tasks)
-        for e in error:
+        error_list = await asyncio.gather(*tasks)
+        for e in error_list:
             if isinstance(e, Exception):
                 logger.error(e)
 
     async def painting(self, deploy: Deploy):
+
         import tempfile
         from PIL import Image, ImageDraw, ImageFont
 
@@ -930,13 +928,13 @@ class Missions(object):
             else:
                 Show.console.print(f"[bold][bold red]没有该选项,请重新输入[/bold red] ...[/bold]\n")
 
-    async def analysis(self, deploy: Deploy):
+    async def analysis(self, deploy: Deploy) -> bool:
 
         device_events = {}
         all_used_event = asyncio.Event()
         all_stop_event = asyncio.Event()
 
-        async def timing_less(amount, serial, events):
+        async def timing_less(amount, serial, events) -> None:
             stop_event_control = events["stop_event"] if deploy.alone else all_stop_event
             while True:
                 if events["head_event"].is_set():
@@ -959,7 +957,7 @@ class Missions(object):
                     break
                 await asyncio.sleep(0.2)
 
-        async def timing_many(serial, events):
+        async def timing_many(serial, events) -> None:
             stop_event_control = events["stop_event"] if deploy.alone else all_stop_event
             while True:
                 if events["head_event"].is_set():
@@ -1341,8 +1339,8 @@ class Missions(object):
             kc = KerasClassifier(data_size=deploy.model_size, aisle=deploy.aisle)
             try:
                 kc.load_model(self.initial_models)
-            except ValueError as error:
-                logger.error(f"{error}")
+            except ValueError as err:
+                logger.error(f"{err}")
                 kc = None
         else:
             kc = None
@@ -1362,8 +1360,8 @@ class Missions(object):
                 carry_list = list(set(self.carry))
                 try:
                     script_dict = {carry: script_data[carry] for carry in carry_list}
-                except KeyError as error:
-                    logger.error(f"{error}")
+                except KeyError as err:
+                    logger.error(f"{err}")
                     return False
             else:
                 script_dict = script_data
@@ -1451,19 +1449,10 @@ class Missions(object):
         # Flick Loop ===================================================================================================
 
 
-def initializer(log_level: str) -> None:
+def initializer(log_level: str):
     logger.remove(0)
     log_format = "| <level>{level: <8}</level> | <level>{message}</level>"
     logger.add(sys.stderr, format=log_format, level=log_level.upper())
-
-
-def get_template(template_path: str) -> str | Exception:
-    try:
-        with open(template_path, mode="r", encoding="utf-8") as f:
-            template_file = f.read()
-    except FileNotFoundError as e:
-        return e
-    return template_file
 
 
 def examine_flip(
@@ -1500,6 +1489,11 @@ def examine_flip(
 
 
 async def ask_get_template(template_path: str) -> str | Exception:
+    """
+    获取 html 模版文件
+    :param template_path: 模版文件路径
+    :return: 模版文件 | Exception
+    """
     try:
         async with aiofiles.open(template_path, mode="r", encoding="utf-8") as f:
             template_file = await f.read()
@@ -1634,6 +1628,12 @@ async def ask_video_larger(ffprobe, src: str) -> tuple[int, int] | Exception:
 async def ask_magic_frame(
         original_frame_size: tuple, input_frame_size: tuple
 ) -> tuple[int, int, float]:
+    """
+    调整宽高和宽高比
+    :param original_frame_size: 原始尺寸
+    :param input_frame_size: 输入尺寸
+    :return: (宽, 高, 宽高比)
+    """
 
     # 计算原始宽高比
     original_w, original_h = original_frame_size
@@ -1664,6 +1664,15 @@ async def ask_magic_frame(
 async def analyzer(
         vision_path: str, deploy: "Deploy", kc: "KerasClassifier", *args, **kwargs
 ) -> Optional["Review"]:
+    """
+    分析视频帧
+    :params vision_path: 视频文件路径
+    :params deploy: Deploy 对象
+    :params kc: KerasClassifier 对象
+    :params args: [frame_path 视频帧路径] [extra_path 额外帧路径]
+    :params kwargs: [ffmpeg 可执行文件路径] [ffprobe 可执行文件路径]
+    :return: None | Review 对象
+    """
 
     frame_path, extra_path = args
     ffmpeg = kwargs.get("ffmpeg", "ffmpeg")
@@ -2027,19 +2036,21 @@ if __name__ == '__main__':
 
     logger.debug(f"工具路径: {_tools_path}")
     logger.debug(f"模型路径: {_model_path}")
-    logger.debug(f"Html-Template: {_main_total_temp}")
-    logger.debug(f"Html-Template: {_main_temp}")
-    logger.debug(f"Html-Template: {_view_total_temp}")
-    logger.debug(f"Html-Template: {_view_temp}")
     logger.debug(f"Html-Template: {_alien}")
+    logger.debug(f"Html-Template: {_view_total_temp}")
+    logger.debug(f"Html-Template: {_main_total_temp}")
+    logger.debug(f"Html-Template: {_view_temp}")
+    logger.debug(f"Html-Template: {_main_temp}")
 
     logger.debug(f"adb: {_adb}")
     logger.debug(f"ffmpeg: {_ffmpeg}")
     logger.debug(f"ffprobe: {_ffprobe}")
-    logger.debug(f"scrcpy: {_scrcpy}")
+    logger.debug(f"scrcpy: {_scrcpy}\n")
 
-    for _env in os.environ["PATH"].split(os.path.pathsep):
+    logger.debug(f"* System Env * {'=' * 30}")
+    for _env in os.environ["PATH"].split(operation_symbol):
         logger.debug(_env)
+    logger.debug(f"* System Env * {'=' * 30}\n")
     # Debug Mode =======================================================================================================
 
     _carry = _cmd_lines.carry
@@ -2134,18 +2145,22 @@ if __name__ == '__main__':
         adb=_adb, ffmpeg=_ffmpeg, ffprobe=_ffprobe, scrcpy=_scrcpy
     )
 
+    _loop = asyncio.get_event_loop()
+
     # --stack ==========================================================================================================
     if _cmd_lines.stack and len(_cmd_lines.stack) > 0:
         _members = len(_cmd_lines.stack)
         if _members == 1:
             _missions.video_dir_task(_cmd_lines.stack[0])
         else:
-            processes = _members if _members <= _cpu else _cpu
-            with Pool(processes=processes, initializer=initializer, initargs=(_multi_level,)) as _pool:
+            _processes = _members if _members <= _cpu else _cpu
+            with Pool(processes=_processes, initializer=initializer, initargs=(_multi_level,)) as _pool:
                 _results = _pool.starmap(_missions.video_dir_task, [(i,) for i in _cmd_lines.stack])
-            _template_total = get_template(
-                _missions.view_total_temp
-            ) if _missions.quick else get_template(_missions.main_total_temp)
+            _template_total = _loop.run_until_complete(
+                ask_get_template(_missions.view_total_temp)
+            ) if _missions.quick else _loop.run_until_complete(
+                ask_get_template(_missions.main_total_temp)
+            )
             Report.merge_report(_results, _template_total, _missions.quick)
         sys.exit(0)
 
@@ -2155,12 +2170,14 @@ if __name__ == '__main__':
         if _members == 1:
             _missions.video_task(_cmd_lines.video[0])
         else:
-            processes = _members if _members <= _cpu else _cpu
-            with Pool(processes=processes, initializer=initializer, initargs=(_multi_level,)) as _pool:
+            _processes = _members if _members <= _cpu else _cpu
+            with Pool(processes=_processes, initializer=initializer, initargs=(_multi_level,)) as _pool:
                 _results = _pool.starmap(_missions.video_task, [(i,) for i in _cmd_lines.video])
-            _template_total = get_template(
-                _missions.view_total_temp
-            ) if _missions.quick else get_template(_missions.main_total_temp)
+            _template_total = _loop.run_until_complete(
+                ask_get_template(_missions.view_total_temp)
+            ) if _missions.quick else _loop.run_until_complete(
+                ask_get_template(_missions.main_total_temp)
+            )
             Report.merge_report(_results, _template_total, _missions.quick)
         sys.exit(0)
 
@@ -2170,8 +2187,8 @@ if __name__ == '__main__':
         if _members == 1:
             _missions.train_model(_cmd_lines.train[0])
         else:
-            processes = _members if _members <= _cpu else _cpu
-            with Pool(processes=processes, initializer=initializer, initargs=(_multi_level,)) as _pool:
+            _processes = _members if _members <= _cpu else _cpu
+            with Pool(processes=_processes, initializer=initializer, initargs=(_multi_level,)) as _pool:
                 _pool.starmap(_missions.train_model, [(i,) for i in _cmd_lines.train])
         sys.exit(0)
 
@@ -2181,15 +2198,14 @@ if __name__ == '__main__':
         if _members == 1:
             _missions.build_model(_cmd_lines.build[0])
         else:
-            processes = _members if _members <= _cpu else _cpu
-            with Pool(processes=processes, initializer=initializer, initargs=(_multi_level,)) as _pool:
+            _processes = _members if _members <= _cpu else _cpu
+            with Pool(processes=_processes, initializer=initializer, initargs=(_multi_level,)) as _pool:
                 _pool.starmap(_missions.build_model, [(i,) for i in _cmd_lines.build])
         sys.exit(0)
 
     # --flick --paint --union --merge ==================================================================================
     else:
         try:
-            _loop = asyncio.get_event_loop()
             _loop.run_until_complete(ask_main())
             sys.exit(0)
         except KeyboardInterrupt:
