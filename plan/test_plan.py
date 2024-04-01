@@ -30,7 +30,7 @@ class TestPlan(object):
         self.__alynex.report.title = query
         for _ in range(self.looper):
             self.__alynex.report.query = query
-            self.__device.ask_swipe_unlock()
+            self.__device.swipe_unlock()
             self.__alynex.record.start_record(
                 self.__alynex.report.video_path,
                 self.__device.serial
@@ -39,7 +39,7 @@ class TestPlan(object):
             self.__device.key_event(231)
             self.__device.sleep(1)
             self.__alynex.player.play_audio(audio)
-            self.__device.ask_sleep(2)
+            self.__device.sleep(2)
 
             self.__alynex.record.stop_record()
             self.__device.force_filter(self.application)
