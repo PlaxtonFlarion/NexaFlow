@@ -2024,7 +2024,8 @@ if __name__ == '__main__':
     from argparse import ArgumentParser
     _cmd_lines = Parser.parse_cmd()
 
-    _level, _multi_level = "DEBUG" if _cmd_lines.debug else "INFO", "ERROR"
+    _level = "DEBUG" if _cmd_lines.debug else "INFO"
+    _level_multiple = "ERROR"
     initializer(_level)
 
     # Debug Mode =======================================================================================================
@@ -2149,12 +2150,11 @@ if __name__ == '__main__':
 
     # --stack ==========================================================================================================
     if _cmd_lines.stack and len(_cmd_lines.stack) > 0:
-        _members = len(_cmd_lines.stack)
-        if _members == 1:
+        if (_members := len(_cmd_lines.stack)) == 1:
             _missions.video_dir_task(_cmd_lines.stack[0])
         else:
             _processes = _members if _members <= _cpu else _cpu
-            with Pool(processes=_processes, initializer=initializer, initargs=(_multi_level,)) as _pool:
+            with Pool(processes=_processes, initializer=initializer, initargs=(_level_multiple,)) as _pool:
                 _results = _pool.starmap(_missions.video_dir_task, [(i,) for i in _cmd_lines.stack])
             _template_total = _loop.run_until_complete(
                 ask_get_template(_missions.view_total_temp)
@@ -2166,12 +2166,11 @@ if __name__ == '__main__':
 
     # --video ==========================================================================================================
     elif _cmd_lines.video and len(_cmd_lines.video) > 0:
-        _members = len(_cmd_lines.video)
-        if _members == 1:
+        if (_members := len(_cmd_lines.video)) == 1:
             _missions.video_task(_cmd_lines.video[0])
         else:
             _processes = _members if _members <= _cpu else _cpu
-            with Pool(processes=_processes, initializer=initializer, initargs=(_multi_level,)) as _pool:
+            with Pool(processes=_processes, initializer=initializer, initargs=(_level_multiple,)) as _pool:
                 _results = _pool.starmap(_missions.video_task, [(i,) for i in _cmd_lines.video])
             _template_total = _loop.run_until_complete(
                 ask_get_template(_missions.view_total_temp)
@@ -2183,23 +2182,21 @@ if __name__ == '__main__':
 
     # --train ==========================================================================================================
     elif _cmd_lines.train and len(_cmd_lines.train) > 0:
-        _members = len(_cmd_lines.train)
-        if _members == 1:
+        if (_members := len(_cmd_lines.train)) == 1:
             _missions.train_model(_cmd_lines.train[0])
         else:
             _processes = _members if _members <= _cpu else _cpu
-            with Pool(processes=_processes, initializer=initializer, initargs=(_multi_level,)) as _pool:
+            with Pool(processes=_processes, initializer=initializer, initargs=(_level_multiple,)) as _pool:
                 _pool.starmap(_missions.train_model, [(i,) for i in _cmd_lines.train])
         sys.exit(0)
 
     # --build ==========================================================================================================
     elif _cmd_lines.build and len(_cmd_lines.build) > 0:
-        _members = len(_cmd_lines.build)
-        if _members == 1:
+        if (_members := len(_cmd_lines.build)) == 1:
             _missions.build_model(_cmd_lines.build[0])
         else:
             _processes = _members if _members <= _cpu else _cpu
-            with Pool(processes=_processes, initializer=initializer, initargs=(_multi_level,)) as _pool:
+            with Pool(processes=_processes, initializer=initializer, initargs=(_level_multiple,)) as _pool:
                 _pool.starmap(_missions.build_model, [(i,) for i in _cmd_lines.build])
         sys.exit(0)
 
