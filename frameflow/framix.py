@@ -68,23 +68,16 @@ else:
     Show.console.print(
         "[bold]Only compatible with [bold red]Windows[/bold red] and [bold red]macOS[/bold red] platforms ...[/bold]"
     )
-    Show.simulation_progress(
-        f"Exit after 5 seconds ...", 1, 0.05
-    )
+    Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
     sys.exit(1)
 
-os.environ["PATH"] = os.path.dirname(_adb) + operation_symbol + os.environ.get("PATH", "")
-os.environ["PATH"] = os.path.dirname(_ffmpeg) + operation_symbol + os.environ.get("PATH", "")
-os.environ["PATH"] = os.path.dirname(_ffprobe) + operation_symbol + os.environ.get("PATH", "")
-os.environ["PATH"] = os.path.dirname(_scrcpy) + operation_symbol + os.environ.get("PATH", "")
+for _n, _tls in (_all_tools := [("adb", _adb), ("ffmpeg", _ffmpeg), ("ffprobe", _ffprobe), ("scrcpy", _scrcpy)]):
+    os.environ["PATH"] = os.path.dirname(_tls) + operation_symbol + os.environ.get("PATH", "")
 
-for env in [Path(_adb).name, Path(_ffmpeg).name, Path(_ffprobe).name, Path(_scrcpy).name]:
-    environment_variables = shutil.which(env)
-    if environment_variables is None:
-        Show.console.print(f"[bold]Missing [bold red]{env}[/bold red] environment variables ...[/bold]")
-        Show.simulation_progress(
-            f"Exit after 5 seconds ...", 1, 0.05
-        )
+for _env in [Path(_adb).name, Path(_ffmpeg).name, Path(_ffprobe).name, Path(_scrcpy).name]:
+    if shutil.which(_env) is None:
+        Show.console.print(f"[bold]Missing [bold red]{_env}[/bold red] environment variables ...[/bold]")
+        Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
         sys.exit(1)
 
 try:
@@ -100,9 +93,7 @@ try:
     from nexaflow.classifier.framix_classifier import FramixClassifier
 except (RuntimeError, ModuleNotFoundError) as error:
     Show.console.print(f"[bold red]Error: {error}")
-    Show.simulation_progress(
-        f"Exit after 5 seconds ...", 1, 0.05
-    )
+    Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
     sys.exit(1)
 
 
@@ -264,8 +255,33 @@ class Missions(object):
             for root, _, file in os.walk(folder) if file
         ]
 
+    @staticmethod
+    def persistent(r: Report, c: ClassifierResult, start: int, end: int, cost: float):
+        with DataBase(os.path.join(r.reset_path, "Framix_Data.db")) as database:
+            if c:
+                column_list = [
+                    'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
+                ]
+                database.create('stocks', *column_list)
+                stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
+                database.insert(
+                    'stocks', column_list,
+                    (r.total_path, r.title, r.query_path, r.query,
+                     json.dumps(stage), r.frame_path, r.extra_path, r.proto_path)
+                )
+            else:
+                column_list = [
+                    'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path'
+                ]
+                database.create('stocks', *column_list)
+                stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
+                database.insert(
+                    'stocks', column_list,
+                    (r.total_path, r.title, r.query_path, r.query, json.dumps(stage), r.frame_path)
+                )
+
     def video_task(self, video_file: str):
-        reporter = Report(total_path=self.initial_report)
+        reporter = Report(self.initial_report)
         reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
         reporter.query = time.strftime('%Y%m%d%H%M%S')
         new_video_path = os.path.join(reporter.video_path, os.path.basename(video_file))
@@ -358,7 +374,7 @@ class Missions(object):
             try:
                 kc.load_model(self.initial_models)
             except ValueError as err:
-                logger.error(f"发生 {err}")
+                logger.error(f"{err}")
                 kc = None
         else:
             logger.info(f"Framix Analyzer: 基础模式 ...")
@@ -395,29 +411,7 @@ class Missions(object):
         logger.debug(f"Restore: {result}")
         reporter.load(result)
 
-        with DataBase(os.path.join(reporter.reset_path, "Framix_Data.db")) as database:
-            if classifier:
-                column_list = [
-                    'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
-                ]
-                database.create('stocks', *column_list)
-                stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
-                database.insert(
-                    'stocks', column_list,
-                    (reporter.total_path, reporter.title, reporter.query_path, reporter.query, json.dumps(stage),
-                     reporter.frame_path, reporter.extra_path, reporter.proto_path)
-                )
-            else:
-                column_list = [
-                    'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path'
-                ]
-                database.create('stocks', *column_list)
-                stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
-                database.insert(
-                    'stocks', column_list,
-                    (reporter.total_path, reporter.title, reporter.query_path, reporter.query, json.dumps(stage),
-                     reporter.frame_path)
-                )
+        self.persistent(reporter, classifier, start, end, cost)
 
         loop.run_until_complete(
             reporter.ask_create_total_report(
@@ -430,7 +424,7 @@ class Missions(object):
         return reporter.total_path
 
     def video_dir_task(self, folder: str):
-        reporter = Report(total_path=self.initial_report)
+        reporter = Report(self.initial_report)
 
         deploy = Deploy(self.initial_deploy)
         deploy.alone = self.alone
@@ -568,29 +562,7 @@ class Missions(object):
                 logger.debug(f"Restore: {result}")
                 reporter.load(result)
 
-                with DataBase(os.path.join(reporter.reset_path, "Framix_Data.db")) as database:
-                    if classifier:
-                        column_list = [
-                            'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
-                        ]
-                        database.create('stocks', *column_list)
-                        stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
-                        database.insert(
-                            'stocks', column_list,
-                            (reporter.total_path, reporter.title, reporter.query_path, reporter.query, json.dumps(stage),
-                             reporter.frame_path, reporter.extra_path, reporter.proto_path)
-                        )
-                    else:
-                        column_list = [
-                            'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path'
-                        ]
-                        database.create('stocks', *column_list)
-                        stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
-                        database.insert(
-                            'stocks', column_list,
-                            (reporter.total_path, reporter.title, reporter.query_path, reporter.query, json.dumps(stage),
-                             reporter.frame_path)
-                        )
+                self.persistent(reporter, classifier, start, end, cost)
 
         loop.run_until_complete(
             reporter.ask_create_total_report(
@@ -615,7 +587,7 @@ class Missions(object):
         screen.release()
         logger.info(f"{video_file} 可正常播放 ...")
 
-        reporter = Report(total_path=self.initial_report)
+        reporter = Report(self.initial_report)
         reporter.title = f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
         if not os.path.exists(reporter.query_path):
             os.makedirs(reporter.query_path, exist_ok=True)
@@ -1173,27 +1145,7 @@ class Missions(object):
                     logger.debug(f"Restore: {result}")
                     reporter.load(result)
 
-                    with DataBase(os.path.join(os.path.dirname(total_path), "Nexa_Recovery", "Framix_Data.db")) as database:
-                        if classifier:
-                            column_list = [
-                                'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
-                            ]
-                            database.create('stocks', *column_list)
-                            stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
-                            database.insert(
-                                'stocks', column_list,
-                                (total_path, title, query_path, query, json.dumps(stage), frame_path, extra_path, proto_path)
-                            )
-                        else:
-                            column_list = [
-                                'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path'
-                            ]
-                            database.create('stocks', *column_list)
-                            stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
-                            database.insert(
-                                'stocks', column_list,
-                                (total_path, title, query_path, query, json.dumps(stage), frame_path)
-                            )
+                    self.persistent(reporter, classifier, start, end, cost)
 
             else:
                 logger.debug(f"Framix Analyzer: 录制模式 ...")
@@ -1861,20 +1813,18 @@ async def analyzer(
         except IndexError as e:
             logger.error(f"{e}")
             for i, unstable_stage in enumerate(classify.get_specific_stage_range("-3")):
-                Show.console.print(f"[bold]第 {i:02} 个非稳定阶段:")
+                Show.console.print(f"[bold]第 {i:02} 个非稳定阶段")
                 Show.console.print(f"[bold]{'=' * 30}")
                 for j, frame in enumerate(unstable_stage):
                     Show.console.print(f"[bold]第 {j:05} 帧: {frame}")
-                Show.console.print(f"[bold]{'=' * 30}")
-                Show.console.print(f"\n")
+                Show.console.print(f"[bold]{'=' * 30}\n")
             start_frame = classify.get_important_frame_list()[0]
             end_frame = classify.get_important_frame_list()[-1]
             logger.warning(f"Framix Analyzer recalculate ...")
 
         if start_frame == end_frame:
             logger.warning(f"{start_frame} == {end_frame}")
-            start_frame = classify.data[0]
-            end_frame = classify.data[-1]
+            start_frame, end_frame = classify.data[0], classify.data[-1]
             logger.warning(f"Framix Analyzer recalculate ...")
 
         time_cost = end_frame.timestamp - start_frame.timestamp
@@ -1885,10 +1835,9 @@ async def analyzer(
 
     async def frame_forge(frame):
         try:
-            short_timestamp = format(round(frame.timestamp, 5), ".5f")
-            pic_name = f"{frame.frame_id}_{short_timestamp}.png"
-            pic_path = os.path.join(frame_path, pic_name)
-            _, codec = cv2.imencode(".png", frame.data)
+            (_, codec), pic_path = cv2.imencode(".png", frame.data), os.path.join(
+                frame_path, f"{frame.frame_id}_{format(round(frame.timestamp, 5), '.5f')}.png"
+            )
             async with aiofiles.open(pic_path, "wb") as f:
                 await f.write(codec.tobytes())
         except Exception as e:
@@ -1905,17 +1854,14 @@ async def analyzer(
         else:
             frames = [i for i in video.grey_data]
 
+        logger.debug(f"运行环境: {operation_system}")
         if operation_system == "win32":
-            logger.debug(f"运行环境: {operation_system}")
             forge_result = await asyncio.gather(
-                *(frame_forge(frame) for frame in frames),
-                return_exceptions=True
+                *(frame_forge(frame) for frame in frames), return_exceptions=True
             )
         else:
-            logger.debug(f"运行环境: {operation_system}")
             tasks = [
-                [frame_forge(frame) for frame in chunk]
-                for chunk in
+                [frame_forge(frame) for frame in chunk] for chunk in
                 [frames[i:i + 100] for i in range(0, len(frames), 100)]
             ]
             forge_list = []
@@ -1928,8 +1874,7 @@ async def analyzer(
             if isinstance(result, Exception):
                 logger.error(f"Error: {result}")
 
-        start_frame = frames[0]
-        end_frame = frames[-1]
+        start_frame, end_frame = frames[0], frames[-1]
 
         time_cost = end_frame.timestamp - start_frame.timestamp
         return (start_frame.frame_id, end_frame.frame_id, time_cost), None
@@ -1937,17 +1882,15 @@ async def analyzer(
     async def analytics_keras():
         classify, frames = await frame_flow()
 
+        logger.debug(f"运行环境: {operation_system}")
         if operation_system == "win32":
-            logger.debug(f"运行环境: {operation_system}")
             flick_result, *forge_result = await asyncio.gather(
                 frame_flick(classify), *(frame_forge(frame) for frame in frames),
                 return_exceptions=True
             )
         else:
-            logger.debug(f"运行环境: {operation_system}")
             tasks = [
-                [frame_forge(frame) for frame in chunk]
-                for chunk in
+                [frame_forge(frame) for frame in chunk] for chunk in
                 [frames[i:i + 100] for i in range(0, len(frames), 100)]
             ]
             flick_task = asyncio.create_task(frame_flick(classify))
@@ -1965,8 +1908,7 @@ async def analyzer(
         return flick_result, classify
 
     # Analyzer first ===================================================================================================
-    screen_record = await validate()
-    if screen_record is None:
+    if (screen_record := await validate()) is None:
         return logger.error(f"{vision_path} 不是一个标准的视频文件或视频文件已损坏 ...")
     logger.info(f"{screen_record.name} 可正常播放，准备加载视频 ...")
     # Analyzer first ===================================================================================================
@@ -2036,21 +1978,21 @@ if __name__ == '__main__':
     logger.debug(f"应用名称: {work_platform}")
 
     logger.debug(f"工具路径: {_tools_path}")
-    logger.debug(f"模型路径: {_model_path}")
-    logger.debug(f"Html-Template: {_alien}")
-    logger.debug(f"Html-Template: {_view_total_temp}")
-    logger.debug(f"Html-Template: {_main_total_temp}")
-    logger.debug(f"Html-Template: {_view_temp}")
-    logger.debug(f"Html-Template: {_main_temp}")
+    logger.debug(f"模型路径: {_model_path}\n")
 
-    logger.debug(f"adb: {_adb}")
-    logger.debug(f"ffmpeg: {_ffmpeg}")
-    logger.debug(f"ffprobe: {_ffprobe}")
-    logger.debug(f"scrcpy: {_scrcpy}\n")
+    logger.debug(f"* Template * {'=' * 30}")
+    for _tmp in [_alien, _view_total_temp, _main_total_temp, _view_temp, _main_temp]:
+        logger.debug(f"Html-Template: {_tmp}")
+    logger.debug(f"* Template * {'=' * 30}\n")
+
+    logger.debug(f"* Tools Path * {'=' * 30}")
+    for _n, _tls in _all_tools:
+        logger.debug(f"{_n:7}: {_tls}")
+    logger.debug(f"* Tools Path * {'=' * 30}\n")
 
     logger.debug(f"* System Env * {'=' * 30}")
     for _env in os.environ["PATH"].split(operation_symbol):
-        logger.debug(_env)
+        logger.debug(f"{_env}")
     logger.debug(f"* System Env * {'=' * 30}\n")
     # Debug Mode =======================================================================================================
 
@@ -2077,8 +2019,7 @@ if __name__ == '__main__':
     _final = _cmd_lines.final
 
     # Debug Mode =======================================================================================================
-    _cpu = os.cpu_count()
-    logger.debug(f"CPU Core: {_cpu}")
+    logger.debug(f"CPU Core: {(_cpu := os.cpu_count())}")
     # Debug Mode =======================================================================================================
 
     _crops = []
