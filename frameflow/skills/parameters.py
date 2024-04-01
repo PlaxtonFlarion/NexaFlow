@@ -512,7 +512,7 @@ class Script(object):
         "commands": [
             {"name": "script 1", "loop": 1, "actions": [{"command": "", "args": []}, {"command": "", "args": []}]},
             {"name": "script 2", "loop": 1, "actions": [{"command": "", "args": []}, {"command": "", "args": []}]},
-            {"name": "script 3", "loop": 1, "actions": [{"command": "", "args": []}, {"command": "", "args": []}]},
+            {"name": "script 3", "loop": 1, "actions": [{"command": "", "args": []}, {"command": "", "args": []}]}
         ]
     }
 

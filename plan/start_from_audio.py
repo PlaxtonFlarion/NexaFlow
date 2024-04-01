@@ -28,20 +28,20 @@ def multi_audio_task():
         alynex.report.title = query
         for _ in range(3):
             alynex.report.query = query
-            device.ask_swipe_unlock()
+            device.swipe_unlock()
             alynex.record.start_record(
                 alynex.report.video_path,
                 device.serial
             )
 
-            device.ask_key_event(231)
-            device.ask_sleep(1)
+            device.key_event(231)
+            device.sleep(1)
             alynex.player.play_audio(audio)
-            device.ask_sleep(10)
+            device.sleep(10)
 
             alynex.record.stop_record()
-            device.ask_force_filter(application)
-            device.ask_start_app(activity)
+            device.force_filter(application)
+            device.start_app(activity)
             alynex.framix.crop_hook(0, 0.2, 1, 0.8)
             alynex.analyzer(ALIEN)
         alynex.report.create_report(TEMPLATE_MAIN)

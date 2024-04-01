@@ -146,31 +146,31 @@ class Show(object):
             "[bold #FFDC00]--color", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]彩色模式"
         )
         table_minor.add_row(
-            "[bold #FFDC00]--shape", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #AFAFD7]自动", "[bold #39CCCC]图片尺寸"
+            "[bold #FFDC00]--shape", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #4CAF50]自动", "[bold #39CCCC]图片尺寸"
         )
         table_minor.add_row(
-            "[bold #FFDC00]--scale", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #AFAFD7]自动", "[bold #39CCCC]缩放比例"
+            "[bold #FFDC00]--scale", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #4CAF50]自动", "[bold #39CCCC]缩放比例"
         )
         table_minor.add_row(
-            "[bold #FFDC00]--start", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #AFAFD7]自动", "[bold #39CCCC]开始时间"
+            "[bold #FFDC00]--start", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #4CAF50]自动", "[bold #39CCCC]开始时间"
         )
         table_minor.add_row(
-            "[bold #FFDC00]--close", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #AFAFD7]自动", "[bold #39CCCC]结束时间"
+            "[bold #FFDC00]--close", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #4CAF50]自动", "[bold #39CCCC]结束时间"
         )
         table_minor.add_row(
-            "[bold #FFDC00]--limit", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #AFAFD7]自动", "[bold #39CCCC]持续时间"
+            "[bold #FFDC00]--limit", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #4CAF50]自动", "[bold #39CCCC]持续时间"
         )
         table_minor.add_row(
-            "[bold #FFDC00]--begin", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #AFAFD7]自动", "[bold #39CCCC]开始帧"
+            "[bold #FFDC00]--begin", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #4CAF50]自动", "[bold #39CCCC]开始帧"
         )
         table_minor.add_row(
-            "[bold #FFDC00]--final", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #AFAFD7]自动", "[bold #39CCCC]结束帧"
+            "[bold #FFDC00]--final", "[bold #7FDBFF]数值", "[bold #8A8A8A]一次", "[bold #4CAF50]自动", "[bold #39CCCC]结束帧"
         )
         table_minor.add_row(
-            "[bold #FFDC00]--crops", "[bold #7FDBFF]坐标", "[bold #FFAFAF]多次", "[bold #AFAFD7]自动", "[bold #39CCCC]获取区域"
+            "[bold #FFDC00]--crops", "[bold #7FDBFF]坐标", "[bold #FFAFAF]多次", "[bold #4CAF50]自动", "[bold #39CCCC]获取区域"
         )
         table_minor.add_row(
-            "[bold #FFDC00]--omits", "[bold #7FDBFF]坐标", "[bold #FFAFAF]多次", "[bold #AFAFD7]自动", "[bold #39CCCC]忽略区域"
+            "[bold #FFDC00]--omits", "[bold #7FDBFF]坐标", "[bold #FFAFAF]多次", "[bold #4CAF50]自动", "[bold #39CCCC]忽略区域"
         )
         Show.major_logo()
         Show.console.print(table_major)
