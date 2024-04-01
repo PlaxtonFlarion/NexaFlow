@@ -24,16 +24,16 @@ operation_symbol = os.path.pathsep
 work_platform = Path(os.path.abspath(sys.argv[0])).name.lower()
 
 if work_platform == "framix.exe" or work_platform == "framix-rc.exe":
-    _job_path = os.path.dirname(os.path.abspath(sys.argv[0]))
+    _work_path = os.path.dirname(os.path.abspath(sys.argv[0]))
     _universal = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 elif work_platform == "framix.bin" or work_platform == "framix-rc.bin":
-    _job_path = os.path.dirname(sys.executable)
+    _work_path = os.path.dirname(sys.executable)
     _universal = os.path.dirname(os.path.dirname(sys.executable))
 elif work_platform == "framix" or work_platform == "framix-rc":
-    _job_path = os.path.dirname(sys.executable)
+    _work_path = os.path.dirname(sys.executable)
     _universal = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(sys.executable))))
 elif work_platform == "framix.py" or work_platform == "framix-rc.py":
-    _job_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    _work_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     _universal = os.path.dirname(os.path.abspath(__file__))
 else:
     Show.console.print(
@@ -44,13 +44,13 @@ else:
     )
     sys.exit(1)
 
-_tools_path = os.path.join(_job_path, "archivix", "tools")
-_model_path = os.path.join(_job_path, "archivix", "molds")
-_alien = os.path.join(_job_path, "archivix", "pages", "template_alien.html")
-_view_total_temp = os.path.join(_job_path, "archivix", "pages", "template_view_total.html")
-_main_total_temp = os.path.join(_job_path, "archivix", "pages", "template_main_total.html")
-_view_temp = os.path.join(_job_path, "archivix", "pages", "template_view.html")
-_main_temp = os.path.join(_job_path, "archivix", "pages", "template_main.html")
+_tools_path = os.path.join(_work_path, "archivix", "tools")
+_model_path = os.path.join(_work_path, "archivix", "molds")
+_alien = os.path.join(_work_path, "archivix", "pages", "template_alien.html")
+_view_total_temp = os.path.join(_work_path, "archivix", "pages", "template_view_total.html")
+_main_total_temp = os.path.join(_work_path, "archivix", "pages", "template_main_total.html")
+_view_temp = os.path.join(_work_path, "archivix", "pages", "template_view.html")
+_main_temp = os.path.join(_work_path, "archivix", "pages", "template_main.html")
 _initial_report = os.path.join(_universal, "framix.report")
 _initial_source = os.path.join(_universal, "framix.source")
 
