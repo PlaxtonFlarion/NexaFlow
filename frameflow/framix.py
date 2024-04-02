@@ -1318,6 +1318,7 @@ class Missions(object):
             else:
                 script_dict = script_data
 
+            await device_mode_view()
             for key, value in script_dict.items():
                 reporter.title = f"{key.replace(' ', '')}_{input_title}"
                 logger.info(f"Exec: {key}")
