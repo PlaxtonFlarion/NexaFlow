@@ -946,7 +946,7 @@ class Missions(object):
                     break
                 await asyncio.sleep(0.2)
 
-        async def start_record(serial: str, dst: str, events):
+        async def start_record(serial, dst, events):
 
             # Stream
             async def input_stream():
@@ -1673,9 +1673,9 @@ async def analyzer(
             ffmpeg, deploy.fps, vision_path, change_record,
             start=vision_start, close=vision_close, limit=vision_limit
         )
-        logger.info(f"视频转换完成: {os.path.basename(change_record)}")
+        logger.info(f"视频转换完成: {Path(change_record).name}")
         os.remove(vision_path)
-        logger.info(f"移除旧的视频: {os.path.basename(vision_path)}")
+        logger.info(f"移除旧的视频: {Path(vision_path).name}")
 
         if deploy.shape:
             original_shape = await ask_video_larger(ffprobe, change_record)
