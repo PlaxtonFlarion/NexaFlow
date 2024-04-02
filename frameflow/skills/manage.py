@@ -18,7 +18,7 @@ class Manage(object):
             brand, version, screen = await asyncio.gather(
                 Terminal.cmd_line(*(cmd_initial + ["getprop", "ro.product.brand"])),
                 Terminal.cmd_line(*(cmd_initial + ["getprop", "ro.build.version.release"])),
-                Terminal.cmd_line(*(cmd_initial + ["wm", "size"]), )
+                Terminal.cmd_line(*(cmd_initial + ["wm", "size"]))
             )
             mate = re.search(r"(?<=Physical size:\s)(\d+)x(\d+)", screen)
             size = tuple(mate.group().split("x")) if mate else ()
