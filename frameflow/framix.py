@@ -1353,8 +1353,7 @@ class Missions(object):
                 await device_mode_view()
                 start_tips = f"<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/bold #D7FF5F] 秒>>>"
                 if action := Prompt.ask(prompt=f"[bold #5FD7FF]{start_tips}[/bold #5FD7FF]", console=Show.console):
-                    select = action.strip().lower()
-                    if select == "serial":
+                    if (select := action.strip().lower()) == "serial":
                         device_list = await manage.operate_device()
                         continue
                     elif "header" in select:
