@@ -13,7 +13,7 @@ class Manage(object):
 
     async def current_device(self) -> dict[str, "Device"]:
 
-        async def check(serial):
+        async def device_info(serial):
             cmd_initial = [self.adb, "-s", serial, "wait-for-usb-device", "shell"]
             brand, version, screen = await asyncio.gather(
                 Terminal.cmd_line(*(cmd_initial + ["getprop", "ro.product.brand"])),
@@ -28,7 +28,7 @@ class Manage(object):
         devices = await Terminal.cmd_line(self.adb, "devices")
         if len(serial_list := [i.split()[0] for i in devices.split("\n")[1:]]) > 0:
             result = await asyncio.gather(
-                *(check(serial) for serial in serial_list)
+                *(device_info(serial) for serial in serial_list)
             )
             device_dict = {str(i + 1): device for i, device in enumerate(result)}
         return device_dict
