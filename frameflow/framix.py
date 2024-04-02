@@ -17,7 +17,7 @@ from rich.prompt import Prompt
 from frameflow.skills.show import Show
 from frameflow.skills.manage import Manage
 from frameflow.skills.database import DataBase
-from frameflow.skills.parameters import Deploy, Option, Script
+from frameflow.skills.configure import Deploy, Option, Script
 
 operation_system = sys.platform.strip().lower()
 operation_symbol = os.path.pathsep
