@@ -1,47 +1,29 @@
 import os
-import re
 import sys
-import cv2
-import time
-import json
 import shutil
-import random
-import asyncio
-import aiofiles
-import datetime
-import numpy as np
 from pathlib import Path
-from loguru import logger
-from typing import Optional
-from rich.prompt import Prompt
 from frameflow.skills.show import Show
-from frameflow.skills.manage import Manage
-from frameflow.skills.database import DataBase
-from frameflow.skills.configure import Deploy, Option, Script
 
 operation_system = sys.platform.strip().lower()
-operation_symbol = os.path.pathsep
+operation_symbol = os.sep
+condition_symbol = os.path.pathsep
 work_platform = Path(os.path.abspath(sys.argv[0])).name.lower()
 
-if work_platform == "framix.exe" or work_platform == "framix-rc.exe":
+if work_platform == "framix.exe":
     _work_path = os.path.dirname(os.path.abspath(sys.argv[0]))
     _universal = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
-elif work_platform == "framix.bin" or work_platform == "framix-rc.bin":
+elif work_platform == "framix.bin":
     _work_path = os.path.dirname(sys.executable)
     _universal = os.path.dirname(os.path.dirname(sys.executable))
-elif work_platform == "framix" or work_platform == "framix-rc":
+elif work_platform == "framix":
     _work_path = os.path.dirname(sys.executable)
     _universal = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(sys.executable))))
-elif work_platform == "framix.py" or work_platform == "framix-rc.py":
+elif work_platform == "framix.py":
     _work_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     _universal = os.path.dirname(os.path.abspath(__file__))
 else:
-    Show.console.print(
-        f"[bold]Application name must be [bold red]framix[/bold red] ...[/bold]"
-    )
-    Show.simulation_progress(
-        f"Exit after 5 seconds ...", 1, 0.05
-    )
+    Show.console.print(f"[bold]Application name must be [bold red]framix[/bold red] ...[/bold]")
+    Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
     sys.exit(1)
 
 _tools_path = os.path.join(_work_path, "archivix", "tools")
@@ -65,14 +47,12 @@ elif operation_system == "darwin":
     _ffprobe = os.path.join(_tools_path, "mac", "ffmpeg", "bin", "ffprobe")
     _scrcpy = os.path.join(_tools_path, "mac", "scrcpy", "bin", "scrcpy")
 else:
-    Show.console.print(
-        "[bold]Only compatible with [bold red]Windows[/bold red] and [bold red]macOS[/bold red] platforms ...[/bold]"
-    )
+    Show.console.print("[bold]Only compatible with [bold red]Windows & macOS[/bold red] platforms ...[/bold]")
     Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
     sys.exit(1)
 
 for _n, _tls in (_all_tools := [("adb", _adb), ("ffmpeg", _ffmpeg), ("ffprobe", _ffprobe), ("scrcpy", _scrcpy)]):
-    os.environ["PATH"] = os.path.dirname(_tls) + operation_symbol + os.environ.get("PATH", "")
+    os.environ["PATH"] = os.path.dirname(_tls) + condition_symbol + os.environ.get("PATH", "")
 
 for _env in [Path(_adb).name, Path(_ffmpeg).name, Path(_ffprobe).name, Path(_scrcpy).name]:
     if shutil.which(_env) is None:
@@ -80,11 +60,29 @@ for _env in [Path(_adb).name, Path(_ffmpeg).name, Path(_ffprobe).name, Path(_scr
         Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
         sys.exit(1)
 
+if len(sys.argv) == 1:
+    Show.help_document()
+    sys.exit(0)
+_lines = sys.argv[1:]
+
 try:
-    from engine.initial import initialization
-    from engine.player import Player
+    import re
+    import cv2
+    import json
+    import time
+    import numpy
+    import random
+    import asyncio
+    import aiofiles
+    import datetime
+    from loguru import logger
+    from typing import Optional
+    from rich.prompt import Prompt
     from engine.switch import Switch
     from engine.terminal import Terminal
+    from frameflow.skills.manage import Manage
+    from frameflow.skills.database import DataBase
+    from frameflow.skills.configure import Deploy, Option, Script
     from nexaflow import toolbox
     from nexaflow.report import Report
     from nexaflow.video import VideoObject, VideoFrame
@@ -113,96 +111,6 @@ class Review(object):
         return f"<Review start={start} end={end} cost={cost} classifier={kc}>"
 
     __repr__ = __str__
-
-
-class Parser(object):
-
-    @staticmethod
-    def parse_scale(dim_str):
-        try:
-            float_val = float(dim_str) if dim_str else None
-        except ValueError:
-            return None
-        return round(max(0.1, min(1.0, float_val)), 2) if float_val else None
-
-    @staticmethod
-    def parse_sizes(dim_str):
-        match_size_list = re.findall(r"-?\d*\.?\d+", dim_str)
-        if len(match_size_list) >= 2:
-            converted = []
-            for num in match_size_list:
-                try:
-                    converted_num = int(num)
-                except ValueError:
-                    converted_num = float(num)
-                converted.append(converted_num)
-            return tuple(converted[:2])
-        return None
-
-    @staticmethod
-    def parse_mills(dim_str):
-        seconds_pattern = re.compile(r"^\d+(\.\d+)?$")
-        full_pattern = re.compile(r"(\d{1,2}):(\d{2}):(\d{2})(\.\d+)?")
-        if match := full_pattern.match(dim_str):
-            hours, minutes, seconds, milliseconds = match.groups()
-            total_seconds = int(hours) * 3600 + int(minutes) * 60 + int(seconds)
-            if milliseconds:
-                total_seconds += float(milliseconds)
-            return total_seconds
-        elif seconds_pattern.match(dim_str):
-            return float(dim_str)
-        return None
-
-    @staticmethod
-    def parse_stage(dim_str):
-        stage_parts = []
-        parts = re.split(r"[.,;:\s]+", dim_str)
-        match_parts = [part for part in parts if re.match(r"-?\d+(\.\d+)?", part)]
-        for number in match_parts:
-            try:
-                stage_parts.append(int(number))
-            except ValueError:
-                stage_parts = []
-                break
-        return tuple(stage_parts[:2]) if len(stage_parts) >= 2 else None
-
-    @staticmethod
-    def parse_cmd():
-        parser = ArgumentParser(description="Command Line Arguments Framix")
-
-        parser.add_argument('--flick', action='store_true', help='循环分析视频帧')
-        parser.add_argument('--paint', action='store_true', help='绘制图片分割线条')
-        parser.add_argument('--video', action='append', help='分析视频')
-        parser.add_argument('--stack', action='append', help='分析视频文件集合')
-        parser.add_argument('--union', action='append', help='聚合视频帧报告')
-        parser.add_argument('--merge', action='append', help='聚合时间戳报告')
-        parser.add_argument('--train', action='append', help='归类图片文件')
-        parser.add_argument('--build', action='append', help='训练模型文件')
-
-        parser.add_argument('--carry', action='append', help='指定执行')
-        parser.add_argument('--fully', action='store_true', help='自动执行')
-        parser.add_argument('--alone', action='store_true', help='独立控制')
-        parser.add_argument('--group', action='store_true', help='分组报告')
-        parser.add_argument('--quick', action='store_true', help='快速模式')
-        parser.add_argument('--basic', action='store_true', help='基础模式')
-        parser.add_argument('--keras', action='store_true', help='智能模式')
-
-        parser.add_argument('--boost', action='store_true', help='跳帧模式')
-        parser.add_argument('--color', action='store_true', help='彩色模式')
-        parser.add_argument('--shape', nargs='?', const=None, type=Parser.parse_sizes, help='图片尺寸')
-        parser.add_argument('--scale', nargs='?', const=None, type=Parser.parse_scale, help='缩放比例')
-        parser.add_argument('--start', nargs='?', const=None, type=Parser.parse_mills, help='开始时间')
-        parser.add_argument('--close', nargs='?', const=None, type=Parser.parse_mills, help='结束时间')
-        parser.add_argument('--limit', nargs='?', const=None, type=Parser.parse_mills, help='持续时间')
-        parser.add_argument('--begin', nargs='?', const=None, type=Parser.parse_stage, help='开始帧')
-        parser.add_argument('--final', nargs='?', const=None, type=Parser.parse_stage, help='结束帧')
-        parser.add_argument('--crops', action='append', help='获取区域')
-        parser.add_argument('--omits', action='append', help='忽略区域')
-
-        # 调试模式
-        parser.add_argument('--debug', action='store_true', help='调试模式')
-
-        return parser.parse_args()
 
 
 class Missions(object):
@@ -333,11 +241,13 @@ class Missions(object):
             duration = loop.run_until_complete(
                 Switch.ask_video_length(self.ffprobe, new_video_path)
             )
-            vision_start, vision_close, vision_limit = examine_flip(
-                deploy.parse_mills(deploy.start),
-                deploy.parse_mills(deploy.close),
-                deploy.parse_mills(deploy.limit),
-                duration
+            vision_start, vision_close, vision_limit = loop.run_until_complete(
+                ask_examine_flip(
+                    deploy.parse_mills(deploy.start),
+                    deploy.parse_mills(deploy.close),
+                    deploy.parse_mills(deploy.limit),
+                    duration
+                )
             )
             vision_start = deploy.parse_times(vision_start)
             vision_close = deploy.parse_times(vision_close)
@@ -384,9 +294,9 @@ class Missions(object):
             kc = None
 
         futures = loop.run_until_complete(
-            analyzer(
-                new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
-                ffmpeg=self.ffmpeg, ffprobe=self.ffprobe
+            ask_analyzer(
+                new_video_path, deploy, kc,
+                reporter.frame_path, reporter.extra_path, ffmpeg=self.ffmpeg, ffprobe=self.ffprobe
             )
         )
 
@@ -478,11 +388,13 @@ class Missions(object):
                     duration = loop.run_until_complete(
                         Switch.ask_video_length(self.ffprobe, new_video_path)
                     )
-                    vision_start, vision_close, vision_limit = examine_flip(
-                        deploy.parse_mills(deploy.start),
-                        deploy.parse_mills(deploy.close),
-                        deploy.parse_mills(deploy.limit),
-                        duration
+                    vision_start, vision_close, vision_limit = loop.run_until_complete(
+                        ask_examine_flip(
+                            deploy.parse_mills(deploy.start),
+                            deploy.parse_mills(deploy.close),
+                            deploy.parse_mills(deploy.limit),
+                            duration
+                        )
                     )
                     vision_start = deploy.parse_times(vision_start)
                     vision_close = deploy.parse_times(vision_close)
@@ -536,9 +448,9 @@ class Missions(object):
                 new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
 
                 futures = loop.run_until_complete(
-                    analyzer(
-                        new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
-                        ffmpeg=self.ffmpeg, ffprobe=self.ffprobe
+                    ask_analyzer(
+                        new_video_path, deploy, kc,
+                        reporter.frame_path, reporter.extra_path, ffmpeg=self.ffmpeg, ffprobe=self.ffprobe
                     )
                 )
                 if futures is None:
@@ -616,15 +528,17 @@ class Missions(object):
             reporter.query_path, f"tmp_fps{deploy.fps}.mp4"
         )
 
-        looper = asyncio.get_event_loop()
-        duration = looper.run_until_complete(
+        loop = asyncio.get_event_loop()
+        duration = loop.run_until_complete(
             Switch.ask_video_length(self.ffprobe, video_file)
         )
-        vision_start, vision_close, vision_limit = examine_flip(
-            deploy.parse_mills(deploy.start),
-            deploy.parse_mills(deploy.close),
-            deploy.parse_mills(deploy.limit),
-            duration
+        vision_start, vision_close, vision_limit = loop.run_until_complete(
+            ask_examine_flip(
+                deploy.parse_mills(deploy.start),
+                deploy.parse_mills(deploy.close),
+                deploy.parse_mills(deploy.limit),
+                duration
+            )
         )
         vision_start = deploy.parse_times(vision_start)
         vision_close = deploy.parse_times(vision_close)
@@ -656,10 +570,10 @@ class Missions(object):
         )
 
         if deploy.shape:
-            original_shape = looper.run_until_complete(
+            original_shape = loop.run_until_complete(
                 Switch.ask_video_larger(self.ffprobe, video_file)
             )
-            w, h, ratio = looper.run_until_complete(
+            w, h, ratio = loop.run_until_complete(
                 ask_magic_frame(original_shape, deploy.shape)
             )
             target_shape = w, h
@@ -713,7 +627,7 @@ class Missions(object):
             image = cv2.imread(image_path)
             logger.info(f"图像分辨率: {image.shape}")
             if image.ndim == 3:
-                if np.array_equal(image[:, :, 0], image[:, :, 1]) and np.array_equal(image[:, :, 1], image[:, :, 2]):
+                if numpy.array_equal(image[:, :, 0], image[:, :, 1]) and numpy.array_equal(image[:, :, 1], image[:, :, 2]):
                     logger.info("The image is grayscale image, stored in RGB format ...")
                 else:
                     logger.info("The image is color image ...")
@@ -1067,13 +981,14 @@ class Missions(object):
                 duration_list = await asyncio.gather(
                     *(Switch.ask_video_length(self.ffprobe, temp_video) for temp_video, *_ in task_list)
                 )
-                looper = asyncio.get_event_loop()
-                duration_result = [looper.run_in_executor(
-                    None, examine_flip,
-                    deploy.parse_mills(deploy.start), deploy.parse_mills(deploy.close),
-                    deploy.parse_mills(deploy.limit), duration
-                ) for duration in duration_list]
-                duration_result_list = await asyncio.gather(*duration_result)
+                duration_result_list = await asyncio.gather(
+                    *(ask_examine_flip(
+                        deploy.parse_mills(deploy.start),
+                        deploy.parse_mills(deploy.close),
+                        deploy.parse_mills(deploy.limit),
+                        duration
+                    ) for duration in duration_list)
+                )
 
                 all_duration = []
                 for (vision_start, vision_close, vision_limit), duration in zip(duration_result_list, duration_list):
@@ -1114,10 +1029,8 @@ class Missions(object):
             elif self.basic or self.keras:
                 logger.debug(f"Framix Analyzer: {'智能模式' if kc else '基础模式'} ...")
                 futures = await asyncio.gather(
-                    *(analyzer(
-                        temp_video, deploy, kc, frame_path, extra_path,
-                        ffmpeg=self.ffmpeg, ffprobe=self.ffprobe
-                    ) for temp_video, *_, frame_path, extra_path, _ in task_list)
+                    *(ask_analyzer(temp_video, deploy, kc, frame_path, extra_path, ffmpeg=self.ffmpeg,
+                                   ffprobe=self.ffprobe) for temp_video, *_, frame_path, extra_path, _ in task_list)
                 )
 
                 for future, todo in zip(futures, task_list):
@@ -1308,6 +1221,7 @@ class Missions(object):
                 logger.error(f"{script_data}")
                 return False
 
+            from engine.player import Player
             player = Player()
 
             if self.carry and len(self.carry) > 0:
@@ -1403,7 +1317,7 @@ class Missions(object):
         # Flick Loop ===================================================================================================
 
 
-def examine_flip(
+async def ask_examine_flip(
         start: Optional[int | float],
         close: Optional[int | float],
         limit: Optional[int | float],
@@ -1459,7 +1373,7 @@ async def ask_get_template(template_path: str) -> str | Exception:
     return template_file
 
 
-async def analyzer(
+async def ask_analyzer(
         vision_path: str, deploy: "Deploy", kc: "KerasClassifier", *args, **kwargs
 ) -> Optional["Review"]:
 
@@ -1492,14 +1406,12 @@ async def analyzer(
         )
 
         duration = await Switch.ask_video_length(ffprobe, vision_path)
-        looper = asyncio.get_event_loop()
-        duration_result = looper.run_in_executor(
-            None, examine_flip,
+        vision_start, vision_close, vision_limit = await ask_examine_flip(
             deploy.parse_mills(deploy.start),
-            deploy.parse_mills(deploy.close), deploy.parse_mills(deploy.limit),
+            deploy.parse_mills(deploy.close),
+            deploy.parse_mills(deploy.limit),
             duration
         )
-        vision_start, vision_close, vision_limit = await duration_result
         vision_start = deploy.parse_times(vision_start)
         vision_close = deploy.parse_times(vision_close)
         vision_limit = deploy.parse_times(vision_limit)
@@ -1785,21 +1697,12 @@ async def ask_main():
 
 
 if __name__ == '__main__':
-    if len(sys.argv) == 1:
-        Show.help_document()
-        sys.exit(0)
-
-    _lines = sys.argv[1:]
-
-    from multiprocessing import Pool, freeze_support
-    freeze_support()
-
-    from argparse import ArgumentParser
+    from frameflow.skills.parser import Parser
     _cmd_lines = Parser.parse_cmd()
 
-    _level = "DEBUG" if _cmd_lines.debug else "INFO"
+    from engine.initial import initialization
+    initialization(_level := "DEBUG" if _cmd_lines.debug else "INFO")
     _level_multiple = "ERROR"
-    initialization(_level)
 
     # Debug Mode =======================================================================================================
     logger.debug(f"日志等级: {_level}")
@@ -1822,7 +1725,7 @@ if __name__ == '__main__':
     logger.debug(f"* Tools Path * {'=' * 30}\n")
 
     logger.debug(f"* System Env * {'=' * 30}")
-    for _env in os.environ["PATH"].split(operation_symbol):
+    for _env in os.environ["PATH"].split(condition_symbol):
         logger.debug(f"{_env}")
     logger.debug(f"* System Env * {'=' * 30}\n")
     # Debug Mode =======================================================================================================
@@ -1917,6 +1820,9 @@ if __name__ == '__main__':
         initial_models=_initial_models,
         adb=_adb, ffmpeg=_ffmpeg, ffprobe=_ffprobe, scrcpy=_scrcpy
     )
+
+    from multiprocessing import Pool, freeze_support
+    freeze_support()
 
     _loop = asyncio.get_event_loop()
 
