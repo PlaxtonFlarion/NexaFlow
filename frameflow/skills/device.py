@@ -34,8 +34,7 @@ class Device(_Phone):
         return result.split("=")[-1].strip()
 
     async def ask_swipe_unlock(self) -> None:
-        screen = await self.ask_is_screen_on()
-        if screen == "false":
+        if await self.ask_is_screen_on() == "false":
             await self.ask_key_event(26)
             await asyncio.sleep(1)
             cmd = self.initial + ["shell", "input", "touchscreen", "swipe", "250", "650", "250", "50"]
@@ -50,8 +49,8 @@ class Device(_Phone):
         cmd = self.initial + ["shell", "am", "force-stop", package]
         await Terminal.cmd_line(*cmd)
 
-    async def ask_wifi(self, switch: str = "enable") -> None:
-        cmd = self.initial + ["shell", "svc", "wifi", switch]
+    async def ask_wifi(self, power: str = "enable") -> None:
+        cmd = self.initial + ["shell", "svc", "wifi", power]
         await Terminal.cmd_line(*cmd)
 
     async def ask_all_package(self, level: int = 10000) -> list[str]:
@@ -59,11 +58,9 @@ class Device(_Phone):
         result = await Terminal.cmd_line(*cmd)
         package_list = []
         for line in result.splitlines():
-            parts = line.split()
-            uid = parts[1] if len(parts) > 1 else None
+            uid = parts[1] if len(parts := line.split()) > 1 else None
             if uid and uid.isdigit() and int(uid) >= level:
-                pkg_name = parts[-1]
-                package_list.append(pkg_name)
+                package_list.append(parts[-1])
         return package_list
 
     async def ask_current_activity(self) -> str:

@@ -15,9 +15,9 @@ from findit import FindIt
 from base64 import b64encode
 from PIL import Image, ImageDraw, ImageFont
 from skimage.feature import hog, local_binary_pattern
-from skimage.metrics import structural_similarity as origin_compare_ssim
 from skimage.metrics import normalized_root_mse as compare_nrmse
 from skimage.metrics import peak_signal_noise_ratio as compare_psnr
+from skimage.metrics import structural_similarity as origin_compare_ssim
 
 
 @contextlib.contextmanager
@@ -343,7 +343,7 @@ def show_progress(total: int, color: int, title: str) -> tqdm:
     return progress_bar
 
 
-def draw_line(image_path: str, save_path: str = None):
+def draw_line(image_path: str, save_path: str = None) -> None:
     # 打开图像
     image = Image.open(image_path)
     image = image.convert("RGB")

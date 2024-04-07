@@ -1698,8 +1698,8 @@ if __name__ == '__main__':
     from frameflow.skills.parser import Parser
     _cmd_lines = Parser.parse_cmd()
 
-    from engine.initial import initialization
-    initialization(_level := "DEBUG" if _cmd_lines.debug else "INFO")
+    from engine.activate import active
+    active(_level := "DEBUG" if _cmd_lines.debug else "INFO")
     _level_multiple = "ERROR"
 
     # Debug Mode =======================================================================================================
@@ -1830,7 +1830,7 @@ if __name__ == '__main__':
             _missions.video_dir_task(_cmd_lines.stack[0])
         else:
             _proc = _members if _members <= _cpu else _cpu
-            with Pool(_proc, initialization, (_level_multiple,)) as _pool:
+            with Pool(_proc, active, (_level_multiple,)) as _pool:
                 _results = _pool.starmap(_missions.video_dir_task, [(i,) for i in _cmd_lines.stack])
             _template_total = _loop.run_until_complete(
                 ask_get_template(_missions.view_total_temp)
@@ -1846,7 +1846,7 @@ if __name__ == '__main__':
             _missions.video_task(_cmd_lines.video[0])
         else:
             _proc = _members if _members <= _cpu else _cpu
-            with Pool(_proc, initialization, (_level_multiple,)) as _pool:
+            with Pool(_proc, active, (_level_multiple,)) as _pool:
                 _results = _pool.starmap(_missions.video_task, [(i,) for i in _cmd_lines.video])
             _template_total = _loop.run_until_complete(
                 ask_get_template(_missions.view_total_temp)
@@ -1862,7 +1862,7 @@ if __name__ == '__main__':
             _missions.train_model(_cmd_lines.train[0])
         else:
             _proc = _members if _members <= _cpu else _cpu
-            with Pool(_proc, initialization, (_level_multiple,)) as _pool:
+            with Pool(_proc, active, (_level_multiple,)) as _pool:
                 _pool.starmap(_missions.train_model, [(i,) for i in _cmd_lines.train])
         sys.exit(0)
 
@@ -1872,7 +1872,7 @@ if __name__ == '__main__':
             _missions.build_model(_cmd_lines.build[0])
         else:
             _proc = _members if _members <= _cpu else _cpu
-            with Pool(_proc, initialization, (_level_multiple,)) as _pool:
+            with Pool(_proc, active, (_level_multiple,)) as _pool:
                 _pool.starmap(_missions.build_model, [(i,) for i in _cmd_lines.build])
         sys.exit(0)
 

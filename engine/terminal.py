@@ -1,3 +1,4 @@
+import sys
 import asyncio
 import subprocess
 from loguru import logger
@@ -13,12 +14,12 @@ class Terminal(object):
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
 
-        stdout, stderr = await transports.communicate()
+        (stdout, stderr), encode = await transports.communicate(), "GBK" if sys.platform == "win32" else "UTF-8"
 
         if stdout:
-            return stdout.decode(encoding="UTF-8", errors="ignore").strip()
+            return stdout.decode(encoding=encode, errors="ignore").strip()
         if stderr:
-            return stderr.decode(encoding="UTF-8", errors="ignore").strip()
+            return stderr.decode(encoding=encode, errors="ignore").strip()
 
     @staticmethod
     async def cmd_link(*cmd: str):
@@ -29,6 +30,8 @@ class Terminal(object):
         )
         return transports
 
+########################################################################################################################
+
     @staticmethod
     async def cmd_line_shell(cmd: str):
         logger.debug(cmd)
@@ -37,12 +40,12 @@ class Terminal(object):
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
 
-        stdout, stderr = await transports.communicate()
+        (stdout, stderr), encode = await transports.communicate(), "GBK" if sys.platform == "win32" else "UTF-8"
 
         if stdout:
-            return stdout.decode(encoding="UTF-8", errors="ignore").strip()
+            return stdout.decode(encoding=encode, errors="ignore").strip()
         if stderr:
-            return stderr.decode(encoding="UTF-8", errors="ignore").strip()
+            return stderr.decode(encoding=encode, errors="ignore").strip()
 
     @staticmethod
     async def cmd_link_shell(cmd: str):
@@ -53,7 +56,7 @@ class Terminal(object):
         )
         return transports
 
-###################################################################################
+########################################################################################################################
 
     @staticmethod
     def cmd_oneshot(cmd: list[str]):

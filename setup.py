@@ -1,17 +1,18 @@
+from nexaflow import const
 from setuptools import setup, find_packages
 
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()
 
 setup(
-    name='framix',
-    version='0.1.0-beta',
+    name=const.NAME,
+    version=const.VERSION,
+    url=const.URL,
+    author=const.AUTHOR,
+    license=const.LICENSE,
+    author_email=const.EMAIL,
+    description=const.DESC,
     packages=find_packages(),
-    url='https://github.com/PlaxtonFlarion/NexaFlow',
-    license='MIT',
-    author='AceKeppel',
-    author_email='AceKeppel@outlook.com',
-    description='Framix',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     install_requires=requirements,

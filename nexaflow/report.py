@@ -63,7 +63,7 @@ class Report(object):
         return os.path.join(self.query_path, self.query)
 
     @property
-    def title(self):
+    def title(self) -> str:
         return self.__title
 
     @title.setter
@@ -97,7 +97,7 @@ class Report(object):
         del self.__query
 
     @staticmethod
-    def get_template(template_path) -> str:
+    def get_template(template_path: str) -> str:
         with open(template_path, encoding=const.CHARSET) as t:
             template_file = t.read()
         return template_file
@@ -202,7 +202,7 @@ class Report(object):
                 total_list=self.total_list
             )
             total_html_path = os.path.join(os.path.dirname(self.total_path), "NexaFlow.html")
-            with open(file=total_html_path, mode="w", encoding="utf-8") as f:
+            with open(total_html_path, "w", encoding="utf-8") as f:
                 f.write(html)
                 logger.info(f"生成汇总报告: {total_html_path}\n\n")
             self.total_list.clear()
@@ -211,7 +211,7 @@ class Report(object):
 
     @staticmethod
     def reset_report(file_name: str, template_file: str) -> None:
-        with open(file=os.path.join(file_name, "Nexa_Recovery", "nexaflow.log"), mode="r", encoding="utf-8") as f:
+        with open(os.path.join(file_name, "Nexa_Recovery", "nexaflow.log"), "r", encoding="utf-8") as f:
             log_restore = re.findall(r"(?<=Recovery: ).*}", f.read())
 
         template = Template(template_file)
@@ -221,7 +221,7 @@ class Report(object):
             total_list=total_list
         )
         total_html_path = os.path.join(file_name, "NexaFlow.html")
-        with open(file=total_html_path, mode="w", encoding="utf-8") as f:
+        with open(total_html_path, "w", encoding="utf-8") as f:
             f.write(html)
             logger.info(f"生成汇总报告: {total_html_path}\n\n")
 
@@ -239,7 +239,7 @@ class Report(object):
         log_restore = []
         for merge in merge_list:
             logs = os.path.join(os.path.dirname(merge), "Nexa_Recovery", "nexaflow.log")
-            with open(file=logs, mode="r", encoding="utf-8") as f:
+            with open(logs, "r", encoding="utf-8") as f:
                 log_restore.extend(re.findall(fr"(?<={pattern}: ).*}}", f.read()))
             shutil.copytree(
                 merge, merge_path, dirs_exist_ok=True,
@@ -254,7 +254,7 @@ class Report(object):
         )
 
         total_html_path = os.path.join(os.path.dirname(merge_path), "NexaFlow.html")
-        with open(file=total_html_path, mode="w", encoding="utf-8") as f:
+        with open(total_html_path, "w", encoding="utf-8") as f:
             f.write(html)
             logger.info(f"合并汇总报告: {total_html_path}\n\n")
 
@@ -305,7 +305,7 @@ class Report(object):
                 )
                 teams = serial if serial else random.randint(10000, 99999)
                 range_html = Path(os.path.join(total_path, title, f"{title}_{teams}.html"))
-                async with aiofiles.open(file=range_html, mode="w", encoding="utf-8") as range_file:
+                async with aiofiles.open(range_html, "w", encoding="utf-8") as range_file:
                     await range_file.write(range_html_temp)
                     logger.info(f"生成聚合报告: {range_html.name}")
 
@@ -333,7 +333,7 @@ class Report(object):
     async def ask_invent_total_report(file_name: str, views_loc: str, total_loc: str, group: bool):
         try:
             file_path = os.path.join(file_name, "Nexa_Recovery", "nexaflow.log")
-            async with aiofiles.open(file=file_path, mode="r", encoding="utf-8") as f:
+            async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
                 open_file = await f.read()
         except FileNotFoundError as e:
             return e
@@ -401,7 +401,7 @@ class Report(object):
             total_list=total_list
         )
         total_html = os.path.join(file_name, "NexaFlow.html")
-        async with aiofiles.open(file=total_html, mode="w", encoding="utf-8") as total_file:
+        async with aiofiles.open(total_html, "w", encoding="utf-8") as total_file:
             await total_file.write(total_html_temp)
             logger.info(f"生成汇总报告: {total_html}")
 
@@ -476,7 +476,7 @@ class Report(object):
                 )
                 teams = serial if serial else random.randint(10000, 99999)
                 range_html = Path(os.path.join(total_path, title, f"{title}_{teams}.html"))
-                async with aiofiles.open(file=range_html, mode="w", encoding="utf-8") as range_file:
+                async with aiofiles.open(range_html, "w", encoding="utf-8") as range_file:
                     await range_file.write(range_html_temp)
                     logger.info(f"生成聚合报告: {range_html.name}")
 
@@ -504,7 +504,7 @@ class Report(object):
     async def ask_create_total_report(file_name: str, major_loc: str, total_loc: str, group: bool):
         try:
             file_path = os.path.join(file_name, "Nexa_Recovery", "nexaflow.log")
-            async with aiofiles.open(file=file_path, mode="r", encoding="utf-8") as f:
+            async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
                 open_file = await f.read()
         except FileNotFoundError as e:
             return e
@@ -572,7 +572,7 @@ class Report(object):
             total_list=total_list
         )
         total_html = os.path.join(file_name, "NexaFlow.html")
-        async with aiofiles.open(file=total_html, mode="w", encoding="utf-8") as total_file:
+        async with aiofiles.open(total_html, "w", encoding="utf-8") as total_file:
             await total_file.write(total_html_temp)
             logger.info(f"生成汇总报告: {total_html}")
 
@@ -645,6 +645,7 @@ class Report(object):
                          f"耗时: {last.timestamp - first.timestamp:.5f} "
                          f"分类: {first.stage}")
                 thumbnail_list.append({title: image_list})
+
         else:
             for cur_index in range(len(stage_range)):
                 each_range = stage_range[cur_index]
@@ -695,18 +696,17 @@ class Report(object):
             background_color=const.BACKGROUND_COLOR,
             cost_dict=cost_dict,
             timestamp=timestamp,
-            version_code="0.1.0-beta"
+            version_code=const.VERSION
         )
 
-        default_name = f"{timestamp}.html"
         if os.path.isdir(proto_path):
-            report_path = os.path.join(proto_path, default_name)
+            report_path = os.path.join(proto_path, f"{timestamp}.html")
         else:
             report_path = proto_path
 
         with open(report_path, "w", encoding=const.CHARSET) as fh:
             fh.write(template_content)
-        logger.info(f"生成单次报告: {os.path.basename(report_path)}")
+        logger.info(f"生成单次报告: {Path(report_path).name}")
 
         return report_path
 

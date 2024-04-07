@@ -2,7 +2,7 @@ import os
 import time
 import shutil
 from multiprocessing import Pool
-from engine.initial import initialization
+from engine.activate import active
 from nexaflow import const
 from nexaflow.report import Report
 from plan.skills.alynex import Alynex
@@ -31,7 +31,7 @@ def multi_video_task(folder: str) -> str:
 
 
 if __name__ == '__main__':
-    initialization("INFO")
+    active("INFO")
     data = ["group_0001", "group_0002"]
     start_time = time.time()
 

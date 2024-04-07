@@ -1,7 +1,7 @@
 import os
 import time
 from nexaflow import const
-from engine.initial import initialization
+from engine.activate import active
 from plan.skills.alynex import Alynex
 from plan.skills.manage import Manage
 
@@ -19,7 +19,7 @@ def multi_audio_task():
     application = ""
     activity = ""
 
-    initialization("INFO")
+    active("INFO")
     manage = Manage()
     alynex = Alynex()
     alynex.activate(MODELS, REPORT)

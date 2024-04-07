@@ -1,5 +1,5 @@
 import os
-from engine.initial import initialization
+from engine.activate import active
 from nexaflow import const
 from plan.skills.alynex import Alynex
 from plan.skills.device import Device
@@ -75,7 +75,7 @@ if __name__ == '__main__':
     # pip install -i https://pypi.tuna.tsinghua.edu.cn/simple tensorflow==2.14.0
     # pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade tensorflow
     # pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
-    initialization("INFO")
+    active("INFO")
     manage = Manage()
 
     with TestPlan(manage.Phone, 5) as test:
