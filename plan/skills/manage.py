@@ -9,13 +9,8 @@ class Manage(object):
     Phone: Optional["Device"] = None
 
     def __init__(self):
-        self.__device_dict: dict[str, "Device"] = {}
-        self.__serial_list: list[str] = []
+        self.device_dict = {}
         self.current_device()
-
-    @property
-    def serials(self) -> list[str]:
-        return self.__serial_list
 
     def current_device(self) -> None:
         cmd = ["adb", "devices", "-l"]
@@ -25,15 +20,14 @@ class Manage(object):
         for line in result.splitlines()[1:]:
             if line:
                 serial, _, models, *_ = line.split()
-                self.__device_dict.update({serial: Device(serial, fit(models))})
-                self.__serial_list.append(serial)
+                self.device_dict.update({serial: Device(serial, fit(models))})
 
-        if len(self.__device_dict) == 1:
-            for _, device in self.__device_dict.items():
+        if len(self.device_dict) == 1:
+            for _, device in self.device_dict.items():
                 self.Phone = device
 
     def operate_device(self, serial: str) -> Optional["Device"]:
-        return self.__device_dict.get(serial, None)
+        return self.device_dict.get(serial, None)
 
 
 if __name__ == '__main__':

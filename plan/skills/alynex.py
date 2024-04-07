@@ -189,7 +189,7 @@ class Alynex(object):
                 x: Union[int | float], y: Union[int | float],
                 x_size: Union[int | float], y_size: Union[int | float]
         ) -> None:
-            """获取区域"""
+
             hook = CropHook((y_size, x_size), (y, x))
             self.framix_list.append(hook)
 
@@ -198,7 +198,7 @@ class Alynex(object):
                 x: Union[int | float], y: Union[int | float],
                 x_size: Union[int | float], y_size: Union[int | float]
         ) -> None:
-            """忽略区域"""
+
             hook = OmitHook((y_size, x_size), (y, x))
             self.framix_list.append(hook)
 
@@ -208,21 +208,19 @@ class Alynex(object):
                 target_size=Alynex.target_size
             )
 
-            # 应用视频帧处理单元
             for mix in self.framix_list:
                 cutter.add_hook(mix)
 
             save_hook = FrameSaveHook(self.__reporter.extra_path)
             cutter.add_hook(save_hook)
 
-            # 计算每一帧视频的每一个block的ssim和峰值信噪比
             res = cutter.cut(
                 video=video,
                 block=Alynex.block,
                 window_size=Alynex.window_size,
                 window_coefficient=Alynex.window_coefficient
             )
-            # 计算出判断A帧到B帧之间是稳定还是不稳定
+
             stable, unstable = res.get_range(
                 threshold=Alynex.threshold,
                 offset=Alynex.offset
@@ -235,18 +233,13 @@ class Alynex(object):
             interval = total_images // 11 if total_images > 12 else 1
             for index, file in enumerate(files):
                 if index % interval != 0:
-                    os.remove(
-                        os.path.join(self.__reporter.extra_path, file)
-                    )
+                    os.remove(os.path.join(self.__reporter.extra_path, file))
 
             # 为图片绘制线条
             draws = os.listdir(self.__reporter.extra_path)
             for draw in draws:
-                toolbox.draw_line(
-                    os.path.join(self.__reporter.extra_path, draw)
-                )
+                toolbox.draw_line(os.path.join(self.__reporter.extra_path, draw))
 
-            # 开始图像分类
             classify = Alynex.kc.classify(video=video, valid_range=stable, keep_data=True)
             return classify
 

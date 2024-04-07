@@ -16,8 +16,8 @@ ALIEN = os.path.join(const.NEXA, "template", "template_alien.html")
 class TestPlan(object):
 
     # adb shell dumpsys window | findstr mCurrentFocus
-    application: str = "your package name ???"
-    activity: str = "your activity name ???"
+    application = "your package name ???"
+    activity = "your activity name ???"
 
     def __init__(self, device: Device = None, looper: int = 1):
         self.looper: int = looper
@@ -77,7 +77,6 @@ if __name__ == '__main__':
     # pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
     initialization("INFO")
     manage = Manage()
-    first_device = manage.Phone
 
-    with TestPlan(first_device, 5) as test:
+    with TestPlan(manage.Phone, 5) as test:
         test.test_02()

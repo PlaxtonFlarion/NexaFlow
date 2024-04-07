@@ -16,8 +16,8 @@ ALIEN = os.path.join(const.NEXA, "template", "template_alien.html")
 def multi_audio_task():
     start_time = time.time()
 
-    application: str = ""
-    activity: str = ""
+    application = ""
+    activity = ""
 
     initialization("INFO")
     manage = Manage()
