@@ -115,7 +115,7 @@ class Review(object):
 
 class Missions(object):
 
-    COMPRESS: int | float = 0.4  # 默认压缩率
+    COMPRESS: int | float = 0.4
 
     def __init__(
             self,
@@ -1343,14 +1343,17 @@ async def ask_examine_flip(
     return start_point, close_point, limit_point
 
 
-async def ask_magic_frame(original_frame_size: tuple, input_frame_size: tuple) -> tuple[int, int, float]:
+async def ask_magic_frame(
+        original_frame_size: tuple, entrance_frame_size: tuple
+) -> tuple[int, int, float]:
+
     original_w, original_h = original_frame_size
     original_ratio = original_w / original_h
 
-    if original_frame_size == input_frame_size:
+    if original_frame_size == entrance_frame_size:
         return original_w, original_h, original_ratio
 
-    frame_w, frame_h = input_frame_size
+    frame_w, frame_h = entrance_frame_size
     max_w = max(original_w * 0.1, min(frame_w, original_w))
     max_h = max(original_h * 0.1, min(frame_h, original_h))
 
@@ -1366,7 +1369,7 @@ async def ask_magic_frame(original_frame_size: tuple, input_frame_size: tuple) -
 
 async def ask_get_template(template_path: str) -> str | Exception:
     try:
-        async with aiofiles.open(template_path, mode="r", encoding="utf-8") as f:
+        async with aiofiles.open(template_path, "r", encoding="utf-8") as f:
             template_file = await f.read()
     except FileNotFoundError as e:
         return e
@@ -1476,13 +1479,11 @@ async def ask_analyzer(
         cutter.add_hook(save_hook)
 
         res = cutter.cut(
-            video=video,
-            block=deploy.block
+            video=video, block=deploy.block
         )
 
         stable, unstable = res.get_range(
-            threshold=deploy.threshold,
-            offset=deploy.offset
+            threshold=deploy.threshold, offset=deploy.offset
         )
 
         file_list = os.listdir(extra_path)
@@ -1492,8 +1493,7 @@ async def ask_analyzer(
         if total_images <= desired_count:
             retain_indices = range(total_images)
         else:
-            interval = total_images / desired_count
-            retain_indices = [int(i * interval) for i in range(desired_count)]
+            retain_indices = [int(i * (total_images / desired_count)) for i in range(desired_count)]
             if len(retain_indices) < desired_count:
                 retain_indices.append(total_images - 1)
             elif len(retain_indices) > desired_count:
@@ -1507,9 +1507,7 @@ async def ask_analyzer(
             toolbox.draw_line(os.path.join(extra_path, draw))
 
         classify = kc.classify(
-            video=video,
-            valid_range=stable,
-            keep_data=True
+            video=video, valid_range=stable, keep_data=True
         )
 
         important_frames = classify.get_important_frame_list()
@@ -1831,8 +1829,8 @@ if __name__ == '__main__':
         if (_members := len(_cmd_lines.stack)) == 1:
             _missions.video_dir_task(_cmd_lines.stack[0])
         else:
-            _processes = _members if _members <= _cpu else _cpu
-            with Pool(processes=_processes, initializer=initialization, initargs=(_level_multiple,)) as _pool:
+            _proc = _members if _members <= _cpu else _cpu
+            with Pool(_proc, initialization, (_level_multiple,)) as _pool:
                 _results = _pool.starmap(_missions.video_dir_task, [(i,) for i in _cmd_lines.stack])
             _template_total = _loop.run_until_complete(
                 ask_get_template(_missions.view_total_temp)
@@ -1847,8 +1845,8 @@ if __name__ == '__main__':
         if (_members := len(_cmd_lines.video)) == 1:
             _missions.video_task(_cmd_lines.video[0])
         else:
-            _processes = _members if _members <= _cpu else _cpu
-            with Pool(processes=_processes, initializer=initialization, initargs=(_level_multiple,)) as _pool:
+            _proc = _members if _members <= _cpu else _cpu
+            with Pool(_proc, initialization, (_level_multiple,)) as _pool:
                 _results = _pool.starmap(_missions.video_task, [(i,) for i in _cmd_lines.video])
             _template_total = _loop.run_until_complete(
                 ask_get_template(_missions.view_total_temp)
@@ -1863,8 +1861,8 @@ if __name__ == '__main__':
         if (_members := len(_cmd_lines.train)) == 1:
             _missions.train_model(_cmd_lines.train[0])
         else:
-            _processes = _members if _members <= _cpu else _cpu
-            with Pool(processes=_processes, initializer=initialization, initargs=(_level_multiple,)) as _pool:
+            _proc = _members if _members <= _cpu else _cpu
+            with Pool(_proc, initialization, (_level_multiple,)) as _pool:
                 _pool.starmap(_missions.train_model, [(i,) for i in _cmd_lines.train])
         sys.exit(0)
 
@@ -1873,8 +1871,8 @@ if __name__ == '__main__':
         if (_members := len(_cmd_lines.build)) == 1:
             _missions.build_model(_cmd_lines.build[0])
         else:
-            _processes = _members if _members <= _cpu else _cpu
-            with Pool(processes=_processes, initializer=initialization, initargs=(_level_multiple,)) as _pool:
+            _proc = _members if _members <= _cpu else _cpu
+            with Pool(_proc, initialization, (_level_multiple,)) as _pool:
                 _pool.starmap(_missions.build_model, [(i,) for i in _cmd_lines.build])
         sys.exit(0)
 
