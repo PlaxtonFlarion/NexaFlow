@@ -1,6 +1,6 @@
 import re
 import asyncio
-from nexaflow.terminal import Terminal
+from engine.terminal import Terminal
 
 
 class _Phone(object):

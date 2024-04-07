@@ -1,7 +1,7 @@
 import re
 import asyncio
 from rich.prompt import Prompt
-from nexaflow.terminal import Terminal
+from engine.terminal import Terminal
 from frameflow.skills.show import Show
 from frameflow.skills.device import Device
 

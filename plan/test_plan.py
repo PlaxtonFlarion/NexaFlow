@@ -1,15 +1,16 @@
 import os
-from nexaflow.constants import Constants
-from nexaflow.skills.alynex import Alynex
-from nexaflow.skills.device import Device
-from nexaflow.skills.device import Manage
+from engine.initial import initialization
+from nexaflow import const
+from plan.skills.alynex import Alynex
+from plan.skills.device import Device
+from plan.skills.manage import Manage
 
-AUDIO_DIRS = os.path.join(Constants.WORK, "audio")
-MODELS = os.path.join(Constants.WORK, "archivix", "molds", "Keras_Gray_W256_H256_00000.h5")
-REPORT = os.path.join(Constants.WORK, "report")
-TEMPLATE_MAIN_TOTAL = os.path.join(Constants.NEXA, "template", "template_main_total.html")
-TEMPLATE_MAIN = os.path.join(Constants.NEXA, "template", "template_main.html")
-ALIEN = os.path.join(Constants.NEXA, "template", "template_alien.html")
+AUDIO_DIRS = os.path.join(const.WORK, "audio")
+MODELS = os.path.join(const.WORK, "archivix", "molds", "Keras_Gray_W256_H256_00000.h5")
+REPORT = os.path.join(const.WORK, "report")
+TEMPLATE_MAIN_TOTAL = os.path.join(const.NEXA, "template", "template_main_total.html")
+TEMPLATE_MAIN = os.path.join(const.NEXA, "template", "template_main.html")
+ALIEN = os.path.join(const.NEXA, "template", "template_alien.html")
 
 
 class TestPlan(object):
@@ -25,8 +26,7 @@ class TestPlan(object):
         self.__alynex.activate(MODELS, REPORT)
 
     def test_01(self):
-        """讲个笑话"""
-        query, audio = self.__alynex.player.load_audio(AUDIO_DIRS, "讲个笑话")
+        audio = os.path.join(AUDIO_DIRS, query := "讲个笑话")
         self.__alynex.report.title = query
         for _ in range(self.looper):
             self.__alynex.report.query = query
@@ -75,7 +75,7 @@ if __name__ == '__main__':
     # pip install -i https://pypi.tuna.tsinghua.edu.cn/simple tensorflow==2.14.0
     # pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade tensorflow
     # pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
-    Constants.initial_logger()
+    initialization("INFO")
     manage = Manage()
     first_device = manage.Phone
 

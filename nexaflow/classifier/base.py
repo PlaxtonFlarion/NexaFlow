@@ -8,7 +8,7 @@ import difflib
 import numpy as np
 from loguru import logger
 from collections import OrderedDict
-from nexaflow import toolbox, constants
+from nexaflow import toolbox, const
 from nexaflow.video import VideoFrame, VideoObject
 from nexaflow.cutter.cut_range import VideoCutRange
 from nexaflow.hook import BaseHook
@@ -44,9 +44,9 @@ class SingleClassifierResult(object):
 
     def is_stable(self) -> bool:
         return self.stage not in (
-            constants.UNSTABLE_FLAG,
-            constants.IGNORE_FLAG,
-            constants.UNKNOWN_STAGE_FLAG,
+            const.UNSTABLE_FLAG,
+            const.IGNORE_FLAG,
+            const.UNKNOWN_STAGE_FLAG,
         )
 
     def contain_image(
@@ -198,8 +198,8 @@ class ClassifierResult(object):
     def get_not_stable_stage_range(
         self,
     ) -> typing.List[typing.List[SingleClassifierResult]]:
-        unstable = self.get_specific_stage_range(constants.UNSTABLE_FLAG)
-        ignore = self.get_specific_stage_range(constants.IGNORE_FLAG)
+        unstable = self.get_specific_stage_range(const.UNSTABLE_FLAG)
+        ignore = self.get_specific_stage_range(const.IGNORE_FLAG)
         return sorted(unstable + ignore, key=lambda x: x[0].stage)
 
     def mark_range(self, start: int, end: int, target_stage: str):
@@ -208,10 +208,10 @@ class ClassifierResult(object):
         # logger.debug(f"range {start} to {end} has been marked as {target_stage}")
 
     def mark_range_unstable(self, start: int, end: int):
-        self.mark_range(start, end, constants.UNSTABLE_FLAG)
+        self.mark_range(start, end, const.UNSTABLE_FLAG)
 
     def mark_range_ignore(self, start: int, end: int):
-        self.mark_range(start, end, constants.IGNORE_FLAG)
+        self.mark_range(start, end, const.IGNORE_FLAG)
 
     def time_cost_between(self, start_stage: str, end_stage: str) -> float:
         return self.first(end_stage).timestamp - self.last(start_stage).timestamp
@@ -273,7 +273,7 @@ class ClassifierResult(object):
     @classmethod
     def load(cls, from_file: str) -> "ClassifierResult":
         assert os.path.isfile(from_file), f"file {from_file} not existed"
-        with open(from_file, encoding=constants.CHARSET) as f:
+        with open(from_file, encoding=const.CHARSET) as f:
             content = json.load(f)
 
         data = content[cls.LABEL_DATA]
@@ -433,7 +433,7 @@ class BaseClassifier(object):
                 # logger.debug(
                 #     f"frame {frame.frame_id} ({frame.timestamp}) not in target range, skip"
                 # )
-                result = constants.IGNORE_FLAG
+                result = const.IGNORE_FLAG
                 prev_result = None
             else:
                 if boost_mode and (prev_result is not None):

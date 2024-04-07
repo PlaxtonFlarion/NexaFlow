@@ -3,7 +3,7 @@ import random
 import numpy as np
 from loguru import logger
 from nexaflow import toolbox
-from nexaflow import constants
+from nexaflow import const
 from nexaflow.hook import BaseHook
 from nexaflow.video import VideoObject, VideoFrame
 
@@ -123,7 +123,7 @@ class VideoCutRange(object):
     ) -> bool:
 
         if not threshold:
-            threshold = constants.DEFAULT_THRESHOLD
+            threshold = const.DEFAULT_THRESHOLD
 
         res = np.mean(self.ssim) > threshold
         if res and psnr_threshold:
@@ -133,7 +133,7 @@ class VideoCutRange(object):
 
     def is_loop(self, threshold: float = None, **_) -> bool:
         if not threshold:
-            threshold = constants.DEFAULT_THRESHOLD
+            threshold = const.DEFAULT_THRESHOLD
         operator = self.video.get_operator()
         start_frame = operator.get_frame_by_id(self.start)
         end_frame = operator.get_frame_by_id(self.end)

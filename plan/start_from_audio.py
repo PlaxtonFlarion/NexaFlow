@@ -1,15 +1,16 @@
 import os
 import time
-from nexaflow.constants import Constants
-from nexaflow.skills.device import Manage
-from nexaflow.skills.alynex import Alynex
+from nexaflow import const
+from engine.initial import initialization
+from plan.skills.alynex import Alynex
+from plan.skills.manage import Manage
 
-AUDIO_DIRS = os.path.join(Constants.WORK, "audio")
-MODELS = os.path.join(Constants.WORK, "archivix", "molds", "Keras_Gray_W256_H256_00000.h5")
-REPORT = os.path.join(Constants.WORK, "report")
-TEMPLATE_MAIN_TOTAL = os.path.join(Constants.NEXA, "template", "template_main_total.html")
-TEMPLATE_MAIN = os.path.join(Constants.NEXA, "template", "template_main.html")
-ALIEN = os.path.join(Constants.NEXA, "template", "template_alien.html")
+AUDIO_DIRS = os.path.join(const.WORK, "audio")
+MODELS = os.path.join(const.WORK, "archivix", "molds", "Keras_Gray_W256_H256_00000.h5")
+REPORT = os.path.join(const.WORK, "report")
+TEMPLATE_MAIN_TOTAL = os.path.join(const.NEXA, "template", "template_main_total.html")
+TEMPLATE_MAIN = os.path.join(const.NEXA, "template", "template_main.html")
+ALIEN = os.path.join(const.NEXA, "template", "template_alien.html")
 
 
 def multi_audio_task():
@@ -18,16 +19,16 @@ def multi_audio_task():
     application: str = ""
     activity: str = ""
 
-    Constants.initial_logger()
+    initialization("INFO")
     manage = Manage()
     alynex = Alynex()
     alynex.activate(MODELS, REPORT)
 
     device = manage.operate_device("")
-    for query, audio in alynex.player.load_all_audio(AUDIO_DIRS):
-        alynex.report.title = query
+    for audio in os.listdir(AUDIO_DIRS):
+        alynex.report.title = audio.split(".")[0]
         for _ in range(3):
-            alynex.report.query = query
+            alynex.report.query = audio.split(".")[0]
             device.swipe_unlock()
             alynex.record.start_record(
                 alynex.report.video_path,
@@ -36,7 +37,7 @@ def multi_audio_task():
 
             device.key_event(231)
             device.sleep(1)
-            alynex.player.play_audio(audio)
+            alynex.player.play_audio(os.path.join(AUDIO_DIRS, audio))
             device.sleep(10)
 
             alynex.record.stop_record()

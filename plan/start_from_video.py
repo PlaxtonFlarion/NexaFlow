@@ -2,22 +2,23 @@ import os
 import time
 import shutil
 from multiprocessing import Pool
-from nexaflow.constants import Constants
-from nexaflow.skills.alynex import Alynex
-from nexaflow.skills.report import Report
+from engine.initial import initialization
+from nexaflow import const
+from nexaflow.report import Report
+from plan.skills.alynex import Alynex
 
-MERGE_TEMPLATE = os.path.join(Constants.NEXA, "template")
-MODELS = os.path.join(Constants.WORK, "archivix", "molds", "Keras_Gray_W256_H256_00000.h5")
-REPORT = os.path.join(Constants.WORK, "report")
-TEMPLATE_MAIN_TOTAL = os.path.join(Constants.NEXA, "template", "template_main_total.html")
-TEMPLATE_MAIN = os.path.join(Constants.NEXA, "template", "template_main.html")
-ALIEN = os.path.join(Constants.NEXA, "template", "template_alien.html")
+MERGE_TEMPLATE = os.path.join(const.NEXA, "template")
+MODELS = os.path.join(const.WORK, "archivix", "molds", "Keras_Gray_W256_H256_00000.h5")
+REPORT = os.path.join(const.WORK, "report")
+TEMPLATE_MAIN_TOTAL = os.path.join(const.NEXA, "template", "template_main_total.html")
+TEMPLATE_MAIN = os.path.join(const.NEXA, "template", "template_main.html")
+ALIEN = os.path.join(const.NEXA, "template", "template_alien.html")
 
 
 def multi_video_task(folder: str) -> str:
     alynex = Alynex()
     alynex.activate(MODELS, REPORT)
-    for video in alynex.only_video(os.path.join(Constants.WORK, "data", folder)):
+    for video in alynex.only_video(os.path.join(const.WORK, "data", folder)):
         alynex.report.title = video.title
         for path in video.sheet:
             alynex.report.query = os.path.basename(path).split(".")[0]
@@ -30,7 +31,7 @@ def multi_video_task(folder: str) -> str:
 
 
 if __name__ == '__main__':
-    Constants.initial_logger()
+    initialization("INFO")
     data = ["group_0001", "group_0002"]
     start_time = time.time()
 

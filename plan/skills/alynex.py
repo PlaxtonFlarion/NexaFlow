@@ -4,13 +4,13 @@ import time
 import random
 import asyncio
 from loguru import logger
-from typing import List, Union, Optional
+from typing import Union, Optional
 from concurrent.futures import ThreadPoolExecutor
+from engine.record import Record
+from engine.player import Player
+from engine.switch import Switch
 from nexaflow import toolbox
-from nexaflow.skills.report import Report
-from nexaflow.skills.record import Record
-from nexaflow.skills.player import Player
-from nexaflow.skills.switch import Switch
+from nexaflow.report import Report
 from nexaflow.cutter.cutter import VideoCutter
 from nexaflow.video import VideoObject, Frame
 from nexaflow.classifier.keras_classifier import KerasClassifier
@@ -18,9 +18,20 @@ from nexaflow.hook import BaseHook, CropHook, OmitHook, FrameSaveHook
 from nexaflow.classifier.base import ClassifierResult, SingleClassifierResult
 
 
+class Review(object):
+
+    def __init__(self, *args: str):
+        self.start, self.end, self.cost, *_ = args
+
+    def __str__(self):
+        return f"<Review Start: {self.start} End: {self.end} Cost: {self.cost}>"
+
+    __repr__ = __str__
+
+
 class Alynex(object):
 
-    target_size: tuple = (350, 700)
+    target_size: tuple = (256, 256)
     fps: int = 60
     step: int = 1
     block: int = 6
@@ -30,9 +41,7 @@ class Alynex(object):
     window_size: int = 1
     window_coefficient: int = 2
 
-    kc: KerasClassifier = KerasClassifier(
-        target_size=target_size, data_size=target_size
-    )
+    kc: KerasClassifier = KerasClassifier(data_size=target_size, aisle=1)
 
     def __init__(self):
         self.__report: Optional[Report] = None
@@ -168,11 +177,11 @@ class Alynex(object):
     class _Framix(object):
 
         def __init__(self, report: "Report"):
-            self.__framix_list: List["BaseHook"] = []
+            self.__framix_list: list["BaseHook"] = []
             self.__reporter = report
 
         @property
-        def framix_list(self) -> List["BaseHook"]:
+        def framix_list(self) -> list["BaseHook"]:
             return self.__framix_list
 
         def crop_hook(
@@ -241,27 +250,9 @@ class Alynex(object):
             classify = Alynex.kc.classify(video=video, valid_range=stable, keep_data=True)
             return classify
 
-    class _Review(object):
-
-        def __init__(self, *args: str):
-            self.start, self.end, self.cost, *_ = args
-
-        def __str__(self):
-            return f"<Review Start: {self.start} End: {self.end} Cost: {self.cost}>"
-
-        __repr__ = __str__
-
     def analyzer(
             self, alien: str, boost: bool = True, color: bool = True, **kwargs
-    ) -> Optional["Alynex._Review"]:
-        """
-        智能分类帧数据
-        :param alien: 报告模版
-        :param boost: 跳帧模式
-        :param color: 彩色模式
-        :param kwargs: 视频分析配置
-        :return: 分析结果
-        """
+    ) -> Optional["Review"]:
 
         self.step = kwargs.get("step", 1)
         self.block = kwargs.get("block", 6)
@@ -298,7 +289,7 @@ class Alynex(object):
             change_record = os.path.join(
                 os.path.dirname(screen_record), f"screen_fps60_{random.randint(100, 999)}.mp4"
             )
-            asyncio.run(self.ffmpeg.ask_video_change(screen_record, change_record))
+            asyncio.run(self.ffmpeg.ask_video_change("ffmpeg", 60, screen_record, change_record))
             logger.info(f"视频转换完成: {os.path.basename(change_record)}")
             os.remove(screen_record)
             logger.info(f"移除旧的视频: {os.path.basename(screen_record)}")
@@ -310,7 +301,7 @@ class Alynex(object):
         def frame_flow():
             video, task, hued = frame_flip()
             classify = self.framix.pixel_wizard(video)
-            important_frames: List["SingleClassifierResult"] = classify.get_important_frame_list()
+            important_frames = classify.get_important_frame_list()
 
             pbar = toolbox.show_progress(classify.get_length(), 50, "Faster")
             frames_list = []
@@ -400,7 +391,7 @@ class Alynex(object):
         logger.info(f"{tag} 可正常播放，准备加载视频 ...")
 
         start, end, cost = analytics()
-        return Alynex._Review(start, end, cost)
+        return Review(start, end, cost)
 
 
 if __name__ == '__main__':

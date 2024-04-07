@@ -81,9 +81,12 @@ for _env in [Path(_adb).name, Path(_ffmpeg).name, Path(_ffprobe).name, Path(_scr
         sys.exit(1)
 
 try:
+    from engine.initial import initialization
+    from engine.player import Player
+    from engine.switch import Switch
+    from engine.terminal import Terminal
     from nexaflow import toolbox
-    from nexaflow.terminal import Terminal
-    from nexaflow.skills.report import Report
+    from nexaflow.report import Report
     from nexaflow.video import VideoObject, VideoFrame
     from nexaflow.cutter.cutter import VideoCutter
     from nexaflow.hook import CompressHook, FrameSaveHook
@@ -312,7 +315,7 @@ class Missions(object):
             video_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
             if deploy.shape:
                 original_shape = loop.run_until_complete(
-                    ask_video_larger(self.ffprobe, new_video_path)
+                    Switch.ask_video_larger(self.ffprobe, new_video_path)
                 )
                 w, h, ratio = loop.run_until_complete(
                     ask_magic_frame(original_shape, deploy.shape)
@@ -328,7 +331,7 @@ class Missions(object):
             logger.info(f"应用过滤器: {video_filter}")
 
             duration = loop.run_until_complete(
-                ask_video_length(self.ffprobe, new_video_path)
+                Switch.ask_video_length(self.ffprobe, new_video_path)
             )
             vision_start, vision_close, vision_limit = examine_flip(
                 deploy.parse_mills(deploy.start),
@@ -343,7 +346,7 @@ class Missions(object):
             logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
 
             loop.run_until_complete(
-                ask_video_detach(
+                Switch.ask_video_detach(
                     self.ffmpeg, video_filter, new_video_path, reporter.frame_path,
                     start=vision_start, close=vision_close, limit=vision_limit
                 )
@@ -457,7 +460,7 @@ class Missions(object):
                     video_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
                     if deploy.shape:
                         original_shape = loop.run_until_complete(
-                            ask_video_larger(self.ffprobe, new_video_path)
+                            Switch.ask_video_larger(self.ffprobe, new_video_path)
                         )
                         w, h, ratio = loop.run_until_complete(
                             ask_magic_frame(original_shape, deploy.shape)
@@ -473,7 +476,7 @@ class Missions(object):
                     logger.info(f"应用过滤器: {video_filter}")
 
                     duration = loop.run_until_complete(
-                        ask_video_length(self.ffprobe, new_video_path)
+                        Switch.ask_video_length(self.ffprobe, new_video_path)
                     )
                     vision_start, vision_close, vision_limit = examine_flip(
                         deploy.parse_mills(deploy.start),
@@ -488,7 +491,7 @@ class Missions(object):
                     logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
 
                     loop.run_until_complete(
-                        ask_video_detach(
+                        Switch.ask_video_detach(
                             self.ffmpeg, video_filter, new_video_path, reporter.frame_path,
                             start=deploy.start, close=deploy.close, limit=deploy.limit
                         )
@@ -615,7 +618,7 @@ class Missions(object):
 
         looper = asyncio.get_event_loop()
         duration = looper.run_until_complete(
-            ask_video_length(self.ffprobe, video_file)
+            Switch.ask_video_length(self.ffprobe, video_file)
         )
         vision_start, vision_close, vision_limit = examine_flip(
             deploy.parse_mills(deploy.start),
@@ -630,7 +633,7 @@ class Missions(object):
         logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
 
         asyncio.run(
-            ask_video_change(
+            Switch.ask_video_change(
                 self.ffmpeg, deploy.fps, video_file, video_temp_file,
                 start=vision_start, close=vision_close, limit=vision_limit
             )
@@ -654,7 +657,7 @@ class Missions(object):
 
         if deploy.shape:
             original_shape = looper.run_until_complete(
-                ask_video_larger(self.ffprobe, video_file)
+                Switch.ask_video_larger(self.ffprobe, video_file)
             )
             w, h, ratio = looper.run_until_complete(
                 ask_magic_frame(original_shape, deploy.shape)
@@ -1036,7 +1039,7 @@ class Missions(object):
                 default_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
                 if deploy.shape:
                     original_shape_list = await asyncio.gather(
-                        *(ask_video_larger(self.ffprobe, temp_video) for temp_video, *_ in task_list)
+                        *(Switch.ask_video_larger(self.ffprobe, temp_video) for temp_video, *_ in task_list)
                     )
                     final_shape_list = await asyncio.gather(
                         *(ask_magic_frame(original_shape, deploy.shape) for original_shape in original_shape_list)
@@ -1062,7 +1065,7 @@ class Missions(object):
                     logger.info(f"应用过滤器: {filters}")
 
                 duration_list = await asyncio.gather(
-                    *(ask_video_length(self.ffprobe, temp_video) for temp_video, *_ in task_list)
+                    *(Switch.ask_video_length(self.ffprobe, temp_video) for temp_video, *_ in task_list)
                 )
                 looper = asyncio.get_event_loop()
                 duration_result = [looper.run_in_executor(
@@ -1085,7 +1088,7 @@ class Missions(object):
                     logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
 
                 await asyncio.gather(
-                    *(ask_video_detach(
+                    *(Switch.ask_video_detach(
                         self.ffmpeg, video_filter, temp_video, frame_path,
                         start=vision_start, close=vision_close, limit=vision_limit
                     )
@@ -1179,7 +1182,7 @@ class Missions(object):
                     os.path.dirname(video_src), f"tailor_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
                 )
 
-                await ask_video_tailor(
+                await Switch.ask_video_tailor(
                     self.ffmpeg, video_src, video_dst, start=start_time_str, limit=end_time_str
                 )
                 os.remove(video_src)
@@ -1204,7 +1207,7 @@ class Missions(object):
                 return task_list
 
             duration_list = await asyncio.gather(
-                *(ask_video_length(self.ffprobe, temp_video) for temp_video, *_ in task_list)
+                *(Switch.ask_video_length(self.ffprobe, temp_video) for temp_video, *_ in task_list)
             )
             duration_list = [duration for duration in duration_list if not isinstance(duration, Exception)]
             if len(duration_list) == 0:
@@ -1305,7 +1308,6 @@ class Missions(object):
                 logger.error(f"{script_data}")
                 return False
 
-            from nexaflow.skills.player import Player
             player = Player()
 
             if self.carry and len(self.carry) > 0:
@@ -1401,26 +1403,13 @@ class Missions(object):
         # Flick Loop ===================================================================================================
 
 
-def initializer(log_level: str):
-    logger.remove(0)
-    log_format = "| <level>{level: <8}</level> | <level>{message}</level>"
-    logger.add(sys.stderr, format=log_format, level=log_level.upper())
-
-
 def examine_flip(
         start: Optional[int | float],
         close: Optional[int | float],
         limit: Optional[int | float],
         duration: Optional[int | float]
 ) -> tuple[Optional[int | float], Optional[int | float], Optional[int | float]]:
-    """
-    校验视频剪辑参数
-    :param start: 开始时间
-    :param close: 结束时间
-    :param limit: 持续时间
-    :param duration: 视频时间
-    :return: 校验结果
-    """
+
     start_point = close_point = limit_point = None
 
     if start:
@@ -1440,12 +1429,28 @@ def examine_flip(
     return start_point, close_point, limit_point
 
 
+async def ask_magic_frame(original_frame_size: tuple, input_frame_size: tuple) -> tuple[int, int, float]:
+    original_w, original_h = original_frame_size
+    original_ratio = original_w / original_h
+
+    if original_frame_size == input_frame_size:
+        return original_w, original_h, original_ratio
+
+    frame_w, frame_h = input_frame_size
+    max_w = max(original_w * 0.1, min(frame_w, original_w))
+    max_h = max(original_h * 0.1, min(frame_h, original_h))
+
+    if max_w / max_h > original_ratio:
+        adjusted_h = max_h
+        adjusted_w = adjusted_h * original_ratio
+    else:
+        adjusted_w = max_w
+        adjusted_h = adjusted_w / original_ratio
+
+    return int(adjusted_w), int(adjusted_h), original_ratio
+
+
 async def ask_get_template(template_path: str) -> str | Exception:
-    """
-    获取 html 模版文件
-    :param template_path: 模版文件路径
-    :return: 模版文件 | Exception
-    """
     try:
         async with aiofiles.open(template_path, mode="r", encoding="utf-8") as f:
             template_file = await f.read()
@@ -1454,179 +1459,11 @@ async def ask_get_template(template_path: str) -> str | Exception:
     return template_file
 
 
-async def ask_video_change(ffmpeg, fps: int, src: str, dst: str, **kwargs) -> None:
-    """
-    转换视频的帧采样率
-    :param ffmpeg: ffmpeg 可执行文件
-    :param fps: 帧采样率
-    :param src: 输入文件
-    :param dst: 输出文件
-    :param kwargs: [start 开始时间] [close 结束时间] [limit 持续时间]
-    :return:
-    """
-    start = kwargs.get("start", None)
-    close = kwargs.get("close", None)
-    limit = kwargs.get("limit", None)
-
-    cmd = [ffmpeg]
-
-    if start:
-        cmd += ["-ss", start]
-    if close:
-        cmd += ["-to", close]
-    elif limit:
-        cmd += ["-t", limit]
-    cmd += ["-i", src]
-    cmd += ["-vf", f"fps={fps}", "-c:v", "libx264", "-crf", "18", "-c:a", "copy", dst]
-
-    await Terminal.cmd_line(*cmd)
-
-
-async def ask_video_detach(ffmpeg, video_filter: list, src: str, dst: str, **kwargs) -> None:
-    """
-    视频拆帧
-    :param ffmpeg: ffmpeg 可执行文件
-    :param video_filter: 过滤器
-    :param src: 输入文件
-    :param dst: 输出文件
-    :param kwargs: [start 开始时间] [close 结束时间] [limit 持续时间]
-    :return:
-    """
-    start = kwargs.get("start", None)
-    close = kwargs.get("close", None)
-    limit = kwargs.get("limit", None)
-
-    cmd = [ffmpeg]
-
-    if start:
-        cmd += ["-ss", start]
-    if close:
-        cmd += ["-to", close]
-    elif limit:
-        cmd += ["-t", limit]
-    cmd += ["-i", src]
-    cmd += ["-vf", ",".join(video_filter), f"{os.path.join(dst, 'frame_%05d.png')}"]
-
-    await Terminal.cmd_line(*cmd)
-
-
-async def ask_video_tailor(ffmpeg, src: str, dst: str, **kwargs) -> None:
-    """
-    截取视频
-    :param ffmpeg: ffmpeg 可执行文件
-    :param src: 输入文件
-    :param dst: 输出文件
-    :param kwargs: [start 开始时间] [close 结束时间] [limit 持续时间]
-    :return:
-    """
-    start = kwargs.get("start", None)
-    close = kwargs.get("close", None)
-    limit = kwargs.get("limit", None)
-
-    cmd = [ffmpeg]
-
-    if start:
-        cmd += ["-ss", start]
-    if close:
-        cmd += ["-to", close]
-    elif limit:
-        cmd += ["-t", limit]
-    cmd += ["-i", src]
-    cmd += ["-c", "copy", dst]
-
-    await Terminal.cmd_line(*cmd)
-
-
-async def ask_video_length(ffprobe, src: str) -> float | Exception:
-    """
-    获取视频长度
-    :param ffprobe: ffprobe 可执行文件
-    :param src: 输入文件
-    :return: 视频长度 | Exception
-    """
-    cmd = [
-        ffprobe, "-v", "error", "-show_entries", "format=duration",
-        "-of", "default=noprint_wrappers=1:nokey=1", "-i", src
-    ]
-    result = await Terminal.cmd_line(*cmd)
-    try:
-        fmt_result = float(result.strip())
-    except ValueError as e:
-        return e
-    return fmt_result
-
-
-async def ask_video_larger(ffprobe, src: str) -> tuple[int, int] | Exception:
-    """
-    获取视频帧尺寸
-    :param ffprobe: ffprobe 可执行文件
-    :param src: 输入文件
-    :return: (宽, 高) | Exception
-    """
-    cmd = [
-        ffprobe, "-v", "error", "-select_streams", "v:0", "-show_entries",
-        "stream=width,height", "-of", "default=noprint_wrappers=1", src
-    ]
-    result = await Terminal.cmd_line(*cmd)
-    match_w = re.search(r"(?<=width=)\d+", result)
-    match_h = re.search(r"(?<=height=)\d+", result)
-    try:
-        w, h = int(match_w.group()), int(match_h.group())
-    except (AttributeError, ValueError) as e:
-        return e
-    return w, h
-
-
-async def ask_magic_frame(
-        original_frame_size: tuple, input_frame_size: tuple
-) -> tuple[int, int, float]:
-    """
-    调整宽高和宽高比
-    :param original_frame_size: 原始尺寸
-    :param input_frame_size: 输入尺寸
-    :return: (宽, 高, 宽高比)
-    """
-
-    # 计算原始宽高比
-    original_w, original_h = original_frame_size
-    original_ratio = original_w / original_h
-
-    if original_frame_size == input_frame_size:
-        return original_w, original_h, original_ratio
-
-    # 检查并调整传入的最大宽度和高度的限制
-    frame_w, frame_h = input_frame_size
-    max_w = max(original_w * 0.1, min(frame_w, original_w))
-    max_h = max(original_h * 0.1, min(frame_h, original_h))
-
-    # 根据原始宽高比调整宽度和高度
-    if max_w / max_h > original_ratio:
-        # 如果调整后的宽高比大于原始宽高比，则以高度为基准调整宽度
-        adjusted_h = max_h
-        adjusted_w = adjusted_h * original_ratio
-    else:
-        # 否则，以宽度为基准调整高度
-        adjusted_w = max_w
-        adjusted_h = adjusted_w / original_ratio
-
-    new_w, new_h = int(adjusted_w), int(adjusted_h)
-    return new_w, new_h, original_ratio
-
-
 async def analyzer(
         vision_path: str, deploy: "Deploy", kc: "KerasClassifier", *args, **kwargs
 ) -> Optional["Review"]:
-    """
-    分析视频帧
-    :params vision_path: 视频文件路径
-    :params deploy: Deploy 对象
-    :params kc: KerasClassifier 对象
-    :params args: [frame_path 视频帧路径] [extra_path 额外帧路径]
-    :params kwargs: [ffmpeg 可执行文件路径] [ffprobe 可执行文件路径]
-    :return: None | Review 对象
-    """
 
-    frame_path, extra_path = args
+    frame_path, extra_path, *_ = args
     ffmpeg = kwargs.get("ffmpeg", "ffmpeg")
     ffprobe = kwargs.get("ffprobe", "ffprobe")
 
@@ -1654,7 +1491,7 @@ async def analyzer(
             f"screen_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
         )
 
-        duration = await ask_video_length(ffprobe, vision_path)
+        duration = await Switch.ask_video_length(ffprobe, vision_path)
         looper = asyncio.get_event_loop()
         duration_result = looper.run_in_executor(
             None, examine_flip,
@@ -1669,7 +1506,7 @@ async def analyzer(
         logger.info(f"视频时长: [{duration}] [{deploy.parse_times(duration)}]")
         logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
 
-        await ask_video_change(
+        await Switch.ask_video_change(
             ffmpeg, deploy.fps, vision_path, change_record,
             start=vision_start, close=vision_close, limit=vision_limit
         )
@@ -1678,7 +1515,7 @@ async def analyzer(
         logger.info(f"移除旧的视频: {Path(vision_path).name}")
 
         if deploy.shape:
-            original_shape = await ask_video_larger(ffprobe, change_record)
+            original_shape = await Switch.ask_video_larger(ffprobe, change_record)
             w, h, ratio = await ask_magic_frame(original_shape, deploy.shape)
             target_shape = w, h
             target_scale = deploy.scale
@@ -1736,26 +1573,24 @@ async def analyzer(
             offset=deploy.offset
         )
 
-        files = os.listdir(extra_path)
-        files.sort(key=lambda n: int(n.split("(")[0]))
-        total_images, desired_count = len(files), 12
-        # 如果总图片数不超过12张，则无需删除
+        file_list = os.listdir(extra_path)
+        file_list.sort(key=lambda n: int(n.split("(")[0]))
+        total_images, desired_count = len(file_list), 12
+
         if total_images <= desired_count:
             retain_indices = range(total_images)
         else:
-            # 计算每隔多少张图片保留一张
             interval = total_images / desired_count
             retain_indices = [int(i * interval) for i in range(desired_count)]
-            # 为了确保恰好得到12张，调整最后一个索引
             if len(retain_indices) < desired_count:
                 retain_indices.append(total_images - 1)
             elif len(retain_indices) > desired_count:
                 retain_indices = retain_indices[:desired_count]
-        # 删除未被保留的图片
-        for index, file in enumerate(files):
+
+        for index, file in enumerate(file_list):
             if index not in retain_indices:
                 os.remove(os.path.join(extra_path, file))
-        # 为保留下来的图片绘制分割线条
+
         for draw in os.listdir(extra_path):
             toolbox.draw_line(os.path.join(extra_path, draw))
 
@@ -1941,16 +1776,12 @@ async def ask_main():
         await _missions.analysis(deploy)
     elif _cmd_lines.paint:
         await _missions.painting(deploy)
-    elif _cmd_lines.union and len(_cmd_lines.union) > 0:
+    elif _cmd_lines.union:
         await _missions.combines_view(_cmd_lines.union, _missions.group)
-    elif _cmd_lines.merge and len(_cmd_lines.merge) > 0:
+    elif _cmd_lines.merge:
         await _missions.combines_main(_cmd_lines.merge, _missions.group)
     else:
         Show.help_document()
-
-
-async def ask_test():
-    pass
 
 
 if __name__ == '__main__':
@@ -1968,7 +1799,7 @@ if __name__ == '__main__':
 
     _level = "DEBUG" if _cmd_lines.debug else "INFO"
     _level_multiple = "ERROR"
-    initializer(_level)
+    initialization(_level)
 
     # Debug Mode =======================================================================================================
     logger.debug(f"日志等级: {_level}")
@@ -2023,7 +1854,7 @@ if __name__ == '__main__':
     # Debug Mode =======================================================================================================
 
     _crops = []
-    if _cmd_lines.crops and len(_cmd_lines.crops) > 0:
+    if _cmd_lines.crops:
         for _hook in _cmd_lines.crops:
             if len(match_list := re.findall(r"-?\d*\.?\d+", _hook)) == 4:
                 _valid_list = [
@@ -2038,7 +1869,7 @@ if __name__ == '__main__':
     _crops = [dict(_i) for _i in _unique_crops]
 
     _omits = []
-    if _cmd_lines.omits and len(_cmd_lines.omits) > 0:
+    if _cmd_lines.omits:
         for _hook in _cmd_lines.omits:
             if len(match_list := re.findall(r"-?\d*\.?\d+", _hook)) == 4:
                 _valid_list = [
@@ -2090,12 +1921,12 @@ if __name__ == '__main__':
     _loop = asyncio.get_event_loop()
 
     # --stack ==========================================================================================================
-    if _cmd_lines.stack and len(_cmd_lines.stack) > 0:
+    if _cmd_lines.stack:
         if (_members := len(_cmd_lines.stack)) == 1:
             _missions.video_dir_task(_cmd_lines.stack[0])
         else:
             _processes = _members if _members <= _cpu else _cpu
-            with Pool(processes=_processes, initializer=initializer, initargs=(_level_multiple,)) as _pool:
+            with Pool(processes=_processes, initializer=initialization, initargs=(_level_multiple,)) as _pool:
                 _results = _pool.starmap(_missions.video_dir_task, [(i,) for i in _cmd_lines.stack])
             _template_total = _loop.run_until_complete(
                 ask_get_template(_missions.view_total_temp)
@@ -2106,12 +1937,12 @@ if __name__ == '__main__':
         sys.exit(0)
 
     # --video ==========================================================================================================
-    elif _cmd_lines.video and len(_cmd_lines.video) > 0:
+    elif _cmd_lines.video:
         if (_members := len(_cmd_lines.video)) == 1:
             _missions.video_task(_cmd_lines.video[0])
         else:
             _processes = _members if _members <= _cpu else _cpu
-            with Pool(processes=_processes, initializer=initializer, initargs=(_level_multiple,)) as _pool:
+            with Pool(processes=_processes, initializer=initialization, initargs=(_level_multiple,)) as _pool:
                 _results = _pool.starmap(_missions.video_task, [(i,) for i in _cmd_lines.video])
             _template_total = _loop.run_until_complete(
                 ask_get_template(_missions.view_total_temp)
@@ -2122,22 +1953,22 @@ if __name__ == '__main__':
         sys.exit(0)
 
     # --train ==========================================================================================================
-    elif _cmd_lines.train and len(_cmd_lines.train) > 0:
+    elif _cmd_lines.train:
         if (_members := len(_cmd_lines.train)) == 1:
             _missions.train_model(_cmd_lines.train[0])
         else:
             _processes = _members if _members <= _cpu else _cpu
-            with Pool(processes=_processes, initializer=initializer, initargs=(_level_multiple,)) as _pool:
+            with Pool(processes=_processes, initializer=initialization, initargs=(_level_multiple,)) as _pool:
                 _pool.starmap(_missions.train_model, [(i,) for i in _cmd_lines.train])
         sys.exit(0)
 
     # --build ==========================================================================================================
-    elif _cmd_lines.build and len(_cmd_lines.build) > 0:
+    elif _cmd_lines.build:
         if (_members := len(_cmd_lines.build)) == 1:
             _missions.build_model(_cmd_lines.build[0])
         else:
             _processes = _members if _members <= _cpu else _cpu
-            with Pool(processes=_processes, initializer=initializer, initargs=(_level_multiple,)) as _pool:
+            with Pool(processes=_processes, initializer=initialization, initargs=(_level_multiple,)) as _pool:
                 _pool.starmap(_missions.build_model, [(i,) for i in _cmd_lines.build])
         sys.exit(0)
 

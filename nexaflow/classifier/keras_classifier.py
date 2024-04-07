@@ -4,7 +4,7 @@ import typing
 import pathlib
 import numpy as np
 from loguru import logger
-from nexaflow import toolbox, constants
+from nexaflow import toolbox, const
 from nexaflow.video import VideoFrame
 from nexaflow.classifier.base import BaseModelClassifier
 
@@ -19,7 +19,7 @@ from tensorflow import keras
 
 class KerasClassifier(BaseModelClassifier):
 
-    UNKNOWN_STAGE_NAME = constants.UNKNOWN_STAGE_FLAG
+    UNKNOWN_STAGE_NAME = const.UNKNOWN_STAGE_FLAG
     MODEL_DENSE = 6
 
     def __init__(self, *_, **kwargs):

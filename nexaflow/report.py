@@ -12,8 +12,8 @@ from loguru import logger
 from jinja2 import Template
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from typing import Dict, List, Any, Tuple, Optional, Union
-from nexaflow import constants, toolbox
+from typing import Any, Optional, Union
+from nexaflow import toolbox, const
 
 FORMAT: str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>"
 
@@ -98,11 +98,11 @@ class Report(object):
 
     @staticmethod
     def get_template(template_path) -> str:
-        with open(template_path, encoding=constants.CHARSET) as t:
+        with open(template_path, encoding=const.CHARSET) as t:
             template_file = t.read()
         return template_file
 
-    def load(self, inform: Optional[Dict[str, Union[str | Dict]]]) -> None:
+    def load(self, inform: Optional[dict[str, Union[str | dict]]]) -> None:
         if inform:
             self.range_list.append(inform)
         logger.info(f"End -> {inform.get('query', '......')}\n")
@@ -226,7 +226,7 @@ class Report(object):
             logger.info(f"生成汇总报告: {total_html_path}\n\n")
 
     @staticmethod
-    def merge_report(merge_list: List[str], merge_loc: str, quick: bool = False) -> None:
+    def merge_report(merge_list: list[str], merge_loc: str, quick: bool = False) -> None:
         merge_path = os.path.join(
             os.path.dirname(os.path.dirname(merge_list[0])),
             "Merge_Report_" + time.strftime("%Y%m%d%H%M%S"),
@@ -582,7 +582,7 @@ class Report(object):
         proto_path: str,
         template_file: str,
         compress_rate: float = None,
-        target_size: Tuple[int, int] = None,
+        target_size: tuple[int, int] = None,
         boost_mode: bool = False,
     ) -> str:
 
@@ -590,8 +590,8 @@ class Report(object):
         label_unstable: str = "不稳定阶段"
         label_unspecific: str = "不明阶段"
 
-        thumbnail_list: List[Dict[str, str]] = list()
-        extra_dict: Dict[str, str] = dict()
+        thumbnail_list: list[dict[str, str]] = list()
+        extra_dict: dict[str, str] = dict()
 
         # if not compress_rate:
         #     compress_rate = 0.2
@@ -618,7 +618,7 @@ class Report(object):
                     }
                     image_list.append(frame)
                 else:
-                    if middle.stage == constants.UNKNOWN_STAGE_FLAG:
+                    if middle.stage == const.UNKNOWN_STAGE_FLAG:
                         label = label_unspecific
                     else:
                         label = label_unstable
@@ -652,7 +652,7 @@ class Report(object):
 
                 if middle.is_stable():
                     label = label_stable
-                elif middle.stage == constants.UNKNOWN_STAGE_FLAG:
+                elif middle.stage == const.UNKNOWN_STAGE_FLAG:
                     label = label_unspecific
                 else:
                     label = label_unstable
@@ -692,7 +692,7 @@ class Report(object):
         template_content = template.render(
             thumbnail_list=thumbnail_list,
             extras=extra_dict,
-            background_color=constants.BACKGROUND_COLOR,
+            background_color=const.BACKGROUND_COLOR,
             cost_dict=cost_dict,
             timestamp=timestamp,
             version_code="0.1.0-beta"
@@ -704,7 +704,7 @@ class Report(object):
         else:
             report_path = proto_path
 
-        with open(report_path, "w", encoding=constants.CHARSET) as fh:
+        with open(report_path, "w", encoding=const.CHARSET) as fh:
             fh.write(template_content)
         logger.info(f"生成单次报告: {os.path.basename(report_path)}")
 

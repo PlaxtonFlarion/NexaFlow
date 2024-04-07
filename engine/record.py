@@ -5,7 +5,7 @@ import threading
 from loguru import logger
 from subprocess import Popen
 from typing import Union, IO, Optional
-from nexaflow.terminal import Terminal
+from engine.terminal import Terminal
 
 
 class Record(object):
