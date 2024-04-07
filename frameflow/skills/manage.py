@@ -45,6 +45,9 @@ class Manage(object):
                 final.append(v)
                 Show.console.print(f"[bold][bold yellow]Connect:[/bold yellow] [{k}] {v}")
 
+            if len(final) == 1:
+                return final
+
             try:
                 action = Prompt.ask("[bold #5FD7FF]请输入编号选择一台设备", console=Show.console)
                 final = final if action == "000" else [device_dict[action]]

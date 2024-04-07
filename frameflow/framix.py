@@ -1190,7 +1190,7 @@ class Missions(object):
                 *(close_record(temp_video, transports, events)
                   for (_, events), (temp_video, transports, *_) in zip(device_events.items(), task_list))
             )
-            for (idx, effective), temp_video in zip(enumerate(effective_list), task_list):
+            for (idx, effective), (temp_video, *_) in zip(enumerate(effective_list), task_list):
                 if not effective:
                     logger.info(f"移除录制失败的视频: {Path(temp_video).name} ...")
                     task_list.pop(idx)
