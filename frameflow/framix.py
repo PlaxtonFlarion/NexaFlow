@@ -4,21 +4,21 @@ import shutil
 from pathlib import Path
 from frameflow.skills.show import Show
 
+application_name = Path(os.path.abspath(sys.argv[0])).name.lower()
 operation_system = sys.platform.strip().lower()
 operation_symbol = os.sep
 condition_symbol = os.path.pathsep
-work_platform = Path(os.path.abspath(sys.argv[0])).name.lower()
 
-if work_platform == "framix.exe":
+if application_name == "framix.exe":
     _work_path = os.path.dirname(os.path.abspath(sys.argv[0]))
     _universal = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
-elif work_platform == "framix.bin":
+elif application_name == "framix.bin":
     _work_path = os.path.dirname(sys.executable)
     _universal = os.path.dirname(os.path.dirname(sys.executable))
-elif work_platform == "framix":
+elif application_name == "framix":
     _work_path = os.path.dirname(sys.executable)
     _universal = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(sys.executable))))
-elif work_platform == "framix.py":
+elif application_name == "framix.py":
     _work_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     _universal = os.path.dirname(os.path.abspath(__file__))
 else:
@@ -27,14 +27,6 @@ else:
     sys.exit(1)
 
 _tools_path = os.path.join(_work_path, "archivix", "tools")
-_model_path = os.path.join(_work_path, "archivix", "molds")
-_alien = os.path.join(_work_path, "archivix", "pages", "template_alien.html")
-_view_total_temp = os.path.join(_work_path, "archivix", "pages", "template_view_total.html")
-_main_total_temp = os.path.join(_work_path, "archivix", "pages", "template_main_total.html")
-_view_temp = os.path.join(_work_path, "archivix", "pages", "template_view.html")
-_main_temp = os.path.join(_work_path, "archivix", "pages", "template_main.html")
-_initial_report = os.path.join(_universal, "framix.report")
-_initial_source = os.path.join(_universal, "framix.source")
 
 if operation_system == "win32":
     _adb = os.path.join(_tools_path, "win", "platform-tools", "adb.exe")
@@ -59,6 +51,15 @@ for _env in [Path(_adb).name, Path(_ffmpeg).name, Path(_ffprobe).name, Path(_scr
         Show.console.print(f"[bold]Missing [bold red]{_env}[/bold red] environment variables ...[/bold]")
         Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
         sys.exit(1)
+
+_alien = os.path.join(_work_path, "archivix", "pages", "alien.html")
+_view_total_temp = os.path.join(_work_path, "archivix", "pages", "template_view_total.html")
+_main_total_temp = os.path.join(_work_path, "archivix", "pages", "template_main_total.html")
+_view_temp = os.path.join(_work_path, "archivix", "pages", "template_view.html")
+_main_temp = os.path.join(_work_path, "archivix", "pages", "template_main.html")
+_initial_models = os.path.join(_work_path, "archivix", "molds", "Keras_Gray_W256_H256_00000.h5")
+_initial_report = os.path.join(_universal, "framix.report")
+_initial_source = os.path.join(_universal, "framix.source")
 
 if len(sys.argv) == 1:
     Show.help_document()
@@ -102,7 +103,7 @@ class Review(object):
 
     data = tuple()
 
-    def __init__(self, start: int, end: int, cost: float, classifier: "ClassifierResult"):
+    def __init__(self, start: int, end: int, cost: float, classifier: "ClassifierResult" = None):
         self.data = start, end, cost, classifier
 
     def __str__(self):
@@ -205,16 +206,9 @@ class Missions(object):
         deploy.boost = self.boost
         deploy.color = self.color
 
-        deploy.shape = self.shape if "--shape" in self.lines else deploy.shape
-        deploy.scale = self.scale if "--scale" in self.lines else deploy.scale
-        deploy.start = self.start if "--start" in self.lines else deploy.start
-        deploy.close = self.close if "--close" in self.lines else deploy.close
-        deploy.limit = self.limit if "--limit" in self.lines else deploy.limit
-        deploy.begin = self.begin if "--begin" in self.lines else deploy.begin
-        deploy.final = self.final if "--final" in self.lines else deploy.final
-
-        deploy.crops = self.crops if "--crops" in self.lines else deploy.crops
-        deploy.omits = self.omits if "--omits" in self.lines else deploy.omits
+        for attr in ["shape", "scale", "start", "close", "limit", "begin", "final", "crops", "omits"]:
+            if any(line.startswith(f"--{attr}") for line in self.lines):
+                setattr(deploy, attr, getattr(self, attr))
 
         loop = asyncio.get_event_loop()
 
@@ -345,16 +339,9 @@ class Missions(object):
         deploy.boost = self.boost
         deploy.color = self.color
 
-        deploy.shape = self.shape if "--shape" in self.lines else deploy.shape
-        deploy.scale = self.scale if "--scale" in self.lines else deploy.scale
-        deploy.start = self.start if "--start" in self.lines else deploy.start
-        deploy.close = self.close if "--close" in self.lines else deploy.close
-        deploy.limit = self.limit if "--limit" in self.lines else deploy.limit
-        deploy.begin = self.begin if "--begin" in self.lines else deploy.begin
-        deploy.final = self.final if "--final" in self.lines else deploy.final
-
-        deploy.crops = self.crops if "--crops" in self.lines else deploy.crops
-        deploy.omits = self.omits if "--omits" in self.lines else deploy.omits
+        for attr in ["shape", "scale", "start", "close", "limit", "begin", "final", "crops", "omits"]:
+            if any(line.startswith(f"--{attr}") for line in self.lines):
+                setattr(deploy, attr, getattr(self, attr))
 
         loop = asyncio.get_event_loop()
 
@@ -491,14 +478,12 @@ class Missions(object):
 
     def train_model(self, video_file: str):
         if not os.path.isfile(video_file):
-            logger.error(f"{video_file} 视频文件未找到 ...")
-            return
+            return logger.error(f"{video_file} 视频文件未找到 ...")
         logger.info(f"视频文件 {video_file} ...")
 
         screen = cv2.VideoCapture(video_file)
         if not screen.isOpened():
-            logger.error(f"{video_file} 视频文件损坏 ...")
-            return
+            return logger.error(f"{video_file} 视频文件损坏 ...")
         screen.release()
         logger.info(f"{video_file} 可正常播放 ...")
 
@@ -513,16 +498,9 @@ class Missions(object):
         deploy.boost = self.boost
         deploy.color = self.color
 
-        deploy.shape = self.shape if "--shape" in self.lines else deploy.shape
-        deploy.scale = self.scale if "--scale" in self.lines else deploy.scale
-        deploy.start = self.start if "--start" in self.lines else deploy.start
-        deploy.close = self.close if "--close" in self.lines else deploy.close
-        deploy.limit = self.limit if "--limit" in self.lines else deploy.limit
-        deploy.begin = self.begin if "--begin" in self.lines else deploy.begin
-        deploy.final = self.final if "--final" in self.lines else deploy.final
-
-        deploy.crops = self.crops if "--crops" in self.lines else deploy.crops
-        deploy.omits = self.omits if "--omits" in self.lines else deploy.omits
+        for attr in ["shape", "scale", "start", "close", "limit", "begin", "final", "crops", "omits"]:
+            if any(line.startswith(f"--{attr}") for line in self.lines):
+                setattr(deploy, attr, getattr(self, attr))
 
         video_temp_file = os.path.join(
             reporter.query_path, f"tmp_fps{deploy.fps}.mp4"
@@ -600,8 +578,7 @@ class Missions(object):
 
     def build_model(self, src: str):
         if not os.path.isdir(src):
-            logger.error("训练模型需要一个分类文件夹 ...")
-            return
+            return logger.error("训练模型需要一个分类文件夹 ...")
 
         real_path, file_list = "", []
         logger.debug(f"搜索文件夹: {src}")
@@ -615,15 +592,13 @@ class Missions(object):
                     break
 
         if not real_path or len(file_list) == 0:
-            logger.error(f"文件夹未正确分类 ...")
-            return
+            return logger.error(f"文件夹未正确分类 ...")
 
         image, image_color, image_aisle = None, "grayscale", 1
         for image_file in os.listdir(real_path):
             image_path = os.path.join(real_path, image_file)
             if not os.path.isfile(image_path):
-                logger.error(f"存在无效的图像文件 ...")
-                return
+                return logger.error(f"存在无效的图像文件 ...")
             image = cv2.imread(image_path)
             logger.info(f"图像分辨率: {image.shape}")
             if image.ndim == 3:
@@ -705,15 +680,15 @@ class Missions(object):
 
                 if len(deploy.crops) > 0:
                     for crop in deploy.crops:
-                        if len(crop) == 4 and sum(crop) > 0:
-                            x, y, x_size, y_size = crop
-                        paint_crop_hook = PaintCropHook((y_size, x_size), (y, x))
-                        paint_crop_hook.do(new_image)
+                        if sum(crop.values()) > 0:
+                            x, y, x_size, y_size = crop["x"], crop["y"], crop["x_size"], crop["y_size"]
+                            paint_crop_hook = PaintCropHook((y_size, x_size), (y, x))
+                            paint_crop_hook.do(new_image)
 
                 if len(deploy.omits) > 0:
                     for omit in deploy.omits:
-                        if len(omit) == 4 and sum(omit) > 0:
-                            x, y, x_size, y_size = omit
+                        if sum(omit.values()) > 0:
+                            x, y, x_size, y_size = omit["x"], omit["y"], omit["x_size"], omit["y_size"]
                             paint_omit_hook = PaintOmitHook((y_size, x_size), (y, x))
                             paint_omit_hook.do(new_image)
 
@@ -1671,16 +1646,9 @@ async def ask_main():
     deploy.boost = _missions.boost
     deploy.color = _missions.color
 
-    deploy.shape = _missions.shape if "--shape" in _missions.lines else deploy.shape
-    deploy.scale = _missions.scale if "--scale" in _missions.lines else deploy.scale
-    deploy.start = _missions.start if "--start" in _missions.lines else deploy.start
-    deploy.close = _missions.close if "--close" in _missions.lines else deploy.close
-    deploy.limit = _missions.limit if "--limit" in _missions.lines else deploy.limit
-    deploy.begin = _missions.begin if "--begin" in _missions.lines else deploy.begin
-    deploy.final = _missions.final if "--final" in _missions.lines else deploy.final
-
-    deploy.crops = _missions.crops if "--crops" in _missions.lines else deploy.crops
-    deploy.omits = _missions.omits if "--omits" in _missions.lines else deploy.omits
+    for attr in ["shape", "scale", "start", "close", "limit", "begin", "final", "crops", "omits"]:
+        if any(line.startswith(f"--{attr}") for line in _missions.lines):
+            setattr(deploy, attr, getattr(_missions, attr))
 
     if _cmd_lines.flick:
         await _missions.analysis(deploy)
@@ -1706,11 +1674,10 @@ if __name__ == '__main__':
     logger.debug(f"日志等级: {_level}")
     logger.debug(f"命令参数: {_lines}")
 
+    logger.debug(f"应用名称: {application_name}")
     logger.debug(f"操作系统: {operation_system}")
-    logger.debug(f"应用名称: {work_platform}")
 
-    logger.debug(f"工具路径: {_tools_path}")
-    logger.debug(f"模型路径: {_model_path}\n")
+    logger.debug(f"工具路径: {_tools_path}\n")
 
     logger.debug(f"* Template * {'=' * 30}")
     for _tmp in [_alien, _view_total_temp, _main_total_temp, _view_temp, _main_temp]:
@@ -1790,9 +1757,7 @@ if __name__ == '__main__':
 
     _option = Option(_initial_option)
     _initial_report = _option.total_path if _option.total_path else _initial_report
-    _initial_models = os.path.join(
-        _model_path, _option.model_name if _option.model_name else "Keras_Gray_W256_H256_00000.h5"
-    )
+    _initial_models = _option.model_path if _option.model_path else _initial_models
 
     # Debug Mode =======================================================================================================
     logger.debug(f"部署文件路径: {_initial_deploy}")
@@ -1880,6 +1845,5 @@ if __name__ == '__main__':
     else:
         try:
             _loop.run_until_complete(ask_main())
-            sys.exit(0)
         except KeyboardInterrupt:
             sys.exit(0)

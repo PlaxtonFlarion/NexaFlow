@@ -20,84 +20,61 @@ from nexaflow.classifier.base import ClassifierResult, SingleClassifierResult
 
 class Review(object):
 
-    def __init__(self, *args: str):
-        self.start, self.end, self.cost, *_ = args
+    data = tuple()
+
+    def __init__(self, start: int, end: int, cost: float, classifier: "ClassifierResult" = None):
+        self.data = start, end, cost, classifier
 
     def __str__(self):
-        return f"<Review Start: {self.start} End: {self.end} Cost: {self.cost}>"
+        start, end, cost, classifier = self.data
+        kc = "KC" if classifier else "None"
+        return f"<Review start={start} end={end} cost={cost} classifier={kc}>"
 
     __repr__ = __str__
 
 
 class Alynex(object):
 
-    target_size: tuple = (256, 256)
+    model_size: tuple = (256, 256)
     fps: int = 60
-    step: int = 1
     block: int = 6
     threshold: Union[int | float] = 0.97
     offset: int = 3
     compress_rate: float = 0.5
-    window_size: int = 1
-    window_coefficient: int = 2
 
-    kc: KerasClassifier = KerasClassifier(data_size=target_size, aisle=1)
+    kc: KerasClassifier = KerasClassifier(data_size=model_size, aisle=1)
 
-    def __init__(self):
-        self.__report: Optional[Report] = None
-        self.__record: Optional[Record] = Record()
+    def __init__(self, model_file: str, report: Report):
+        self.kc.load_model(model_file)
+        self.__report: Optional[Report] = report
         self.__player: Optional[Player] = Player()
-        self.__ffmpeg: Optional[Switch] = Switch()
+        self.__record: Optional[Record] = Record()
+        self.__switch: Optional[Switch] = Switch()
         self.__filmer: Optional[Alynex._Filmer] = Alynex._Filmer()
-        self.__framix: Optional[Alynex._Framix] = None
-
-    def __str__(self):
-        return (f"""
-        <Alynex for NexaFlow
-        Target Size: {self.target_size}
-        Fps: {self.fps}
-        Step: {self.step}
-        Block: {self.block}
-        Threshold: {self.threshold}
-        Offset: {self.offset}
-        Compress Rate: {self.compress_rate}
-        Window Size: {self.window_size}
-        Window Coefficient: {self.window_coefficient}
-        >
-        """)
-
-    __repr__ = __str__
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
+        self.__framix: Optional[Alynex._Cliper] = Alynex._Cliper()
 
     @property
     def report(self) -> "Report":
-        assert self.__report, f"{self.activate.__name__} first ..."
         return self.__report
-
-    @property
-    def record(self) -> "Record":
-        return self.__record
 
     @property
     def player(self) -> "Player":
         return self.__player
 
     @property
-    def ffmpeg(self) -> "Switch":
-        return self.__ffmpeg
+    def record(self) -> "Record":
+        return self.__record
+
+    @property
+    def switch(self) -> "Switch":
+        return self.__switch
 
     @property
     def filmer(self) -> "Alynex._Filmer":
         return self.__filmer
 
     @property
-    def framix(self) -> "Alynex._Framix":
-        assert self.__framix, f"{self.activate.__name__} first ..."
+    def framix(self) -> "Alynex._Cliper":
         return self.__framix
 
     @staticmethod
@@ -118,12 +95,6 @@ class Alynex(object):
             for root, _, file in os.walk(folder) if file
         ]
 
-    def activate(self, models: str, total_path: str):
-        if not self.__report:
-            self.__report = Report(total_path)
-            self.__framix = Alynex._Framix(self.report)
-            Alynex.kc.load_model(models)
-
     class _Filmer(object):
 
         @staticmethod
@@ -141,14 +112,12 @@ class Alynex(object):
             video.load_frames()
             # 压缩视频
             cutter = VideoCutter(
-                target_size=Alynex.target_size
+                target_size=Alynex.model_size
             )
             # 计算每一帧视频的每一个block的ssim和峰值信噪比
             res = cutter.cut(
                 video=video,
-                block=Alynex.block,
-                window_size=Alynex.window_size,
-                window_coefficient=Alynex.window_coefficient
+                block=Alynex.block
             )
             # 计算出判断A帧到B帧之间是稳定还是不稳定
             stable, unstable = res.get_range(
@@ -174,15 +143,14 @@ class Alynex(object):
             Alynex.kc.train(src)
             Alynex.kc.save_model(final_model, overwrite=True)
 
-    class _Framix(object):
+    class _Cliper(object):
 
-        def __init__(self, report: "Report"):
-            self.__framix_list: list["BaseHook"] = []
-            self.__reporter = report
+        def __init__(self):
+            self.__cliper_list: list["BaseHook"] = []
 
         @property
-        def framix_list(self) -> list["BaseHook"]:
-            return self.__framix_list
+        def cliper_list(self) -> list["BaseHook"]:
+            return self.__cliper_list
 
         def crop_hook(
                 self,
@@ -191,7 +159,7 @@ class Alynex(object):
         ) -> None:
 
             hook = CropHook((y_size, x_size), (y, x))
-            self.framix_list.append(hook)
+            self.cliper_list.append(hook)
 
         def omit_hook(
                 self,
@@ -200,25 +168,20 @@ class Alynex(object):
         ) -> None:
 
             hook = OmitHook((y_size, x_size), (y, x))
-            self.framix_list.append(hook)
+            self.cliper_list.append(hook)
 
-        def pixel_wizard(self, video: "VideoObject") -> "ClassifierResult":
+        def pixel_wizard(self, video: "VideoObject", extra_path: str) -> "ClassifierResult":
+            cutter = VideoCutter()
 
-            cutter = VideoCutter(
-                target_size=Alynex.target_size
-            )
+            for hook in self.cliper_list:
+                cutter.add_hook(hook)
 
-            for mix in self.framix_list:
-                cutter.add_hook(mix)
-
-            save_hook = FrameSaveHook(self.__reporter.extra_path)
+            save_hook = FrameSaveHook(extra_path)
             cutter.add_hook(save_hook)
 
             res = cutter.cut(
                 video=video,
-                block=Alynex.block,
-                window_size=Alynex.window_size,
-                window_coefficient=Alynex.window_coefficient
+                block=Alynex.block
             )
 
             stable, unstable = res.get_range(
@@ -227,18 +190,18 @@ class Alynex(object):
             )
 
             # 保存十二张hook图
-            files = os.listdir(self.__reporter.extra_path)
+            files = os.listdir(extra_path)
             files.sort(key=lambda x: int(x.split("(")[0]))
             total_images = len(files)
             interval = total_images // 11 if total_images > 12 else 1
             for index, file in enumerate(files):
                 if index % interval != 0:
-                    os.remove(os.path.join(self.__reporter.extra_path, file))
+                    os.remove(os.path.join(extra_path, file))
 
             # 为图片绘制线条
-            draws = os.listdir(self.__reporter.extra_path)
+            draws = os.listdir(extra_path)
             for draw in draws:
-                toolbox.draw_line(os.path.join(self.__reporter.extra_path, draw))
+                toolbox.draw_line(os.path.join(extra_path, draw))
 
             classify = Alynex.kc.classify(video=video, valid_range=stable, keep_data=True)
             return classify
@@ -247,13 +210,10 @@ class Alynex(object):
             self, alien: str, boost: bool = True, color: bool = True, **kwargs
     ) -> Optional["Review"]:
 
-        self.step = kwargs.get("step", 1)
         self.block = kwargs.get("block", 6)
         self.threshold = kwargs.get("threshold", 0.97)
-        self.offset = kwargs.get("threshold", 3)
+        self.offset = kwargs.get("offset", 3)
         self.compress_rate = kwargs.get("compress_rate", 0.5)
-        self.window_size = kwargs.get("window_size", 1)
-        self.window_coefficient = kwargs.get("window_coefficient", 2)
 
         def validate():
             screen_tag, screen_cap = None, None
@@ -282,7 +242,7 @@ class Alynex(object):
             change_record = os.path.join(
                 os.path.dirname(screen_record), f"screen_fps60_{random.randint(100, 999)}.mp4"
             )
-            asyncio.run(self.ffmpeg.ask_video_change("ffmpeg", 60, screen_record, change_record))
+            asyncio.run(self.switch.ask_video_change("ffmpeg", 60, screen_record, change_record))
             logger.info(f"视频转换完成: {os.path.basename(change_record)}")
             os.remove(screen_record)
             logger.info(f"移除旧的视频: {os.path.basename(screen_record)}")
@@ -293,7 +253,7 @@ class Alynex(object):
 
         def frame_flow():
             video, task, hued = frame_flip()
-            classify = self.framix.pixel_wizard(video)
+            classify = self.framix.pixel_wizard(video, self.report.extra_path)
             important_frames = classify.get_important_frame_list()
 
             pbar = toolbox.show_progress(classify.get_length(), 50, "Faster")
@@ -345,8 +305,7 @@ class Alynex(object):
             original_inform = self.report.draw(
                 classifier_result=classify,
                 proto_path=self.report.proto_path,
-                template_file=self.report.get_template(alien),
-                target_size=Alynex.target_size
+                template_file=self.report.get_template(alien)
             )
             result = {
                 "total_path": self.report.total_path,
@@ -379,8 +338,7 @@ class Alynex(object):
 
         tag, screen_record = validate()
         if not tag or not screen_record:
-            logger.error(f"{tag} 不是一个标准的mp4视频文件，或视频文件已损坏 ...")
-            return None
+            return logger.error(f"{tag} 不是一个标准的mp4视频文件，或视频文件已损坏 ...")
         logger.info(f"{tag} 可正常播放，准备加载视频 ...")
 
         start, end, cost = analytics()

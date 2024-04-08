@@ -198,13 +198,11 @@ class Deploy(object):
 
     @crops.setter
     def crops(self, value):
-        if len(calc_list := self.parse_hooks(value)) > 0:
-            self.deploys["crops"] = calc_list
+        self.deploys["crops"] = self.parse_hooks(value)
 
     @omits.setter
     def omits(self, value):
-        if len(calc_list := self.parse_hooks(value)) > 0:
-            self.deploys["omits"] = calc_list
+        self.deploys["omits"] = self.parse_hooks(value)
 
     @staticmethod
     def parse_bools(dim_str):
@@ -314,6 +312,9 @@ class Deploy(object):
             return None
 
     def dump_deploy(self, deploy_file: str) -> None:
+        for attr in ["crops", "omits"]:
+            if len(getattr(self, attr)) == 0:
+                self.deploys[attr] = [{"x": 0, "y": 0, "x_size": 0, "y_size": 0}]
         dump_parameters(deploy_file, self.deploys)
 
     def load_deploy(self, deploy_file: str) -> None:
@@ -464,7 +465,7 @@ class Deploy(object):
 class Option(object):
 
     options = {
-        "Total Path": "", "Model Name": ""
+        "Total Path": "", "Model Path": ""
     }
 
     def __init__(self, option_file: str):
@@ -475,27 +476,25 @@ class Option(object):
         return self.options["Total Path"]
 
     @property
-    def model_name(self):
-        return self.options["Model Name"]
+    def model_path(self):
+        return self.options["Model Path"]
 
     @total_path.setter
     def total_path(self, value):
         if type(value) is str and os.path.isdir(value):
-            if not os.path.exists(value):
-                os.makedirs(value, exist_ok=True)
             self.total_path = value
 
-    @model_name.setter
-    def model_name(self, value):
-        if type(value) is str and value:
-            self.model_name = value
+    @model_path.setter
+    def model_path(self, value):
+        if type(value) is str and os.path.isfile(value):
+            self.model_path = value
 
     def load_option(self, option_file: str) -> None:
         try:
             load_parameters(option_file, self.options)
             for k, v in self.options.items():
                 setattr(self, k, v)
-            logger.debug(f"读取配置文件，使用部署参数 ...")
+            logger.debug(f"读取配置文件，使用配置参数 ...")
         except (FileNotFoundError, json.decoder.JSONDecodeError):
             logger.debug(f"未找到配置文件或文件解析错误，使用默认参数 ...")
             self.dump_option(option_file)

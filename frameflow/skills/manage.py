@@ -34,29 +34,29 @@ class Manage(object):
         return device_dict
 
     async def operate_device(self) -> list["Device"]:
-        final = []
         while True:
+            device_list = []
             if len(device_dict := await self.current_device()) == 0:
                 Show.console.print(f"[bold yellow]设备未连接,等待设备连接 ...")
                 await asyncio.sleep(5)
                 continue
 
             for k, v in device_dict.items():
-                final.append(v)
+                device_list.append(v)
+
+            if len(device_list) == 1:
+                return device_list
+
+            for k, v in device_dict.items():
                 Show.console.print(f"[bold][bold yellow]Connect:[/bold yellow] [{k}] {v}")
 
-            if len(final) == 1:
-                return final
-
             try:
-                action = Prompt.ask("[bold #5FD7FF]请输入编号选择一台设备", console=Show.console)
-                final = final if action == "000" else [device_dict[action]]
+                if (action := Prompt.ask("[bold #5FD7FF]请输入编号选择一台设备", console=Show.console)) == "000":
+                    return device_list
+                return [device_dict[action]]
             except KeyError:
-                final.clear()
                 Show.console.print(f"[bold red]没有该序号,请重新选择 ...[/bold red]\n")
-                continue
-
-            return final
+                await asyncio.sleep(1)
 
 
 if __name__ == '__main__':
