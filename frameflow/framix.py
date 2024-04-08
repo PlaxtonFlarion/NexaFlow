@@ -649,7 +649,9 @@ class Missions(object):
     async def painting(self, deploy: Deploy):
 
         import tempfile
-        from PIL import Image, ImageDraw, ImageFont
+        import PIL.Image
+        import PIL.ImageDraw
+        import PIL.ImageFont
 
         async def paint_lines(serial):
             image_folder = "/sdcard/Pictures/Shots"
@@ -694,7 +696,7 @@ class Missions(object):
 
                 cv2.imencode(".png", new_image.data)[1].tofile(image_save_path)
 
-                image_file = Image.open(image_save_path)
+                image_file = PIL.Image.open(image_save_path)
                 image_file = image_file.convert("RGB")
 
                 original_w, original_h = image_file.size
@@ -723,8 +725,8 @@ class Missions(object):
 
                 resized = image_file.resize((new_w, new_h))
 
-                draw = ImageDraw.Draw(resized)
-                font = ImageFont.load_default()
+                draw = PIL.ImageDraw.Draw(resized)
+                font = PIL.ImageFont.load_default()
 
                 if y_line_num > 0:
                     for i in range(1, y_line_num):
