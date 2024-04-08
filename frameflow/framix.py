@@ -288,10 +288,8 @@ class Missions(object):
             kc = None
 
         futures = loop.run_until_complete(
-            ask_analyzer(
-                new_video_path, deploy, kc,
-                reporter.frame_path, reporter.extra_path, ffmpeg=self.ffmpeg, ffprobe=self.ffprobe
-            )
+            ask_analyzer(new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path, ffmpeg=self.ffmpeg,
+                         ffprobe=self.ffprobe)
         )
 
         if futures is None:
@@ -435,10 +433,8 @@ class Missions(object):
                 new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
 
                 futures = loop.run_until_complete(
-                    ask_analyzer(
-                        new_video_path, deploy, kc,
-                        reporter.frame_path, reporter.extra_path, ffmpeg=self.ffmpeg, ffprobe=self.ffprobe
-                    )
+                    ask_analyzer(new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
+                                 ffmpeg=self.ffmpeg, ffprobe=self.ffprobe)
                 )
                 if futures is None:
                     continue
@@ -1354,7 +1350,7 @@ async def ask_get_template(template_path: str) -> str | Exception:
 
 
 async def ask_analyzer(
-        vision_path: str, deploy: "Deploy", kc: "KerasClassifier", *args, **kwargs
+        vision_file: str, deploy: "Deploy", kc: "KerasClassifier", *args, **kwargs
 ) -> Optional["Review"]:
 
     frame_path, extra_path, *_ = args
@@ -1363,17 +1359,17 @@ async def ask_analyzer(
 
     async def validate():
         screen_cap = None
-        if os.path.isfile(vision_path):
-            screen = cv2.VideoCapture(vision_path)
+        if os.path.isfile(vision_file):
+            screen = cv2.VideoCapture(vision_file)
             if screen.isOpened():
-                screen_cap = Path(vision_path)
+                screen_cap = Path(vision_file)
             screen.release()
-        elif os.path.isdir(vision_path):
+        elif os.path.isdir(vision_file):
             file_list = [
-                file for file in os.listdir(vision_path) if os.path.isfile(os.path.join(vision_path, file))
+                file for file in os.listdir(vision_file) if os.path.isfile(os.path.join(vision_file, file))
             ]
             if len(file_list) >= 1:
-                screen = cv2.VideoCapture(open_file := os.path.join(vision_path, file_list[0]))
+                screen = cv2.VideoCapture(open_file := os.path.join(vision_file, file_list[0]))
                 if screen.isOpened():
                     screen_cap = Path(open_file)
                 screen.release()
@@ -1381,11 +1377,11 @@ async def ask_analyzer(
 
     async def frame_flip():
         change_record = os.path.join(
-            os.path.dirname(vision_path),
+            os.path.dirname(vision_file),
             f"screen_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
         )
 
-        duration = await Switch.ask_video_length(ffprobe, vision_path)
+        duration = await Switch.ask_video_length(ffprobe, vision_file)
         vision_start, vision_close, vision_limit = await ask_examine_flip(
             deploy.parse_mills(deploy.start),
             deploy.parse_mills(deploy.close),
@@ -1399,12 +1395,12 @@ async def ask_analyzer(
         logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
 
         await Switch.ask_video_change(
-            ffmpeg, deploy.fps, vision_path, change_record,
+            ffmpeg, deploy.fps, vision_file, change_record,
             start=vision_start, close=vision_close, limit=vision_limit
         )
         logger.info(f"视频转换完成: {Path(change_record).name}")
-        os.remove(vision_path)
-        logger.info(f"移除旧的视频: {Path(vision_path).name}")
+        os.remove(vision_file)
+        logger.info(f"移除旧的视频: {Path(vision_file).name}")
 
         if deploy.shape:
             original_shape = await Switch.ask_video_larger(ffprobe, change_record)
@@ -1631,7 +1627,7 @@ async def ask_analyzer(
 
     # Analyzer first ===================================================================================================
     if (screen_record := await validate()) is None:
-        return logger.error(f"{vision_path} 不是一个标准的视频文件或视频文件已损坏 ...")
+        return logger.error(f"{vision_file} 不是一个标准的视频文件或视频文件已损坏 ...")
     logger.info(f"{screen_record.name} 可正常播放，准备加载视频 ...")
     # Analyzer first ===================================================================================================
 

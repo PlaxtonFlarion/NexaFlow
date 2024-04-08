@@ -1,4 +1,5 @@
 import os
+import re
 import cv2
 import time
 import random
@@ -15,7 +16,7 @@ from nexaflow.report import Report
 from nexaflow.cutter.cutter import VideoCutter
 from nexaflow.video import VideoObject, Frame
 from nexaflow.classifier.keras_classifier import KerasClassifier
-from nexaflow.hook import BaseHook, CropHook, OmitHook, FrameSaveHook
+from nexaflow.hook import BaseHook, CropHook, OmitHook, FrameSaveHook, CompressHook
 from nexaflow.classifier.base import ClassifierResult, SingleClassifierResult
 
 
@@ -34,6 +35,15 @@ class Review(object):
     __repr__ = __str__
 
 
+class Filmer(object):
+
+    def train_model(self, video_file: str) -> None:
+        pass
+
+    def build_model(self, src: str):
+        pass
+
+
 class Alynex(object):
 
     model_size: tuple = (256, 256)
@@ -47,12 +57,11 @@ class Alynex(object):
 
     def __init__(self, model_file: str, report: Report):
         self.kc.load_model(model_file)
+        self.cliper_list: list["BaseHook"] = []
         self.__report: Optional[Report] = report
         self.__player: Optional[Player] = Player()
         self.__record: Optional[Record] = Record()
         self.__switch: Optional[Switch] = Switch()
-        self.__filmer: Optional[Alynex._Filmer] = Alynex._Filmer()
-        self.__cliper: Optional[Alynex._Cliper] = Alynex._Cliper()
 
     @property
     def report(self) -> "Report":
@@ -69,14 +78,6 @@ class Alynex(object):
     @property
     def switch(self) -> "Switch":
         return self.__switch
-
-    @property
-    def filmer(self) -> "Alynex._Filmer":
-        return self.__filmer
-
-    @property
-    def cliper(self) -> "Alynex._Cliper":
-        return self.__cliper
 
     @staticmethod
     def only_video(folder: str):
@@ -96,112 +97,15 @@ class Alynex(object):
             for root, _, file in os.walk(folder) if file
         ]
 
-    class _Filmer(object):
+    def crop_hook(self, x: int | float, y: int | float, x_size: int | float, y_size: int | float) -> None:
 
-        @staticmethod
-        def train_model(video_file: str) -> None:
-            model_path = os.path.join(
-                os.path.dirname(video_file),
-                f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
-            )
-            if not os.path.exists(model_path):
-                os.makedirs(model_path, exist_ok=True)
+        hook = CropHook((y_size, x_size), (y, x))
+        self.cliper_list.append(hook)
 
-            # 将视频切分成帧
-            video = VideoObject(video_file, fps=Alynex.fps)
-            # 新建帧，计算视频总共有多少帧，每帧多少ms
-            video.load_frames()
-            # 压缩视频
-            cutter = VideoCutter(
-                target_size=Alynex.model_size
-            )
-            # 计算每一帧视频的每一个block的ssim和峰值信噪比
-            res = cutter.cut(
-                video=video,
-                block=Alynex.block
-            )
-            # 计算出判断A帧到B帧之间是稳定还是不稳定
-            stable, unstable = res.get_range(
-                threshold=Alynex.threshold,
-                offset=Alynex.offset
-            )
-            # 保存分类后的图片
-            res.pick_and_save(
-                range_list=stable,
-                frame_count=20,
-                to_dir=model_path,
-                meaningful_name=True
-            )
+    def omit_hook(self, x: int | float, y: int | float, x_size: int | float, y_size: int | float) -> None:
 
-        @staticmethod
-        def build_model(src: str) -> None:
-            new_model_path = os.path.join(src, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
-            new_model_name = f"Keras_Model_{random.randint(10000, 99999)}.h5"
-            final_model = os.path.join(new_model_path, new_model_name)
-            if not os.path.exists(new_model_path):
-                os.makedirs(new_model_path, exist_ok=True)
-
-            Alynex.kc.train(src)
-            Alynex.kc.save_model(final_model, overwrite=True)
-
-    class _Cliper(object):
-
-        def __init__(self):
-            self.cliper_list: list["BaseHook"] = []
-
-        def crop_hook(
-                self,
-                x: Union[int | float], y: Union[int | float],
-                x_size: Union[int | float], y_size: Union[int | float]
-        ) -> None:
-
-            hook = CropHook((y_size, x_size), (y, x))
-            self.cliper_list.append(hook)
-
-        def omit_hook(
-                self,
-                x: Union[int | float], y: Union[int | float],
-                x_size: Union[int | float], y_size: Union[int | float]
-        ) -> None:
-
-            hook = OmitHook((y_size, x_size), (y, x))
-            self.cliper_list.append(hook)
-
-        def pixel_wizard(self, video: "VideoObject", extra_path: str) -> "ClassifierResult":
-            cutter = VideoCutter()
-
-            for hook in self.cliper_list:
-                cutter.add_hook(hook)
-
-            save_hook = FrameSaveHook(extra_path)
-            cutter.add_hook(save_hook)
-
-            res = cutter.cut(
-                video=video,
-                block=Alynex.block
-            )
-
-            stable, unstable = res.get_range(
-                threshold=Alynex.threshold,
-                offset=Alynex.offset
-            )
-
-            # 保存十二张hook图
-            files = os.listdir(extra_path)
-            files.sort(key=lambda x: int(x.split("(")[0]))
-            total_images = len(files)
-            interval = total_images // 11 if total_images > 12 else 1
-            for index, file in enumerate(files):
-                if index % interval != 0:
-                    os.remove(os.path.join(extra_path, file))
-
-            # 为图片绘制线条
-            draws = os.listdir(extra_path)
-            for draw in draws:
-                toolbox.draw_line(os.path.join(extra_path, draw))
-
-            classify = Alynex.kc.classify(video=video, valid_range=stable, keep_data=True)
-            return classify
+        hook = OmitHook((y_size, x_size), (y, x))
+        self.cliper_list.append(hook)
 
     def analyzer(
             self, alien: str, boost: bool = True, color: bool = True, **kwargs
@@ -255,7 +159,51 @@ class Alynex(object):
 
         def frame_flow():
             video, task, hued = frame_flip()
-            classify = self.cliper.pixel_wizard(video, self.report.extra_path)
+            cutter = VideoCutter()
+
+            compress_hook = CompressHook(1, None, False)
+            cutter.add_hook(compress_hook)
+
+            for hook in self.cliper_list:
+                cutter.add_hook(hook)
+
+            save_hook = FrameSaveHook(self.report.extra_path)
+            cutter.add_hook(save_hook)
+
+            res = cutter.cut(
+                video=video,
+                block=Alynex.block
+            )
+
+            stable, unstable = res.get_range(
+                threshold=Alynex.threshold,
+                offset=Alynex.offset
+            )
+
+            file_list = os.listdir(self.report.extra_path)
+            file_list.sort(key=lambda n: int(n.split("(")[0]))
+            total_images, desired_count = len(file_list), 12
+
+            if total_images <= desired_count:
+                retain_indices = range(total_images)
+            else:
+                retain_indices = [int(i * (total_images / desired_count)) for i in range(desired_count)]
+                if len(retain_indices) < desired_count:
+                    retain_indices.append(total_images - 1)
+                elif len(retain_indices) > desired_count:
+                    retain_indices = retain_indices[:desired_count]
+
+            for index, file in enumerate(file_list):
+                if index not in retain_indices:
+                    os.remove(os.path.join(self.report.extra_path, file))
+
+            for draw in os.listdir(self.report.extra_path):
+                toolbox.draw_line(os.path.join(self.report.extra_path, draw))
+
+            classify = Alynex.kc.classify(
+                video=video, valid_range=stable, keep_data=True
+            )
+
             important_frames = classify.get_important_frame_list()
 
             pbar = toolbox.show_progress(classify.get_length(), 50, "Faster")
@@ -343,7 +291,7 @@ class Alynex(object):
             return logger.error(f"{tag} 不是一个标准的mp4视频文件，或视频文件已损坏 ...")
         logger.info(f"{tag} 可正常播放，准备加载视频 ...")
 
-        self.cliper.cliper_list.clear()
+        self.cliper_list.clear()
         start, end, cost = analytics()
         return Review(start, end, cost)
 
