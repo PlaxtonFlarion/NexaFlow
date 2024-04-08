@@ -36,7 +36,7 @@ def multi_audio_task():
             alynex.record.stop_record()
             device.force_filter(application)
             device.start_app(activity)
-            alynex.framix.crop_hook(0, 0.2, 1, 0.8)
+            alynex.cliper.crop_hook(0, 0.2, 1, 0.8)
             alynex.analyzer(const.ALIEN)
         alynex.report.create_report(const.TEMPLATE_MAIN)
     alynex.report.create_total_report(const.TEMPLATE_MAIN_TOTAL)

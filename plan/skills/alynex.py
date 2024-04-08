@@ -3,6 +3,7 @@ import cv2
 import time
 import random
 import asyncio
+from pathlib import Path
 from loguru import logger
 from typing import Union, Optional
 from concurrent.futures import ThreadPoolExecutor
@@ -51,7 +52,7 @@ class Alynex(object):
         self.__record: Optional[Record] = Record()
         self.__switch: Optional[Switch] = Switch()
         self.__filmer: Optional[Alynex._Filmer] = Alynex._Filmer()
-        self.__framix: Optional[Alynex._Cliper] = Alynex._Cliper()
+        self.__cliper: Optional[Alynex._Cliper] = Alynex._Cliper()
 
     @property
     def report(self) -> "Report":
@@ -74,8 +75,8 @@ class Alynex(object):
         return self.__filmer
 
     @property
-    def framix(self) -> "Alynex._Cliper":
-        return self.__framix
+    def cliper(self) -> "Alynex._Cliper":
+        return self.__cliper
 
     @staticmethod
     def only_video(folder: str):
@@ -146,11 +147,7 @@ class Alynex(object):
     class _Cliper(object):
 
         def __init__(self):
-            self.__cliper_list: list["BaseHook"] = []
-
-        @property
-        def cliper_list(self) -> list["BaseHook"]:
-            return self.__cliper_list
+            self.cliper_list: list["BaseHook"] = []
 
         def crop_hook(
                 self,
@@ -242,18 +239,23 @@ class Alynex(object):
             change_record = os.path.join(
                 os.path.dirname(screen_record), f"screen_fps60_{random.randint(100, 999)}.mp4"
             )
-            asyncio.run(self.switch.ask_video_change("ffmpeg", 60, screen_record, change_record))
-            logger.info(f"视频转换完成: {os.path.basename(change_record)}")
+            asyncio.run(
+                self.switch.ask_video_change("ffmpeg", 60, screen_record, change_record)
+            )
+            logger.info(f"视频转换完成: {Path(change_record).name}")
             os.remove(screen_record)
-            logger.info(f"移除旧的视频: {os.path.basename(screen_record)}")
+            logger.info(f"移除旧的视频: {Path(screen_record).name}")
 
             video = VideoObject(change_record)
-            task, hued = video.load_frames(color)
+            task, hued = video.load_frames(
+                silently_load_hued=color,
+                not_transform_gray=False
+            )
             return video, task, hued
 
         def frame_flow():
             video, task, hued = frame_flip()
-            classify = self.framix.pixel_wizard(video, self.report.extra_path)
+            classify = self.cliper.pixel_wizard(video, self.report.extra_path)
             important_frames = classify.get_important_frame_list()
 
             pbar = toolbox.show_progress(classify.get_length(), 50, "Faster")
@@ -341,6 +343,7 @@ class Alynex(object):
             return logger.error(f"{tag} 不是一个标准的mp4视频文件，或视频文件已损坏 ...")
         logger.info(f"{tag} 可正常播放，准备加载视频 ...")
 
+        self.cliper.cliper_list.clear()
         start, end, cost = analytics()
         return Review(start, end, cost)
 

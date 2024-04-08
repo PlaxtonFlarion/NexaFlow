@@ -36,7 +36,7 @@ class TestPlan(object):
             self.device.force_filter(self.application)
             self.device.start_app(self.activity)
 
-            self.alynex.framix.crop_hook(0, 0.2, 1, 0.8)
+            self.alynex.cliper.crop_hook(0, 0.2, 1, 0.8)
             self.alynex.analyzer(const.ALIEN)
         self.alynex.report.create_report(const.TEMPLATE_MAIN)
 
@@ -45,7 +45,7 @@ class TestPlan(object):
         self.alynex.report.title = query
         for i in range(1):
             self.alynex.report.query = f"{i + 4}_{query}"
-            self.alynex.framix.crop_hook(0, 0.1, 1, 0.9)
+            self.alynex.cliper.crop_hook(0, 0.1, 1, 0.9)
             self.alynex.analyzer(const.ALIEN)
         self.alynex.report.create_report(const.TEMPLATE_MAIN)
 

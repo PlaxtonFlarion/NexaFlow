@@ -16,7 +16,7 @@ def multi_video_task(folder: str) -> str:
         for path in video.sheet:
             alynex.report.query = os.path.basename(path).split(".")[0]
             shutil.copy(path, alynex.report.video_path)
-            alynex.framix.crop_hook(0, 0.2, 1, 0.8)
+            alynex.cliper.crop_hook(0, 0.2, 1, 0.8)
             alynex.analyzer(const.ALIEN)
         alynex.report.create_report(const.TEMPLATE_MAIN)
     alynex.report.create_total_report(const.TEMPLATE_MAIN_TOTAL)
