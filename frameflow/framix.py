@@ -114,7 +114,7 @@ class Review(object):
     __repr__ = __str__
 
 
-class Missions(object):
+class Mission(object):
 
     COMPRESS: int | float = 0.4
 
@@ -220,7 +220,7 @@ class Missions(object):
                     Switch.ask_video_larger(self.ffprobe, new_video_path)
                 )
                 w, h, ratio = loop.run_until_complete(
-                    ask_magic_frame(original_shape, deploy.shape)
+                    Switch.ask_magic_frame(original_shape, deploy.shape)
                 )
                 logger.debug(f"Image Shape: [W:{w} H{h} Ratio:{ratio}]")
                 video_filter.append(f"scale={w}:{h}")
@@ -236,7 +236,7 @@ class Missions(object):
                 Switch.ask_video_length(self.ffprobe, new_video_path)
             )
             vision_start, vision_close, vision_limit = loop.run_until_complete(
-                ask_examine_flip(
+                Switch.ask_examine_flip(
                     deploy.parse_mills(deploy.start),
                     deploy.parse_mills(deploy.close),
                     deploy.parse_mills(deploy.limit),
@@ -288,8 +288,8 @@ class Missions(object):
             kc = None
 
         futures = loop.run_until_complete(
-            ask_analyzer(new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path, ffmpeg=self.ffmpeg,
-                         ffprobe=self.ffprobe)
+            Core.ask_analyzer(new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path, ffmpeg=self.ffmpeg,
+                              ffprobe=self.ffprobe)
         )
 
         if futures is None:
@@ -358,7 +358,7 @@ class Missions(object):
                             Switch.ask_video_larger(self.ffprobe, new_video_path)
                         )
                         w, h, ratio = loop.run_until_complete(
-                            ask_magic_frame(original_shape, deploy.shape)
+                            Switch.ask_magic_frame(original_shape, deploy.shape)
                         )
                         logger.debug(f"Image Shape: [W:{w} H{h} Ratio:{ratio}]")
                         video_filter.append(f"scale={w}:{h}")
@@ -374,7 +374,7 @@ class Missions(object):
                         Switch.ask_video_length(self.ffprobe, new_video_path)
                     )
                     vision_start, vision_close, vision_limit = loop.run_until_complete(
-                        ask_examine_flip(
+                        Switch.ask_examine_flip(
                             deploy.parse_mills(deploy.start),
                             deploy.parse_mills(deploy.close),
                             deploy.parse_mills(deploy.limit),
@@ -433,8 +433,8 @@ class Missions(object):
                 new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
 
                 futures = loop.run_until_complete(
-                    ask_analyzer(new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
-                                 ffmpeg=self.ffmpeg, ffprobe=self.ffprobe)
+                    Core.ask_analyzer(new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
+                                      ffmpeg=self.ffmpeg, ffprobe=self.ffprobe)
                 )
                 if futures is None:
                     continue
@@ -507,7 +507,7 @@ class Missions(object):
             Switch.ask_video_length(self.ffprobe, video_file)
         )
         vision_start, vision_close, vision_limit = loop.run_until_complete(
-            ask_examine_flip(
+            Switch.ask_examine_flip(
                 deploy.parse_mills(deploy.start),
                 deploy.parse_mills(deploy.close),
                 deploy.parse_mills(deploy.limit),
@@ -548,7 +548,7 @@ class Missions(object):
                 Switch.ask_video_larger(self.ffprobe, video_file)
             )
             w, h, ratio = loop.run_until_complete(
-                ask_magic_frame(original_shape, deploy.shape)
+                Switch.ask_magic_frame(original_shape, deploy.shape)
             )
             target_shape = w, h
             target_scale = deploy.scale
@@ -697,7 +697,7 @@ class Missions(object):
 
                 original_w, original_h = image_file.size
                 if deploy.shape:
-                    twist_w, twist_h, _ = await ask_magic_frame(image_file.size, deploy.shape)
+                    twist_w, twist_h, _ = await Switch.ask_magic_frame(image_file.size, deploy.shape)
                 else:
                     twist_w, twist_h = original_w, original_h
 
@@ -929,7 +929,7 @@ class Missions(object):
                         *(Switch.ask_video_larger(self.ffprobe, temp_video) for temp_video, *_ in task_list)
                     )
                     final_shape_list = await asyncio.gather(
-                        *(ask_magic_frame(original_shape, deploy.shape) for original_shape in original_shape_list)
+                        *(Switch.ask_magic_frame(original_shape, deploy.shape) for original_shape in original_shape_list)
                     )
                     for final_shape in final_shape_list:
                         video_filter = default_filter.copy()
@@ -955,7 +955,7 @@ class Missions(object):
                     *(Switch.ask_video_length(self.ffprobe, temp_video) for temp_video, *_ in task_list)
                 )
                 duration_result_list = await asyncio.gather(
-                    *(ask_examine_flip(
+                    *(Switch.ask_examine_flip(
                         deploy.parse_mills(deploy.start),
                         deploy.parse_mills(deploy.close),
                         deploy.parse_mills(deploy.limit),
@@ -1002,8 +1002,8 @@ class Missions(object):
             elif self.basic or self.keras:
                 logger.debug(f"Framix Analyzer: {'智能模式' if kc else '基础模式'} ...")
                 futures = await asyncio.gather(
-                    *(ask_analyzer(temp_video, deploy, kc, frame_path, extra_path, ffmpeg=self.ffmpeg,
-                                   ffprobe=self.ffprobe) for temp_video, *_, frame_path, extra_path, _ in task_list)
+                    *(Core.ask_analyzer(temp_video, deploy, kc, frame_path, extra_path, ffmpeg=self.ffmpeg,
+                                        ffprobe=self.ffprobe) for temp_video, *_, frame_path, extra_path, _ in task_list)
                 )
 
                 for future, todo in zip(futures, task_list):
@@ -1128,7 +1128,7 @@ class Missions(object):
         async def combines_report():
             combined = False
             if len(reporter.range_list) > 0:
-                combines = getattr(_missions, "combines_view") if self.quick else getattr(_missions, "combines_main")
+                combines = getattr(_mission, "combines_view") if self.quick else getattr(_mission, "combines_main")
                 await combines([os.path.dirname(reporter.total_path)], deploy.group)
                 combined = True
             return combined
@@ -1290,54 +1290,295 @@ class Missions(object):
         # Flick Loop ===================================================================================================
 
 
-async def ask_examine_flip(
-        start: Optional[int | float],
-        close: Optional[int | float],
-        limit: Optional[int | float],
-        duration: Optional[int | float]
-) -> tuple[Optional[int | float], Optional[int | float], Optional[int | float]]:
+class Core(object):
 
-    start_point = close_point = limit_point = None
+    @staticmethod
+    async def ask_analyzer(
+            vision_file: str, deploy: "Deploy", kc: "KerasClassifier", *args, **kwargs
+    ) -> Optional["Review"]:
 
-    if start:
-        if start == duration:
-            return None, None, None
-        start_point = max(0, min(start, duration))
+        frame_path, extra_path, *_ = args
+        ffmpeg = kwargs.get("ffmpeg", "ffmpeg")
+        ffprobe = kwargs.get("ffprobe", "ffprobe")
 
-    if close:
-        close_point = max(start_point, min(close, duration)) if start else max(0, min(close, duration))
-        if close_point - start_point < 0.09:
-            return None, None, None
-    elif limit:
-        limit_point = max(0, min(limit, duration - start)) if start else max(0, min(limit, duration))
-        if limit_point < 0.09:
-            return None, None, None
+        async def validate():
+            screen_cap = None
+            if os.path.isfile(vision_file):
+                screen = cv2.VideoCapture(vision_file)
+                if screen.isOpened():
+                    screen_cap = Path(vision_file)
+                screen.release()
+            elif os.path.isdir(vision_file):
+                file_list = [
+                    file for file in os.listdir(vision_file) if os.path.isfile(os.path.join(vision_file, file))
+                ]
+                if len(file_list) >= 1:
+                    screen = cv2.VideoCapture(open_file := os.path.join(vision_file, file_list[0]))
+                    if screen.isOpened():
+                        screen_cap = Path(open_file)
+                    screen.release()
+            return screen_cap
 
-    return start_point, close_point, limit_point
+        async def frame_flip():
+            change_record = os.path.join(
+                os.path.dirname(vision_file),
+                f"screen_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
+            )
 
+            duration = await Switch.ask_video_length(ffprobe, vision_file)
+            vision_start, vision_close, vision_limit = await Switch.ask_examine_flip(
+                deploy.parse_mills(deploy.start),
+                deploy.parse_mills(deploy.close),
+                deploy.parse_mills(deploy.limit),
+                duration
+            )
+            vision_start = deploy.parse_times(vision_start)
+            vision_close = deploy.parse_times(vision_close)
+            vision_limit = deploy.parse_times(vision_limit)
+            logger.info(f"视频时长: [{duration}] [{deploy.parse_times(duration)}]")
+            logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
 
-async def ask_magic_frame(
-        original_frame_size: tuple, entrance_frame_size: tuple
-) -> tuple[int, int, float]:
+            await Switch.ask_video_change(
+                ffmpeg, deploy.fps, vision_file, change_record,
+                start=vision_start, close=vision_close, limit=vision_limit
+            )
+            logger.info(f"视频转换完成: {Path(change_record).name}")
+            os.remove(vision_file)
+            logger.info(f"移除旧的视频: {Path(vision_file).name}")
 
-    original_w, original_h = original_frame_size
-    original_ratio = original_w / original_h
+            if deploy.shape:
+                original_shape = await Switch.ask_video_larger(ffprobe, change_record)
+                w, h, ratio = await Switch.ask_magic_frame(original_shape, deploy.shape)
+                target_shape = w, h
+                target_scale = deploy.scale
+                logger.info(f"调整宽高比: {w} x {h}")
+            elif deploy.scale:
+                target_shape = deploy.shape
+                target_scale = max(0.1, min(1.0, deploy.scale))
+            else:
+                target_shape = deploy.shape
+                target_scale = 0.4
 
-    if original_frame_size == entrance_frame_size:
-        return original_w, original_h, original_ratio
+            video = VideoObject(change_record)
+            task, hued = video.load_frames(
+                silently_load_hued=deploy.color,
+                not_transform_gray=False,
+                shape=target_shape,
+                scale=target_scale
+            )
+            return video, task, hued
 
-    frame_w, frame_h = entrance_frame_size
-    max_w = max(original_w * 0.1, min(frame_w, original_w))
-    max_h = max(original_h * 0.1, min(frame_h, original_h))
+        async def frame_flow():
+            video, task, hued = await frame_flip()
+            cutter = VideoCutter()
 
-    if max_w / max_h > original_ratio:
-        adjusted_h = max_h
-        adjusted_w = adjusted_h * original_ratio
-    else:
-        adjusted_w = max_w
-        adjusted_h = adjusted_w / original_ratio
+            compress_hook = CompressHook(1, None, False)
+            cutter.add_hook(compress_hook)
 
-    return int(adjusted_w), int(adjusted_h), original_ratio
+            async def arrange_hooks(name, hook):
+                if len(hook) > 0 and sum([j for i in hook for j in i.values()]) > 0:
+                    for h in hook:
+                        x, y, x_size, y_size = h.values()
+                        scope_hook = PaintCropHook(
+                            (y_size, x_size), (y, x)
+                        ) if name == "crops" else PaintOmitHook(
+                            (y_size, x_size), (y, x)
+                        )
+                        cutter.add_hook(scope_hook)
+                        logger.debug(f"{scope_hook.__class__.__name__}: {x, y, x_size, y_size}")
+
+            await asyncio.gather(
+                *(arrange_hooks(name, hook)
+                  for name, hook in zip(["crops", "omits"], [deploy.crops, deploy.omits]))
+            )
+
+            save_hook = FrameSaveHook(extra_path)
+            cutter.add_hook(save_hook)
+
+            res = cutter.cut(
+                video=video, block=deploy.block
+            )
+
+            stable, unstable = res.get_range(
+                threshold=deploy.threshold, offset=deploy.offset
+            )
+
+            file_list = os.listdir(extra_path)
+            file_list.sort(key=lambda n: int(n.split("(")[0]))
+            total_images, desired_count = len(file_list), 12
+
+            if total_images <= desired_count:
+                retain_indices = range(total_images)
+            else:
+                retain_indices = [int(i * (total_images / desired_count)) for i in range(desired_count)]
+                if len(retain_indices) < desired_count:
+                    retain_indices.append(total_images - 1)
+                elif len(retain_indices) > desired_count:
+                    retain_indices = retain_indices[:desired_count]
+
+            for index, file in enumerate(file_list):
+                if index not in retain_indices:
+                    os.remove(os.path.join(extra_path, file))
+
+            for draw in os.listdir(extra_path):
+                toolbox.draw_line(os.path.join(extra_path, draw))
+
+            classify = kc.classify(
+                video=video, valid_range=stable, keep_data=True
+            )
+
+            important_frames = classify.get_important_frame_list()
+
+            pbar = toolbox.show_progress(classify.get_length(), 50, "Faster")
+            frames_list = []
+            if deploy.boost:
+                frames_list.append(previous := important_frames[0])
+                pbar.update(1)
+                for current in important_frames[1:]:
+                    frames_list.append(current)
+                    pbar.update(1)
+                    frames_diff = current.frame_id - previous.frame_id
+                    if not previous.is_stable() and not current.is_stable() and frames_diff > 1:
+                        for specially in classify.data[previous.frame_id: current.frame_id - 1]:
+                            frames_list.append(specially)
+                            pbar.update(1)
+                    previous = current
+                pbar.close()
+            else:
+                for current in classify.data:
+                    frames_list.append(current)
+                    pbar.update(1)
+                pbar.close()
+
+            if deploy.color:
+                video.hued_data = tuple(hued.result())
+                logger.info(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
+                task.shutdown()
+                frames = [video.hued_data[frame.frame_id - 1] for frame in frames_list]
+            else:
+                frames = [frame for frame in frames_list]
+
+            return classify, frames
+
+        async def frame_flick(classify):
+            logger.info(f"阶段划分: {classify.get_ordered_stage_set()}")
+            begin_stage, begin_frame = deploy.begin
+            final_stage, final_frame = deploy.final
+            try:
+                start_frame = classify.get_not_stable_stage_range()[begin_stage][begin_frame]
+                end_frame = classify.get_not_stable_stage_range()[final_stage][final_frame]
+            except AssertionError as e:
+                logger.error(f"{e}")
+                start_frame = classify.get_important_frame_list()[0]
+                end_frame = classify.get_important_frame_list()[-1]
+                logger.warning(f"Framix Analyzer recalculate ...")
+            except IndexError as e:
+                logger.error(f"{e}")
+                for i, unstable_stage in enumerate(classify.get_specific_stage_range("-3")):
+                    Show.console.print(f"[bold]第 {i:02} 个非稳定阶段")
+                    Show.console.print(f"[bold]{'=' * 30}")
+                    for j, frame in enumerate(unstable_stage):
+                        Show.console.print(f"[bold]第 {j:05} 帧: {frame}")
+                    Show.console.print(f"[bold]{'=' * 30}\n")
+                start_frame = classify.get_important_frame_list()[0]
+                end_frame = classify.get_important_frame_list()[-1]
+                logger.warning(f"Framix Analyzer recalculate ...")
+
+            if start_frame == end_frame:
+                logger.warning(f"{start_frame} == {end_frame}")
+                start_frame, end_frame = classify.data[0], classify.data[-1]
+                logger.warning(f"Framix Analyzer recalculate ...")
+
+            time_cost = end_frame.timestamp - start_frame.timestamp
+            logger.info(
+                f"图像分类结果: [开始帧: {start_frame.timestamp:.5f}] [结束帧: {end_frame.timestamp:.5f}] [总耗时: {time_cost:.5f}]"
+            )
+            return start_frame.frame_id, end_frame.frame_id, time_cost
+
+        async def frame_forge(frame):
+            try:
+                (_, codec), pic_path = cv2.imencode(".png", frame.data), os.path.join(
+                    frame_path, f"{frame.frame_id}_{format(round(frame.timestamp, 5), '.5f')}.png"
+                )
+                async with aiofiles.open(pic_path, "wb") as f:
+                    await f.write(codec.tobytes())
+            except Exception as e:
+                return e
+
+        async def analytics_basic():
+            video, task, hued = await frame_flip()
+
+            if deploy.color:
+                video.hued_data = tuple(hued.result())
+                logger.info(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
+                task.shutdown()
+                frames = [i for i in video.hued_data]
+            else:
+                frames = [i for i in video.grey_data]
+
+            logger.debug(f"运行环境: {operation_system}")
+            if operation_system == "win32":
+                forge_result = await asyncio.gather(
+                    *(frame_forge(frame) for frame in frames), return_exceptions=True
+                )
+            else:
+                tasks = [
+                    [frame_forge(frame) for frame in chunk] for chunk in
+                    [frames[i:i + 100] for i in range(0, len(frames), 100)]
+                ]
+                forge_list = []
+                for task in tasks:
+                    task_result = await asyncio.gather(*task, return_exceptions=True)
+                    forge_list.extend(task_result)
+                forge_result = tuple(forge_list)
+
+            for result in forge_result:
+                if isinstance(result, Exception):
+                    logger.error(f"Error: {result}")
+
+            start_frame, end_frame = frames[0], frames[-1]
+
+            time_cost = end_frame.timestamp - start_frame.timestamp
+            return (start_frame.frame_id, end_frame.frame_id, time_cost), None
+
+        async def analytics_keras():
+            classify, frames = await frame_flow()
+
+            logger.debug(f"运行环境: {operation_system}")
+            if operation_system == "win32":
+                flick_result, *forge_result = await asyncio.gather(
+                    frame_flick(classify), *(frame_forge(frame) for frame in frames),
+                    return_exceptions=True
+                )
+            else:
+                tasks = [
+                    [frame_forge(frame) for frame in chunk] for chunk in
+                    [frames[i:i + 100] for i in range(0, len(frames), 100)]
+                ]
+                flick_task = asyncio.create_task(frame_flick(classify))
+                forge_list = []
+                for task in tasks:
+                    task_result = await asyncio.gather(*task, return_exceptions=True)
+                    forge_list.extend(task_result)
+                forge_result = tuple(forge_list)
+                flick_result = await flick_task
+
+            for result in forge_result:
+                if isinstance(result, Exception):
+                    logger.error(f"Error: {result}")
+
+            return flick_result, classify
+
+        # Analyzer first ===================================================================================================
+        if (screen_record := await validate()) is None:
+            return logger.error(f"{vision_file} 不是一个标准的视频文件或视频文件已损坏 ...")
+        logger.info(f"{screen_record.name} 可正常播放，准备加载视频 ...")
+        # Analyzer first ===================================================================================================
+
+        # Analyzer last ====================================================================================================
+        (start, end, cost), classifier = await analytics_keras() if kc else await analytics_basic()
+        return Review(start, end, cost, classifier)
+        # Analyzer last ====================================================================================================
 
 
 async def ask_get_template(template_path: str) -> str | Exception:
@@ -1349,313 +1590,25 @@ async def ask_get_template(template_path: str) -> str | Exception:
     return template_file
 
 
-async def ask_analyzer(
-        vision_file: str, deploy: "Deploy", kc: "KerasClassifier", *args, **kwargs
-) -> Optional["Review"]:
-
-    frame_path, extra_path, *_ = args
-    ffmpeg = kwargs.get("ffmpeg", "ffmpeg")
-    ffprobe = kwargs.get("ffprobe", "ffprobe")
-
-    async def validate():
-        screen_cap = None
-        if os.path.isfile(vision_file):
-            screen = cv2.VideoCapture(vision_file)
-            if screen.isOpened():
-                screen_cap = Path(vision_file)
-            screen.release()
-        elif os.path.isdir(vision_file):
-            file_list = [
-                file for file in os.listdir(vision_file) if os.path.isfile(os.path.join(vision_file, file))
-            ]
-            if len(file_list) >= 1:
-                screen = cv2.VideoCapture(open_file := os.path.join(vision_file, file_list[0]))
-                if screen.isOpened():
-                    screen_cap = Path(open_file)
-                screen.release()
-        return screen_cap
-
-    async def frame_flip():
-        change_record = os.path.join(
-            os.path.dirname(vision_file),
-            f"screen_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
-        )
-
-        duration = await Switch.ask_video_length(ffprobe, vision_file)
-        vision_start, vision_close, vision_limit = await ask_examine_flip(
-            deploy.parse_mills(deploy.start),
-            deploy.parse_mills(deploy.close),
-            deploy.parse_mills(deploy.limit),
-            duration
-        )
-        vision_start = deploy.parse_times(vision_start)
-        vision_close = deploy.parse_times(vision_close)
-        vision_limit = deploy.parse_times(vision_limit)
-        logger.info(f"视频时长: [{duration}] [{deploy.parse_times(duration)}]")
-        logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
-
-        await Switch.ask_video_change(
-            ffmpeg, deploy.fps, vision_file, change_record,
-            start=vision_start, close=vision_close, limit=vision_limit
-        )
-        logger.info(f"视频转换完成: {Path(change_record).name}")
-        os.remove(vision_file)
-        logger.info(f"移除旧的视频: {Path(vision_file).name}")
-
-        if deploy.shape:
-            original_shape = await Switch.ask_video_larger(ffprobe, change_record)
-            w, h, ratio = await ask_magic_frame(original_shape, deploy.shape)
-            target_shape = w, h
-            target_scale = deploy.scale
-            logger.info(f"调整宽高比: {w} x {h}")
-        elif deploy.scale:
-            target_shape = deploy.shape
-            target_scale = max(0.1, min(1.0, deploy.scale))
-        else:
-            target_shape = deploy.shape
-            target_scale = 0.4
-
-        video = VideoObject(change_record)
-        task, hued = video.load_frames(
-            silently_load_hued=deploy.color,
-            not_transform_gray=False,
-            shape=target_shape,
-            scale=target_scale
-        )
-        return video, task, hued
-
-    async def frame_flow():
-        video, task, hued = await frame_flip()
-        cutter = VideoCutter()
-
-        compress_hook = CompressHook(1, None, False)
-        cutter.add_hook(compress_hook)
-
-        async def arrange_hooks(name, hook):
-            if len(hook) > 0 and sum([j for i in hook for j in i.values()]) > 0:
-                for h in hook:
-                    x, y, x_size, y_size = h.values()
-                    scope_hook = PaintCropHook(
-                        (y_size, x_size), (y, x)
-                    ) if name == "crops" else PaintOmitHook(
-                        (y_size, x_size), (y, x)
-                    )
-                    cutter.add_hook(scope_hook)
-                    logger.debug(f"{scope_hook.__class__.__name__}: {x, y, x_size, y_size}")
-
-        await asyncio.gather(
-            *(arrange_hooks(name, hook)
-              for name, hook in zip(["crops", "omits"], [deploy.crops, deploy.omits]))
-        )
-
-        save_hook = FrameSaveHook(extra_path)
-        cutter.add_hook(save_hook)
-
-        res = cutter.cut(
-            video=video, block=deploy.block
-        )
-
-        stable, unstable = res.get_range(
-            threshold=deploy.threshold, offset=deploy.offset
-        )
-
-        file_list = os.listdir(extra_path)
-        file_list.sort(key=lambda n: int(n.split("(")[0]))
-        total_images, desired_count = len(file_list), 12
-
-        if total_images <= desired_count:
-            retain_indices = range(total_images)
-        else:
-            retain_indices = [int(i * (total_images / desired_count)) for i in range(desired_count)]
-            if len(retain_indices) < desired_count:
-                retain_indices.append(total_images - 1)
-            elif len(retain_indices) > desired_count:
-                retain_indices = retain_indices[:desired_count]
-
-        for index, file in enumerate(file_list):
-            if index not in retain_indices:
-                os.remove(os.path.join(extra_path, file))
-
-        for draw in os.listdir(extra_path):
-            toolbox.draw_line(os.path.join(extra_path, draw))
-
-        classify = kc.classify(
-            video=video, valid_range=stable, keep_data=True
-        )
-
-        important_frames = classify.get_important_frame_list()
-
-        pbar = toolbox.show_progress(classify.get_length(), 50, "Faster")
-        frames_list = []
-        if deploy.boost:
-            frames_list.append(previous := important_frames[0])
-            pbar.update(1)
-            for current in important_frames[1:]:
-                frames_list.append(current)
-                pbar.update(1)
-                frames_diff = current.frame_id - previous.frame_id
-                if not previous.is_stable() and not current.is_stable() and frames_diff > 1:
-                    for specially in classify.data[previous.frame_id: current.frame_id - 1]:
-                        frames_list.append(specially)
-                        pbar.update(1)
-                previous = current
-            pbar.close()
-        else:
-            for current in classify.data:
-                frames_list.append(current)
-                pbar.update(1)
-            pbar.close()
-
-        if deploy.color:
-            video.hued_data = tuple(hued.result())
-            logger.info(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
-            task.shutdown()
-            frames = [video.hued_data[frame.frame_id - 1] for frame in frames_list]
-        else:
-            frames = [frame for frame in frames_list]
-
-        return classify, frames
-
-    async def frame_flick(classify):
-        logger.info(f"阶段划分: {classify.get_ordered_stage_set()}")
-        begin_stage, begin_frame = deploy.begin
-        final_stage, final_frame = deploy.final
-        try:
-            start_frame = classify.get_not_stable_stage_range()[begin_stage][begin_frame]
-            end_frame = classify.get_not_stable_stage_range()[final_stage][final_frame]
-        except AssertionError as e:
-            logger.error(f"{e}")
-            start_frame = classify.get_important_frame_list()[0]
-            end_frame = classify.get_important_frame_list()[-1]
-            logger.warning(f"Framix Analyzer recalculate ...")
-        except IndexError as e:
-            logger.error(f"{e}")
-            for i, unstable_stage in enumerate(classify.get_specific_stage_range("-3")):
-                Show.console.print(f"[bold]第 {i:02} 个非稳定阶段")
-                Show.console.print(f"[bold]{'=' * 30}")
-                for j, frame in enumerate(unstable_stage):
-                    Show.console.print(f"[bold]第 {j:05} 帧: {frame}")
-                Show.console.print(f"[bold]{'=' * 30}\n")
-            start_frame = classify.get_important_frame_list()[0]
-            end_frame = classify.get_important_frame_list()[-1]
-            logger.warning(f"Framix Analyzer recalculate ...")
-
-        if start_frame == end_frame:
-            logger.warning(f"{start_frame} == {end_frame}")
-            start_frame, end_frame = classify.data[0], classify.data[-1]
-            logger.warning(f"Framix Analyzer recalculate ...")
-
-        time_cost = end_frame.timestamp - start_frame.timestamp
-        logger.info(
-            f"图像分类结果: [开始帧: {start_frame.timestamp:.5f}] [结束帧: {end_frame.timestamp:.5f}] [总耗时: {time_cost:.5f}]"
-        )
-        return start_frame.frame_id, end_frame.frame_id, time_cost
-
-    async def frame_forge(frame):
-        try:
-            (_, codec), pic_path = cv2.imencode(".png", frame.data), os.path.join(
-                frame_path, f"{frame.frame_id}_{format(round(frame.timestamp, 5), '.5f')}.png"
-            )
-            async with aiofiles.open(pic_path, "wb") as f:
-                await f.write(codec.tobytes())
-        except Exception as e:
-            return e
-
-    async def analytics_basic():
-        video, task, hued = await frame_flip()
-
-        if deploy.color:
-            video.hued_data = tuple(hued.result())
-            logger.info(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
-            task.shutdown()
-            frames = [i for i in video.hued_data]
-        else:
-            frames = [i for i in video.grey_data]
-
-        logger.debug(f"运行环境: {operation_system}")
-        if operation_system == "win32":
-            forge_result = await asyncio.gather(
-                *(frame_forge(frame) for frame in frames), return_exceptions=True
-            )
-        else:
-            tasks = [
-                [frame_forge(frame) for frame in chunk] for chunk in
-                [frames[i:i + 100] for i in range(0, len(frames), 100)]
-            ]
-            forge_list = []
-            for task in tasks:
-                task_result = await asyncio.gather(*task, return_exceptions=True)
-                forge_list.extend(task_result)
-            forge_result = tuple(forge_list)
-
-        for result in forge_result:
-            if isinstance(result, Exception):
-                logger.error(f"Error: {result}")
-
-        start_frame, end_frame = frames[0], frames[-1]
-
-        time_cost = end_frame.timestamp - start_frame.timestamp
-        return (start_frame.frame_id, end_frame.frame_id, time_cost), None
-
-    async def analytics_keras():
-        classify, frames = await frame_flow()
-
-        logger.debug(f"运行环境: {operation_system}")
-        if operation_system == "win32":
-            flick_result, *forge_result = await asyncio.gather(
-                frame_flick(classify), *(frame_forge(frame) for frame in frames),
-                return_exceptions=True
-            )
-        else:
-            tasks = [
-                [frame_forge(frame) for frame in chunk] for chunk in
-                [frames[i:i + 100] for i in range(0, len(frames), 100)]
-            ]
-            flick_task = asyncio.create_task(frame_flick(classify))
-            forge_list = []
-            for task in tasks:
-                task_result = await asyncio.gather(*task, return_exceptions=True)
-                forge_list.extend(task_result)
-            forge_result = tuple(forge_list)
-            flick_result = await flick_task
-
-        for result in forge_result:
-            if isinstance(result, Exception):
-                logger.error(f"Error: {result}")
-
-        return flick_result, classify
-
-    # Analyzer first ===================================================================================================
-    if (screen_record := await validate()) is None:
-        return logger.error(f"{vision_file} 不是一个标准的视频文件或视频文件已损坏 ...")
-    logger.info(f"{screen_record.name} 可正常播放，准备加载视频 ...")
-    # Analyzer first ===================================================================================================
-
-    # Analyzer last ====================================================================================================
-    (start, end, cost), classifier = await analytics_keras() if kc else await analytics_basic()
-    return Review(start, end, cost, classifier)
-    # Analyzer last ====================================================================================================
-
-
 async def ask_main():
-    deploy = Deploy(_missions.initial_deploy)
-    deploy.alone = _missions.alone
-    deploy.group = _missions.group
-    deploy.boost = _missions.boost
-    deploy.color = _missions.color
+    deploy = Deploy(_mission.initial_deploy)
+    deploy.alone = _mission.alone
+    deploy.group = _mission.group
+    deploy.boost = _mission.boost
+    deploy.color = _mission.color
 
     for attr in ["shape", "scale", "start", "close", "limit", "begin", "final", "crops", "omits"]:
-        if any(line.startswith(f"--{attr}") for line in _missions.lines):
-            setattr(deploy, attr, getattr(_missions, attr))
+        if any(line.startswith(f"--{attr}") for line in _mission.lines):
+            setattr(deploy, attr, getattr(_mission, attr))
 
     if _cmd_lines.flick:
-        await _missions.analysis(deploy)
+        await _mission.analysis(deploy)
     elif _cmd_lines.paint:
-        await _missions.painting(deploy)
+        await _mission.painting(deploy)
     elif _cmd_lines.union:
-        await _missions.combines_view(_cmd_lines.union, _missions.group)
+        await _mission.combines_view(_cmd_lines.union, _mission.group)
     elif _cmd_lines.merge:
-        await _missions.combines_main(_cmd_lines.merge, _missions.group)
+        await _mission.combines_main(_cmd_lines.merge, _mission.group)
     else:
         Show.help_document()
 
@@ -1765,7 +1718,7 @@ if __name__ == '__main__':
     logger.debug(f"模型文件路径: {_initial_models}")
     # Debug Mode =======================================================================================================
 
-    _missions = Missions(
+    _mission = Mission(
         _carry, _fully, _alone, _group, _quick, _basic, _keras,
         _boost, _color, _shape, _scale, _start, _close, _limit, _begin, _final, _crops, _omits,
         lines=_lines,
@@ -1790,53 +1743,53 @@ if __name__ == '__main__':
     # --stack ==========================================================================================================
     if _cmd_lines.stack:
         if (_members := len(_cmd_lines.stack)) == 1:
-            _missions.video_dir_task(_cmd_lines.stack[0])
+            _mission.video_dir_task(_cmd_lines.stack[0])
         else:
             _proc = _members if _members <= _cpu else _cpu
             with Pool(_proc, active, (_level_multiple,)) as _pool:
-                _results = _pool.starmap(_missions.video_dir_task, [(i,) for i in _cmd_lines.stack])
+                _results = _pool.starmap(_mission.video_dir_task, [(i,) for i in _cmd_lines.stack])
             _template_total = _loop.run_until_complete(
-                ask_get_template(_missions.view_total_temp)
-            ) if _missions.quick else _loop.run_until_complete(
-                ask_get_template(_missions.main_total_temp)
+                ask_get_template(_mission.view_total_temp)
+            ) if _mission.quick else _loop.run_until_complete(
+                ask_get_template(_mission.main_total_temp)
             )
-            Report.merge_report(_results, _template_total, _missions.quick)
+            Report.merge_report(_results, _template_total, _mission.quick)
         sys.exit(0)
 
     # --video ==========================================================================================================
     elif _cmd_lines.video:
         if (_members := len(_cmd_lines.video)) == 1:
-            _missions.video_task(_cmd_lines.video[0])
+            _mission.video_task(_cmd_lines.video[0])
         else:
             _proc = _members if _members <= _cpu else _cpu
             with Pool(_proc, active, (_level_multiple,)) as _pool:
-                _results = _pool.starmap(_missions.video_task, [(i,) for i in _cmd_lines.video])
+                _results = _pool.starmap(_mission.video_task, [(i,) for i in _cmd_lines.video])
             _template_total = _loop.run_until_complete(
-                ask_get_template(_missions.view_total_temp)
-            ) if _missions.quick else _loop.run_until_complete(
-                ask_get_template(_missions.main_total_temp)
+                ask_get_template(_mission.view_total_temp)
+            ) if _mission.quick else _loop.run_until_complete(
+                ask_get_template(_mission.main_total_temp)
             )
-            Report.merge_report(_results, _template_total, _missions.quick)
+            Report.merge_report(_results, _template_total, _mission.quick)
         sys.exit(0)
 
     # --train ==========================================================================================================
     elif _cmd_lines.train:
         if (_members := len(_cmd_lines.train)) == 1:
-            _missions.train_model(_cmd_lines.train[0])
+            _mission.train_model(_cmd_lines.train[0])
         else:
             _proc = _members if _members <= _cpu else _cpu
             with Pool(_proc, active, (_level_multiple,)) as _pool:
-                _pool.starmap(_missions.train_model, [(i,) for i in _cmd_lines.train])
+                _pool.starmap(_mission.train_model, [(i,) for i in _cmd_lines.train])
         sys.exit(0)
 
     # --build ==========================================================================================================
     elif _cmd_lines.build:
         if (_members := len(_cmd_lines.build)) == 1:
-            _missions.build_model(_cmd_lines.build[0])
+            _mission.build_model(_cmd_lines.build[0])
         else:
             _proc = _members if _members <= _cpu else _cpu
             with Pool(_proc, active, (_level_multiple,)) as _pool:
-                _pool.starmap(_missions.build_model, [(i,) for i in _cmd_lines.build])
+                _pool.starmap(_mission.build_model, [(i,) for i in _cmd_lines.build])
         sys.exit(0)
 
     # --flick --paint --union --merge ==================================================================================

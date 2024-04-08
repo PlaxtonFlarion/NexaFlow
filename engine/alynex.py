@@ -1,7 +1,5 @@
 import os
-import re
 import cv2
-import time
 import random
 import asyncio
 from pathlib import Path
@@ -37,7 +35,7 @@ class Review(object):
 
 class Filmer(object):
 
-    def train_model(self, video_file: str) -> None:
+    def train_model(self, video_file: str, **kwargs):
         pass
 
     def build_model(self, src: str):
@@ -46,22 +44,29 @@ class Filmer(object):
 
 class Alynex(object):
 
-    model_size: tuple = (256, 256)
-    fps: int = 60
-    block: int = 6
-    threshold: Union[int | float] = 0.97
-    offset: int = 3
-    compress_rate: float = 0.5
+    def __init__(
+            self,
+            report: Report,
+            model_file: str,
+            model_size: tuple = (256, 256),
+            aisle: int = 1
+    ):
 
-    kc: KerasClassifier = KerasClassifier(data_size=model_size, aisle=1)
+        self.__kc = KerasClassifier(data_size=model_size, aisle=aisle)
+        self.__kc.load_model(model_file)
+        self.__cliper: list["BaseHook"] = []
+        self.__report: Optional["Report"] = report
+        self.__player: Optional["Player"] = Player()
+        self.__record: Optional["Record"] = Record()
+        self.__switch: Optional["Switch"] = Switch()
 
-    def __init__(self, model_file: str, report: Report):
-        self.kc.load_model(model_file)
-        self.cliper_list: list["BaseHook"] = []
-        self.__report: Optional[Report] = report
-        self.__player: Optional[Player] = Player()
-        self.__record: Optional[Record] = Record()
-        self.__switch: Optional[Switch] = Switch()
+    @property
+    def kc(self) -> "KerasClassifier":
+        return self.__kc
+
+    @property
+    def cliper(self) -> list["BaseHook"]:
+        return self.__cliper
 
     @property
     def report(self) -> "Report":
@@ -98,23 +103,24 @@ class Alynex(object):
         ]
 
     def crop_hook(self, x: int | float, y: int | float, x_size: int | float, y_size: int | float) -> None:
-
         hook = CropHook((y_size, x_size), (y, x))
-        self.cliper_list.append(hook)
+        self.__cliper.append(hook)
 
     def omit_hook(self, x: int | float, y: int | float, x_size: int | float, y_size: int | float) -> None:
-
         hook = OmitHook((y_size, x_size), (y, x))
-        self.cliper_list.append(hook)
+        self.__cliper.append(hook)
 
-    def analyzer(
-            self, alien: str, boost: bool = True, color: bool = True, **kwargs
-    ) -> Optional["Review"]:
-
-        self.block = kwargs.get("block", 6)
-        self.threshold = kwargs.get("threshold", 0.97)
-        self.offset = kwargs.get("offset", 3)
-        self.compress_rate = kwargs.get("compress_rate", 0.5)
+    def analyzer(self, alien: str, boost: bool = True, color: bool = True, **kwargs) -> Optional["Review"]:
+        fps = kwargs.get("fps", 60)
+        block = kwargs.get("block", 6)
+        threshold = kwargs.get("threshold", 0.97)
+        offset = kwargs.get("offset", 3)
+        boost = kwargs.get("boost", True)
+        color = kwargs.get("color", True)
+        shape = kwargs.get("shape", None)
+        scale = kwargs.get("scale", None)
+        begin = kwargs.get("begin", (0, 1))
+        final = kwargs.get("final", (-1, -1))
 
         def validate():
             screen_tag, screen_cap = None, None
@@ -141,19 +147,35 @@ class Alynex(object):
 
         def frame_flip():
             change_record = os.path.join(
-                os.path.dirname(screen_record), f"screen_fps60_{random.randint(100, 999)}.mp4"
+                os.path.dirname(screen_record),
+                f"screen_fps{fps}_{random.randint(100, 999)}.mp4"
             )
             asyncio.run(
-                self.switch.ask_video_change("ffmpeg", 60, screen_record, change_record)
+                self.switch.ask_video_change("ffmpeg", fps, screen_record, change_record)
             )
             logger.info(f"视频转换完成: {Path(change_record).name}")
             os.remove(screen_record)
             logger.info(f"移除旧的视频: {Path(screen_record).name}")
 
+            if shape:
+                original_shape = asyncio.run(Switch.ask_video_larger("ffprobe", change_record))
+                w, h, ratio = asyncio.run(Switch.ask_magic_frame(original_shape, shape))
+                target_shape = w, h
+                target_scale = scale
+                logger.info(f"调整宽高比: {w} x {h}")
+            elif scale:
+                target_shape = shape
+                target_scale = max(0.1, min(1.0, scale))
+            else:
+                target_shape = shape
+                target_scale = 0.4
+
             video = VideoObject(change_record)
             task, hued = video.load_frames(
                 silently_load_hued=color,
-                not_transform_gray=False
+                not_transform_gray=False,
+                shape=target_shape,
+                scale=target_scale
             )
             return video, task, hued
 
@@ -164,20 +186,18 @@ class Alynex(object):
             compress_hook = CompressHook(1, None, False)
             cutter.add_hook(compress_hook)
 
-            for hook in self.cliper_list:
+            for hook in self.cliper:
                 cutter.add_hook(hook)
 
             save_hook = FrameSaveHook(self.report.extra_path)
             cutter.add_hook(save_hook)
 
             res = cutter.cut(
-                video=video,
-                block=Alynex.block
+                video=video, block=block
             )
 
             stable, unstable = res.get_range(
-                threshold=Alynex.threshold,
-                offset=Alynex.offset
+                threshold=threshold, offset=offset
             )
 
             file_list = os.listdir(self.report.extra_path)
@@ -200,7 +220,7 @@ class Alynex(object):
             for draw in os.listdir(self.report.extra_path):
                 toolbox.draw_line(os.path.join(self.report.extra_path, draw))
 
-            classify = Alynex.kc.classify(
+            classify = self.kc.classify(
                 video=video, valid_range=stable, keep_data=True
             )
 
@@ -238,19 +258,38 @@ class Alynex(object):
             return classify, frames
 
         def frame_flick(classify):
+            logger.info(f"阶段划分: {classify.get_ordered_stage_set()}")
+            begin_stage, begin_frame = begin
+            final_stage, final_frame = final
             try:
-                start_frame = classify.get_not_stable_stage_range()[0][1]
-                end_frame = classify.get_not_stable_stage_range()[-1][-1]
-            except AssertionError:
+                start_frame = classify.get_not_stable_stage_range()[begin_stage][begin_frame]
+                end_frame = classify.get_not_stable_stage_range()[final_stage][final_frame]
+            except AssertionError as e:
+                logger.error(f"{e}")
                 start_frame = classify.get_important_frame_list()[0]
                 end_frame = classify.get_important_frame_list()[-1]
+                logger.warning(f"Framix Analyzer recalculate ...")
+            except IndexError as e:
+                logger.error(f"{e}")
+                for i, unstable_stage in enumerate(classify.get_specific_stage_range("-3")):
+                    logger.info(f"[bold]第 {i:02} 个非稳定阶段")
+                    logger.info(f"[bold]{'=' * 30}")
+                    for j, frame in enumerate(unstable_stage):
+                        logger.info(f"[bold]第 {j:05} 帧: {frame}")
+                    logger.info(f"[bold]{'=' * 30}\n")
+                start_frame = classify.get_important_frame_list()[0]
+                end_frame = classify.get_important_frame_list()[-1]
+                logger.warning(f"Framix Analyzer recalculate ...")
 
             if start_frame == end_frame:
-                start_frame = classify.data[0]
-                end_frame = classify.data[-1]
+                logger.warning(f"{start_frame} == {end_frame}")
+                start_frame, end_frame = classify.data[0], classify.data[-1]
+                logger.warning(f"Framix Analyzer recalculate ...")
 
             time_cost = end_frame.timestamp - start_frame.timestamp
-            logger.info(f"图像分类结果: [开始帧: {start_frame.timestamp:.5f}] [结束帧: {end_frame.timestamp:.5f}] [总耗时: {time_cost:.5f}]")
+            logger.info(
+                f"图像分类结果: [开始帧: {start_frame.timestamp:.5f}] [结束帧: {end_frame.timestamp:.5f}] [总耗时: {time_cost:.5f}]"
+            )
 
             original_inform = self.report.draw(
                 classifier_result=classify,
@@ -291,8 +330,8 @@ class Alynex(object):
             return logger.error(f"{tag} 不是一个标准的mp4视频文件，或视频文件已损坏 ...")
         logger.info(f"{tag} 可正常播放，准备加载视频 ...")
 
-        self.cliper_list.clear()
         start, end, cost = analytics()
+        self.__cliper.clear()
         return Review(start, end, cost)
 
 

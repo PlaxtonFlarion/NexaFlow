@@ -1,8 +1,8 @@
 import os
 from engine.activate import active
+from engine.alynex import Alynex
 from nexaflow import const
 from nexaflow.report import Report
-from plan.skills.alynex import Alynex
 from plan.skills.device import Device
 from plan.skills.manage import Manage
 
@@ -15,7 +15,7 @@ class TestPlan(object):
 
     def __init__(self, device: Device = None):
         self.device: "Device" = device
-        self.alynex: "Alynex" = Alynex(const.MODEL, Report(const.CREDO))
+        self.alynex: "Alynex" = Alynex(Report(const.CREDO), const.MODEL)
 
     def test_01(self):
         audio = os.path.join(const.AUDIO, query := "讲个笑话")
@@ -36,7 +36,7 @@ class TestPlan(object):
             self.device.force_filter(self.application)
             self.device.start_app(self.activity)
 
-            self.alynex.cliper.crop_hook(0, 0.2, 1, 0.8)
+            self.alynex.crop_hook(0, 0.2, 1, 0.8)
             self.alynex.analyzer(const.ALIEN)
         self.alynex.report.create_report(const.TEMPLATE_MAIN)
 
@@ -45,7 +45,7 @@ class TestPlan(object):
         self.alynex.report.title = query
         for i in range(1):
             self.alynex.report.query = f"{i + 4}_{query}"
-            self.alynex.cliper.crop_hook(0, 0.1, 1, 0.9)
+            self.alynex.crop_hook(0, 0.1, 1, 0.9)
             self.alynex.analyzer(const.ALIEN)
         self.alynex.report.create_report(const.TEMPLATE_MAIN)
 

@@ -1,5 +1,6 @@
 import os
 import re
+from typing import Optional
 from engine.terminal import Terminal
 
 
@@ -99,6 +100,56 @@ class Switch(object):
         except (AttributeError, ValueError) as e:
             return e
         return w, h
+
+    @staticmethod
+    async def ask_examine_flip(
+            start: Optional[int | float],
+            close: Optional[int | float],
+            limit: Optional[int | float],
+            duration: Optional[int | float]
+    ) -> tuple[Optional[int | float], Optional[int | float], Optional[int | float]]:
+
+        start_point = close_point = limit_point = None
+
+        if start:
+            if start == duration:
+                return None, None, None
+            start_point = max(0, min(start, duration))
+
+        if close:
+            close_point = max(start_point, min(close, duration)) if start else max(0, min(close, duration))
+            if close_point - start_point < 0.09:
+                return None, None, None
+        elif limit:
+            limit_point = max(0, min(limit, duration - start)) if start else max(0, min(limit, duration))
+            if limit_point < 0.09:
+                return None, None, None
+
+        return start_point, close_point, limit_point
+
+    @staticmethod
+    async def ask_magic_frame(
+            original_frame_size: tuple, entrance_frame_size: tuple
+    ) -> tuple[int, int, float]:
+
+        original_w, original_h = original_frame_size
+        original_ratio = original_w / original_h
+
+        if original_frame_size == entrance_frame_size:
+            return original_w, original_h, original_ratio
+
+        frame_w, frame_h = entrance_frame_size
+        max_w = max(original_w * 0.1, min(frame_w, original_w))
+        max_h = max(original_h * 0.1, min(frame_h, original_h))
+
+        if max_w / max_h > original_ratio:
+            adjusted_h = max_h
+            adjusted_w = adjusted_h * original_ratio
+        else:
+            adjusted_w = max_w
+            adjusted_h = adjusted_w / original_ratio
+
+        return int(adjusted_w), int(adjusted_h), original_ratio
 
 
 if __name__ == '__main__':

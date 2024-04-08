@@ -3,20 +3,20 @@ import time
 import shutil
 from multiprocessing import Pool
 from engine.activate import active
+from engine.alynex import Alynex
 from nexaflow import const
 from nexaflow.report import Report
-from plan.skills.alynex import Alynex
 
 
 def multi_video_task(folder: str) -> str:
-    alynex = Alynex(const.MODEL, Report(const.CREDO))
+    alynex = Alynex(Report(const.CREDO), const.MODEL)
 
     for video in alynex.only_video(os.path.join(const.ARRAY, folder)):
         alynex.report.title = video.title
         for path in video.sheet:
             alynex.report.query = os.path.basename(path).split(".")[0]
             shutil.copy(path, alynex.report.video_path)
-            alynex.cliper.crop_hook(0, 0.2, 1, 0.8)
+            alynex.crop_hook(0, 0.2, 1, 0.8)
             alynex.analyzer(const.ALIEN)
         alynex.report.create_report(const.TEMPLATE_MAIN)
     alynex.report.create_total_report(const.TEMPLATE_MAIN_TOTAL)
