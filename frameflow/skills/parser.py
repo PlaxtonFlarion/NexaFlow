@@ -27,12 +27,19 @@ class Parser(object):
         return None
 
     @staticmethod
-    def parse_scale(dim_str):
+    def parse_aisle(dim_str):
         try:
-            float_val = float(dim_str) if dim_str else None
+            return value if (value := int(dim_str)) in [1, 3] else None
         except (ValueError, TypeError):
             return None
-        return round(max(0.1, min(1.0, float_val)), 1) if float_val else None
+
+    @staticmethod
+    def parse_scale(dim_str):
+        try:
+            value = float(dim_str) if dim_str else None
+        except (ValueError, TypeError):
+            return None
+        return round(max(0.1, min(1.0, value)), 1) if value else None
 
     @staticmethod
     def parse_times(dim_str):
@@ -112,77 +119,63 @@ class Parser(object):
 
     @staticmethod
     def parse_frate(dim_str):
-        if type(dim_str) is int or type(dim_str) is float:
-            return dim_str
-        elif type(dim_str) is str:
-            try:
-                return round(max(1, min(60, int(dim_str))), 1)
-            except (ValueError, TypeError):
-                return None
+        try:
+            value = int(dim_str) if dim_str else None
+        except (ValueError, TypeError):
+            return None
+        return round(max(1, min(60, int(value))), 1) if value else None
 
     @staticmethod
     def parse_thres(dim_str):
-        if type(dim_str) is int or type(dim_str) is float:
-            return dim_str
-        elif type(dim_str) is str:
-            try:
-                float_val = float(dim_str) if dim_str else None
-            except (ValueError, TypeError):
-                return None
-            return round(max(0.1, min(1.0, float_val)), 2) if float_val else None
+        try:
+            value = float(dim_str) if dim_str else None
+        except (ValueError, TypeError):
+            return None
+        return round(max(0.1, min(1.0, value)), 2) if value else None
 
     @staticmethod
     def parse_other(dim_str):
-        if type(dim_str) is int or type(dim_str) is float:
-            return dim_str
-        elif type(dim_str) is str:
-            try:
-                return round(max(1, int(dim_str)), 1)
-            except (ValueError, TypeError):
-                return None
+        try:
+            value = int(dim_str) if dim_str else None
+        except (ValueError, TypeError):
+            return None
+        return round(max(1, value), 0) if value else None
 
     @staticmethod
     def parse_cmd() -> argparse.Namespace:
         parser = argparse.ArgumentParser(description="Command Line Arguments Framix")
 
-        parser.add_argument('--flick', action='store_true', help='循环分析视频帧')
-        parser.add_argument('--paint', action='store_true', help='绘制图片分割线条')
-        parser.add_argument('--video', action='append', help='分析视频')
+        parser.add_argument('--flick', action='store_true', help='循环模式')
+        parser.add_argument('--paint', action='store_true', help='绘制分割线条')
+        parser.add_argument('--video', action='append', help='分析视频文件')
         parser.add_argument('--stack', action='append', help='分析视频文件集合')
         parser.add_argument('--union', action='append', help='聚合视频帧报告')
         parser.add_argument('--merge', action='append', help='聚合时间戳报告')
         parser.add_argument('--train', action='append', help='归类图片文件')
         parser.add_argument('--build', action='append', help='训练模型文件')
 
-        parser.add_argument('--carry', action='append', help='指定执行')
-
-        parser.add_argument('--fully', action='store_true', help='自动执行')
-
+        parser.add_argument('--carry', action='append', help='运行指定脚本')
+        parser.add_argument('--fully', action='store_true', help='运行全部脚本')
         parser.add_argument('--quick', action='store_true', help='快速模式')
         parser.add_argument('--basic', action='store_true', help='基础模式')
         parser.add_argument('--keras', action='store_true', help='智能模式')
-
         parser.add_argument('--alone', action='store_true', help='独立控制')
         parser.add_argument('--group', action='store_true', help='分组报告')
         parser.add_argument('--boost', action='store_true', help='跳帧模式')
         parser.add_argument('--color', action='store_true', help='彩色模式')
-
         parser.add_argument('--shape', nargs='?', const=None, type=Parser.parse_shape, help='图片尺寸')
         parser.add_argument('--scale', nargs='?', const=None, type=Parser.parse_scale, help='缩放比例')
         parser.add_argument('--start', nargs='?', const=None, type=Parser.parse_mills, help='开始时间')
         parser.add_argument('--close', nargs='?', const=None, type=Parser.parse_mills, help='结束时间')
         parser.add_argument('--limit', nargs='?', const=None, type=Parser.parse_mills, help='持续时间')
-
-        parser.add_argument('--begin', nargs='?', const=None, type=Parser.parse_stage, help='开始帧')
-        parser.add_argument('--final', nargs='?', const=None, type=Parser.parse_stage, help='结束帧')
-
-        parser.add_argument('--crops', action='append', help='获取区域')
-        parser.add_argument('--omits', action='append', help='忽略区域')
-
+        parser.add_argument('--begin', nargs='?', const=None, type=Parser.parse_stage, help='开始阶段')
+        parser.add_argument('--final', nargs='?', const=None, type=Parser.parse_stage, help='结束阶段')
         parser.add_argument('--frate', nargs='?', const=None, type=Parser.parse_frate, help='帧采样率')
         parser.add_argument('--thres', nargs='?', const=None, type=Parser.parse_thres, help='相似度')
         parser.add_argument('--shift', nargs='?', const=None, type=Parser.parse_other, help='补偿值')
-        parser.add_argument('--block', nargs='?', const=None, type=Parser.parse_other, help='图像分块')
+        parser.add_argument('--block', nargs='?', const=None, type=Parser.parse_other, help='立方体')
+        parser.add_argument('--crops', action='append', help='获取区域')
+        parser.add_argument('--omits', action='append', help='忽略区域')
 
         # 调试模式
         parser.add_argument('--debug', action='store_true', help='调试模式')

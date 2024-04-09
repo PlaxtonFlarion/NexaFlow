@@ -20,6 +20,9 @@ def load_parameters(src, dst) -> None:
 class Deploy(object):
 
     deploys = {
+        "model_shape": (256, 256),
+        "model_aisle": 1,
+
         "alone": False,
         "group": False,
         "boost": False,
@@ -30,26 +33,29 @@ class Deploy(object):
         "start": None,
         "close": None,
         "limit": None,
-
         "begin": (0, 1),
         "final": (-1, -1),
-
-        "crops": [{"x": 0, "y": 0, "x_size": 0, "y_size": 0}],
-        "omits": [{"x": 0, "y": 0, "x_size": 0, "y_size": 0}],
-
-        "model_shape": (256, 256),
-        "model_aisle": 1,
 
         "frate": 60,
         "thres": 0.97,
         "shift": 3,
-        "block": 6
+        "block": 6,
+        "crops": [{"x": 0, "y": 0, "x_size": 0, "y_size": 0}],
+        "omits": [{"x": 0, "y": 0, "x_size": 0, "y_size": 0}]
     }
 
     def __init__(self, deploy_file: str):
         self.load_deploy(deploy_file)
 
 # Getter ###############################################################################################################
+
+    @property
+    def model_shape(self):
+        return self.deploys["model_shape"]
+
+    @property
+    def model_aisle(self):
+        return self.deploys["model_aisle"]
 
     @property
     def alone(self):
@@ -96,14 +102,6 @@ class Deploy(object):
         return self.deploys["final"]
 
     @property
-    def model_shape(self):
-        return self.deploys["model_shape"]
-
-    @property
-    def model_aisle(self):
-        return self.deploys["model_aisle"]
-
-    @property
     def frate(self):
         return self.deploys["frate"]
 
@@ -128,6 +126,16 @@ class Deploy(object):
         return self.deploys["omits"]
 
 # Setter ###############################################################################################################
+
+    @model_shape.setter
+    def model_shape(self, value):
+        if effective := Parser.parse_shape(value):
+            self.deploys["model_shape"] = effective
+
+    @model_aisle.setter
+    def model_aisle(self, value):
+        if effective := Parser.parse_aisle(value):
+            self.deploys["model_aisle"] = effective
 
     @alone.setter
     def alone(self, value):
@@ -175,28 +183,9 @@ class Deploy(object):
         if effective := Parser.parse_stage(value):
             self.deploys["final"] = effective
 
-    @crops.setter
-    def crops(self, value):
-        self.deploys["crops"] = Parser.parse_hooks(value)
-
-    @omits.setter
-    def omits(self, value):
-        self.deploys["omits"] = Parser.parse_hooks(value)
-
-    @model_shape.setter
-    def model_shape(self, value):
-        self.deploys["model_shape"] = Parser.parse_shape(value)
-
-    @model_aisle.setter
-    def model_aisle(self, value):
-        try:
-            self.deploys["model_aisle"] = int(value) if int(value) in [1, 3] else 1
-        except (ValueError, TypeError):
-            self.deploys["model_aisle"] = 1
-
     @frate.setter
     def frate(self, value):
-        if effective := Parser.parse_thres(value):
+        if effective := Parser.parse_frate(value):
             self.deploys["frate"] = effective
 
     @thres.setter
@@ -206,13 +195,21 @@ class Deploy(object):
 
     @shift.setter
     def shift(self, value):
-        if effective := Parser.parse_thres(value):
+        if effective := Parser.parse_other(value):
             self.deploys["shift"] = effective
 
     @block.setter
     def block(self, value):
-        if effective := Parser.parse_thres(value):
+        if effective := Parser.parse_other(value):
             self.deploys["block"] = effective
+
+    @crops.setter
+    def crops(self, value):
+        self.deploys["crops"] = Parser.parse_hooks(value)
+
+    @omits.setter
+    def omits(self, value):
+        self.deploys["omits"] = Parser.parse_hooks(value)
 
     def dump_deploy(self, deploy_file: str) -> None:
         for attr in ["crops", "omits"]:
@@ -247,6 +244,18 @@ class Deploy(object):
 
         information = [
             [
+                f"[bold {c[1]}]模型尺寸",
+                f"[bold {c[2]}]{self.model_shape}",
+                f"[bold][[bold {c[3]}]? , ?[/bold {c[3]}] ]",
+                f"[bold]宽 [bold yellow]{self.model_shape[0]}[/bold yellow] 高 [bold yellow]{self.model_shape[1]}[/bold yellow]",
+            ],
+            [
+                f"[bold {c[1]}]模型色彩",
+                f"[bold {c[2]}]{self.model_aisle}",
+                f"[bold][[bold {c[3]}]1 | 3[/bold {c[3]}] ]",
+                f"[bold][bold yellow]{'灰度' if self.model_aisle == 1 else '彩色'}[/bold yellow] 模型",
+            ],
+            [
                 f"[bold {c[1]}]独立控制",
                 f"[bold {c[2]}]{self.alone}",
                 f"[bold][[bold {c[3]}]T | F[/bold {c[3]}] ]",
@@ -277,7 +286,7 @@ class Deploy(object):
                 f"[bold]宽 [bold yellow]{self.shape[0]}[/bold yellow] 高 [bold yellow]{self.shape[1]}[/bold yellow]" if self.shape else f"[bold green]自动[/bold green]",
             ],
             [
-                f"[bold {c[1]}]压缩比例",
+                f"[bold {c[1]}]缩放比例",
                 f"[bold {c[2]}]{self.scale if self.scale else 'Auto'}",
                 f"[bold][[bold {c[3]}]0 , 1[/bold {c[3]}] ]",
                 f"[bold]压缩图片至 [bold yellow]{self.scale}[/bold yellow] 倍" if self.scale else f"[bold green]自动[/bold green]",
@@ -301,40 +310,16 @@ class Deploy(object):
                 f"[bold]持续时间 [bold yellow]{self.limit}[/bold yellow]" if self.limit else f"[bold green]自动[/bold green]",
             ],
             [
-                f"[bold {c[1]}]开始帧",
+                f"[bold {c[1]}]开始阶段",
                 f"[bold {c[2]}]{self.begin}",
                 f"[bold][[bold {c[3]}]? , ?[/bold {c[3]}] ]",
                 f"[bold]第 [bold yellow]{self.begin[0]}[/bold yellow] 个非稳态,第 [bold yellow]{self.begin[1]}[/bold yellow] 帧",
             ],
             [
-                f"[bold {c[1]}]结束帧",
+                f"[bold {c[1]}]结束阶段",
                 f"[bold {c[2]}]{self.final}",
                 f"[bold][[bold {c[3]}]? , ?[/bold {c[3]}] ]",
                 f"[bold]第 [bold yellow]{self.final[0]}[/bold yellow] 个非稳态,第 [bold yellow]{self.final[1]}[/bold yellow] 帧",
-            ],
-            [
-                f"[bold {c[1]}]获取区域",
-                f"[bold {c[2]}]{['!' for _ in range(len(self.crops))]}",
-                f"[bold][[bold {c[3]}]0 , 1[/bold {c[3]}] ]",
-                f"[bold]获取 [bold yellow]{len(self.crops)}[/bold yellow] 个区域的图像",
-            ],
-            [
-                f"[bold {c[1]}]忽略区域",
-                f"[bold {c[2]}]{['!' for _ in range(len(self.omits))]}",
-                f"[bold][[bold {c[3]}]0 , 1[/bold {c[3]}] ]",
-                f"[bold]忽略 [bold yellow]{len(self.omits)}[/bold yellow] 个区域的图像",
-            ],
-            [
-                f"[bold {c[1]}]模型尺寸",
-                f"[bold {c[2]}]{self.model_shape}",
-                f"[bold][[bold {c[3]}]? , ?[/bold {c[3]}] ]",
-                f"[bold]宽 [bold yellow]{self.model_shape[0]}[/bold yellow] 高 [bold yellow]{self.model_shape[1]}[/bold yellow]",
-            ],
-            [
-                f"[bold {c[1]}]模型色彩",
-                f"[bold {c[2]}]{self.model_aisle}",
-                f"[bold][[bold {c[3]}]1 | 3[/bold {c[3]}] ]",
-                f"[bold][bold yellow]{'灰度' if self.model_aisle == 1 else '彩色'}[/bold yellow] 模型",
             ],
             [
                 f"[bold {c[1]}]帧采样率",
@@ -355,10 +340,22 @@ class Deploy(object):
                 f"[bold]合并 [bold yellow]{self.shift}[/bold yellow] 个变化不大的稳定区间",
             ],
             [
-                f"[bold {c[1]}]图像分块",
+                f"[bold {c[1]}]立方体",
                 f"[bold {c[2]}]{self.block}",
                 f"[bold][[bold {c[3]}]1 , ?[/bold {c[3]}] ]",
-                f"[bold]每个图像切分为 [bold yellow]{self.block}[/bold yellow] 块",
+                f"[bold]每个图像分成 [bold yellow]{self.block}[/bold yellow] 块",
+            ],
+            [
+                f"[bold {c[1]}]获取区域",
+                f"[bold {c[2]}]{['!' for _ in range(len(self.crops))]}",
+                f"[bold][[bold {c[3]}]0 , 1[/bold {c[3]}] ]",
+                f"[bold]获取 [bold yellow]{len(self.crops)}[/bold yellow] 个区域的图像",
+            ],
+            [
+                f"[bold {c[1]}]忽略区域",
+                f"[bold {c[2]}]{['!' for _ in range(len(self.omits))]}",
+                f"[bold][[bold {c[3]}]0 , 1[/bold {c[3]}] ]",
+                f"[bold]忽略 [bold yellow]{len(self.omits)}[/bold yellow] 个区域的图像",
             ]
         ]
 
@@ -425,5 +422,4 @@ class Script(object):
 
 
 if __name__ == '__main__':
-    Deploy("/Users/acekeppel/PycharmProjects/NexaFlow/data/deploy.json").view_deploy()
     pass

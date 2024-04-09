@@ -67,10 +67,8 @@ if len(sys.argv) == 1:
 
 _attrs = [
     "alone", "group", "boost", "color",
-    "shape", "scale", "start", "close", "limit",
-    "begin", "final",
-    "crops", "omits",
-    "frate", "thres", "shift", "block"
+    "shape", "scale", "start", "close", "limit", "begin", "final",
+    "frate", "thres", "shift", "block", "crops", "omits"
 ]
 _lines = sys.argv[1:]
 
