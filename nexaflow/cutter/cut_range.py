@@ -122,8 +122,7 @@ class VideoCutRange(object):
         self, threshold: float = None, psnr_threshold: float = None, **_
     ) -> bool:
 
-        if not threshold:
-            threshold = const.DEFAULT_THRESHOLD
+        threshold = threshold if threshold else const.THRES
 
         res = np.mean(self.ssim) > threshold
         if res and psnr_threshold:
@@ -132,8 +131,8 @@ class VideoCutRange(object):
         return res
 
     def is_loop(self, threshold: float = None, **_) -> bool:
-        if not threshold:
-            threshold = const.DEFAULT_THRESHOLD
+        threshold = threshold if threshold else const.THRES
+
         operator = self.video.get_operator()
         start_frame = operator.get_frame_by_id(self.start)
         end_frame = operator.get_frame_by_id(self.end)

@@ -64,7 +64,16 @@ _initial_source = os.path.join(_universal, "framix.source")
 if len(sys.argv) == 1:
     Show.help_document()
     sys.exit(0)
+
+_attrs = [
+    "alone", "group", "boost", "color",
+    "shape", "scale", "start", "close", "limit",
+    "begin", "final",
+    "crops", "omits",
+    "frate", "thres", "shift", "block"
+]
 _lines = sys.argv[1:]
+
 
 try:
     import re
@@ -73,18 +82,19 @@ try:
     import time
     import numpy
     import random
+    import typing
     import asyncio
     import aiofiles
     import datetime
     from loguru import logger
-    from typing import Optional
     from rich.prompt import Prompt
     from engine.switch import Switch
     from engine.terminal import Terminal
     from frameflow.skills.manage import Manage
+    from frameflow.skills.parser import Parser
     from frameflow.skills.database import DataBase
     from frameflow.skills.configure import Deploy, Option, Script
-    from nexaflow import toolbox
+    from nexaflow import const, toolbox
     from nexaflow.report import Report
     from nexaflow.video import VideoObject, VideoFrame
     from nexaflow.cutter.cutter import VideoCutter
@@ -133,6 +143,7 @@ class Mission(object):
         *_, self.start, self.close, self.limit, self.begin, self.final, _, _ = args
         *_, self.crops, self.omits = args
 
+        self.attrs = kwargs["attrs"]
         self.lines = kwargs["lines"]
         self.atom_total_temp = kwargs["atom_total_temp"]
         self.view_total_temp = kwargs["view_total_temp"]
@@ -201,20 +212,16 @@ class Mission(object):
         shutil.copy(video_file, new_video_path)
 
         deploy = Deploy(self.initial_deploy)
-        deploy.alone = self.alone
-        deploy.group = self.group
-        deploy.boost = self.boost
-        deploy.color = self.color
-
-        for attr in ["shape", "scale", "start", "close", "limit", "begin", "final", "crops", "omits"]:
+        for attr in self.attrs:
             if any(line.startswith(f"--{attr}") for line in self.lines):
-                setattr(deploy, attr, getattr(self, attr))
+                logger.debug(f"Set {attr} = {(attribute := getattr(self, attr))}")
+                setattr(deploy, attr, attribute)
 
         loop = asyncio.get_event_loop()
 
         if self.quick:
             logger.info(f"Framix Analyzer: 快速模式 ...")
-            video_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
+            video_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
             if deploy.shape:
                 original_shape = loop.run_until_complete(
                     Switch.ask_video_larger(self.ffprobe, new_video_path)
@@ -236,17 +243,17 @@ class Mission(object):
                 Switch.ask_video_length(self.ffprobe, new_video_path)
             )
             vision_start, vision_close, vision_limit = loop.run_until_complete(
-                Switch.ask_examine_flip(
-                    deploy.parse_mills(deploy.start),
-                    deploy.parse_mills(deploy.close),
-                    deploy.parse_mills(deploy.limit),
+                Switch.ask_magic_point(
+                    Parser.parse_mills(deploy.start),
+                    Parser.parse_mills(deploy.close),
+                    Parser.parse_mills(deploy.limit),
                     duration
                 )
             )
-            vision_start = deploy.parse_times(vision_start)
-            vision_close = deploy.parse_times(vision_close)
-            vision_limit = deploy.parse_times(vision_limit)
-            logger.info(f"视频时长: [{duration}] [{deploy.parse_times(duration)}]")
+            vision_start = Parser.parse_times(vision_start)
+            vision_close = Parser.parse_times(vision_close)
+            vision_limit = Parser.parse_times(vision_limit)
+            logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}]")
             logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
 
             loop.run_until_complete(
@@ -277,7 +284,7 @@ class Mission(object):
 
         elif self.keras and not self.basic:
             logger.info(f"Framix Analyzer: 智能模式 ...")
-            kc = KerasClassifier(data_size=deploy.model_size, aisle=deploy.aisle)
+            kc = KerasClassifier(data_size=deploy.model_shape, aisle=deploy.model_aisle)
             try:
                 kc.load_model(self.initial_models)
             except ValueError as err:
@@ -288,8 +295,10 @@ class Mission(object):
             kc = None
 
         futures = loop.run_until_complete(
-            Core.ask_analyzer(new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path, ffmpeg=self.ffmpeg,
-                              ffprobe=self.ffprobe)
+            Core.ask_analyzer(
+                new_video_path, deploy, kc,
+                reporter.frame_path, reporter.extra_path, ffmpeg=self.ffmpeg, ffprobe=self.ffprobe
+            )
         )
 
         if futures is None:
@@ -332,14 +341,10 @@ class Mission(object):
         reporter = Report(self.initial_report)
 
         deploy = Deploy(self.initial_deploy)
-        deploy.alone = self.alone
-        deploy.group = self.group
-        deploy.boost = self.boost
-        deploy.color = self.color
-
-        for attr in ["shape", "scale", "start", "close", "limit", "begin", "final", "crops", "omits"]:
+        for attr in self.attrs:
             if any(line.startswith(f"--{attr}") for line in self.lines):
-                setattr(deploy, attr, getattr(self, attr))
+                logger.debug(f"Set {attr} = {(attribute := getattr(self, attr))}")
+                setattr(deploy, attr, attribute)
 
         loop = asyncio.get_event_loop()
 
@@ -352,7 +357,7 @@ class Mission(object):
                     shutil.copy(path, reporter.video_path)
                     new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
 
-                    video_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
+                    video_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
                     if deploy.shape:
                         original_shape = loop.run_until_complete(
                             Switch.ask_video_larger(self.ffprobe, new_video_path)
@@ -374,17 +379,17 @@ class Mission(object):
                         Switch.ask_video_length(self.ffprobe, new_video_path)
                     )
                     vision_start, vision_close, vision_limit = loop.run_until_complete(
-                        Switch.ask_examine_flip(
-                            deploy.parse_mills(deploy.start),
-                            deploy.parse_mills(deploy.close),
-                            deploy.parse_mills(deploy.limit),
+                        Switch.ask_magic_point(
+                            Parser.parse_mills(deploy.start),
+                            Parser.parse_mills(deploy.close),
+                            Parser.parse_mills(deploy.limit),
                             duration
                         )
                     )
-                    vision_start = deploy.parse_times(vision_start)
-                    vision_close = deploy.parse_times(vision_close)
-                    vision_limit = deploy.parse_times(vision_limit)
-                    logger.info(f"视频时长: [{duration}] [{deploy.parse_times(duration)}]")
+                    vision_start = Parser.parse_times(vision_start)
+                    vision_close = Parser.parse_times(vision_close)
+                    vision_limit = Parser.parse_times(vision_limit)
+                    logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}]")
                     logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
 
                     loop.run_until_complete(
@@ -415,7 +420,7 @@ class Mission(object):
 
         elif self.keras and not self.basic:
             logger.info(f"Framix Analyzer: 智能模式 ...")
-            kc = KerasClassifier(data_size=deploy.model_size, aisle=deploy.aisle)
+            kc = KerasClassifier(data_size=deploy.model_shape, aisle=deploy.model_aisle)
             try:
                 kc.load_model(self.initial_models)
             except ValueError as err:
@@ -489,17 +494,13 @@ class Mission(object):
             os.makedirs(reporter.query_path, exist_ok=True)
 
         deploy = Deploy(self.initial_deploy)
-        deploy.alone = self.alone
-        deploy.group = self.group
-        deploy.boost = self.boost
-        deploy.color = self.color
-
-        for attr in ["shape", "scale", "start", "close", "limit", "begin", "final", "crops", "omits"]:
+        for attr in self.attrs:
             if any(line.startswith(f"--{attr}") for line in self.lines):
-                setattr(deploy, attr, getattr(self, attr))
+                logger.debug(f"Set {attr} = {(attribute := getattr(self, attr))}")
+                setattr(deploy, attr, attribute)
 
         video_temp_file = os.path.join(
-            reporter.query_path, f"tmp_fps{deploy.fps}.mp4"
+            reporter.query_path, f"tmp_fps{deploy.frate}.mp4"
         )
 
         loop = asyncio.get_event_loop()
@@ -507,22 +508,22 @@ class Mission(object):
             Switch.ask_video_length(self.ffprobe, video_file)
         )
         vision_start, vision_close, vision_limit = loop.run_until_complete(
-            Switch.ask_examine_flip(
-                deploy.parse_mills(deploy.start),
-                deploy.parse_mills(deploy.close),
-                deploy.parse_mills(deploy.limit),
+            Switch.ask_magic_point(
+                Parser.parse_mills(deploy.start),
+                Parser.parse_mills(deploy.close),
+                Parser.parse_mills(deploy.limit),
                 duration
             )
         )
-        vision_start = deploy.parse_times(vision_start)
-        vision_close = deploy.parse_times(vision_close)
-        vision_limit = deploy.parse_times(vision_limit)
-        logger.info(f"视频时长: [{duration}] [{deploy.parse_times(duration)}]")
+        vision_start = Parser.parse_times(vision_start)
+        vision_close = Parser.parse_times(vision_close)
+        vision_limit = Parser.parse_times(vision_limit)
+        logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}]")
         logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
 
         asyncio.run(
             Switch.ask_video_change(
-                self.ffmpeg, deploy.fps, video_file, video_temp_file,
+                self.ffmpeg, deploy.frate, video_file, video_temp_file,
                 start=vision_start, close=vision_close, limit=vision_limit
             )
         )
@@ -535,12 +536,10 @@ class Mission(object):
 
         cutter = VideoCutter()
         res = cutter.cut(
-            video=video,
-            block=deploy.block
+            video=video, block=deploy.block
         )
         stable, unstable = res.get_range(
-            threshold=deploy.threshold,
-            offset=deploy.offset
+            threshold=deploy.thres, offset=deploy.shift
         )
 
         if deploy.shape:
@@ -923,7 +922,7 @@ class Mission(object):
             if self.quick:
                 logger.debug(f"Framix Analyzer: 快速模式 ...")
                 video_filter_list = []
-                default_filter = [f"fps={deploy.fps}"] if deploy.color else [f"fps={deploy.fps}", "format=gray"]
+                default_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
                 if deploy.shape:
                     original_shape_list = await asyncio.gather(
                         *(Switch.ask_video_larger(self.ffprobe, temp_video) for temp_video, *_ in task_list)
@@ -955,10 +954,10 @@ class Mission(object):
                     *(Switch.ask_video_length(self.ffprobe, temp_video) for temp_video, *_ in task_list)
                 )
                 duration_result_list = await asyncio.gather(
-                    *(Switch.ask_examine_flip(
-                        deploy.parse_mills(deploy.start),
-                        deploy.parse_mills(deploy.close),
-                        deploy.parse_mills(deploy.limit),
+                    *(Switch.ask_magic_point(
+                        Parser.parse_mills(deploy.start),
+                        Parser.parse_mills(deploy.close),
+                        Parser.parse_mills(deploy.limit),
                         duration
                     ) for duration in duration_list)
                 )
@@ -967,12 +966,12 @@ class Mission(object):
                 for (vision_start, vision_close, vision_limit), duration in zip(duration_result_list, duration_list):
                     all_duration.append(
                         (
-                            vision_start := deploy.parse_times(vision_start),
-                            vision_close := deploy.parse_times(vision_close),
-                            vision_limit := deploy.parse_times(vision_limit)
+                            vision_start := Parser.parse_times(vision_start),
+                            vision_close := Parser.parse_times(vision_close),
+                            vision_limit := Parser.parse_times(vision_limit)
                         )
                     )
-                    logger.info(f"视频时长: [{duration}] [{deploy.parse_times(duration)}]")
+                    logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}]")
                     logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
 
                 await asyncio.gather(
@@ -1065,7 +1064,7 @@ class Mission(object):
 
                 logger.info(f"{os.path.basename(video_src)} {duration} [{start_time_str} - {end_time_str}]")
                 video_dst = os.path.join(
-                    os.path.dirname(video_src), f"tailor_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
+                    os.path.dirname(video_src), f"tailor_fps{deploy.frate}_{random.randint(100, 999)}.mp4"
                 )
 
                 await Switch.ask_video_tailor(
@@ -1177,7 +1176,7 @@ class Mission(object):
         reporter = Report(self.initial_report)
 
         if self.keras and not self.quick and not self.basic:
-            kc = KerasClassifier(data_size=deploy.model_size, aisle=deploy.aisle)
+            kc = KerasClassifier(data_size=deploy.model_shape, aisle=deploy.model_aisle)
             try:
                 kc.load_model(self.initial_models)
             except ValueError as err:
@@ -1295,7 +1294,7 @@ class Core(object):
     @staticmethod
     async def ask_analyzer(
             vision_file: str, deploy: "Deploy", kc: "KerasClassifier", *args, **kwargs
-    ) -> Optional["Review"]:
+    ) -> typing.Optional["Review"]:
 
         frame_path, extra_path, *_ = args
         ffmpeg = kwargs.get("ffmpeg", "ffmpeg")
@@ -1322,24 +1321,24 @@ class Core(object):
         async def frame_flip():
             change_record = os.path.join(
                 os.path.dirname(vision_file),
-                f"screen_fps{deploy.fps}_{random.randint(100, 999)}.mp4"
+                f"screen_fps{deploy.frate}_{random.randint(100, 999)}.mp4"
             )
 
             duration = await Switch.ask_video_length(ffprobe, vision_file)
-            vision_start, vision_close, vision_limit = await Switch.ask_examine_flip(
-                deploy.parse_mills(deploy.start),
-                deploy.parse_mills(deploy.close),
-                deploy.parse_mills(deploy.limit),
+            vision_start, vision_close, vision_limit = await Switch.ask_magic_point(
+                Parser.parse_mills(deploy.start),
+                Parser.parse_mills(deploy.close),
+                Parser.parse_mills(deploy.limit),
                 duration
             )
-            vision_start = deploy.parse_times(vision_start)
-            vision_close = deploy.parse_times(vision_close)
-            vision_limit = deploy.parse_times(vision_limit)
-            logger.info(f"视频时长: [{duration}] [{deploy.parse_times(duration)}]")
+            vision_start = Parser.parse_times(vision_start)
+            vision_close = Parser.parse_times(vision_close)
+            vision_limit = Parser.parse_times(vision_limit)
+            logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}]")
             logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
 
             await Switch.ask_video_change(
-                ffmpeg, deploy.fps, vision_file, change_record,
+                ffmpeg, deploy.frate, vision_file, change_record,
                 start=vision_start, close=vision_close, limit=vision_limit
             )
             logger.info(f"视频转换完成: {Path(change_record).name}")
@@ -1400,7 +1399,7 @@ class Core(object):
             )
 
             stable, unstable = res.get_range(
-                threshold=deploy.threshold, offset=deploy.offset
+                threshold=deploy.thres, offset=deploy.shift
             )
 
             file_list = os.listdir(extra_path)
@@ -1590,31 +1589,26 @@ async def ask_get_template(template_path: str) -> str | Exception:
     return template_file
 
 
-async def ask_main():
-    deploy = Deploy(_mission.initial_deploy)
-    deploy.alone = _mission.alone
-    deploy.group = _mission.group
-    deploy.boost = _mission.boost
-    deploy.color = _mission.color
+async def ask_main(mission, cmd_lines) -> None:
+    deploy = Deploy(mission.initial_deploy)
+    for attr in mission.attrs:
+        if any(line.startswith(f"--{attr}") for line in mission.lines):
+            logger.debug(f"Set {attr} = {(attribute := getattr(mission, attr))}")
+            setattr(deploy, attr, attribute)
 
-    for attr in ["shape", "scale", "start", "close", "limit", "begin", "final", "crops", "omits"]:
-        if any(line.startswith(f"--{attr}") for line in _mission.lines):
-            setattr(deploy, attr, getattr(_mission, attr))
-
-    if _cmd_lines.flick:
-        await _mission.analysis(deploy)
-    elif _cmd_lines.paint:
-        await _mission.painting(deploy)
-    elif _cmd_lines.union:
-        await _mission.combines_view(_cmd_lines.union, _mission.group)
-    elif _cmd_lines.merge:
-        await _mission.combines_main(_cmd_lines.merge, _mission.group)
+    if cmd_lines.flick:
+        await mission.analysis(deploy)
+    elif cmd_lines.paint:
+        await mission.painting(deploy)
+    elif cmd_lines.union:
+        await _mission.combines_view(cmd_lines.union, mission.group)
+    elif cmd_lines.merge:
+        await _mission.combines_main(cmd_lines.merge, mission.group)
     else:
         Show.help_document()
 
 
 if __name__ == '__main__':
-    from frameflow.skills.parser import Parser
     _cmd_lines = Parser.parse_cmd()
 
     from engine.activate import active
@@ -1721,7 +1715,7 @@ if __name__ == '__main__':
     _mission = Mission(
         _carry, _fully, _alone, _group, _quick, _basic, _keras,
         _boost, _color, _shape, _scale, _start, _close, _limit, _begin, _final, _crops, _omits,
-        lines=_lines,
+        attrs=_attrs, lines=_lines,
         atom_total_temp=_atom_total_temp,
         view_total_temp=_view_total_temp,
         main_total_temp=_main_total_temp,
@@ -1795,6 +1789,8 @@ if __name__ == '__main__':
     # --flick --paint --union --merge ==================================================================================
     else:
         try:
-            _loop.run_until_complete(ask_main())
+            _loop.run_until_complete(
+                ask_main(_mission, _cmd_lines)
+            )
         except KeyboardInterrupt:
             sys.exit(0)

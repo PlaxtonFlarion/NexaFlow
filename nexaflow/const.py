@@ -15,7 +15,11 @@ BACKGROUND_COLOR = r"#fffaf4"
 UNSTABLE_FLAG = r"-1"
 UNKNOWN_STAGE_FLAG = r"-2"
 IGNORE_FLAG = r"-3"
-DEFAULT_THRESHOLD = 0.98
+
+FRATE = 60
+THRES = 0.97
+SHIFT = 3
+BLOCK = 6
 
 NEXA = os.path.dirname(os.path.abspath(__file__))
 WORK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

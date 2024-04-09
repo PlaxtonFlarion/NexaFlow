@@ -102,7 +102,7 @@ class Switch(object):
         return w, h
 
     @staticmethod
-    async def ask_examine_flip(
+    async def ask_magic_point(
             start: Optional[int | float],
             close: Optional[int | float],
             limit: Optional[int | float],

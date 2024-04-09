@@ -48,11 +48,11 @@ class Alynex(object):
             self,
             report: Report,
             model_file: str,
-            model_size: tuple = (256, 256),
-            aisle: int = 1
+            model_shape: tuple = (256, 256),
+            model_aisle: int = 1
     ):
 
-        self.__kc = KerasClassifier(data_size=model_size, aisle=aisle)
+        self.__kc = KerasClassifier(data_size=model_shape, aisle=model_aisle)
         self.__kc.load_model(model_file)
         self.__cliper: list["BaseHook"] = []
         self.__report: Optional["Report"] = report
@@ -110,17 +110,28 @@ class Alynex(object):
         hook = OmitHook((y_size, x_size), (y, x))
         self.__cliper.append(hook)
 
-    def analyzer(self, template_file: str, boost: bool = True, color: bool = True, **kwargs) -> Optional["Review"]:
-        fps = kwargs.get("fps", 60)
-        block = kwargs.get("block", 6)
-        threshold = kwargs.get("threshold", 0.97)
-        offset = kwargs.get("offset", 3)
-        boost = kwargs.get("boost", True)
-        color = kwargs.get("color", True)
+    def analyzer(self, template_file: str, **kwargs) -> Optional["Review"]:
+        alone = kwargs.get("alone", False)
+        group = kwargs.get("group", False)
+        boost = kwargs.get("boost", False)
+        color = kwargs.get("color", False)
+
         shape = kwargs.get("shape", None)
         scale = kwargs.get("scale", None)
+        start = kwargs.get("start", None)
+        close = kwargs.get("close", None)
+        limit = kwargs.get("limit", None)
+
         begin = kwargs.get("begin", (0, 1))
         final = kwargs.get("final", (-1, -1))
+
+        crops = kwargs.get("crops", [])
+        omits = kwargs.get("omits", [])
+
+        frate = kwargs.get("fps", 60)
+        thres = kwargs.get("threshold", 0.97)
+        shift = kwargs.get("offset", 3)
+        block = kwargs.get("block", 6)
 
         def validate():
             screen_tag, screen_cap = None, None
@@ -148,10 +159,10 @@ class Alynex(object):
         def frame_flip():
             change_record = os.path.join(
                 os.path.dirname(screen_record),
-                f"screen_fps{fps}_{random.randint(100, 999)}.mp4"
+                f"screen_fps{frate}_{random.randint(100, 999)}.mp4"
             )
             asyncio.run(
-                self.switch.ask_video_change("ffmpeg", fps, screen_record, change_record)
+                self.switch.ask_video_change("ffmpeg", frate, screen_record, change_record)
             )
             logger.info(f"视频转换完成: {Path(change_record).name}")
             os.remove(screen_record)
@@ -197,7 +208,7 @@ class Alynex(object):
             )
 
             stable, unstable = res.get_range(
-                threshold=threshold, offset=offset
+                threshold=thres, offset=shift
             )
 
             file_list = os.listdir(self.report.extra_path)
