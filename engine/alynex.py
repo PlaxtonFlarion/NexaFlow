@@ -110,7 +110,7 @@ class Alynex(object):
         hook = OmitHook((y_size, x_size), (y, x))
         self.__cliper.append(hook)
 
-    def analyzer(self, alien: str, boost: bool = True, color: bool = True, **kwargs) -> Optional["Review"]:
+    def analyzer(self, template_file: str, boost: bool = True, color: bool = True, **kwargs) -> Optional["Review"]:
         fps = kwargs.get("fps", 60)
         block = kwargs.get("block", 6)
         threshold = kwargs.get("threshold", 0.97)
@@ -294,7 +294,7 @@ class Alynex(object):
             original_inform = self.report.draw(
                 classifier_result=classify,
                 proto_path=self.report.proto_path,
-                template_file=self.report.get_template(alien)
+                template_file=self.report.get_template(template_file)
             )
             result = {
                 "total_path": self.report.total_path,

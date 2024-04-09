@@ -37,7 +37,7 @@ def multi_audio_task():
             device.force_filter(application)
             device.start_app(activity)
             alynex.crop_hook(0, 0.2, 1, 0.8)
-            alynex.analyzer(const.ALIEN)
+            alynex.analyzer(const.TEMPLATE_ATOM_TOTAL)
         alynex.report.create_report(const.TEMPLATE_MAIN)
     alynex.report.create_total_report(const.TEMPLATE_MAIN_TOTAL)
     print(f"Total Time Cost: {(time.time() - start_time):.2f} 秒")

@@ -37,7 +37,7 @@ class TestPlan(object):
             self.device.start_app(self.activity)
 
             self.alynex.crop_hook(0, 0.2, 1, 0.8)
-            self.alynex.analyzer(const.ALIEN)
+            self.alynex.analyzer(const.TEMPLATE_ATOM_TOTAL)
         self.alynex.report.create_report(const.TEMPLATE_MAIN)
 
     def test_02(self):
@@ -46,7 +46,7 @@ class TestPlan(object):
         for i in range(1):
             self.alynex.report.query = f"{i + 4}_{query}"
             self.alynex.crop_hook(0, 0.1, 1, 0.9)
-            self.alynex.analyzer(const.ALIEN)
+            self.alynex.analyzer(const.TEMPLATE_ATOM_TOTAL)
         self.alynex.report.create_report(const.TEMPLATE_MAIN)
 
     def __enter__(self):

@@ -25,7 +25,7 @@ ARRAY = os.path.join(WORK, "data")
 CREDO = os.path.join(WORK, "report")
 MODEL = os.path.join(WORK, "archivix", "molds", "Keras_Gray_W256_H256_00000.h5")
 TEMPLATE = os.path.join(NEXA, "template")
-ALIEN = os.path.join(NEXA, "template", "alien.html")
+TEMPLATE_ATOM_TOTAL = os.path.join(NEXA, "template", "template_atom_total.html")
 TEMPLATE_MAIN_TOTAL = os.path.join(NEXA, "template", "template_main_total.html")
 TEMPLATE_MAIN = os.path.join(NEXA, "template", "template_main.html")
 

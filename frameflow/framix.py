@@ -52,7 +52,7 @@ for _env in [Path(_adb).name, Path(_ffmpeg).name, Path(_ffprobe).name, Path(_scr
         Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
         sys.exit(1)
 
-_alien = os.path.join(_work_path, "archivix", "pages", "alien.html")
+_atom_total_temp = os.path.join(_work_path, "archivix", "pages", "template_atom_total.html")
 _view_total_temp = os.path.join(_work_path, "archivix", "pages", "template_view_total.html")
 _main_total_temp = os.path.join(_work_path, "archivix", "pages", "template_main_total.html")
 _view_temp = os.path.join(_work_path, "archivix", "pages", "template_view.html")
@@ -134,7 +134,7 @@ class Mission(object):
         *_, self.crops, self.omits = args
 
         self.lines = kwargs["lines"]
-        self.alien = kwargs["alien"]
+        self.atom_total_temp = kwargs["atom_total_temp"]
         self.view_total_temp = kwargs["view_total_temp"]
         self.main_total_temp = kwargs["main_total_temp"]
         self.view_temp = kwargs["view_temp"]
@@ -308,7 +308,7 @@ class Mission(object):
             original_inform = reporter.draw(
                 classifier_result=classifier,
                 proto_path=reporter.proto_path,
-                template_file=loop.run_until_complete(ask_get_template(self.alien)),
+                template_file=loop.run_until_complete(ask_get_template(self.atom_total_temp))
             )
             result["extra"] = Path(reporter.extra_path).name
             result["proto"] = Path(original_inform).name
@@ -452,7 +452,7 @@ class Mission(object):
                     original_inform = reporter.draw(
                         classifier_result=classifier,
                         proto_path=reporter.proto_path,
-                        template_file=loop.run_until_complete(ask_get_template(self.alien)),
+                        template_file=loop.run_until_complete(ask_get_template(self.atom_total_temp))
                     )
                     result["extra"] = Path(reporter.extra_path).name
                     result["proto"] = Path(original_inform).name
@@ -1022,7 +1022,7 @@ class Mission(object):
                     }
 
                     if classifier:
-                        template_file = await ask_get_template(self.alien)
+                        template_file = await ask_get_template(self.atom_total_temp)
                         original_inform = reporter.draw(
                             classifier_result=classifier,
                             proto_path=proto_path,
@@ -1631,7 +1631,7 @@ if __name__ == '__main__':
     logger.debug(f"工具路径: {_tools_path}\n")
 
     logger.debug(f"* Template * {'=' * 30}")
-    for _tmp in [_alien, _view_total_temp, _main_total_temp, _view_temp, _main_temp]:
+    for _tmp in [_atom_total_temp, _view_total_temp, _main_total_temp, _view_temp, _main_temp]:
         logger.debug(f"Html-Template: {_tmp}")
     logger.debug(f"* Template * {'=' * 30}\n")
 
@@ -1722,7 +1722,7 @@ if __name__ == '__main__':
         _carry, _fully, _alone, _group, _quick, _basic, _keras,
         _boost, _color, _shape, _scale, _start, _close, _limit, _begin, _final, _crops, _omits,
         lines=_lines,
-        alien=_alien,
+        atom_total_temp=_atom_total_temp,
         view_total_temp=_view_total_temp,
         main_total_temp=_main_total_temp,
         view_temp=_view_temp,
