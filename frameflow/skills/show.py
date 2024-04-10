@@ -85,14 +85,16 @@ class Show(object):
         table_major.add_column("功能说明", justify="center", width=22)
 
         major_information = [
-            ["[bold #FFDC00]--flick", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #D7FF00]支持", "[bold #39CCCC]循环模式"],
-            ["[bold #FFDC00]--paint", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #D7FF00]支持", "[bold #39CCCC]绘制分割线条"],
             ["[bold #FFDC00]--video", "[bold #7FDBFF]视频文件", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]分析视频文件"],
-            ["[bold #FFDC00]--stack", "[bold #7FDBFF]视频集合", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]分析视频文件集合"],
+            ["[bold #FFDC00]--stack", "[bold #7FDBFF]视频集合", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]分析视频集合"],
+            ["[bold #FFDC00]--train", "[bold #7FDBFF]视频文件", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]训练模型"],
+            ["[bold #FFDC00]--build", "[bold #7FDBFF]图片集合", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]编译模型"],
+            ["[bold #FFDC00]--flick", "[bold #7FDBFF]命令参数", "[bold #8A8A8A]一次", "[bold #D7FF00]支持", "[bold #39CCCC]循环运行模式"],
+            ["[bold #FFDC00]--carry", "[bold #7FDBFF]脚本名称", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]运行指定脚本"],
+            ["[bold #FFDC00]--fully", "[bold #7FDBFF]文件路径", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]运行全部脚本"],
+            ["[bold #FFDC00]--paint", "[bold #7FDBFF]命令参数", "[bold #8A8A8A]一次", "[bold #D7FF00]支持", "[bold #39CCCC]绘制分割线条"],
             ["[bold #FFDC00]--union", "[bold #7FDBFF]报告集合", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]聚合视频帧报告"],
-            ["[bold #FFDC00]--merge", "[bold #7FDBFF]报告集合", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]聚合时间戳报告"],
-            ["[bold #FFDC00]--train", "[bold #7FDBFF]视频文件", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]归类图片文件"],
-            ["[bold #FFDC00]--build", "[bold #7FDBFF]图片集合", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]训练模型文件"]
+            ["[bold #FFDC00]--merge", "[bold #7FDBFF]报告集合", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]聚合时间戳报告"]
         ]
 
         for major in major_information:
@@ -112,8 +114,6 @@ class Show(object):
         table_minor.add_column("功能说明", justify="center", width=22)
 
         minor_information = [
-            ["[bold #FFDC00]--carry", "[bold #7FDBFF]名称", "[bold #FFAFAF]多次", "[bold #AFAFD7]关闭", "[bold #39CCCC]运行指定脚本"],
-            ["[bold #FFDC00]--fully", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]运行全部脚本"],
             ["[bold #FFDC00]--quick", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]快速模式"],
             ["[bold #FFDC00]--basic", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]基础模式"],
             ["[bold #FFDC00]--keras", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]智能模式"],

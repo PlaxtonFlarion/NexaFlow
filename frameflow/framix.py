@@ -57,6 +57,13 @@ _view_total_temp = os.path.join(_work_path, "archivix", "pages", "template_view_
 _main_total_temp = os.path.join(_work_path, "archivix", "pages", "template_main_total.html")
 _view_temp = os.path.join(_work_path, "archivix", "pages", "template_view.html")
 _main_temp = os.path.join(_work_path, "archivix", "pages", "template_main.html")
+
+for _t in (_all_temps := [_atom_total_temp, _view_total_temp, _main_total_temp, _view_temp, _main_temp]):
+    if not os.path.isfile(_t):
+        Show.console.print(f"[bold]Missing [bold red]{_t}[/bold red] html template ...[/bold]")
+        Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
+        sys.exit(1)
+
 _initial_models = os.path.join(_work_path, "archivix", "molds", "Keras_Gray_W256_H256_00000.h5")
 _initial_report = os.path.join(_universal, "framix.report")
 _initial_source = os.path.join(_universal, "framix.source")
@@ -72,7 +79,6 @@ _attrs = [
 ]
 _lines = sys.argv[1:]
 
-
 try:
     import re
     import cv2
@@ -81,6 +87,7 @@ try:
     import numpy
     import random
     import typing
+    import inspect
     import asyncio
     import aiofiles
     import datetime
@@ -98,7 +105,6 @@ try:
     from nexaflow.cutter.cutter import VideoCutter
     from nexaflow.hook import CompressHook, FrameSaveHook
     from nexaflow.hook import PaintCropHook, PaintOmitHook
-    from nexaflow.classifier.base import ClassifierResult
     from nexaflow.classifier.keras_classifier import KerasClassifier
     from nexaflow.classifier.framix_classifier import FramixClassifier
 except (RuntimeError, ModuleNotFoundError) as error:
@@ -111,7 +117,7 @@ class Review(object):
 
     data = tuple()
 
-    def __init__(self, start: int, end: int, cost: float, classifier: "ClassifierResult" = None):
+    def __init__(self, start: int, end: int, cost: float, classifier=None):
         self.data = start, end, cost, classifier
 
     def __str__(self):
@@ -127,19 +133,15 @@ class Mission(object):
     COMPRESS: int | float = 0.4
 
     def __init__(
-            self,
-            carry: list[str],
-            fully: bool, alone: bool, group: bool,
-            quick: bool, basic: bool, keras: bool,
-            *args, **kwargs
+            self, carry: list[str], fully: list[str], *args, **kwargs
     ):
 
-        self.carry = carry
-        self.fully, self.alone, self.group = fully, alone, group
-        self.quick, self.basic, self.keras = quick, basic, keras
-        self.boost, self.color, self.shape, self.scale, *_ = args
-        *_, self.start, self.close, self.limit, self.begin, self.final, _, _ = args
-        *_, self.crops, self.omits = args
+        self.carry, self.fully = carry, fully
+        self.quick, self.basic, self.keras, *_ = args
+        _, _, _, self.alone, self.group, self.boost, self.color, *_ = args
+        _, _, _, _, _, _, _, self.shape, self.scale, self.start, self.close, self.limit, *_ = args
+        *_, self.begin, self.final, _, _, _, _, _, _ = args
+        *_, self.frate, self.thres, self.shift, self.block, self.crops, self.omits = args
 
         self.attrs = kwargs["attrs"]
         self.lines = kwargs["lines"]
@@ -177,7 +179,7 @@ class Mission(object):
         ]
 
     @staticmethod
-    def persistent(r: Report, c: ClassifierResult, start: int, end: int, cost: float):
+    def persistent(r, c, start: int, end: int, cost: float):
         with DataBase(os.path.join(r.reset_path, "Framix_Data.db")) as database:
             if c:
                 column_list = [
@@ -312,10 +314,17 @@ class Mission(object):
         }
 
         if classifier:
+            if isinstance(
+                    template_file := loop.run_until_complete(
+                        ask_get_template(self.atom_total_temp)
+                    ), Exception
+            ):
+                return Show.console.print(f"[bold red]{template_file}")
+
             original_inform = reporter.draw(
                 classifier_result=classifier,
                 proto_path=reporter.proto_path,
-                template_file=loop.run_until_complete(ask_get_template(self.atom_total_temp))
+                template_file=template_file
             )
             result["extra"] = Path(reporter.extra_path).name
             result["proto"] = Path(original_inform).name
@@ -436,8 +445,10 @@ class Mission(object):
                 new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
 
                 futures = loop.run_until_complete(
-                    Core.ask_analyzer(new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path,
-                                      ffmpeg=self.ffmpeg, ffprobe=self.ffprobe)
+                    Core.ask_analyzer(
+                        new_video_path, deploy, kc,
+                        reporter.frame_path, reporter.extra_path, ffmpeg=self.ffmpeg, ffprobe=self.ffprobe
+                    )
                 )
                 if futures is None:
                     continue
@@ -452,10 +463,17 @@ class Mission(object):
                 }
 
                 if classifier:
+                    if isinstance(
+                            template_file := loop.run_until_complete(
+                                ask_get_template(self.atom_total_temp)
+                            ), Exception
+                    ):
+                        return Show.console.print(f"[bold red]{template_file}")
+
                     original_inform = reporter.draw(
                         classifier_result=classifier,
                         proto_path=reporter.proto_path,
-                        template_file=loop.run_until_complete(ask_get_template(self.atom_total_temp))
+                        template_file=template_file
                     )
                     result["extra"] = Path(reporter.extra_path).name
                     result["proto"] = Path(original_inform).name
@@ -639,7 +657,7 @@ class Mission(object):
             if isinstance(e, Exception):
                 logger.error(e)
 
-    async def painting(self, deploy: Deploy):
+    async def painting(self, deploy):
 
         import tempfile
         import PIL.Image
@@ -787,7 +805,7 @@ class Mission(object):
             else:
                 Show.console.print(f"[bold][bold red]没有该选项,请重新输入[/bold red] ...[/bold]\n")
 
-    async def analysis(self, deploy: Deploy) -> bool:
+    async def analysis(self, deploy) -> typing.Optional[bool]:
 
         device_events = {}
         all_used_event = asyncio.Event()
@@ -915,7 +933,7 @@ class Mission(object):
 
         async def analysis_tactics():
             if len(task_list) == 0:
-                return False
+                return None
 
             if self.quick:
                 logger.debug(f"Framix Analyzer: 快速模式 ...")
@@ -999,8 +1017,10 @@ class Mission(object):
             elif self.basic or self.keras:
                 logger.debug(f"Framix Analyzer: {'智能模式' if kc else '基础模式'} ...")
                 futures = await asyncio.gather(
-                    *(Core.ask_analyzer(temp_video, deploy, kc, frame_path, extra_path, ffmpeg=self.ffmpeg,
-                                        ffprobe=self.ffprobe) for temp_video, *_, frame_path, extra_path, _ in task_list)
+                    *(Core.ask_analyzer(
+                        temp_video, deploy, kc,
+                        frame_path, extra_path, ffmpeg=self.ffmpeg, ffprobe=self.ffprobe
+                    ) for temp_video, *_, frame_path, extra_path, _ in task_list)
                 )
 
                 for future, todo in zip(futures, task_list):
@@ -1019,7 +1039,11 @@ class Mission(object):
                     }
 
                     if classifier:
-                        template_file = await ask_get_template(self.atom_total_temp)
+                        if isinstance(
+                                template_file := await ask_get_template(self.atom_total_temp), Exception
+                        ):
+                            return Show.console.print(f"[bold red]{template_file}")
+
                         original_inform = reporter.draw(
                             classifier_result=classifier,
                             proto_path=proto_path,
@@ -1034,8 +1058,7 @@ class Mission(object):
                     self.persistent(reporter, classifier, start, end, cost)
 
             else:
-                logger.debug(f"Framix Analyzer: 录制模式 ...")
-                return False
+                return logger.debug(f"Framix Analyzer: 录制模式 ...")
 
         async def device_mode_view():
             Show.console.print(f"[bold]<Link> <{'单设备模式' if len(device_list) == 1 else '多设备模式'}>")
@@ -1147,18 +1170,30 @@ class Mission(object):
             return exec_dict
 
         async def exec_commands(device):
+
+            async def dynamic():
+                logger.info(f"{device.serial} {device_method.__name__} {args}")
+                try:
+                    if inspect.iscoroutinefunction(device_method):
+                        await device_method(*args) if args else await device_method()
+                    else:
+                        await asyncio.to_thread(
+                            device_method, *args
+                        ) if args else await asyncio.to_thread(device_method)
+                except Exception as e:
+                    logger.error(f"{e}")
+
             for method in value["actions"]:
                 if cmds := method["command"]:
                     args = method["args"]
                     if callable(device_method := getattr(device, cmds, None)):
-                        logger.info(f"{device.serial} {device_method.__name__} {args}")
-                        await device_method(*args) if args else await device_method()
+                        await dynamic()
                     elif callable(device_method := getattr(player, cmds, None)):
                         if all_used_event.is_set():
                             continue
-                        logger.info(f"{device.serial} {device_method.__name__} {args}")
-                        device_method(*args) if args else device_method()
-                        all_used_event.set()
+                        await dynamic()
+                        if cmds == "play_audio":
+                            all_used_event.set()
                     else:
                         logger.warning(f"{device.serial} {cmds} No Such Method ...")
                 else:
@@ -1184,115 +1219,116 @@ class Mission(object):
             kc = None
         # Initialization ===============================================================================================
 
-        # Fully Loop ===================================================================================================
-        if self.fully:
-            script_data = await load_commands(self.initial_script)
-            if isinstance(script_data, Exception):
-                logger.error(f"{script_data}")
-                return False
+        # Flick Loop ===================================================================================================
+        if self.quick:
+            const_title = f"{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
+            reporter.title = f"{input_title}_{const_title}"
+            timer_mode = 5
+            while True:
+                try:
+                    await device_mode_view()
+                    start_tips = f"<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/bold #D7FF5F] 秒>>>"
+                    if action := Prompt.ask(prompt=f"[bold #5FD7FF]{start_tips}[/bold #5FD7FF]", console=Show.console):
+                        if (select := action.strip().lower()) == "serial":
+                            device_list = await manage.operate_device()
+                            continue
+                        elif "header" in select:
+                            if match := re.search(r"(?<=header\s).*", select):
+                                if hd := match.group().strip():
+                                    src_hd, a, b = f"{input_title}_{time.strftime('%Y%m%d_%H%M%S')}", 10000, 99999
+                                    logger.success("新标题设置成功 ...")
+                                    reporter.title = f"{src_hd}_{hd}" if hd else f"{src_hd}_{random.randint(a, b)}"
+                                    continue
+                            raise ValueError
+                        elif select in ["invent", "create"]:
+                            if await combines_report():
+                                break
+                            Show.console.print(f"[bold red]没有可以生成的报告 ...\n")
+                            continue
+                        elif select == "deploy":
+                            Show.console.print("[bold yellow]修改 deploy.json 文件后请完全退出编辑器进程再继续操作 ...")
+                            deploy.dump_deploy(self.initial_deploy)
+                            first = ["Notepad"] if operation_system == "win32" else ["open", "-W", "-a", "TextEdit"]
+                            first.append(self.initial_deploy)
+                            await Terminal.cmd_line(*first)
+                            deploy.load_deploy(self.initial_deploy)
+                            deploy.view_deploy()
+                            continue
+                        elif select.isdigit():
+                            timer_value, lower_bound, upper_bound = int(select), 5, 300
+                            if timer_value > 300 or timer_value < 5:
+                                bound_tips = f"{lower_bound} <= [bold #FFD7AF]Time[/bold #FFD7AF] <= {upper_bound}"
+                                Show.console.print(f"[bold #FFFF87]{bound_tips}[/bold #FFFF87]")
+                            timer_mode = max(lower_bound, min(upper_bound, timer_value))
+                        else:
+                            raise ValueError
+                except ValueError:
+                    Show.tips_document()
+                    continue
+                else:
+                    task_list = await commence()
+                    await all_time("less")
+                    await all_over()
+                    await analysis_tactics()
+                    check = await event_check()
+                    device_list = device_list if check else await manage.operate_device()
+                finally:
+                    await clean_check()
+        # Flick Loop ===================================================================================================
+
+        # Other Loop ===================================================================================================
+        elif self.carry or self.fully:
+
+            if self.carry:
+                if isinstance(script_data := await load_commands(self.initial_script), Exception):
+                    return logger.error(f"{script_data}")
+                try:
+                    script_storage = [{carry: script_data[carry] for carry in list(set(self.carry))}]
+                except KeyError as err:
+                    return logger.error(f"{err}")
+
+            else:
+                load_result = await asyncio.gather(*(load_commands(fully) for fully in self.fully))
+                if len(script_data := [i for i in load_result if not isinstance(i, Exception)]) == 0:
+                    return logger.error(f"缺少有效的脚本文件 ...")
+                script_storage = script_data
 
             from engine.player import Player
             player = Player()
 
-            if self.carry and len(self.carry) > 0:
-                carry_list = list(set(self.carry))
-                try:
-                    script_dict = {carry: script_data[carry] for carry in carry_list}
-                except KeyError as err:
-                    logger.error(f"{err}")
-                    return False
-            else:
-                script_dict = script_data
-
             await device_mode_view()
-            for key, value in script_dict.items():
-                reporter.title = f"{key.replace(' ', '')}_{input_title}"
-                logger.info(f"Exec: {key}")
-                for _ in range(value["loop"]):
-                    try:
-                        task_list = await commence()
-                        device_task_list = [
-                            asyncio.create_task(exec_commands(device)) for device in device_list
-                        ]
-                        await all_time("many")
-                        for device_task in device_task_list:
-                            device_task.cancel()
-                        await all_over()
-                        await analysis_tactics()
-                        check = await event_check()
-                        device_list = device_list if check else await manage.operate_device()
-                    finally:
-                        await clean_check()
+            for script_dict in script_storage:
+                for key, value in script_dict.items():
+                    reporter.title = f"{key.replace(' ', '')}_{input_title}"
+                    logger.info(f"Exec: {key}")
+                    for _ in range(value["loop"]):
+                        try:
+                            task_list = await commence()
+                            device_task_list = [
+                                asyncio.create_task(exec_commands(device)) for device in device_list
+                            ]
+                            await all_time("many")
+                            for device_task in device_task_list:
+                                device_task.cancel()
+                            await all_over()
+                            await analysis_tactics()
+                            check = await event_check()
+                            device_list = device_list if check else await manage.operate_device()
+                        finally:
+                            await clean_check()
 
             if await combines_report():
                 return True
-            Show.console.print(f"[bold red]没有可以生成的报告 ...\n")
-            return False
-        # Fully Loop ===================================================================================================
+            return Show.console.print(f"[bold red]没有可以生成的报告 ...\n")
+        # Other Loop ===================================================================================================
 
-        # Flick Loop ===================================================================================================
-        const_title = f"{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
-        reporter.title = f"{input_title}_{const_title}"
-        timer_mode = 5
-        while True:
-            try:
-                await device_mode_view()
-                start_tips = f"<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/bold #D7FF5F] 秒>>>"
-                if action := Prompt.ask(prompt=f"[bold #5FD7FF]{start_tips}[/bold #5FD7FF]", console=Show.console):
-                    if (select := action.strip().lower()) == "serial":
-                        device_list = await manage.operate_device()
-                        continue
-                    elif "header" in select:
-                        if match := re.search(r"(?<=header\s).*", select):
-                            if hd := match.group().strip():
-                                src_hd, a, b = f"{input_title}_{time.strftime('%Y%m%d_%H%M%S')}", 10000, 99999
-                                logger.success("新标题设置成功 ...")
-                                reporter.title = f"{src_hd}_{hd}" if hd else f"{src_hd}_{random.randint(a, b)}"
-                                continue
-                        raise ValueError
-                    elif select in ["invent", "create"]:
-                        if await combines_report():
-                            break
-                        Show.console.print(f"[bold red]没有可以生成的报告 ...\n")
-                        continue
-                    elif select == "deploy":
-                        Show.console.print("[bold yellow]修改 deploy.json 文件后请完全退出编辑器进程再继续操作 ...")
-                        deploy.dump_deploy(self.initial_deploy)
-                        first = ["Notepad"] if operation_system == "win32" else ["open", "-W", "-a", "TextEdit"]
-                        first.append(self.initial_deploy)
-                        await Terminal.cmd_line(*first)
-                        deploy.load_deploy(self.initial_deploy)
-                        deploy.view_deploy()
-                        continue
-                    elif select.isdigit():
-                        timer_value, lower_bound, upper_bound = int(select), 5, 300
-                        if timer_value > 300 or timer_value < 5:
-                            bound_tips = f"{lower_bound} <= [bold #FFD7AF]Time[/bold #FFD7AF] <= {upper_bound}"
-                            Show.console.print(f"[bold #FFFF87]{bound_tips}[/bold #FFFF87]")
-                        timer_mode = max(lower_bound, min(upper_bound, timer_value))
-                    else:
-                        raise ValueError
-            except ValueError:
-                Show.tips_document()
-                continue
-            else:
-                task_list = await commence()
-                await all_time("less")
-                await all_over()
-                await analysis_tactics()
-                check = await event_check()
-                device_list = device_list if check else await manage.operate_device()
-            finally:
-                await clean_check()
-        # Flick Loop ===================================================================================================
+        return None
 
 
 class Core(object):
 
     @staticmethod
-    async def ask_analyzer(
-            vision_file: str, deploy: "Deploy", kc: "KerasClassifier", *args, **kwargs
-    ) -> typing.Optional["Review"]:
+    async def ask_analyzer(vision_file: str, deploy, kc, *args, **kwargs) -> typing.Optional["Review"]:
 
         frame_path, extra_path, *_ = args
         ffmpeg = kwargs.get("ffmpeg", "ffmpeg")
@@ -1372,22 +1408,19 @@ class Core(object):
             compress_hook = CompressHook(1, None, False)
             cutter.add_hook(compress_hook)
 
-            async def arrange_hooks(name, hook):
-                if len(hook) > 0 and sum([j for i in hook for j in i.values()]) > 0:
-                    for h in hook:
-                        x, y, x_size, y_size = h.values()
-                        scope_hook = PaintCropHook(
-                            (y_size, x_size), (y, x)
-                        ) if name == "crops" else PaintOmitHook(
-                            (y_size, x_size), (y, x)
-                        )
-                        cutter.add_hook(scope_hook)
-                        logger.debug(f"{scope_hook.__class__.__name__}: {x, y, x_size, y_size}")
+            if len(crop_list := deploy.crops) > 0 and sum([j for i in crop_list for j in i.values()]) > 0:
+                for crop in crop_list:
+                    x, y, x_size, y_size = crop.values()
+                    crop_hook = PaintCropHook((y_size, x_size), (y, x))
+                    cutter.add_hook(crop_hook)
+                    logger.debug(f"{crop_hook.__class__.__name__}: {x, y, x_size, y_size}")
 
-            await asyncio.gather(
-                *(arrange_hooks(name, hook)
-                  for name, hook in zip(["crops", "omits"], [deploy.crops, deploy.omits]))
-            )
+            if len(omit_list := deploy.omits) > 0 and sum([j for i in omit_list for j in i.values()]) > 0:
+                for omit in omit_list:
+                    x, y, x_size, y_size = omit.values()
+                    omit_hook = PaintOmitHook((y_size, x_size), (y, x))
+                    cutter.add_hook(omit_hook)
+                    logger.debug(f"{omit_hook.__class__.__name__}: {x, y, x_size, y_size}")
 
             save_hook = FrameSaveHook(extra_path)
             cutter.add_hook(save_hook)
@@ -1587,21 +1620,67 @@ async def ask_get_template(template_path: str) -> str | Exception:
     return template_file
 
 
-async def ask_main(mission, cmd_lines) -> None:
+async def arithmetic_main(mission, cmd_lines, level, cpu) -> None:
+
+    from multiprocessing import Pool
+
+    async def initialization(transfer):
+        proc = members if (members := len(transfer)) <= cpu else cpu
+        rank = "ERROR" if members > 1 else level
+        return proc, active, (rank,)
+
+    async def multiple_merge(transfer):
+        if len(transfer) <= 1:
+            return None
+        template_total = await ask_get_template(
+            mission.view_total_temp if mission.quick else mission.main_total_temp
+        )
+        Report.merge_report(results, template_total, mission.quick)
+
+    # --video ==========================================================================================================
+    if video_list := cmd_lines.video:
+        with Pool(*(await initialization(video_list))) as pool:
+            results = pool.starmap(mission.video_task, [(i,) for i in video_list])
+        await multiple_merge(video_list)
+        sys.exit(0)
+
+    # --stack ==========================================================================================================
+    elif stack_list := cmd_lines.stack:
+        with Pool(*(await initialization(stack_list))) as pool:
+            results = pool.starmap(mission.video_dir_task, [(i,) for i in stack_list])
+        await multiple_merge(stack_list)
+        sys.exit(0)
+
+    # --train ==========================================================================================================
+    elif train_list := cmd_lines.train:
+        with Pool(*(await initialization(train_list))) as pool:
+            pool.starmap(mission.train_model, [(i,) for i in train_list])
+        sys.exit(0)
+
+    # --build ==========================================================================================================
+    elif build_list := cmd_lines.build:
+        with Pool(*(await initialization(build_list))) as pool:
+            pool.starmap(mission.build_model, [(i,) for i in build_list])
+        sys.exit(0)
+
+    return None
+
+
+async def scheduling_main(mission, cmd_lines) -> None:
     deploy = Deploy(mission.initial_deploy)
     for attr in mission.attrs:
         if any(line.startswith(f"--{attr}") for line in mission.lines):
             logger.debug(f"Set {attr} = {(attribute := getattr(mission, attr))}")
             setattr(deploy, attr, attribute)
 
-    if cmd_lines.flick:
+    if cmd_lines.flick or cmd_lines.carry or cmd_lines.fully:
         await mission.analysis(deploy)
     elif cmd_lines.paint:
         await mission.painting(deploy)
     elif cmd_lines.union:
-        await _mission.combines_view(cmd_lines.union, mission.group)
+        await mission.combines_view(cmd_lines.union, mission.group)
     elif cmd_lines.merge:
-        await _mission.combines_main(cmd_lines.merge, mission.group)
+        await mission.combines_main(cmd_lines.merge, mission.group)
     else:
         Show.help_document()
 
@@ -1611,7 +1690,6 @@ if __name__ == '__main__':
 
     from engine.activate import active
     active(_level := "DEBUG" if _cmd_lines.debug else "INFO")
-    _level_multiple = "ERROR"
 
     # Debug Mode =======================================================================================================
     logger.debug(f"日志等级: {_level}")
@@ -1623,7 +1701,7 @@ if __name__ == '__main__':
     logger.debug(f"工具路径: {_tools_path}\n")
 
     logger.debug(f"* Template * {'=' * 30}")
-    for _tmp in [_atom_total_temp, _view_total_temp, _main_total_temp, _view_temp, _main_temp]:
+    for _tmp in _all_temps:
         logger.debug(f"Html-Template: {_tmp}")
     logger.debug(f"* Template * {'=' * 30}\n")
 
@@ -1640,29 +1718,28 @@ if __name__ == '__main__':
 
     _carry = _cmd_lines.carry
     _fully = _cmd_lines.fully
-    _alone = _cmd_lines.alone
-    _group = _cmd_lines.group
 
     _quick = _cmd_lines.quick
     _basic = _cmd_lines.basic
     _keras = _cmd_lines.keras
 
+    _alone = _cmd_lines.alone
+    _group = _cmd_lines.group
     _boost = _cmd_lines.boost
     _color = _cmd_lines.color
 
     _shape = _cmd_lines.shape
     _scale = _cmd_lines.scale
-
     _start = _cmd_lines.start
     _close = _cmd_lines.close
     _limit = _cmd_lines.limit
-
     _begin = _cmd_lines.begin
     _final = _cmd_lines.final
 
-    # Debug Mode =======================================================================================================
-    logger.debug(f"CPU Core: {(_cpu := os.cpu_count())}")
-    # Debug Mode =======================================================================================================
+    _frate = _cmd_lines.frate
+    _thres = _cmd_lines.thres
+    _shift = _cmd_lines.shift
+    _block = _cmd_lines.block
 
     _crops = []
     if _cmd_lines.crops:
@@ -1710,10 +1787,16 @@ if __name__ == '__main__':
     logger.debug(f"模型文件路径: {_initial_models}")
     # Debug Mode =======================================================================================================
 
+    # Debug Mode =======================================================================================================
+    logger.debug(f"CPU Core: {(_cpu := os.cpu_count())}")
+    # Debug Mode =======================================================================================================
+
     _mission = Mission(
-        _carry, _fully, _alone, _group, _quick, _basic, _keras,
-        _boost, _color, _shape, _scale, _start, _close, _limit, _begin, _final, _crops, _omits,
-        attrs=_attrs, lines=_lines,
+        _carry, _fully, _quick, _basic, _keras, _alone, _group, _boost, _color,
+        _shape, _scale, _start, _close, _limit, _begin, _final,
+        _frate, _thres, _shift, _block, _crops, _omits,
+        attrs=_attrs,
+        lines=_lines,
         atom_total_temp=_atom_total_temp,
         view_total_temp=_view_total_temp,
         main_total_temp=_main_total_temp,
@@ -1724,71 +1807,20 @@ if __name__ == '__main__':
         initial_script=_initial_script,
         initial_report=_initial_report,
         initial_models=_initial_models,
-        adb=_adb, ffmpeg=_ffmpeg, ffprobe=_ffprobe, scrcpy=_scrcpy
+        adb=_adb,
+        ffmpeg=_ffmpeg,
+        ffprobe=_ffprobe,
+        scrcpy=_scrcpy
     )
-
-    from multiprocessing import Pool, freeze_support
-    freeze_support()
 
     _loop = asyncio.get_event_loop()
 
-    # --stack ==========================================================================================================
-    if _cmd_lines.stack:
-        if (_members := len(_cmd_lines.stack)) == 1:
-            _mission.video_dir_task(_cmd_lines.stack[0])
-        else:
-            _proc = _members if _members <= _cpu else _cpu
-            with Pool(_proc, active, (_level_multiple,)) as _pool:
-                _results = _pool.starmap(_mission.video_dir_task, [(i,) for i in _cmd_lines.stack])
-            _template_total = _loop.run_until_complete(
-                ask_get_template(_mission.view_total_temp)
-            ) if _mission.quick else _loop.run_until_complete(
-                ask_get_template(_mission.main_total_temp)
-            )
-            Report.merge_report(_results, _template_total, _mission.quick)
+    try:
+        _loop.run_until_complete(
+            arithmetic_main(_mission, _cmd_lines, _level, _cpu)
+        )
+        _loop.run_until_complete(
+            scheduling_main(_mission, _cmd_lines)
+        )
+    except KeyboardInterrupt:
         sys.exit(0)
-
-    # --video ==========================================================================================================
-    elif _cmd_lines.video:
-        if (_members := len(_cmd_lines.video)) == 1:
-            _mission.video_task(_cmd_lines.video[0])
-        else:
-            _proc = _members if _members <= _cpu else _cpu
-            with Pool(_proc, active, (_level_multiple,)) as _pool:
-                _results = _pool.starmap(_mission.video_task, [(i,) for i in _cmd_lines.video])
-            _template_total = _loop.run_until_complete(
-                ask_get_template(_mission.view_total_temp)
-            ) if _mission.quick else _loop.run_until_complete(
-                ask_get_template(_mission.main_total_temp)
-            )
-            Report.merge_report(_results, _template_total, _mission.quick)
-        sys.exit(0)
-
-    # --train ==========================================================================================================
-    elif _cmd_lines.train:
-        if (_members := len(_cmd_lines.train)) == 1:
-            _mission.train_model(_cmd_lines.train[0])
-        else:
-            _proc = _members if _members <= _cpu else _cpu
-            with Pool(_proc, active, (_level_multiple,)) as _pool:
-                _pool.starmap(_mission.train_model, [(i,) for i in _cmd_lines.train])
-        sys.exit(0)
-
-    # --build ==========================================================================================================
-    elif _cmd_lines.build:
-        if (_members := len(_cmd_lines.build)) == 1:
-            _mission.build_model(_cmd_lines.build[0])
-        else:
-            _proc = _members if _members <= _cpu else _cpu
-            with Pool(_proc, active, (_level_multiple,)) as _pool:
-                _pool.starmap(_mission.build_model, [(i,) for i in _cmd_lines.build])
-        sys.exit(0)
-
-    # --flick --paint --union --merge ==================================================================================
-    else:
-        try:
-            _loop.run_until_complete(
-                ask_main(_mission, _cmd_lines)
-            )
-        except KeyboardInterrupt:
-            sys.exit(0)
