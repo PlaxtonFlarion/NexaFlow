@@ -409,16 +409,16 @@ class Option(object):
 
 class Script(object):
 
-    scripts = {
-        "commands": [
-            {"name": "script 1", "loop": 1, "actions": [{"command": "", "args": []}, {"command": "", "args": []}]},
-            {"name": "script 2", "loop": 1, "actions": [{"command": "", "args": []}, {"command": "", "args": []}]},
-            {"name": "script 3", "loop": 1, "actions": [{"command": "", "args": []}, {"command": "", "args": []}]}
-        ]
-    }
-
-    def dump_script(self, script_file: str) -> None:
-        dump_parameters(script_file, self.scripts)
+    @staticmethod
+    def dump_script(script_file: str) -> None:
+        scripts = {
+            "commands": [
+                {"name": "script_1", "loop": 1, "actions": [{"command": "", "args": []}, {"command": "", "args": []}]},
+                {"name": "script_2", "loop": 1, "actions": [{"command": "", "args": []}, {"command": "", "args": []}]},
+                {"name": "script_3", "loop": 1, "actions": [{"command": "", "args": []}, {"command": "", "args": []}]}
+            ]
+        }
+        dump_parameters(script_file, scripts)
 
 
 if __name__ == '__main__':

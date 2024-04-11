@@ -808,7 +808,6 @@ class Mission(object):
     async def analysis(self, deploy) -> typing.Optional[bool]:
 
         device_events = {}
-        all_used_event = asyncio.Event()
         all_stop_event = asyncio.Event()
 
         async def timing_less(amount, serial, events) -> None:
@@ -873,14 +872,17 @@ class Mission(object):
                         break
 
             stop_event_control = events["stop_event"] if deploy.alone else all_stop_event
-            temp_video = f"{os.path.join(dst, 'screen')}_{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
-            cmd = [
-                self.scrcpy, "-s", serial, "--no-audio", "--video-bit-rate", "8M", "--max-fps", "60", "--record", temp_video
-            ]
+
+            flag_video = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
+            temp_video = f"{os.path.join(dst, 'screen')}_{flag_video}"
+            cmd = [self.scrcpy, "-s", serial, "--no-audio", "--video-bit-rate", "8M", "--max-fps", "60"]
+            cmd += ["--record", temp_video]
+
             transports = await Terminal.cmd_link(*cmd)
             asyncio.create_task(input_stream())
             asyncio.create_task(error_stream())
             await asyncio.sleep(1)
+
             return temp_video, transports
 
         async def close_record(temp_video, transports, events):
@@ -890,15 +892,15 @@ class Mission(object):
                 transports.terminate()
                 await transports.wait()
 
+            well, fail, basis = f"成功", f"失败", os.path.basename(temp_video)
             for _ in range(10):
                 if events["done_event"].is_set():
-                    logger.success(f"视频录制成功: {os.path.basename(temp_video)}")
+                    logger.info(f"视频录制{well}: {basis}")
                     return True
                 elif events["fail_event"].is_set():
-                    logger.error(f"视频录制失败: {os.path.basename(temp_video)}")
-                    return False
+                    return logger.info(f"视频录制{fail}: {basis}")
                 await asyncio.sleep(0.2)
-            return False
+            return logger.info(f"视频录制{fail}: {basis}")
 
         async def commence():
 
@@ -1137,7 +1139,6 @@ class Mission(object):
             return True
 
         async def clean_check():
-            all_used_event.clear()
             all_stop_event.clear()
             for _, event in device_events.items():
                 for _, v in event.items():
@@ -1163,42 +1164,52 @@ class Mission(object):
                         } for cmds in json.loads(file)["commands"]
                     }
             except FileNotFoundError as e:
-                Script().dump_script(script)
+                Script.dump_script(script)
                 return e
             except (KeyError, json.JSONDecodeError) as e:
                 return e
             return exec_dict
 
-        async def exec_commands(device):
+        async def exec_commands():
 
-            async def dynamic():
-                logger.info(f"{device.serial} {device_method.__name__} {args}")
-                try:
-                    if inspect.iscoroutinefunction(device_method):
-                        await device_method(*args) if args else await device_method()
-                    else:
-                        await asyncio.to_thread(
-                            device_method, *args
-                        ) if args else await asyncio.to_thread(device_method)
-                except Exception as e:
-                    logger.error(f"{e}")
+            async def is_function(func_name, *func_args):
+                for func_arg in func_args:
+                    if callable(is_func := getattr(func_arg, func_name, None)):
+                        return is_func
+                return None
 
-            for method in value["actions"]:
-                if cmds := method["command"]:
-                    args = method["args"]
-                    if callable(device_method := getattr(device, cmds, None)):
-                        await dynamic()
-                    elif callable(device_method := getattr(player, cmds, None)):
-                        if all_used_event.is_set():
-                            continue
-                        await dynamic()
-                        if cmds == "play_audio":
-                            all_used_event.set()
-                    else:
-                        logger.warning(f"{device.serial} {cmds} No Such Method ...")
+            for device_action in device_action_list:
+                if not (device_cmds := device_action["command"]):
+                    logger.error(f"No order found {device_cmds} ...")
+                    continue
+
+                for device_func in (device_func_list := await asyncio.gather(
+                        *(is_function(device_cmds, device, player) for device in device_list)
+                )):
+                    if device_func is None:
+                        logger.error(f"There is no such command {device_cmds} ...")
+                        break
+                    if device_func.__name__ == "play_audio":
+                        device_func_list = [device_func_list[0]]
+                        break
+
+                if not (method_args := device_action.get("args", None)):
+                    continue
+
+                yield [dynamically(device_func, method_args, device.serial)
+                       for (device_func, _), device in zip(device_func_list, device_list) if device_func]
+
+        async def dynamically(function, arg_list, device_sn=None):
+            logger.info(
+                f"{device_sn if device_sn else 'Device'} {function.__name__} {arg_list}"
+            )
+            try:
+                if inspect.iscoroutinefunction(function):
+                    await function(*arg_list)
                 else:
-                    logger.warning(f"{device.serial} No Order ...")
-            device_events[device.serial]["stop_event"].set() if deploy.alone else all_stop_event.set()
+                    await asyncio.to_thread(function, *arg_list)
+            except Exception as e:
+                logger.error(f"{e}")
 
         # Initialization ===============================================================================================
         manage = Manage(self.adb)
@@ -1288,9 +1299,11 @@ class Mission(object):
                     return logger.error(f"{err}")
 
             else:
-                load_result = await asyncio.gather(*(load_commands(fully) for fully in self.fully))
+                load_result = await asyncio.gather(
+                    *(load_commands(fully) for fully in self.fully), return_exceptions=True
+                )
                 if len(script_data := [i for i in load_result if not isinstance(i, Exception)]) == 0:
-                    return logger.error(f"缺少有效的脚本文件 ...")
+                    return logger.error(f"缺少有效的脚本文件 {' '.join(self.fully)}...")
                 script_storage = script_data
 
             from engine.player import Player
@@ -1304,12 +1317,21 @@ class Mission(object):
                     for _ in range(value["loop"]):
                         try:
                             task_list = await commence()
-                            device_task_list = [
-                                asyncio.create_task(exec_commands(device)) for device in device_list
-                            ]
+
+                            if device_action_list := value.get("actions", None):
+                                async for exec_func_list in exec_commands():
+                                    if len(exec_func_list) == 0:
+                                        continue
+                                    for exec_func in await asyncio.gather(*exec_func_list, return_exceptions=True):
+                                        if isinstance(exec_func, Exception):
+                                            logger.error(f"{exec_func}")
+
+                            for _device in device_list:
+                                device_events[
+                                    _device.serial
+                                ]["stop_event"].set() if deploy.alone else all_stop_event.set()
+
                             await all_time("many")
-                            for device_task in device_task_list:
-                                device_task.cancel()
                             await all_over()
                             await analysis_tactics()
                             check = await event_check()
