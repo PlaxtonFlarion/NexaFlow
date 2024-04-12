@@ -44,22 +44,22 @@ else:
     Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
     sys.exit(1)
 
-for _env in (_all_tools := [_adb, _fmp, _fpb, _scc]):
-    os.environ["PATH"] = os.path.dirname(_env) + _env_symbol + os.environ.get("PATH", "")
+for _tls in (_tools := [_adb, _fmp, _fpb, _scc]):
+    os.environ["PATH"] = os.path.dirname(_tls) + _env_symbol + os.environ.get("PATH", "")
 
-for _tls in _all_tools:
+for _tls in _tools:
     if shutil.which((_tls_name := os.path.basename(_tls))) is None:
         Show.console.print(f"[bold]Missing [bold red]{_tls_name}[/bold red] environment variables ...[/bold]")
         Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
         sys.exit(1)
 
 _atom_total_temp = os.path.join(_workable, "archivix", "pages", "template_atom_total.html")
-_view_total_temp = os.path.join(_workable, "archivix", "pages", "template_view_total.html")
+_main_share_temp = os.path.join(_workable, "archivix", "pages", "template_main_share.html")
 _main_total_temp = os.path.join(_workable, "archivix", "pages", "template_main_total.html")
-_view_temp = os.path.join(_workable, "archivix", "pages", "template_view.html")
-_main_temp = os.path.join(_workable, "archivix", "pages", "template_main.html")
+_view_share_temp = os.path.join(_workable, "archivix", "pages", "template_view_share.html")
+_view_total_temp = os.path.join(_workable, "archivix", "pages", "template_view_total.html")
 
-for _tmp in (_all_temps := [_atom_total_temp, _view_total_temp, _main_total_temp, _view_temp, _main_temp]):
+for _tmp in (_temps := [_atom_total_temp, _main_share_temp, _main_total_temp, _view_share_temp, _view_total_temp]):
     if not os.path.isfile(_tmp):
         Show.console.print(f"[bold]Missing [bold red]{_tmp}[/bold red] html template ...[/bold]")
         Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
@@ -146,10 +146,10 @@ class Mission(object):
         self.attrs = kwargs["attrs"]
         self.lines = kwargs["lines"]
         self.atom_total_temp = kwargs["atom_total_temp"]
-        self.view_total_temp = kwargs["view_total_temp"]
+        self.main_share_temp = kwargs["main_share_temp"]
         self.main_total_temp = kwargs["main_total_temp"]
-        self.view_temp = kwargs["view_temp"]
-        self.main_temp = kwargs["main_temp"]
+        self.view_share_temp = kwargs["view_share_temp"]
+        self.view_total_temp = kwargs["view_total_temp"]
         self.initial_option = kwargs["initial_option"]
         self.initial_deploy = kwargs["initial_deploy"]
         self.initial_script = kwargs["initial_script"]
@@ -287,7 +287,7 @@ class Mission(object):
             loop.run_until_complete(
                 reporter.ask_invent_total_report(
                     os.path.dirname(reporter.total_path),
-                    loop.run_until_complete(achieve(self.view_temp)),
+                    loop.run_until_complete(achieve(self.view_share_temp)),
                     loop.run_until_complete(achieve(self.view_total_temp)),
                     deploy.group
                 )
@@ -346,7 +346,7 @@ class Mission(object):
         loop.run_until_complete(
             reporter.ask_create_total_report(
                 os.path.dirname(reporter.total_path),
-                loop.run_until_complete(achieve(self.main_temp)),
+                loop.run_until_complete(achieve(self.main_share_temp)),
                 loop.run_until_complete(achieve(self.main_total_temp)),
                 deploy.group
             )
@@ -427,7 +427,7 @@ class Mission(object):
             loop.run_until_complete(
                 reporter.ask_invent_total_report(
                     os.path.dirname(reporter.total_path),
-                    loop.run_until_complete(achieve(self.view_temp)),
+                    loop.run_until_complete(achieve(self.view_share_temp)),
                     loop.run_until_complete(achieve(self.view_total_temp)),
                     deploy.group
                 )
@@ -493,7 +493,7 @@ class Mission(object):
         loop.run_until_complete(
             reporter.ask_create_total_report(
                 os.path.dirname(reporter.total_path),
-                loop.run_until_complete(achieve(self.main_temp)),
+                loop.run_until_complete(achieve(self.main_share_temp)),
                 loop.run_until_complete(achieve(self.main_total_temp)),
                 deploy.group
             )
@@ -640,7 +640,7 @@ class Mission(object):
 
     async def combines_main(self, merge: list, group: bool):
         major, total = await asyncio.gather(
-            achieve(self.main_temp), achieve(self.main_total_temp),
+            achieve(self.main_share_temp), achieve(self.main_total_temp),
             return_exceptions=True
         )
         tasks = [
@@ -653,7 +653,7 @@ class Mission(object):
 
     async def combines_view(self, merge: list, group: bool):
         views, total = await asyncio.gather(
-            achieve(self.view_temp), achieve(self.view_total_temp),
+            achieve(self.view_share_temp), achieve(self.view_total_temp),
             return_exceptions=True
         )
         tasks = [
@@ -1744,12 +1744,12 @@ if __name__ == '__main__':
     logger.debug(f"* 环境 * {'=' * 30}\n")
 
     logger.debug(f"* 工具 * {'=' * 30}")
-    for _tls in _all_tools:
+    for _tls in _tools:
         logger.debug(f"{os.path.basename(_tls):7}: {_tls}")
     logger.debug(f"* 工具 * {'=' * 30}\n")
 
     logger.debug(f"* 模版 * {'=' * 30}")
-    for _tmp in _all_temps:
+    for _tmp in _temps:
         logger.debug(f"Html-Template: {_tmp}")
     logger.debug(f"* 模版 * {'=' * 30}\n")
     # Debug Mode =======================================================================================================
@@ -1836,10 +1836,10 @@ if __name__ == '__main__':
         attrs=_attrs,
         lines=_lines,
         atom_total_temp=_atom_total_temp,
-        view_total_temp=_view_total_temp,
+        main_share_temp=_main_share_temp,
         main_total_temp=_main_total_temp,
-        view_temp=_view_temp,
-        main_temp=_main_temp,
+        view_share_temp=_view_share_temp,
+        view_total_temp=_view_total_temp,
         initial_option=_initial_option,
         initial_deploy=_initial_deploy,
         initial_script=_initial_script,
