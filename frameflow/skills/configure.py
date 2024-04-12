@@ -20,9 +20,6 @@ def load_parameters(src, dst) -> None:
 class Deploy(object):
 
     deploys = {
-        "model_shape": (256, 256),
-        "model_aisle": 1,
-
         "alone": False,
         "group": False,
         "boost": False,
@@ -48,14 +45,6 @@ class Deploy(object):
         self.load_deploy(deploy_file)
 
 # Getter ###############################################################################################################
-
-    @property
-    def model_shape(self):
-        return self.deploys["model_shape"]
-
-    @property
-    def model_aisle(self):
-        return self.deploys["model_aisle"]
 
     @property
     def alone(self):
@@ -126,16 +115,6 @@ class Deploy(object):
         return self.deploys["omits"]
 
 # Setter ###############################################################################################################
-
-    @model_shape.setter
-    def model_shape(self, value):
-        if effective := Parser.parse_shape(value):
-            self.deploys["model_shape"] = effective
-
-    @model_aisle.setter
-    def model_aisle(self, value):
-        if effective := Parser.parse_aisle(value):
-            self.deploys["model_aisle"] = effective
 
     @alone.setter
     def alone(self, value):
@@ -243,18 +222,6 @@ class Deploy(object):
         table.add_column("效果", no_wrap=True)
 
         information = [
-            [
-                f"[bold {c[1]}]模型尺寸",
-                f"[bold {c[2]}]{self.model_shape}",
-                f"[bold][[bold {c[3]}]? , ?[/bold {c[3]}] ]",
-                f"[bold]宽 [bold yellow]{self.model_shape[0]}[/bold yellow] 高 [bold yellow]{self.model_shape[1]}[/bold yellow]",
-            ],
-            [
-                f"[bold {c[1]}]模型色彩",
-                f"[bold {c[2]}]{self.model_aisle}",
-                f"[bold][[bold {c[3]}]1 | 3[/bold {c[3]}] ]",
-                f"[bold][bold yellow]{'灰度' if self.model_aisle == 1 else '彩色'}[/bold yellow] 模型",
-            ],
             [
                 f"[bold {c[1]}]独立控制",
                 f"[bold {c[2]}]{self.alone}",
@@ -367,29 +334,50 @@ class Deploy(object):
 class Option(object):
 
     options = {
-        "Total Path": "", "Model Path": ""
+        "Total Place": "",
+        "Model Place": "",
+        "Model Shape": (256, 256),
+        "Model Aisle": 1
     }
 
     def __init__(self, option_file: str):
         self.load_option(option_file)
 
     @property
-    def total_path(self):
-        return self.options["Total Path"]
+    def total_place(self):
+        return self.options["Total Place"]
 
     @property
-    def model_path(self):
-        return self.options["Model Path"]
+    def model_place(self):
+        return self.options["Model Place"]
 
-    @total_path.setter
-    def total_path(self, value):
+    @property
+    def model_shape(self):
+        return self.options["Model Shape"]
+
+    @property
+    def model_aisle(self):
+        return self.options["Model Aisle"]
+
+    @total_place.setter
+    def total_place(self, value):
         if type(value) is str and os.path.isdir(value):
-            self.total_path = value
+            self.total_place = value
 
-    @model_path.setter
-    def model_path(self, value):
+    @model_place.setter
+    def model_place(self, value):
         if type(value) is str and os.path.isfile(value):
-            self.model_path = value
+            self.model_place = value
+
+    @model_shape.setter
+    def model_shape(self, value):
+        if effective := Parser.parse_shape(value):
+            self.options["Model Shape"] = effective
+
+    @model_aisle.setter
+    def model_aisle(self, value):
+        if effective := Parser.parse_aisle(value):
+            self.options["Model Aisle"] = effective
 
     def load_option(self, option_file: str) -> None:
         try:

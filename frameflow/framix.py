@@ -2,23 +2,24 @@ import os
 import sys
 import shutil
 from pathlib import Path
+from loguru import logger
 from frameflow.skills.show import Show
 
-application_name = Path(os.path.abspath(sys.argv[0])).name.lower()
-operation_system = sys.platform.strip().lower()
-operation_symbol = os.sep
-condition_symbol = os.path.pathsep
+_platform = sys.platform.strip().lower()
+_software = os.path.basename(os.path.abspath(sys.argv[0])).strip().lower()
+_sys_symbol = os.sep
+_env_symbol = os.path.pathsep
 
-if application_name == "framix.exe":
+if _software == "framix.exe":
     _work_path = os.path.dirname(os.path.abspath(sys.argv[0]))
     _universal = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
-elif application_name == "framix.bin":
+elif _software == "framix.bin":
     _work_path = os.path.dirname(sys.executable)
     _universal = os.path.dirname(os.path.dirname(sys.executable))
-elif application_name == "framix":
+elif _software == "framix":
     _work_path = os.path.dirname(sys.executable)
     _universal = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(sys.executable))))
-elif application_name == "framix.py":
+elif _software == "framix.py":
     _work_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     _universal = os.path.dirname(os.path.abspath(__file__))
 else:
@@ -26,29 +27,29 @@ else:
     Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
     sys.exit(1)
 
-_tools_path = os.path.join(_work_path, "archivix", "tools")
+_turbo = os.path.join(_work_path, "archivix", "tools")
 
-if operation_system == "win32":
-    _adb = os.path.join(_tools_path, "win", "platform-tools", "adb.exe")
-    _ffmpeg = os.path.join(_tools_path, "win", "ffmpeg", "bin", "ffmpeg.exe")
-    _ffprobe = os.path.join(_tools_path, "win", "ffmpeg", "bin", "ffprobe.exe")
-    _scrcpy = os.path.join(_tools_path, "win", "scrcpy", "scrcpy.exe")
-elif operation_system == "darwin":
-    _adb = os.path.join(_tools_path, "mac", "platform-tools", "adb")
-    _ffmpeg = os.path.join(_tools_path, "mac", "ffmpeg", "bin", "ffmpeg")
-    _ffprobe = os.path.join(_tools_path, "mac", "ffmpeg", "bin", "ffprobe")
-    _scrcpy = os.path.join(_tools_path, "mac", "scrcpy", "bin", "scrcpy")
+if _platform == "win32":
+    _adb = os.path.join(_turbo, "win", "platform-tools", "adb.exe")
+    _ffmpeg = os.path.join(_turbo, "win", "ffmpeg", "bin", "ffmpeg.exe")
+    _ffprobe = os.path.join(_turbo, "win", "ffmpeg", "bin", "ffprobe.exe")
+    _scrcpy = os.path.join(_turbo, "win", "scrcpy", "scrcpy.exe")
+elif _platform == "darwin":
+    _adb = os.path.join(_turbo, "mac", "platform-tools", "adb")
+    _ffmpeg = os.path.join(_turbo, "mac", "ffmpeg", "bin", "ffmpeg")
+    _ffprobe = os.path.join(_turbo, "mac", "ffmpeg", "bin", "ffprobe")
+    _scrcpy = os.path.join(_turbo, "mac", "scrcpy", "bin", "scrcpy")
 else:
     Show.console.print("[bold]Only compatible with [bold red]Windows & macOS[/bold red] platforms ...[/bold]")
     Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
     sys.exit(1)
 
-for _n, _tls in (_all_tools := [("adb", _adb), ("ffmpeg", _ffmpeg), ("ffprobe", _ffprobe), ("scrcpy", _scrcpy)]):
-    os.environ["PATH"] = os.path.dirname(_tls) + condition_symbol + os.environ.get("PATH", "")
+for _env in (_all_tools := [_adb, _ffmpeg, _ffprobe, _scrcpy]):
+    os.environ["PATH"] = os.path.dirname(_env) + _env_symbol + os.environ.get("PATH", "")
 
-for _env in [Path(_adb).name, Path(_ffmpeg).name, Path(_ffprobe).name, Path(_scrcpy).name]:
-    if shutil.which(_env) is None:
-        Show.console.print(f"[bold]Missing [bold red]{_env}[/bold red] environment variables ...[/bold]")
+for _tls in _all_tools:
+    if shutil.which((_tls_name := os.path.basename(_tls))) is None:
+        Show.console.print(f"[bold]Missing [bold red]{_tls_name}[/bold red] environment variables ...[/bold]")
         Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
         sys.exit(1)
 
@@ -58,15 +59,18 @@ _main_total_temp = os.path.join(_work_path, "archivix", "pages", "template_main_
 _view_temp = os.path.join(_work_path, "archivix", "pages", "template_view.html")
 _main_temp = os.path.join(_work_path, "archivix", "pages", "template_main.html")
 
-for _t in (_all_temps := [_atom_total_temp, _view_total_temp, _main_total_temp, _view_temp, _main_temp]):
-    if not os.path.isfile(_t):
-        Show.console.print(f"[bold]Missing [bold red]{_t}[/bold red] html template ...[/bold]")
+for _tmp in (_all_temps := [_atom_total_temp, _view_total_temp, _main_total_temp, _view_temp, _main_temp]):
+    if not os.path.isfile(_tmp):
+        Show.console.print(f"[bold]Missing [bold red]{_tmp}[/bold red] html template ...[/bold]")
         Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
         sys.exit(1)
 
-_initial_models = os.path.join(_work_path, "archivix", "molds", "Keras_Gray_W256_H256_00000.h5")
-_initial_report = os.path.join(_universal, "framix.report")
 _initial_source = os.path.join(_universal, "framix.source")
+
+_total_place = os.path.join(_universal, "framix.report")
+_model_place = os.path.join(_work_path, "archivix", "molds", "Keras_Gray_W256_H256_00000.h5")
+_model_shape = (256, 256)
+_model_aisle = 1
 
 if len(sys.argv) == 1:
     Show.help_document()
@@ -91,7 +95,6 @@ try:
     import asyncio
     import aiofiles
     import datetime
-    from loguru import logger
     from rich.prompt import Prompt
     from engine.switch import Switch
     from engine.terminal import Terminal
@@ -150,11 +153,13 @@ class Mission(object):
         self.main_total_temp = kwargs["main_total_temp"]
         self.view_temp = kwargs["view_temp"]
         self.main_temp = kwargs["main_temp"]
-        self.initial_deploy = kwargs["initial_deploy"]
         self.initial_option = kwargs["initial_option"]
+        self.initial_deploy = kwargs["initial_deploy"]
         self.initial_script = kwargs["initial_script"]
-        self.initial_report = kwargs["initial_report"]
-        self.initial_models = kwargs["initial_models"]
+        self.total_place = kwargs["total_place"]
+        self.model_place = kwargs["model_place"]
+        self.model_shape = kwargs["model_shape"]
+        self.model_aisle = kwargs["model_aisle"]
         self.adb = kwargs["adb"]
         self.ffmpeg = kwargs["ffmpeg"]
         self.ffprobe = kwargs["ffprobe"]
@@ -204,7 +209,7 @@ class Mission(object):
                 )
 
     def video_task(self, video_file: str):
-        reporter = Report(self.initial_report)
+        reporter = Report(self.total_place)
         reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
         reporter.query = time.strftime('%Y%m%d%H%M%S')
         new_video_path = os.path.join(reporter.video_path, os.path.basename(video_file))
@@ -284,9 +289,9 @@ class Mission(object):
 
         elif self.keras and not self.basic:
             logger.info(f"Framix Analyzer: 智能模式 ...")
-            kc = KerasClassifier(data_size=deploy.model_shape, aisle=deploy.model_aisle)
+            kc = KerasClassifier(data_size=self.model_shape, aisle=self.model_aisle)
             try:
-                kc.load_model(self.initial_models)
+                kc.load_model(self.model_place)
             except ValueError as err:
                 logger.error(f"{err}")
                 kc = None
@@ -345,7 +350,7 @@ class Mission(object):
         return reporter.total_path
 
     def video_dir_task(self, folder: str):
-        reporter = Report(self.initial_report)
+        reporter = Report(self.total_place)
 
         deploy = Deploy(self.initial_deploy)
         for attr in self.attrs:
@@ -427,9 +432,9 @@ class Mission(object):
 
         elif self.keras and not self.basic:
             logger.info(f"Framix Analyzer: 智能模式 ...")
-            kc = KerasClassifier(data_size=deploy.model_shape, aisle=deploy.model_aisle)
+            kc = KerasClassifier(data_size=self.model_shape, aisle=self.model_aisle)
             try:
-                kc.load_model(self.initial_models)
+                kc.load_model(self.model_place)
             except ValueError as err:
                 logger.error(f"{err}")
                 kc = None
@@ -504,7 +509,7 @@ class Mission(object):
         screen.release()
         logger.info(f"{video_file} 可正常播放 ...")
 
-        reporter = Report(self.initial_report)
+        reporter = Report(self.total_place)
         reporter.title = f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
         if not os.path.exists(reporter.query_path):
             os.makedirs(reporter.query_path, exist_ok=True)
@@ -791,7 +796,7 @@ class Mission(object):
                 console=Show.console, default="Y"
             )
             if action.strip().upper() == "Y":
-                reporter = Report(self.initial_report)
+                reporter = Report(self.total_place)
                 reporter.title = f"Hooks_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
                 for device, resize_img in zip(device_list, resized_result):
                     img_save_path = os.path.join(
@@ -886,7 +891,7 @@ class Mission(object):
             return temp_video, transports
 
         async def close_record(temp_video, transports, events):
-            if operation_system == "win32":
+            if _platform == "win32":
                 await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
             else:
                 transports.terminate()
@@ -1217,12 +1222,12 @@ class Mission(object):
 
         titles = {"quick": "Quick", "basic": "Basic", "keras": "Keras"}
         input_title = next((title for key, title in titles.items() if getattr(self, key)), "Video")
-        reporter = Report(self.initial_report)
+        reporter = Report(self.total_place)
 
         if self.keras and not self.quick and not self.basic:
             kc = KerasClassifier(data_size=deploy.model_shape, aisle=deploy.model_aisle)
             try:
-                kc.load_model(self.initial_models)
+                kc.load_model(self.model_place)
             except ValueError as err:
                 logger.error(f"{err}")
                 kc = None
@@ -1259,7 +1264,7 @@ class Mission(object):
                         elif select == "deploy":
                             Show.console.print("[bold yellow]修改 deploy.json 文件后请完全退出编辑器进程再继续操作 ...")
                             deploy.dump_deploy(self.initial_deploy)
-                            first = ["Notepad"] if operation_system == "win32" else ["open", "-W", "-a", "TextEdit"]
+                            first = ["Notepad"] if _platform == "win32" else ["open", "-W", "-a", "TextEdit"]
                             first.append(self.initial_deploy)
                             await Terminal.cmd_line(*first)
                             deploy.load_deploy(self.initial_deploy)
@@ -1568,8 +1573,8 @@ class Core(object):
             else:
                 frames = [i for i in video.grey_data]
 
-            logger.debug(f"运行环境: {operation_system}")
-            if operation_system == "win32":
+            logger.debug(f"运行环境: {_platform}")
+            if _platform == "win32":
                 forge_result = await asyncio.gather(
                     *(frame_forge(frame) for frame in frames), return_exceptions=True
                 )
@@ -1596,8 +1601,8 @@ class Core(object):
         async def analytics_keras():
             classify, frames = await frame_flow()
 
-            logger.debug(f"运行环境: {operation_system}")
-            if operation_system == "win32":
+            logger.debug(f"运行环境: {_platform}")
+            if _platform == "win32":
                 flick_result, *forge_result = await asyncio.gather(
                     frame_flick(classify), *(frame_forge(frame) for frame in frames),
                     return_exceptions=True
@@ -1714,28 +1719,28 @@ if __name__ == '__main__':
     active(_level := "DEBUG" if _cmd_lines.debug else "INFO")
 
     # Debug Mode =======================================================================================================
-    logger.debug(f"日志等级: {_level}")
+    logger.debug(f"操作系统: {_platform}")
+    logger.debug(f"应用名称: {_software}")
+    logger.debug(f"系统路径: {_sys_symbol}")
+    logger.debug(f"环境变量: {_env_symbol}")
+    logger.debug(f"工具路径: {_turbo}")
     logger.debug(f"命令参数: {_lines}")
+    logger.debug(f"日志等级: {_level}\n")
 
-    logger.debug(f"应用名称: {application_name}")
-    logger.debug(f"操作系统: {operation_system}")
+    logger.debug(f"* 环境 * {'=' * 30}")
+    for _env in os.environ["PATH"].split(_env_symbol):
+        logger.debug(f"{_env}")
+    logger.debug(f"* 环境 * {'=' * 30}\n")
 
-    logger.debug(f"工具路径: {_tools_path}\n")
+    logger.debug(f"* 工具 * {'=' * 30}")
+    for _tls in _all_tools:
+        logger.debug(f"{os.path.basename(_tls):7}: {_tls}")
+    logger.debug(f"* 工具 * {'=' * 30}\n")
 
-    logger.debug(f"* Template * {'=' * 30}")
+    logger.debug(f"* 模版 * {'=' * 30}")
     for _tmp in _all_temps:
         logger.debug(f"Html-Template: {_tmp}")
-    logger.debug(f"* Template * {'=' * 30}\n")
-
-    logger.debug(f"* Tools Path * {'=' * 30}")
-    for _n, _tls in _all_tools:
-        logger.debug(f"{_n:7}: {_tls}")
-    logger.debug(f"* Tools Path * {'=' * 30}\n")
-
-    logger.debug(f"* System Env * {'=' * 30}")
-    for _env in os.environ["PATH"].split(condition_symbol):
-        logger.debug(f"{_env}")
-    logger.debug(f"* System Env * {'=' * 30}\n")
+    logger.debug(f"* 模版 * {'=' * 30}\n")
     # Debug Mode =======================================================================================================
 
     _carry = _cmd_lines.carry
@@ -1793,25 +1798,23 @@ if __name__ == '__main__':
     _unique_omits = {tuple(_i.items()) for _i in _omits}
     _omits = [dict(_i) for _i in _unique_omits]
 
-    _initial_deploy = os.path.join(_initial_source, "deploy.json")
     _initial_option = os.path.join(_initial_source, "option.json")
+    _initial_deploy = os.path.join(_initial_source, "deploy.json")
     _initial_script = os.path.join(_initial_source, "script.json")
+    logger.debug(f"配置文件路径: {_initial_option}")
+    logger.debug(f"部署文件路径: {_initial_deploy}")
+    logger.debug(f"脚本文件路径: {_initial_script}")
 
     _option = Option(_initial_option)
-    _initial_report = _option.total_path if _option.total_path else _initial_report
-    _initial_models = _option.model_path if _option.model_path else _initial_models
-
-    # Debug Mode =======================================================================================================
-    logger.debug(f"部署文件路径: {_initial_deploy}")
-    logger.debug(f"配置文件路径: {_initial_option}")
-    logger.debug(f"脚本文件路径: {_initial_script}")
-    logger.debug(f"报告文件路径: {_initial_report}")
-    logger.debug(f"模型文件路径: {_initial_models}")
-    # Debug Mode =======================================================================================================
-
-    # Debug Mode =======================================================================================================
-    logger.debug(f"CPU Core: {(_cpu := os.cpu_count())}")
-    # Debug Mode =======================================================================================================
+    _total_place = _option.total_place if _option.total_place else _total_place
+    _model_place = _option.model_place if _option.model_place else _model_place
+    _model_shape = _option.model_shape if _option.model_shape else _model_shape
+    _model_aisle = _option.model_aisle if _option.model_aisle else _model_aisle
+    logger.debug(f"报告文件路径: {_total_place}")
+    logger.debug(f"模型文件路径: {_model_place}")
+    logger.debug(f"模型文件尺寸: 宽 {_model_shape[0]} 高 {_model_shape[1]}")
+    logger.debug(f"模型文件色彩: {'灰度' if _model_aisle == 1 else '彩色'}模型")
+    logger.debug(f"处理器核心数: {(_cpu := os.cpu_count())}")
 
     _mission = Mission(
         _carry, _fully, _quick, _basic, _keras, _alone, _group, _boost, _color,
@@ -1827,8 +1830,10 @@ if __name__ == '__main__':
         initial_deploy=_initial_deploy,
         initial_option=_initial_option,
         initial_script=_initial_script,
-        initial_report=_initial_report,
-        initial_models=_initial_models,
+        total_place=_total_place,
+        model_place=_model_place,
+        model_shape=_model_shape,
+        model_aisle=_model_aisle,
         adb=_adb,
         ffmpeg=_ffmpeg,
         ffprobe=_ffprobe,
