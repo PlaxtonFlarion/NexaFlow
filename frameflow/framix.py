@@ -135,8 +135,6 @@ class Review(object):
 
 class Mission(object):
 
-    COMPRESS: int | float = 0.4
-
     def __init__(self, *args, **kwargs):
         self.carry, self.fully, self.quick, self.basic, self.keras, *_ = args
         _, _, _, _, _, self.alone, self.group, self.boost, self.color, self.shape, self.scale, *_ = args
@@ -248,7 +246,7 @@ class Mission(object):
                 video_filter.append(f"scale=iw*{scale}:ih*{scale}")
                 logger.debug(f"Image Scale: {deploy.scale}")
             else:
-                video_filter.append(f"scale=iw*{self.COMPRESS}:ih*{self.COMPRESS}")
+                video_filter.append(f"scale=iw*{const.SCALE}:ih*{const.SCALE}")
             logger.info(f"应用过滤器: {video_filter}")
 
             duration = loop.run_until_complete(
@@ -388,7 +386,7 @@ class Mission(object):
                         video_filter.append(f"scale=iw*{scale}:ih*{scale}")
                         logger.debug(f"Image Scale: {deploy.scale}")
                     else:
-                        video_filter.append(f"scale=iw*{self.COMPRESS}:ih*{self.COMPRESS}")
+                        video_filter.append(f"scale=iw*{const.SCALE}:ih*{const.SCALE}")
                     logger.info(f"应用过滤器: {video_filter}")
 
                     duration = loop.run_until_complete(
@@ -580,7 +578,7 @@ class Mission(object):
             target_scale = max(0.1, min(1.0, deploy.scale))
         else:
             target_shape = deploy.shape
-            target_scale = self.COMPRESS
+            target_scale = const.SCALE
 
         res.pick_and_save(
             range_list=stable,
@@ -727,7 +725,7 @@ class Mission(object):
                 if deploy.scale:
                     image_scale = max_scale if deploy.shape else max(min_scale, min(max_scale, deploy.scale))
                 else:
-                    image_scale = max_scale if deploy.shape else self.COMPRESS
+                    image_scale = max_scale if deploy.shape else const.SCALE
 
                 new_w, new_h = int(twist_w * image_scale), int(twist_h * image_scale)
                 logger.debug(
@@ -969,7 +967,7 @@ class Mission(object):
                 else:
                     for temp_video, *_ in task_list:
                         video_filter = default_filter.copy()
-                        video_filter.append(f"scale=iw*{self.COMPRESS}:ih*{self.COMPRESS}")
+                        video_filter.append(f"scale=iw*{const.SCALE}:ih*{const.SCALE}")
                         video_filter_list.append(video_filter)
 
                 for filters in video_filter_list:

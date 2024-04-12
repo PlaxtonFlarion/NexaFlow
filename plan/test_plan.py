@@ -38,7 +38,7 @@ class TestPlan(object):
 
             self.alynex.crop_hook(0, 0.2, 1, 0.8)
             self.alynex.analyzer(const.TEMPLATE_ATOM_TOTAL)
-        self.alynex.report.create_report(const.TEMPLATE_MAIN)
+        self.alynex.report.create_report(const.TEMPLATE_MAIN_SHARE)
 
     def test_02(self):
         query = "讲个笑话"
@@ -47,7 +47,7 @@ class TestPlan(object):
             self.alynex.report.query = f"{i + 4}_{query}"
             self.alynex.crop_hook(0, 0.1, 1, 0.9)
             self.alynex.analyzer(const.TEMPLATE_ATOM_TOTAL)
-        self.alynex.report.create_report(const.TEMPLATE_MAIN)
+        self.alynex.report.create_report(const.TEMPLATE_MAIN_SHARE)
 
     def __enter__(self):
         # self.device.force_filter(self.application)

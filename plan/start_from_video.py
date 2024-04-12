@@ -18,7 +18,7 @@ def multi_video_task(folder: str) -> str:
             shutil.copy(path, alynex.report.video_path)
             alynex.crop_hook(0, 0.2, 1, 0.8)
             alynex.analyzer(const.TEMPLATE_ATOM_TOTAL)
-        alynex.report.create_report(const.TEMPLATE_MAIN)
+        alynex.report.create_report(const.TEMPLATE_MAIN_SHARE)
     alynex.report.create_total_report(const.TEMPLATE_MAIN_TOTAL)
     return alynex.report.total_path
 
