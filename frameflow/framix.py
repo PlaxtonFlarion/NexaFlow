@@ -11,40 +11,40 @@ _sys_symbol = os.sep
 _env_symbol = os.path.pathsep
 
 if _software == "framix.exe":
-    _work_path = os.path.dirname(os.path.abspath(sys.argv[0]))
-    _universal = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+    _workable = os.path.dirname(os.path.abspath(sys.argv[0]))
+    _feasible = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 elif _software == "framix.bin":
-    _work_path = os.path.dirname(sys.executable)
-    _universal = os.path.dirname(os.path.dirname(sys.executable))
+    _workable = os.path.dirname(sys.executable)
+    _feasible = os.path.dirname(os.path.dirname(sys.executable))
 elif _software == "framix":
-    _work_path = os.path.dirname(sys.executable)
-    _universal = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(sys.executable))))
+    _workable = os.path.dirname(sys.executable)
+    _feasible = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(sys.executable))))
 elif _software == "framix.py":
-    _work_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    _universal = os.path.dirname(os.path.abspath(__file__))
+    _workable = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    _feasible = os.path.dirname(os.path.abspath(__file__))
 else:
     Show.console.print(f"[bold]Application name must be [bold red]framix[/bold red] ...[/bold]")
     Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
     sys.exit(1)
 
-_turbo = os.path.join(_work_path, "archivix", "tools")
+_turbo = os.path.join(_workable, "archivix", "tools")
 
 if _platform == "win32":
     _adb = os.path.join(_turbo, "win", "platform-tools", "adb.exe")
-    _ffmpeg = os.path.join(_turbo, "win", "ffmpeg", "bin", "ffmpeg.exe")
-    _ffprobe = os.path.join(_turbo, "win", "ffmpeg", "bin", "ffprobe.exe")
-    _scrcpy = os.path.join(_turbo, "win", "scrcpy", "scrcpy.exe")
+    _fmp = os.path.join(_turbo, "win", "ffmpeg", "bin", "ffmpeg.exe")
+    _fpb = os.path.join(_turbo, "win", "ffmpeg", "bin", "ffprobe.exe")
+    _scc = os.path.join(_turbo, "win", "scrcpy", "scrcpy.exe")
 elif _platform == "darwin":
     _adb = os.path.join(_turbo, "mac", "platform-tools", "adb")
-    _ffmpeg = os.path.join(_turbo, "mac", "ffmpeg", "bin", "ffmpeg")
-    _ffprobe = os.path.join(_turbo, "mac", "ffmpeg", "bin", "ffprobe")
-    _scrcpy = os.path.join(_turbo, "mac", "scrcpy", "bin", "scrcpy")
+    _fmp = os.path.join(_turbo, "mac", "ffmpeg", "bin", "ffmpeg")
+    _fpb = os.path.join(_turbo, "mac", "ffmpeg", "bin", "ffprobe")
+    _scc = os.path.join(_turbo, "mac", "scrcpy", "bin", "scrcpy")
 else:
     Show.console.print("[bold]Only compatible with [bold red]Windows & macOS[/bold red] platforms ...[/bold]")
     Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
     sys.exit(1)
 
-for _env in (_all_tools := [_adb, _ffmpeg, _ffprobe, _scrcpy]):
+for _env in (_all_tools := [_adb, _fmp, _fpb, _scc]):
     os.environ["PATH"] = os.path.dirname(_env) + _env_symbol + os.environ.get("PATH", "")
 
 for _tls in _all_tools:
@@ -53,11 +53,11 @@ for _tls in _all_tools:
         Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
         sys.exit(1)
 
-_atom_total_temp = os.path.join(_work_path, "archivix", "pages", "template_atom_total.html")
-_view_total_temp = os.path.join(_work_path, "archivix", "pages", "template_view_total.html")
-_main_total_temp = os.path.join(_work_path, "archivix", "pages", "template_main_total.html")
-_view_temp = os.path.join(_work_path, "archivix", "pages", "template_view.html")
-_main_temp = os.path.join(_work_path, "archivix", "pages", "template_main.html")
+_atom_total_temp = os.path.join(_workable, "archivix", "pages", "template_atom_total.html")
+_view_total_temp = os.path.join(_workable, "archivix", "pages", "template_view_total.html")
+_main_total_temp = os.path.join(_workable, "archivix", "pages", "template_main_total.html")
+_view_temp = os.path.join(_workable, "archivix", "pages", "template_view.html")
+_main_temp = os.path.join(_workable, "archivix", "pages", "template_main.html")
 
 for _tmp in (_all_temps := [_atom_total_temp, _view_total_temp, _main_total_temp, _view_temp, _main_temp]):
     if not os.path.isfile(_tmp):
@@ -65,10 +65,10 @@ for _tmp in (_all_temps := [_atom_total_temp, _view_total_temp, _main_total_temp
         Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
         sys.exit(1)
 
-_initial_source = os.path.join(_universal, "framix.source")
+_initial_source = os.path.join(_feasible, "framix.source")
 
-_total_place = os.path.join(_universal, "framix.report")
-_model_place = os.path.join(_work_path, "archivix", "molds", "Keras_Gray_W256_H256_00000.h5")
+_total_place = os.path.join(_feasible, "framix.report")
+_model_place = os.path.join(_workable, "archivix", "molds", "Keras_Gray_W256_H256_00000.h5")
 _model_shape = (256, 256)
 _model_aisle = 1
 
@@ -77,8 +77,8 @@ if len(sys.argv) == 1:
     sys.exit(0)
 
 _attrs = [
-    "alone", "group", "boost", "color",
-    "shape", "scale", "start", "close", "limit", "begin", "final",
+    "alone", "group", "boost", "color", "shape", "scale",
+    "start", "close", "limit", "begin", "final",
     "frate", "thres", "shift", "block", "crops", "omits"
 ]
 _lines = sys.argv[1:]
@@ -100,8 +100,10 @@ try:
     from engine.terminal import Terminal
     from frameflow.skills.manage import Manage
     from frameflow.skills.parser import Parser
+    from frameflow.skills.configure import Option
+    from frameflow.skills.configure import Deploy
+    from frameflow.skills.configure import Script
     from frameflow.skills.database import DataBase
-    from frameflow.skills.configure import Deploy, Option, Script
     from nexaflow import const, toolbox
     from nexaflow.report import Report
     from nexaflow.video import VideoObject, VideoFrame
@@ -135,15 +137,10 @@ class Mission(object):
 
     COMPRESS: int | float = 0.4
 
-    def __init__(
-            self, carry: list[str], fully: list[str], *args, **kwargs
-    ):
-
-        self.carry, self.fully = carry, fully
-        self.quick, self.basic, self.keras, *_ = args
-        _, _, _, self.alone, self.group, self.boost, self.color, *_ = args
-        _, _, _, _, _, _, _, self.shape, self.scale, self.start, self.close, self.limit, *_ = args
-        *_, self.begin, self.final, _, _, _, _, _, _ = args
+    def __init__(self, *args, **kwargs):
+        self.carry, self.fully, self.quick, self.basic, self.keras, *_ = args
+        _, _, _, _, _, self.alone, self.group, self.boost, self.color, self.shape, self.scale, *_ = args
+        *_, self.start, self.close, self.limit, self.begin, self.final, _, _, _, _, _, _ = args
         *_, self.frate, self.thres, self.shift, self.block, self.crops, self.omits = args
 
         self.attrs = kwargs["attrs"]
@@ -161,12 +158,12 @@ class Mission(object):
         self.model_shape = kwargs["model_shape"]
         self.model_aisle = kwargs["model_aisle"]
         self.adb = kwargs["adb"]
-        self.ffmpeg = kwargs["ffmpeg"]
-        self.ffprobe = kwargs["ffprobe"]
-        self.scrcpy = kwargs["scrcpy"]
+        self.fmp = kwargs["fmp"]
+        self.fpb = kwargs["fpb"]
+        self.scc = kwargs["scc"]
 
     @staticmethod
-    def only_video(folder: str):
+    def accelerate(folder: str):
 
         class Entry(object):
 
@@ -184,7 +181,7 @@ class Mission(object):
         ]
 
     @staticmethod
-    def persistent(r, c, start: int, end: int, cost: float):
+    def enforce(r, c, start: int, end: int, cost: float):
         with DataBase(os.path.join(r.reset_path, "Framix_Data.db")) as database:
             if c:
                 column_list = [
@@ -208,6 +205,16 @@ class Mission(object):
                     (r.total_path, r.title, r.query_path, r.query, json.dumps(stage), r.frame_path)
                 )
 
+    @staticmethod
+    def amazing(vision, deploy, kc, *args):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop_complete = loop.run_until_complete(
+            Core.ask_analyzer(vision, deploy, kc, *args)
+        )
+        loop.close()
+        return loop_complete
+
     def video_task(self, video_file: str):
         reporter = Report(self.total_place)
         reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
@@ -229,7 +236,7 @@ class Mission(object):
             video_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
             if deploy.shape:
                 original_shape = loop.run_until_complete(
-                    Switch.ask_video_larger(self.ffprobe, new_video_path)
+                    Switch.ask_video_larger(self.fpb, new_video_path)
                 )
                 w, h, ratio = loop.run_until_complete(
                     Switch.ask_magic_frame(original_shape, deploy.shape)
@@ -245,7 +252,7 @@ class Mission(object):
             logger.info(f"应用过滤器: {video_filter}")
 
             duration = loop.run_until_complete(
-                Switch.ask_video_length(self.ffprobe, new_video_path)
+                Switch.ask_video_length(self.fpb, new_video_path)
             )
             vision_start, vision_close, vision_limit = loop.run_until_complete(
                 Switch.ask_magic_point(
@@ -263,7 +270,7 @@ class Mission(object):
 
             loop.run_until_complete(
                 Switch.ask_video_detach(
-                    self.ffmpeg, video_filter, new_video_path, reporter.frame_path,
+                    self.fmp, video_filter, new_video_path, reporter.frame_path,
                     start=vision_start, close=vision_close, limit=vision_limit
                 )
             )
@@ -280,8 +287,8 @@ class Mission(object):
             loop.run_until_complete(
                 reporter.ask_invent_total_report(
                     os.path.dirname(reporter.total_path),
-                    loop.run_until_complete(ask_get_template(self.view_temp)),
-                    loop.run_until_complete(ask_get_template(self.view_total_temp)),
+                    loop.run_until_complete(achieve(self.view_temp)),
+                    loop.run_until_complete(achieve(self.view_total_temp)),
                     deploy.group
                 )
             )
@@ -300,10 +307,7 @@ class Mission(object):
             kc = None
 
         futures = loop.run_until_complete(
-            Core.ask_analyzer(
-                new_video_path, deploy, kc,
-                reporter.frame_path, reporter.extra_path, ffmpeg=self.ffmpeg, ffprobe=self.ffprobe
-            )
+            Core.ask_analyzer(new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path, self.fmp, self.fpb)
         )
 
         if futures is None:
@@ -321,7 +325,7 @@ class Mission(object):
         if classifier:
             if isinstance(
                     template_file := loop.run_until_complete(
-                        ask_get_template(self.atom_total_temp)
+                        achieve(self.atom_total_temp)
                     ), Exception
             ):
                 return Show.console.print(f"[bold red]{template_file}")
@@ -337,13 +341,13 @@ class Mission(object):
         logger.debug(f"Restore: {result}")
         reporter.load(result)
 
-        self.persistent(reporter, classifier, start, end, cost)
+        self.enforce(reporter, classifier, start, end, cost)
 
         loop.run_until_complete(
             reporter.ask_create_total_report(
                 os.path.dirname(reporter.total_path),
-                loop.run_until_complete(ask_get_template(self.main_temp)),
-                loop.run_until_complete(ask_get_template(self.main_total_temp)),
+                loop.run_until_complete(achieve(self.main_temp)),
+                loop.run_until_complete(achieve(self.main_total_temp)),
                 deploy.group
             )
         )
@@ -362,7 +366,7 @@ class Mission(object):
 
         if self.quick:
             logger.debug(f"Framix Analyzer: 快速模式 ...")
-            for video in self.only_video(folder):
+            for video in self.accelerate(folder):
                 reporter.title = video.title
                 for path in video.sheet:
                     reporter.query = os.path.basename(path).split(".")[0]
@@ -372,7 +376,7 @@ class Mission(object):
                     video_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
                     if deploy.shape:
                         original_shape = loop.run_until_complete(
-                            Switch.ask_video_larger(self.ffprobe, new_video_path)
+                            Switch.ask_video_larger(self.fpb, new_video_path)
                         )
                         w, h, ratio = loop.run_until_complete(
                             Switch.ask_magic_frame(original_shape, deploy.shape)
@@ -388,7 +392,7 @@ class Mission(object):
                     logger.info(f"应用过滤器: {video_filter}")
 
                     duration = loop.run_until_complete(
-                        Switch.ask_video_length(self.ffprobe, new_video_path)
+                        Switch.ask_video_length(self.fpb, new_video_path)
                     )
                     vision_start, vision_close, vision_limit = loop.run_until_complete(
                         Switch.ask_magic_point(
@@ -406,7 +410,7 @@ class Mission(object):
 
                     loop.run_until_complete(
                         Switch.ask_video_detach(
-                            self.ffmpeg, video_filter, new_video_path, reporter.frame_path,
+                            self.fmp, video_filter, new_video_path, reporter.frame_path,
                             start=deploy.start, close=deploy.close, limit=deploy.limit
                         )
                     )
@@ -423,8 +427,8 @@ class Mission(object):
             loop.run_until_complete(
                 reporter.ask_invent_total_report(
                     os.path.dirname(reporter.total_path),
-                    loop.run_until_complete(ask_get_template(self.view_temp)),
-                    loop.run_until_complete(ask_get_template(self.view_total_temp)),
+                    loop.run_until_complete(achieve(self.view_temp)),
+                    loop.run_until_complete(achieve(self.view_total_temp)),
                     deploy.group
                 )
             )
@@ -442,7 +446,7 @@ class Mission(object):
             logger.info(f"Framix Analyzer: 基础模式 ...")
             kc = None
 
-        for video in self.only_video(folder):
+        for video in self.accelerate(folder):
             reporter.title = video.title
             for path in video.sheet:
                 reporter.query = os.path.basename(path).split(".")[0]
@@ -450,10 +454,8 @@ class Mission(object):
                 new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
 
                 futures = loop.run_until_complete(
-                    Core.ask_analyzer(
-                        new_video_path, deploy, kc,
-                        reporter.frame_path, reporter.extra_path, ffmpeg=self.ffmpeg, ffprobe=self.ffprobe
-                    )
+                    Core.ask_analyzer(new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path, self.fmp,
+                                      self.fpb)
                 )
                 if futures is None:
                     continue
@@ -470,7 +472,7 @@ class Mission(object):
                 if classifier:
                     if isinstance(
                             template_file := loop.run_until_complete(
-                                ask_get_template(self.atom_total_temp)
+                                achieve(self.atom_total_temp)
                             ), Exception
                     ):
                         return Show.console.print(f"[bold red]{template_file}")
@@ -486,13 +488,13 @@ class Mission(object):
                 logger.debug(f"Restore: {result}")
                 reporter.load(result)
 
-                self.persistent(reporter, classifier, start, end, cost)
+                self.enforce(reporter, classifier, start, end, cost)
 
         loop.run_until_complete(
             reporter.ask_create_total_report(
                 os.path.dirname(reporter.total_path),
-                loop.run_until_complete(ask_get_template(self.main_temp)),
-                loop.run_until_complete(ask_get_template(self.main_total_temp)),
+                loop.run_until_complete(achieve(self.main_temp)),
+                loop.run_until_complete(achieve(self.main_total_temp)),
                 deploy.group
             )
         )
@@ -526,7 +528,7 @@ class Mission(object):
 
         loop = asyncio.get_event_loop()
         duration = loop.run_until_complete(
-            Switch.ask_video_length(self.ffprobe, video_file)
+            Switch.ask_video_length(self.fpb, video_file)
         )
         vision_start, vision_close, vision_limit = loop.run_until_complete(
             Switch.ask_magic_point(
@@ -544,7 +546,7 @@ class Mission(object):
 
         asyncio.run(
             Switch.ask_video_change(
-                self.ffmpeg, deploy.frate, video_file, video_temp_file,
+                self.fmp, deploy.frate, video_file, video_temp_file,
                 start=vision_start, close=vision_close, limit=vision_limit
             )
         )
@@ -565,7 +567,7 @@ class Mission(object):
 
         if deploy.shape:
             original_shape = loop.run_until_complete(
-                Switch.ask_video_larger(self.ffprobe, video_file)
+                Switch.ask_video_larger(self.fpb, video_file)
             )
             w, h, ratio = loop.run_until_complete(
                 Switch.ask_magic_frame(original_shape, deploy.shape)
@@ -638,7 +640,7 @@ class Mission(object):
 
     async def combines_main(self, merge: list, group: bool):
         major, total = await asyncio.gather(
-            ask_get_template(self.main_temp), ask_get_template(self.main_total_temp),
+            achieve(self.main_temp), achieve(self.main_total_temp),
             return_exceptions=True
         )
         tasks = [
@@ -651,7 +653,7 @@ class Mission(object):
 
     async def combines_view(self, merge: list, group: bool):
         views, total = await asyncio.gather(
-            ask_get_template(self.view_temp), ask_get_template(self.view_total_temp),
+            achieve(self.view_temp), achieve(self.view_total_temp),
             return_exceptions=True
         )
         tasks = [
@@ -880,7 +882,7 @@ class Mission(object):
 
             flag_video = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
             temp_video = f"{os.path.join(dst, 'screen')}_{flag_video}"
-            cmd = [self.scrcpy, "-s", serial, "--no-audio", "--video-bit-rate", "8M", "--max-fps", "60"]
+            cmd = [self.scc, "-s", serial, "--no-audio", "--video-bit-rate", "8M", "--max-fps", "60"]
             cmd += ["--record", temp_video]
 
             transports = await Terminal.cmd_link(*cmd)
@@ -948,7 +950,7 @@ class Mission(object):
                 default_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
                 if deploy.shape:
                     original_shape_list = await asyncio.gather(
-                        *(Switch.ask_video_larger(self.ffprobe, temp_video) for temp_video, *_ in task_list)
+                        *(Switch.ask_video_larger(self.fpb, temp_video) for temp_video, *_ in task_list)
                     )
                     final_shape_list = await asyncio.gather(
                         *(Switch.ask_magic_frame(original_shape, deploy.shape) for original_shape in original_shape_list)
@@ -974,7 +976,7 @@ class Mission(object):
                     logger.info(f"应用过滤器: {filters}")
 
                 duration_list = await asyncio.gather(
-                    *(Switch.ask_video_length(self.ffprobe, temp_video) for temp_video, *_ in task_list)
+                    *(Switch.ask_video_length(self.fpb, temp_video) for temp_video, *_ in task_list)
                 )
                 duration_result_list = await asyncio.gather(
                     *(Switch.ask_magic_point(
@@ -999,7 +1001,7 @@ class Mission(object):
 
                 await asyncio.gather(
                     *(Switch.ask_video_detach(
-                        self.ffmpeg, video_filter, temp_video, frame_path,
+                        self.fmp, video_filter, temp_video, frame_path,
                         start=vision_start, close=vision_close, limit=vision_limit
                     )
                       for (
@@ -1023,12 +1025,22 @@ class Mission(object):
 
             elif self.basic or self.keras:
                 logger.debug(f"Framix Analyzer: {'智能模式' if kc else '基础模式'} ...")
-                futures = await asyncio.gather(
-                    *(Core.ask_analyzer(
-                        temp_video, deploy, kc,
-                        frame_path, extra_path, ffmpeg=self.ffmpeg, ffprobe=self.ffprobe
-                    ) for temp_video, *_, frame_path, extra_path, _ in task_list)
-                )
+
+                from concurrent.futures import ProcessPoolExecutor
+                with ProcessPoolExecutor() as executor:
+                    tasks = [
+                        _main_loop.run_in_executor(
+                            executor, self.amazing, temp_video, deploy, kc, self.fmp, self.fpb
+                        ) for temp_video, *_, frame_path, extra_path, _ in task_list
+                    ]
+                futures = await asyncio.gather(*tasks)
+
+                # futures = await asyncio.gather(
+                #     *(Core.ask_analyzer(
+                #         temp_video, deploy, kc,
+                #         frame_path, extra_path, ffmpeg=self.ffmpeg, ffprobe=self.ffprobe
+                #     ) for temp_video, *_, frame_path, extra_path, _ in task_list)
+                # )
 
                 for future, todo in zip(futures, task_list):
                     if future is None:
@@ -1047,7 +1059,7 @@ class Mission(object):
 
                     if classifier:
                         if isinstance(
-                                template_file := await ask_get_template(self.atom_total_temp), Exception
+                                template_file := await achieve(self.atom_total_temp), Exception
                         ):
                             return Show.console.print(f"[bold red]{template_file}")
 
@@ -1062,7 +1074,7 @@ class Mission(object):
                     logger.debug(f"Restore: {result}")
                     reporter.load(result)
 
-                    self.persistent(reporter, classifier, start, end, cost)
+                    self.enforce(reporter, classifier, start, end, cost)
 
             else:
                 return logger.debug(f"Framix Analyzer: 录制模式 ...")
@@ -1096,7 +1108,7 @@ class Mission(object):
                 )
 
                 await Switch.ask_video_tailor(
-                    self.ffmpeg, video_src, video_dst, start=start_time_str, limit=end_time_str
+                    self.fmp, video_src, video_dst, start=start_time_str, limit=end_time_str
                 )
                 os.remove(video_src)
                 logger.info(f"移除旧的视频 {Path(video_src).name}")
@@ -1120,7 +1132,7 @@ class Mission(object):
                 return task_list
 
             duration_list = await asyncio.gather(
-                *(Switch.ask_video_length(self.ffprobe, temp_video) for temp_video, *_ in task_list)
+                *(Switch.ask_video_length(self.fpb, temp_video) for temp_video, *_ in task_list)
             )
             duration_list = [duration for duration in duration_list if not isinstance(duration, Exception)]
             if len(duration_list) == 0:
@@ -1355,25 +1367,23 @@ class Mission(object):
 class Core(object):
 
     @staticmethod
-    async def ask_analyzer(vision_file: str, deploy, kc, *args, **kwargs) -> typing.Optional["Review"]:
+    async def ask_analyzer(vision, deploy, kc, *args) -> typing.Optional["Review"]:
 
-        frame_path, extra_path, *_ = args
-        ffmpeg = kwargs.get("ffmpeg", "ffmpeg")
-        ffprobe = kwargs.get("ffprobe", "ffprobe")
+        frame_path, extra_path, fmp, fpb = args
 
         async def validate():
             screen_cap = None
-            if os.path.isfile(vision_file):
-                screen = cv2.VideoCapture(vision_file)
+            if os.path.isfile(vision):
+                screen = cv2.VideoCapture(vision)
                 if screen.isOpened():
-                    screen_cap = Path(vision_file)
+                    screen_cap = Path(vision)
                 screen.release()
-            elif os.path.isdir(vision_file):
+            elif os.path.isdir(vision):
                 file_list = [
-                    file for file in os.listdir(vision_file) if os.path.isfile(os.path.join(vision_file, file))
+                    file for file in os.listdir(vision) if os.path.isfile(os.path.join(vision, file))
                 ]
                 if len(file_list) >= 1:
-                    screen = cv2.VideoCapture(open_file := os.path.join(vision_file, file_list[0]))
+                    screen = cv2.VideoCapture(open_file := os.path.join(vision, file_list[0]))
                     if screen.isOpened():
                         screen_cap = Path(open_file)
                     screen.release()
@@ -1381,11 +1391,11 @@ class Core(object):
 
         async def frame_flip():
             change_record = os.path.join(
-                os.path.dirname(vision_file),
+                os.path.dirname(vision),
                 f"screen_fps{deploy.frate}_{random.randint(100, 999)}.mp4"
             )
 
-            duration = await Switch.ask_video_length(ffprobe, vision_file)
+            duration = await Switch.ask_video_length(fpb, vision)
             vision_start, vision_close, vision_limit = await Switch.ask_magic_point(
                 Parser.parse_mills(deploy.start),
                 Parser.parse_mills(deploy.close),
@@ -1399,15 +1409,15 @@ class Core(object):
             logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
 
             await Switch.ask_video_change(
-                ffmpeg, deploy.frate, vision_file, change_record,
+                fmp, deploy.frate, vision, change_record,
                 start=vision_start, close=vision_close, limit=vision_limit
             )
             logger.info(f"视频转换完成: {Path(change_record).name}")
-            os.remove(vision_file)
-            logger.info(f"移除旧的视频: {Path(vision_file).name}")
+            os.remove(vision)
+            logger.info(f"移除旧的视频: {Path(vision).name}")
 
             if deploy.shape:
-                original_shape = await Switch.ask_video_larger(ffprobe, change_record)
+                original_shape = await Switch.ask_video_larger(fpb, change_record)
                 w, h, ratio = await Switch.ask_magic_frame(original_shape, deploy.shape)
                 target_shape = w, h
                 target_scale = deploy.scale
@@ -1628,7 +1638,7 @@ class Core(object):
 
         # Analyzer first ===================================================================================================
         if (screen_record := await validate()) is None:
-            return logger.error(f"{vision_file} 不是一个标准的视频文件或视频文件已损坏 ...")
+            return logger.error(f"{vision} 不是一个标准的视频文件或视频文件已损坏 ...")
         logger.info(f"{screen_record.name} 可正常播放，准备加载视频 ...")
         # Analyzer first ===================================================================================================
 
@@ -1638,7 +1648,7 @@ class Core(object):
         # Analyzer last ====================================================================================================
 
 
-async def ask_get_template(template_path: str) -> str | Exception:
+async def achieve(template_path: str) -> str | Exception:
     try:
         async with aiofiles.open(template_path, "r", encoding="utf-8") as f:
             template_file = await f.read()
@@ -1647,21 +1657,20 @@ async def ask_get_template(template_path: str) -> str | Exception:
     return template_file
 
 
-async def arithmetic_main(mission, cmd_lines, level, cpu) -> None:
+async def arithmetic(*args, **__) -> None:
+    mission, cmd_lines, level, power, *_ = args
 
     from multiprocessing import Pool
 
     async def initialization(transfer):
-        proc = members if (members := len(transfer)) <= cpu else cpu
+        proc = members if (members := len(transfer)) <= power else power
         rank = "ERROR" if members > 1 else level
         return proc, active, (rank,)
 
     async def multiple_merge(transfer):
         if len(transfer) <= 1:
             return None
-        template_total = await ask_get_template(
-            mission.view_total_temp if mission.quick else mission.main_total_temp
-        )
+        template_total = await achieve(mission.view_total_temp if mission.quick else mission.main_total_temp)
         Report.merge_report(results, template_total, mission.quick)
 
     # --video ==========================================================================================================
@@ -1693,7 +1702,9 @@ async def arithmetic_main(mission, cmd_lines, level, cpu) -> None:
     return None
 
 
-async def scheduling_main(mission, cmd_lines) -> None:
+async def scheduling(*args, **__) -> None:
+    mission, cmd_lines, level, power, *_ = args
+
     deploy = Deploy(mission.initial_deploy)
     for attr in mission.attrs:
         if any(line.startswith(f"--{attr}") for line in mission.lines):
@@ -1806,19 +1817,21 @@ if __name__ == '__main__':
     logger.debug(f"脚本文件路径: {_initial_script}")
 
     _option = Option(_initial_option)
-    _total_place = _option.total_place if _option.total_place else _total_place
-    _model_place = _option.model_place if _option.model_place else _model_place
-    _model_shape = _option.model_shape if _option.model_shape else _model_shape
-    _model_aisle = _option.model_aisle if _option.model_aisle else _model_aisle
+    _total_place = _option.total_place or _total_place
+    _model_place = _option.model_place or _model_place
+    _model_shape = _option.model_shape or _model_shape
+    _model_aisle = _option.model_aisle or _model_aisle
     logger.debug(f"报告文件路径: {_total_place}")
     logger.debug(f"模型文件路径: {_model_place}")
     logger.debug(f"模型文件尺寸: 宽 {_model_shape[0]} 高 {_model_shape[1]}")
     logger.debug(f"模型文件色彩: {'灰度' if _model_aisle == 1 else '彩色'}模型")
-    logger.debug(f"处理器核心数: {(_cpu := os.cpu_count())}")
+
+    logger.debug(f"处理器核心数: {(_power := os.cpu_count())}")
 
     _mission = Mission(
-        _carry, _fully, _quick, _basic, _keras, _alone, _group, _boost, _color,
-        _shape, _scale, _start, _close, _limit, _begin, _final,
+        _carry, _fully, _quick, _basic, _keras,
+        _alone, _group, _boost, _color, _shape, _scale,
+        _start, _close, _limit, _begin, _final,
         _frate, _thres, _shift, _block, _crops, _omits,
         attrs=_attrs,
         lines=_lines,
@@ -1827,27 +1840,27 @@ if __name__ == '__main__':
         main_total_temp=_main_total_temp,
         view_temp=_view_temp,
         main_temp=_main_temp,
-        initial_deploy=_initial_deploy,
         initial_option=_initial_option,
+        initial_deploy=_initial_deploy,
         initial_script=_initial_script,
         total_place=_total_place,
         model_place=_model_place,
         model_shape=_model_shape,
         model_aisle=_model_aisle,
         adb=_adb,
-        ffmpeg=_ffmpeg,
-        ffprobe=_ffprobe,
-        scrcpy=_scrcpy
+        fmp=_fmp,
+        fpb=_fpb,
+        scc=_scc,
     )
 
-    _loop = asyncio.get_event_loop()
+    _main_loop = asyncio.get_event_loop()
 
     try:
-        _loop.run_until_complete(
-            arithmetic_main(_mission, _cmd_lines, _level, _cpu)
+        _main_loop.run_until_complete(
+            arithmetic(_mission, _cmd_lines, _level, _power)
         )
-        _loop.run_until_complete(
-            scheduling_main(_mission, _cmd_lines)
+        _main_loop.run_until_complete(
+            scheduling(_mission, _cmd_lines, _level, _power)
         )
     except KeyboardInterrupt:
         sys.exit(0)
