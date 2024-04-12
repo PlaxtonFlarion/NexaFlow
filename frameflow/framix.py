@@ -1,8 +1,6 @@
 import os
 import sys
 import shutil
-from pathlib import Path
-from loguru import logger
 from frameflow.skills.show import Show
 
 _platform = sys.platform.strip().lower()
@@ -95,6 +93,8 @@ try:
     import asyncio
     import aiofiles
     import datetime
+    from pathlib import Path
+    from loguru import logger
     from rich.prompt import Prompt
     from engine.switch import Switch
     from engine.terminal import Terminal
@@ -810,7 +810,7 @@ class Mission(object):
             else:
                 Show.console.print(f"[bold][bold red]没有该选项,请重新输入[/bold red] ...[/bold]\n")
 
-    async def analysis(self, deploy) -> typing.Optional[bool]:
+    async def analysis(self, deploy, loop) -> typing.Optional[bool]:
 
         device_events = {}
         all_stop_event = asyncio.Event()
@@ -1024,10 +1024,9 @@ class Mission(object):
             elif self.basic or self.keras:
                 logger.debug(f"Framix Analyzer: {'智能模式' if kc else '基础模式'} ...")
 
-                from concurrent.futures import ProcessPoolExecutor
                 with ProcessPoolExecutor() as executor:
                     tasks = [
-                        _main_loop.run_in_executor(
+                        loop.run_in_executor(
                             executor, self.amazing, temp_video, deploy, kc, self.fmp, self.fpb
                         ) for temp_video, *_, frame_path, extra_path, _ in task_list
                     ]
@@ -1656,9 +1655,6 @@ async def achieve(template_path: str) -> str | Exception:
 
 
 async def arithmetic(*args, **__) -> None:
-    mission, cmd_lines, level, power, *_ = args
-
-    from multiprocessing import Pool
 
     async def initialization(transfer):
         proc = members if (members := len(transfer)) <= power else power
@@ -1671,26 +1667,24 @@ async def arithmetic(*args, **__) -> None:
         template_total = await achieve(mission.view_total_temp if mission.quick else mission.main_total_temp)
         Report.merge_report(results, template_total, mission.quick)
 
+    mission, cmd_lines, level, power, loop, *_ = args
     # --video ==========================================================================================================
     if video_list := cmd_lines.video:
         with Pool(*(await initialization(video_list))) as pool:
             results = pool.starmap(mission.video_task, [(i,) for i in video_list])
         await multiple_merge(video_list)
         sys.exit(0)
-
     # --stack ==========================================================================================================
     elif stack_list := cmd_lines.stack:
         with Pool(*(await initialization(stack_list))) as pool:
             results = pool.starmap(mission.video_dir_task, [(i,) for i in stack_list])
         await multiple_merge(stack_list)
         sys.exit(0)
-
     # --train ==========================================================================================================
     elif train_list := cmd_lines.train:
         with Pool(*(await initialization(train_list))) as pool:
             pool.starmap(mission.train_model, [(i,) for i in train_list])
         sys.exit(0)
-
     # --build ==========================================================================================================
     elif build_list := cmd_lines.build:
         with Pool(*(await initialization(build_list))) as pool:
@@ -1701,7 +1695,7 @@ async def arithmetic(*args, **__) -> None:
 
 
 async def scheduling(*args, **__) -> None:
-    mission, cmd_lines, level, power, *_ = args
+    mission, cmd_lines, level, power, loop, *_ = args
 
     deploy = Deploy(mission.initial_deploy)
     for attr in mission.attrs:
@@ -1709,16 +1703,26 @@ async def scheduling(*args, **__) -> None:
             logger.debug(f"Set {attr} = {(attribute := getattr(mission, attr))}")
             setattr(deploy, attr, attribute)
 
+    # --flick --carry --fully ==========================================================================================
     if cmd_lines.flick or cmd_lines.carry or cmd_lines.fully:
-        await mission.analysis(deploy)
+        await mission.analysis(deploy, loop)
+    # --paint ==========================================================================================================
     elif cmd_lines.paint:
         await mission.painting(deploy)
+    # --union ==========================================================================================================
     elif cmd_lines.union:
         await mission.combines_view(cmd_lines.union, mission.group)
+    # --merge ==========================================================================================================
     elif cmd_lines.merge:
         await mission.combines_main(cmd_lines.merge, mission.group)
     else:
         Show.help_document()
+
+
+def main(*args, **__):
+    main_loop = asyncio.get_event_loop()
+    main_loop.run_until_complete(arithmetic(*args))
+    main_loop.run_until_complete(scheduling(*args))
 
 
 if __name__ == '__main__':
@@ -1851,14 +1855,10 @@ if __name__ == '__main__':
         scc=_scc,
     )
 
-    _main_loop = asyncio.get_event_loop()
+    from multiprocessing import Pool
+    from concurrent.futures import ProcessPoolExecutor
 
     try:
-        _main_loop.run_until_complete(
-            arithmetic(_mission, _cmd_lines, _level, _power)
-        )
-        _main_loop.run_until_complete(
-            scheduling(_mission, _cmd_lines, _level, _power)
-        )
+        main(_mission, _cmd_lines, _level, _power)
     except KeyboardInterrupt:
         sys.exit(0)
