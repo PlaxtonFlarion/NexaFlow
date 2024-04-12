@@ -1197,7 +1197,7 @@ class Mission(object):
                     continue
 
                 yield [dynamically(device_func, method_args, device.serial)
-                       for (device_func, _), device in zip(device_func_list, device_list) if device_func]
+                       for device_func, device in zip(device_func_list, device_list) if device_func]
 
         async def dynamically(function, arg_list, device_sn=None):
             logger.info(
