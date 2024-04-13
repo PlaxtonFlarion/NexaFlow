@@ -864,9 +864,8 @@ class Mission(object):
             stop_event_control = events["stop_event"] if deploy.alone else all_stop_event
 
             video_flag = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
-            video_temp = f"{os.path.join(dst, 'screen')}_{video_flag}"
             cmd = [self.scc, "-s", serial, "--no-audio", "--video-bit-rate", "8M", "--max-fps", "60"]
-            cmd += ["--record", video_temp]
+            cmd += ["--record", video_temp := f"{os.path.join(dst, 'screen')}_{video_flag}"]
 
             transports = await Terminal.cmd_link(*cmd)
             asyncio.create_task(input_stream())
