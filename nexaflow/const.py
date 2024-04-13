@@ -40,6 +40,8 @@ BLOCK = 6
 CROPS = [{"x": 0, "y": 0, "x_size": 0, "y_size": 0}]
 OMITS = [{"x": 0, "y": 0, "x_size": 0, "y_size": 0}]
 
+LOG_FORMAT = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>"
+
 NEXA = os.path.dirname(os.path.abspath(__file__))
 WORK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

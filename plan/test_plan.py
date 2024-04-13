@@ -1,5 +1,4 @@
 import os
-from engine.activate import active
 from engine.alynex import Alynex
 from nexaflow import const
 from nexaflow.report import Report
@@ -23,16 +22,16 @@ class TestPlan(object):
         for _ in range(1):
             self.alynex.report.query = query
             self.device.swipe_unlock()
-            self.alynex.record.start_record(
+            self.alynex.medias.start_record(
                 self.alynex.report.video_path, self.device.serial
             )
 
             self.device.key_event(231)
             self.device.sleep(1)
-            self.alynex.player.play_audio(audio)
+            self.alynex.medias.audio_player(audio)
             self.device.sleep(2)
 
-            self.alynex.record.stop_record()
+            self.alynex.medias.close_record()
             self.device.force_filter(self.application)
             self.device.start_app(self.activity)
 
@@ -66,8 +65,7 @@ if __name__ == '__main__':
     # pip install -i https://pypi.tuna.tsinghua.edu.cn/simple tensorflow==2.14.0
     # pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade tensorflow
     # pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
-    active("INFO")
-    manage = Manage()
+    manage = Manage("INFO")
 
-    with TestPlan(manage.Phone) as test:
+    with TestPlan(manage.mobile) as test:
         test.test_02()

@@ -101,6 +101,7 @@ try:
 # frameflow & nexaflow =================================================================================================
     from engine.switch import Switch
     from engine.terminal import Terminal
+    from engine.activate import Active, Review
     from frameflow.skills.manage import Manage
     from frameflow.skills.parser import Parser
     from frameflow.skills.configure import Option
@@ -119,21 +120,6 @@ except (RuntimeError, ModuleNotFoundError) as _error:
     Show.console.print(f"[bold red]Error: {_error}")
     Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
     sys.exit(1)
-
-
-class Review(object):
-
-    data = tuple()
-
-    def __init__(self, start: int, end: int, cost: float, classifier=None):
-        self.data = start, end, cost, classifier
-
-    def __str__(self):
-        start, end, cost, classifier = self.data
-        kc = "KC" if classifier else "None"
-        return f"<Review start={start} end={end} cost={cost} classifier={kc}>"
-
-    __repr__ = __str__
 
 
 class Mission(object):
@@ -1021,7 +1007,7 @@ class Mission(object):
                 logger.debug(f"{const.DESC} Analyzer: {'智能模式' if kc else '基础模式'} ...")
 
                 # TODO
-                with ProcessPoolExecutor(_power, None, active, (_level,)) as executor:
+                with ProcessPoolExecutor(_power, None, Active.active, (_level,)) as executor:
                     tasks = [
                         _main_loop.run_in_executor(
                             executor, self.amazing, temp_video, deploy, kc, self.fmp, self.fpb
@@ -1196,12 +1182,12 @@ class Mission(object):
                     continue
 
                 for device_func in (device_func_list := await asyncio.gather(
-                        *(is_function(device_cmds, device, player) for device in device_list)
+                        *(is_function(device_cmds, device, medias) for device in device_list)
                 )):
                     if device_func is None:
                         logger.error(f"There is no such command {device_cmds} ...")
                         break
-                    if device_func.__name__ == "play_audio":
+                    if device_func.__name__ == "audio_player":
                         device_func_list = [device_func_list[0]]
                         break
 
@@ -1322,8 +1308,8 @@ class Mission(object):
                     return logger.error(f"缺少有效的脚本文件 {' '.join(self.fully)}...")
                 script_storage = script_data
 
-            from engine.player import Player
-            player = Player()
+            from engine.medias import Medias
+            medias = Medias()
 
             await device_mode_view()
             for script_dict in script_storage:
@@ -1662,7 +1648,7 @@ async def arithmetic(*args, **__) -> None:
     async def initialization(transfer):
         proc = members if (members := len(transfer)) <= power else power
         rank = "ERROR" if members > 1 else level
-        return proc, active, (rank,)
+        return proc, Active.active, (rank,)
 
     async def multiple_merge(transfer):
         if len(transfer) <= 1:
@@ -1725,8 +1711,7 @@ async def scheduling(*args, **__) -> None:
 if __name__ == '__main__':
     _cmd_lines = Parser.parse_cmd()
 
-    from engine.activate import active
-    active(_level := "DEBUG" if _cmd_lines.debug else "INFO")
+    Active.active(_level := "DEBUG" if _cmd_lines.debug else "INFO")
 
     # Debug Mode =======================================================================================================
     logger.debug(f"操作系统: {_platform}")

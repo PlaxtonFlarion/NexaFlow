@@ -15,8 +15,6 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Optional, Union
 from nexaflow import toolbox, const
 
-FORMAT: str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>"
-
 
 class Report(object):
 
@@ -39,24 +37,23 @@ class Report(object):
 
             self.clock: Any = lambda: time.strftime("%Y%m%d%H%M%S")
 
-            self.__title: str = ""
-            self.__query: str = ""
-            self.query_path: str = ""
-            self.video_path: str = ""
-            self.frame_path: str = ""
-            self.extra_path: str = ""
+            self.__title = ""
+            self.__query = ""
+            self.query_path = ""
+            self.video_path = ""
+            self.frame_path = ""
+            self.extra_path = ""
 
-            self.range_list: list[dict] = []
-            self.total_list: list[dict] = []
+            self.range_list = []
+            self.total_list = []
 
             self.total_path = os.path.join(total_path, f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection")
-            # self.total_path = "/Users/acekeppel/PycharmProjects/NexaFlow/report/Nexa_20230822223025/Nexa_Collection"
             os.makedirs(self.total_path, exist_ok=True)
 
             self.reset_path = os.path.join(os.path.dirname(self.total_path), "Nexa_Recovery")
             os.makedirs(self.reset_path, exist_ok=True)
             log_papers = os.path.join(self.reset_path, "nexaflow.log")
-            logger.add(log_papers, format=FORMAT, level="DEBUG")
+            logger.add(log_papers, format=const.LOG_FORMAT, level="DEBUG")
 
     @property
     def proto_path(self) -> str:
@@ -166,6 +163,7 @@ class Report(object):
 
             template = Template(self.get_template(template_file))
             html = template.render(
+                name=const.NAME,
                 title=self.title,
                 images_list=images_list
             )
@@ -299,13 +297,13 @@ class Report(object):
 
                 major_template = Template(views_loc)
                 range_html_temp = major_template.render(
-                    title="Framix",
+                    title=f"{const.DESC}",
                     report_time=time.strftime('%Y.%m.%d %H:%M:%S'),
                     images_list=images_list
                 )
                 teams = serial if serial else random.randint(10000, 99999)
                 range_html = Path(os.path.join(total_path, title, f"{title}_{teams}.html"))
-                async with aiofiles.open(range_html, "w", encoding="utf-8") as range_file:
+                async with aiofiles.open(range_html, "w", encoding=const.CHARSET) as range_file:
                     await range_file.write(range_html_temp)
                     logger.info(f"生成聚合报告: {range_html.name}")
 
@@ -397,6 +395,7 @@ class Report(object):
 
         total_template = Template(total_loc)
         total_html_temp = total_template.render(
+            title=f"{const.DESC}",
             report_time=time.strftime('%Y.%m.%d %H:%M:%S'),
             total_list=total_list
         )
@@ -471,12 +470,13 @@ class Report(object):
 
                 major_template = Template(major_loc)
                 range_html_temp = major_template.render(
+                    name=const.NAME,
                     title=title,
                     images_list=images_list
                 )
                 teams = serial if serial else random.randint(10000, 99999)
                 range_html = Path(os.path.join(total_path, title, f"{title}_{teams}.html"))
-                async with aiofiles.open(range_html, "w", encoding="utf-8") as range_file:
+                async with aiofiles.open(range_html, "w", encoding=const.CHARSET) as range_file:
                     await range_file.write(range_html_temp)
                     logger.info(f"生成聚合报告: {range_html.name}")
 
@@ -572,7 +572,7 @@ class Report(object):
             total_list=total_list
         )
         total_html = os.path.join(file_name, "NexaFlow.html")
-        async with aiofiles.open(total_html, "w", encoding="utf-8") as total_file:
+        async with aiofiles.open(total_html, "w", encoding=const.CHARSET) as total_file:
             await total_file.write(total_html_temp)
             logger.info(f"生成汇总报告: {total_html}")
 
@@ -593,19 +593,16 @@ class Report(object):
         thumbnail_list: list[dict[str, str]] = list()
         extra_dict: dict[str, str] = dict()
 
-        # if not compress_rate:
-        #     compress_rate = 0.2
-
         try:
             stage_range = classifier_result.get_stage_range()
         except AssertionError:
             stage_range = [classifier_result.data]
 
+        image_list = []
         if boost_mode:
             for cur_index in range(len(stage_range)):
-                each = stage_range[cur_index]
-                middle = each[len(each) // 2]
-                image_list = []
+                each_range = stage_range[cur_index]
+                middle = each_range[len(each_range) // 2]
                 if middle.is_stable():
                     label = label_stable
                     image = toolbox.compress_frame(
@@ -624,9 +621,9 @@ class Report(object):
                         label = label_unstable
 
                     if cur_index + 1 < len(stage_range):
-                        new_each = [*each, stage_range[cur_index + 1][0]]
+                        new_each = [*each_range, stage_range[cur_index + 1][0]]
                     else:
-                        new_each = each
+                        new_each = each_range
 
                     for i in new_each:
                         image = toolbox.compress_frame(
@@ -639,7 +636,7 @@ class Report(object):
                         }
                         image_list.append(frame)
 
-                first, last = each[0], each[-1]
+                first, last = each_range[0], each_range[-1]
                 title = (f"{label} "
                          f"区间: {first.frame_id}({first.timestamp:.5f}) - {last.frame_id}({last.timestamp:.5f}) "
                          f"耗时: {last.timestamp - first.timestamp:.5f} "
@@ -663,7 +660,6 @@ class Report(object):
                 else:
                     range_for_display = each_range
 
-                image_list = []
                 for i in range_for_display:
                     image = toolbox.compress_frame(
                         i.get_data(), compress_rate=compress_rate, target_size=target_size
@@ -696,6 +692,7 @@ class Report(object):
             background_color=const.BACKGROUND_COLOR,
             cost_dict=cost_dict,
             timestamp=timestamp,
+            name=const.NAME,
             version_code=const.VERSION
         )
 

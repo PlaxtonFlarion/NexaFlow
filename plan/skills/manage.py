@@ -1,18 +1,29 @@
 import re
 from typing import Any, Optional
+from engine.activate import Active
 from engine.terminal import Terminal
 from plan.skills.device import Device
 
 
 class Manage(object):
 
-    Phone: Optional["Device"] = None
+    __mobile: Optional["Device"] = None
 
-    def __init__(self):
-        self.device_dict = {}
-        self.current_device()
+    def __init__(self, log_level: str):
+        self.__device_dict = {}
+        self.__current_device()
+        Active.active(log_level)
 
-    def current_device(self) -> None:
+    @property
+    def mobile(self):
+        assert self.__mobile, "未连接设备 ..."
+        return self.__mobile
+
+    @mobile.setter
+    def mobile(self, value):
+        self.__mobile = value or None
+
+    def __current_device(self) -> None:
         cmd = ["adb", "devices", "-l"]
         result = Terminal.cmd_oneshot(cmd)
 
@@ -20,14 +31,14 @@ class Manage(object):
         for line in result.splitlines()[1:]:
             if line:
                 serial, _, models, *_ = line.split()
-                self.device_dict.update({serial: Device(serial, fit(models))})
+                self.__device_dict.update({serial: Device(serial, fit(models))})
 
-        if len(self.device_dict) == 1:
-            for _, device in self.device_dict.items():
-                self.Phone = device
+        if len(self.__device_dict) == 1:
+            for _, device in self.__device_dict.items():
+                self.mobile = device
 
     def operate_device(self, serial: str) -> Optional["Device"]:
-        return self.device_dict.get(serial, None)
+        return self.__device_dict.get(serial, None)
 
 
 if __name__ == '__main__':

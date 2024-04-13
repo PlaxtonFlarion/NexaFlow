@@ -1,8 +1,7 @@
 import os
 import time
-from nexaflow import const
-from engine.activate import active
 from engine.alynex import Alynex
+from nexaflow import const
 from nexaflow.report import Report
 from plan.skills.manage import Manage
 
@@ -13,8 +12,7 @@ def multi_audio_task():
     application = ""
     activity = ""
 
-    active("INFO")
-    manage = Manage()
+    manage = Manage("INFO")
     alynex = Alynex(Report(const.CREDO), const.MODEL)
 
     device = manage.operate_device("")
@@ -23,17 +21,17 @@ def multi_audio_task():
         for _ in range(3):
             alynex.report.query = audio.split(".")[0]
             device.swipe_unlock()
-            alynex.record.start_record(
+            alynex.medias.start_record(
                 alynex.report.video_path,
                 device.serial
             )
 
             device.key_event(231)
             device.sleep(1)
-            alynex.player.play_audio(os.path.join(const.AUDIO, audio))
+            alynex.medias.audio_player(os.path.join(const.AUDIO, audio))
             device.sleep(10)
 
-            alynex.record.stop_record()
+            alynex.medias.close_record()
             device.force_filter(application)
             device.start_app(activity)
             alynex.crop_hook(0, 0.2, 1, 0.8)

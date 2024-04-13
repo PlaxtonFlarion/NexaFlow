@@ -6,8 +6,8 @@ from pathlib import Path
 from loguru import logger
 from typing import Union, Optional
 from concurrent.futures import ThreadPoolExecutor
-from engine.record import Record
-from engine.player import Player
+from engine.activate import Review
+from engine.medias import Medias
 from engine.switch import Switch
 from nexaflow import toolbox
 from nexaflow.report import Report
@@ -15,22 +15,7 @@ from nexaflow.cutter.cutter import VideoCutter
 from nexaflow.video import VideoObject, Frame
 from nexaflow.classifier.keras_classifier import KerasClassifier
 from nexaflow.hook import BaseHook, CropHook, OmitHook, FrameSaveHook, CompressHook
-from nexaflow.classifier.base import ClassifierResult, SingleClassifierResult
-
-
-class Review(object):
-
-    data = tuple()
-
-    def __init__(self, start: int, end: int, cost: float, classifier: "ClassifierResult" = None):
-        self.data = start, end, cost, classifier
-
-    def __str__(self):
-        start, end, cost, classifier = self.data
-        kc = "KC" if classifier else "None"
-        return f"<Review start={start} end={end} cost={cost} classifier={kc}>"
-
-    __repr__ = __str__
+from nexaflow.classifier.base import SingleClassifierResult
 
 
 class Filmer(object):
@@ -47,18 +32,16 @@ class Alynex(object):
     def __init__(
             self,
             report: Report,
-            model_file: str,
+            model_place: str,
             model_shape: tuple = (256, 256),
             model_aisle: int = 1
     ):
 
         self.__kc = KerasClassifier(data_size=model_shape, aisle=model_aisle)
-        self.__kc.load_model(model_file)
+        self.__kc.load_model(model_place)
         self.__cliper: list["BaseHook"] = []
+        self.__medias: Optional["Medias"] = Medias()
         self.__report: Optional["Report"] = report
-        self.__player: Optional["Player"] = Player()
-        self.__record: Optional["Record"] = Record()
-        self.__switch: Optional["Switch"] = Switch()
 
     @property
     def kc(self) -> "KerasClassifier":
@@ -69,20 +52,12 @@ class Alynex(object):
         return self.__cliper
 
     @property
+    def medias(self) -> "Medias":
+        return self.__medias
+
+    @property
     def report(self) -> "Report":
         return self.__report
-
-    @property
-    def player(self) -> "Player":
-        return self.__player
-
-    @property
-    def record(self) -> "Record":
-        return self.__record
-
-    @property
-    def switch(self) -> "Switch":
-        return self.__switch
 
     @staticmethod
     def only_video(folder: str):
@@ -162,7 +137,7 @@ class Alynex(object):
                 f"screen_fps{frate}_{random.randint(100, 999)}.mp4"
             )
             asyncio.run(
-                self.switch.ask_video_change("ffmpeg", frate, screen_record, change_record)
+                Switch.ask_video_change("ffmpeg", frate, screen_record, change_record)
             )
             logger.info(f"视频转换完成: {Path(change_record).name}")
             os.remove(screen_record)
