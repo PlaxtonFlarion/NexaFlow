@@ -1,5 +1,6 @@
 import os
 
+ITEM = r"NEXAFLOW"
 NAME = r"framix"
 VERSION = r"0.1.0-beta"
 URL = r"https://github.com/PlaxtonFlarion/NexaFlow"
@@ -16,8 +17,17 @@ UNSTABLE_FLAG = r"-1"
 UNKNOWN_STAGE_FLAG = r"-2"
 IGNORE_FLAG = r"-3"
 
-SHAPE = (256, 256)
-SCALE = 0.5
+COMPRESS = 0.5
+
+MODEL_SHAPE = (256, 256)
+MODEL_AISLE = 1
+
+ALONE = False
+GROUP = False
+BOOST = False
+COLOR = False
+SHAPE = None
+SCALE = None
 START = None
 CLOSE = None
 LIMIT = None
@@ -27,6 +37,8 @@ FRATE = 60
 THRES = 0.97
 SHIFT = 3
 BLOCK = 6
+CROPS = [{"x": 0, "y": 0, "x_size": 0, "y_size": 0}]
+OMITS = [{"x": 0, "y": 0, "x_size": 0, "y_size": 0}]
 
 NEXA = os.path.dirname(os.path.abspath(__file__))
 WORK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -2,40 +2,12 @@ import time
 from rich.table import Table
 from rich.console import Console
 from rich.progress import Progress
+from nexaflow import const
 
 
 class Show(object):
 
     console = Console()
-
-    @staticmethod
-    def retry_fail_logo():
-        logo = """[bold]
-        ╔════════════════════════════════╗
-        ║          Retry Failed          ║
-        ╚════════════════════════════════╝
-
-        抱歉，尝试次数已达上限，无法完成操作。
-        请稍后再试或联系技术支持寻求帮助。
-
-        您的理解与耐心是我们不断进步的动力！
-        """
-        Show.console.print(logo)
-
-    @staticmethod
-    def connect_fail_logo():
-        logo = """[bold]
-        ╔════════════════════════════════╗
-        ║         Connect Failed         ║
-        ╚════════════════════════════════╝
-
-        🚫 连接超时 - 程序退出 🚫
-
-        由于长时间无法建立连接，程序现在将自动退出。
-        请检查您的设备或联系技术支持。
-        感谢您的耐心，期待下次再见！
-        """
-        Show.console.print(logo)
 
     @staticmethod
     def simulation_progress(desc: str, advance: int | float, interval: int | float):
@@ -44,6 +16,20 @@ class Show(object):
             while not progress.finished:
                 progress.update(task, advance=advance)
                 time.sleep(interval)
+
+    @staticmethod
+    def hint():
+        logo = """[bold]
+        ╔════════════════════════════════╗
+        ║         Mission Failed         ║
+        ╚════════════════════════════════╝
+
+        🚫 程序现在将自动退出 🚫
+
+        请检查您的设备或联系技术支持。
+        感谢您的耐心，期待下次再见！
+        """
+        Show.console.print(logo)
 
     @staticmethod
     def major_logo():
@@ -72,7 +58,7 @@ class Show(object):
     @staticmethod
     def help_document():
         table_major = Table(
-            title="[bold #FF851B]NexaFlow Framix Main Command Line",
+            title=f"[bold #FF851B]{const.ITEM} {const.DESC} Main Command Line",
             header_style="bold #FF851B",
             title_justify="center",
             show_header=True,
@@ -83,6 +69,19 @@ class Show(object):
         table_major.add_column("传递次数", justify="center", width=8)
         table_major.add_column("附加命令", justify="center", width=8)
         table_major.add_column("功能说明", justify="center", width=22)
+
+        table_minor = Table(
+            title=f"[bold #FF851B]{const.ITEM} {const.DESC} Extra Command Line",
+            header_style="bold #FF851B",
+            title_justify="center",
+            show_header=True,
+            show_lines=True
+        )
+        table_minor.add_column("附加命令", justify="center", width=12)
+        table_minor.add_column("参数类型", justify="center", width=12)
+        table_minor.add_column("传递次数", justify="center", width=8)
+        table_minor.add_column("默认状态", justify="center", width=8)
+        table_minor.add_column("功能说明", justify="center", width=22)
 
         major_information = [
             ["[bold #FFDC00]--video", "[bold #7FDBFF]视频文件", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]分析视频文件"],
@@ -96,22 +95,6 @@ class Show(object):
             ["[bold #FFDC00]--union", "[bold #7FDBFF]报告集合", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]聚合视频帧报告"],
             ["[bold #FFDC00]--merge", "[bold #7FDBFF]报告集合", "[bold #FFAFAF]多次", "[bold #D7FF00]支持", "[bold #39CCCC]聚合时间戳报告"]
         ]
-
-        for major in major_information:
-            table_major.add_row(*major)
-
-        table_minor = Table(
-            title="[bold #FF851B]NexaFlow Framix Extra Command Line",
-            header_style="bold #FF851B",
-            title_justify="center",
-            show_header=True,
-            show_lines=True
-        )
-        table_minor.add_column("附加命令", justify="center", width=12)
-        table_minor.add_column("参数类型", justify="center", width=12)
-        table_minor.add_column("传递次数", justify="center", width=8)
-        table_minor.add_column("默认状态", justify="center", width=8)
-        table_minor.add_column("功能说明", justify="center", width=22)
 
         minor_information = [
             ["[bold #FFDC00]--quick", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]快速模式"],
@@ -136,21 +119,24 @@ class Show(object):
             ["[bold #FFDC00]--omits", "[bold #7FDBFF]坐标", "[bold #FFAFAF]多次", "[bold #4CAF50]自动", "[bold #39CCCC]忽略区域"]
         ]
 
+        for major in major_information:
+            table_major.add_row(*major)
+
         for minor in minor_information:
             table_minor.add_row(*minor)
 
         Show.major_logo()
         Show.console.print(table_major)
-        Show.simulation_progress(f"Framix Terminal Command.", 1, 0.05)
+        Show.simulation_progress(f"{const.DESC} Terminal Command.", 1, 0.05)
 
         Show.minor_logo()
         Show.console.print(table_minor)
-        Show.simulation_progress(f"Framix Terminal Command.", 1, 0.05)
+        Show.simulation_progress(f"{const.DESC} Terminal Command.", 1, 0.05)
 
     @staticmethod
     def tips_document():
         table = Table(
-            title="[bold #FF851B]NexaFlow Framix Select Command Line",
+            title=f"[bold #FF851B]{const.ITEM} {const.DESC} Select Command Line",
             header_style="bold #D7FF00",
             title_justify="center",
             show_header=True,
@@ -159,14 +145,19 @@ class Show(object):
         table.add_column("选项", justify="center", width=12)
         table.add_column("参数", justify="center", width=12)
         table.add_column("说明", justify="center", width=44)
-        table.add_row("[bold #FFAFAF]header", "[bold #AFD7FF]标题名", "[bold #DADADA]生成一个新标题文件夹")
-        table.add_row("[bold #FFAFAF]serial", "[bold #8A8A8A]无参数", "[bold #DADADA]重新选择已连接的设备")
-        table.add_row("[bold #FFAFAF]deploy", "[bold #8A8A8A]无参数", "[bold #DADADA]重新部署视频分析配置")
-        table.add_row("[bold #FFAFAF]create", "[bold #8A8A8A]无参数", "[bold #DADADA]生成视频分析汇总报告")
-        table.add_row("[bold #FFAFAF]invent", "[bold #8A8A8A]无参数", "[bold #DADADA]生成视频拆帧汇总报告")
-        table.add_row("[bold #FFAFAF]******", "[bold #8A8A8A]无参数", "[bold #DADADA]任意数字代表录制时长")
+
+        information = [
+            ["[bold #FFAFAF]header", "[bold #AFD7FF]标题名", "[bold #DADADA]生成一个新标题文件夹"],
+            ["[bold #FFAFAF]serial", "[bold #8A8A8A]无参数", "[bold #DADADA]重新选择已连接的设备"],
+            ["[bold #FFAFAF]deploy", "[bold #8A8A8A]无参数", "[bold #DADADA]重新部署视频分析配置"],
+            ["[bold #FFAFAF]create", "[bold #8A8A8A]无参数", "[bold #DADADA]生成视频分析汇总报告"],
+            ["[bold #FFAFAF]invent", "[bold #8A8A8A]无参数", "[bold #DADADA]生成视频拆帧汇总报告"]
+        ]
+        for info in information:
+            table.add_row(*info)
+
         Show.console.print(table)
-        Show.simulation_progress(f"Framix Terminal Command.", 1, 0.05)
+        Show.simulation_progress(f"{const.DESC} Terminal Command.", 1, 0.05)
 
 
 if __name__ == '__main__':

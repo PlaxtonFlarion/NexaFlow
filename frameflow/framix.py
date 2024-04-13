@@ -2,26 +2,27 @@ import os
 import sys
 import shutil
 from frameflow.skills.show import Show
+from nexaflow import const
 
 _platform = sys.platform.strip().lower()
 _software = os.path.basename(os.path.abspath(sys.argv[0])).strip().lower()
 _sys_symbol = os.sep
 _env_symbol = os.path.pathsep
 
-if _software == "framix.exe":
+if _software == f"{const.NAME}.exe":
     _workable = os.path.dirname(os.path.abspath(sys.argv[0]))
     _feasible = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
-elif _software == "framix.bin":
+elif _software == f"{const.NAME}.bin":
     _workable = os.path.dirname(sys.executable)
     _feasible = os.path.dirname(os.path.dirname(sys.executable))
-elif _software == "framix":
+elif _software == f"{const.NAME}":
     _workable = os.path.dirname(sys.executable)
     _feasible = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(sys.executable))))
-elif _software == "framix.py":
+elif _software == f"{const.NAME}.py":
     _workable = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     _feasible = os.path.dirname(os.path.abspath(__file__))
 else:
-    Show.console.print(f"[bold]Application name must be [bold red]framix[/bold red] ...[/bold]")
+    Show.console.print(f"[bold]software compatible with [bold red]{const.NAME}[/bold red] ...[/bold]")
     Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
     sys.exit(1)
 
@@ -38,7 +39,7 @@ elif _platform == "darwin":
     _fpb = os.path.join(_turbo, "mac", "ffmpeg", "bin", "ffprobe")
     _scc = os.path.join(_turbo, "mac", "scrcpy", "bin", "scrcpy")
 else:
-    Show.console.print("[bold]Only compatible with [bold red]Windows & macOS[/bold red] platforms ...[/bold]")
+    Show.console.print(f"[bold]{const.NAME} compatible with [bold red]Win & Mac[/bold red] ...[/bold]")
     Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
     sys.exit(1)
 
@@ -46,8 +47,8 @@ for _tls in (_tools := [_adb, _fmp, _fpb, _scc]):
     os.environ["PATH"] = os.path.dirname(_tls) + _env_symbol + os.environ.get("PATH", "")
 
 for _tls in _tools:
-    if shutil.which((_tls_name := os.path.basename(_tls))) is None:
-        Show.console.print(f"[bold]Missing [bold red]{_tls_name}[/bold red] environment variables ...[/bold]")
+    if not shutil.which((_tls_name := os.path.basename(_tls))):
+        Show.console.print(f"[bold]{const.NAME} missing files [bold red]{_tls_name}[/bold red] ...[/bold]")
         Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
         sys.exit(1)
 
@@ -59,16 +60,17 @@ _view_total_temp = os.path.join(_workable, "archivix", "pages", "template_view_t
 
 for _tmp in (_temps := [_atom_total_temp, _main_share_temp, _main_total_temp, _view_share_temp, _view_total_temp]):
     if not os.path.isfile(_tmp):
-        Show.console.print(f"[bold]Missing [bold red]{_tmp}[/bold red] html template ...[/bold]")
+        _tmp_name = os.path.basename(_tmp)
+        Show.console.print(f"[bold]{const.NAME} missing files [bold red]{_tmp_name}[/bold red] ...[/bold]")
         Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
         sys.exit(1)
 
-_initial_source = os.path.join(_feasible, "framix.source")
+_initial_source = os.path.join(_feasible, f"{const.NAME}.source")
 
-_total_place = os.path.join(_feasible, "framix.report")
+_total_place = os.path.join(_feasible, f"{const.NAME}.report")
 _model_place = os.path.join(_workable, "archivix", "molds", "Keras_Gray_W256_H256_00000.h5")
-_model_shape = (256, 256)
-_model_aisle = 1
+_model_shape = const.MODEL_SHAPE
+_model_aisle = const.MODEL_AISLE
 
 if len(sys.argv) == 1:
     Show.help_document()
@@ -96,6 +98,7 @@ try:
     from pathlib import Path
     from loguru import logger
     from rich.prompt import Prompt
+# frameflow & nexaflow =================================================================================================
     from engine.switch import Switch
     from engine.terminal import Terminal
     from frameflow.skills.manage import Manage
@@ -104,7 +107,7 @@ try:
     from frameflow.skills.configure import Deploy
     from frameflow.skills.configure import Script
     from frameflow.skills.database import DataBase
-    from nexaflow import const, toolbox
+    from nexaflow import toolbox
     from nexaflow.report import Report
     from nexaflow.video import VideoObject, VideoFrame
     from nexaflow.cutter.cutter import VideoCutter
@@ -112,8 +115,8 @@ try:
     from nexaflow.hook import PaintCropHook, PaintOmitHook
     from nexaflow.classifier.keras_classifier import KerasClassifier
     from nexaflow.classifier.framix_classifier import FramixClassifier
-except (RuntimeError, ModuleNotFoundError) as error:
-    Show.console.print(f"[bold red]Error: {error}")
+except (RuntimeError, ModuleNotFoundError) as _error:
+    Show.console.print(f"[bold red]Error: {_error}")
     Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
     sys.exit(1)
 
@@ -180,7 +183,7 @@ class Mission(object):
 
     @staticmethod
     def enforce(r, c, start: int, end: int, cost: float):
-        with DataBase(os.path.join(r.reset_path, "Framix_Data.db")) as database:
+        with DataBase(os.path.join(r.reset_path, f"{const.NAME}_data.db")) as database:
             if c:
                 column_list = [
                     'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
@@ -215,7 +218,7 @@ class Mission(object):
 
     def video_task(self, video_file: str):
         reporter = Report(self.total_place)
-        reporter.title = f"Framix_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
+        reporter.title = f"{const.DESC}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
         reporter.query = time.strftime('%Y%m%d%H%M%S')
         new_video_path = os.path.join(reporter.video_path, os.path.basename(video_file))
 
@@ -230,7 +233,7 @@ class Mission(object):
         loop = asyncio.get_event_loop()
 
         if self.quick:
-            logger.info(f"Framix Analyzer: 快速模式 ...")
+            logger.info(f"{const.DESC} Analyzer: 快速模式 ...")
             video_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
             if deploy.shape:
                 original_shape = loop.run_until_complete(
@@ -246,7 +249,7 @@ class Mission(object):
                 video_filter.append(f"scale=iw*{scale}:ih*{scale}")
                 logger.debug(f"Image Scale: {deploy.scale}")
             else:
-                video_filter.append(f"scale=iw*{const.SCALE}:ih*{const.SCALE}")
+                video_filter.append(f"scale=iw*{const.COMPRESS}:ih*{const.COMPRESS}")
             logger.info(f"应用过滤器: {video_filter}")
 
             duration = loop.run_until_complete(
@@ -293,7 +296,7 @@ class Mission(object):
             return reporter.total_path
 
         elif self.keras and not self.basic:
-            logger.info(f"Framix Analyzer: 智能模式 ...")
+            logger.info(f"{const.DESC} Analyzer: 智能模式 ...")
             kc = KerasClassifier(data_size=self.model_shape, aisle=self.model_aisle)
             try:
                 kc.load_model(self.model_place)
@@ -301,7 +304,7 @@ class Mission(object):
                 logger.error(f"{err}")
                 kc = None
         else:
-            logger.info(f"Framix Analyzer: 基础模式 ...")
+            logger.info(f"{const.DESC} Analyzer: 基础模式 ...")
             kc = None
 
         futures = loop.run_until_complete(
@@ -363,7 +366,7 @@ class Mission(object):
         loop = asyncio.get_event_loop()
 
         if self.quick:
-            logger.debug(f"Framix Analyzer: 快速模式 ...")
+            logger.debug(f"{const.DESC} Analyzer: 快速模式 ...")
             for video in self.accelerate(folder):
                 reporter.title = video.title
                 for path in video.sheet:
@@ -386,7 +389,7 @@ class Mission(object):
                         video_filter.append(f"scale=iw*{scale}:ih*{scale}")
                         logger.debug(f"Image Scale: {deploy.scale}")
                     else:
-                        video_filter.append(f"scale=iw*{const.SCALE}:ih*{const.SCALE}")
+                        video_filter.append(f"scale=iw*{const.COMPRESS}:ih*{const.COMPRESS}")
                     logger.info(f"应用过滤器: {video_filter}")
 
                     duration = loop.run_until_complete(
@@ -433,7 +436,7 @@ class Mission(object):
             return reporter.total_path
 
         elif self.keras and not self.basic:
-            logger.info(f"Framix Analyzer: 智能模式 ...")
+            logger.info(f"{const.DESC} Analyzer: 智能模式 ...")
             kc = KerasClassifier(data_size=self.model_shape, aisle=self.model_aisle)
             try:
                 kc.load_model(self.model_place)
@@ -441,7 +444,7 @@ class Mission(object):
                 logger.error(f"{err}")
                 kc = None
         else:
-            logger.info(f"Framix Analyzer: 基础模式 ...")
+            logger.info(f"{const.DESC} Analyzer: 基础模式 ...")
             kc = None
 
         for video in self.accelerate(folder):
@@ -578,7 +581,7 @@ class Mission(object):
             target_scale = max(0.1, min(1.0, deploy.scale))
         else:
             target_shape = deploy.shape
-            target_scale = const.SCALE
+            target_scale = const.COMPRESS
 
         res.pick_and_save(
             range_list=stable,
@@ -725,7 +728,7 @@ class Mission(object):
                 if deploy.scale:
                     image_scale = max_scale if deploy.shape else max(min_scale, min(max_scale, deploy.scale))
                 else:
-                    image_scale = max_scale if deploy.shape else const.SCALE
+                    image_scale = max_scale if deploy.shape else const.COMPRESS
 
                 new_w, new_h = int(twist_w * image_scale), int(twist_h * image_scale)
                 logger.debug(
@@ -820,22 +823,18 @@ class Mission(object):
             while True:
                 if events["head_event"].is_set():
                     for i in range(amount):
-                        if stop_event_control.is_set() and i != amount:
-                            logger.success(f"{serial} 主动停止 ...")
-                            logger.warning(f"{serial} 剩余时间 -> 00 秒")
-                            return
-                        elif events["fail_event"].is_set():
-                            logger.error(f"{serial} 意外停止 ...")
-                            logger.warning(f"{serial} 剩余时间 -> 00 秒")
-                            return
                         row = amount - i if amount - i <= 10 else 10
                         logger.warning(f"{serial} 剩余时间 -> {amount - i:02} 秒 {'----' * row} ...")
+                        if stop_event_control.is_set() and i != amount:
+                            logger.success(f"{serial} 主动停止 ...")
+                            break
+                        elif events["fail_event"].is_set():
+                            logger.error(f"{serial} 意外停止 ...")
+                            break
                         await asyncio.sleep(1)
-                    logger.warning(f"{serial} 剩余时间 -> 00 秒")
-                    return
+                    return logger.warning(f"{serial} 剩余时间 -> 00 秒")
                 elif events["fail_event"].is_set():
-                    logger.error(f"{serial} 意外停止 ...")
-                    break
+                    return logger.error(f"{serial} 意外停止 ...")
                 await asyncio.sleep(0.2)
 
         async def timing_many(serial, events) -> None:
@@ -844,15 +843,12 @@ class Mission(object):
                 if events["head_event"].is_set():
                     while True:
                         if stop_event_control.is_set():
-                            logger.success(f"{serial} 主动停止 ...")
-                            return
+                            return logger.success(f"{serial} 主动停止 ...")
                         elif events["fail_event"].is_set():
-                            logger.error(f"{serial} 意外停止 ...")
-                            return
+                            return logger.error(f"{serial} 意外停止 ...")
                         await asyncio.sleep(0.2)
                 elif events["fail_event"].is_set():
-                    logger.error(f"{serial} 意外停止 ...")
-                    break
+                    return logger.error(f"{serial} 意外停止 ...")
                 await asyncio.sleep(0.2)
 
         async def start_record(serial, dst, events):
@@ -943,7 +939,7 @@ class Mission(object):
                 return None
 
             if self.quick:
-                logger.debug(f"Framix Analyzer: 快速模式 ...")
+                logger.debug(f"{const.DESC} Analyzer: 快速模式 ...")
                 video_filter_list = []
                 default_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
                 if deploy.shape:
@@ -967,7 +963,7 @@ class Mission(object):
                 else:
                     for temp_video, *_ in task_list:
                         video_filter = default_filter.copy()
-                        video_filter.append(f"scale=iw*{const.SCALE}:ih*{const.SCALE}")
+                        video_filter.append(f"scale=iw*{const.COMPRESS}:ih*{const.COMPRESS}")
                         video_filter_list.append(video_filter)
 
                 for filters in video_filter_list:
@@ -1022,8 +1018,9 @@ class Mission(object):
                     reporter.load(result)
 
             elif self.basic or self.keras:
-                logger.debug(f"Framix Analyzer: {'智能模式' if kc else '基础模式'} ...")
+                logger.debug(f"{const.DESC} Analyzer: {'智能模式' if kc else '基础模式'} ...")
 
+                # TODO
                 with ProcessPoolExecutor() as executor:
                     tasks = [
                         loop.run_in_executor(
@@ -1032,6 +1029,7 @@ class Mission(object):
                     ]
                 futures = await asyncio.gather(*tasks)
 
+                # TODO
                 # futures = await asyncio.gather(
                 #     *(Core.ask_analyzer(
                 #         temp_video, deploy, kc,
@@ -1074,7 +1072,7 @@ class Mission(object):
                     self.enforce(reporter, classifier, start, end, cost)
 
             else:
-                return logger.debug(f"Framix Analyzer: 录制模式 ...")
+                return logger.debug(f"{const.DESC} Analyzer: 录制模式 ...")
 
         async def device_mode_view():
             Show.console.print(f"[bold]<Link> <{'单设备模式' if len(device_list) == 1 else '多设备模式'}>")
@@ -1213,6 +1211,10 @@ class Mission(object):
                 yield [dynamically(device_func, method_args, device.serial)
                        for device_func, device in zip(device_func_list, device_list) if device_func]
 
+            # TODO
+            for device in device_list:
+                device_events[device.serial]["stop_event"].set() if deploy.alone else all_stop_event.set()
+
         async def dynamically(function, arg_list, device_sn=None):
             logger.info(
                 f"{device_sn if device_sn else 'Device'} {function.__name__} {arg_list}"
@@ -1340,10 +1342,11 @@ class Mission(object):
                                         if isinstance(exec_func, Exception):
                                             logger.error(f"{exec_func}")
 
-                            for _device in device_list:
-                                device_events[
-                                    _device.serial
-                                ]["stop_event"].set() if deploy.alone else all_stop_event.set()
+                            # TODO
+                            # for _device in device_list:
+                            #     device_events[
+                            #         _device.serial
+                            #     ]["stop_event"].set() if deploy.alone else all_stop_event.set()
 
                             await all_time("many")
                             await all_over()
@@ -1535,7 +1538,7 @@ class Core(object):
                 logger.error(f"{e}")
                 start_frame = classify.get_important_frame_list()[0]
                 end_frame = classify.get_important_frame_list()[-1]
-                logger.warning(f"Framix Analyzer recalculate ...")
+                logger.warning(f"{const.DESC} Analyzer recalculate ...")
             except IndexError as e:
                 logger.error(f"{e}")
                 for i, unstable_stage in enumerate(classify.get_specific_stage_range("-3")):
@@ -1546,12 +1549,12 @@ class Core(object):
                     Show.console.print(f"[bold]{'=' * 30}\n")
                 start_frame = classify.get_important_frame_list()[0]
                 end_frame = classify.get_important_frame_list()[-1]
-                logger.warning(f"Framix Analyzer recalculate ...")
+                logger.warning(f"{const.DESC} Analyzer recalculate ...")
 
             if start_frame == end_frame:
                 logger.warning(f"{start_frame} == {end_frame}")
                 start_frame, end_frame = classify.data[0], classify.data[-1]
-                logger.warning(f"Framix Analyzer recalculate ...")
+                logger.warning(f"{const.DESC} Analyzer recalculate ...")
 
             time_cost = end_frame.timestamp - start_frame.timestamp
             logger.info(

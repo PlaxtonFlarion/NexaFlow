@@ -4,41 +4,42 @@ from loguru import logger
 from rich.table import Table
 from frameflow.skills.parser import Parser
 from frameflow.skills.show import Show
+from nexaflow import const
 
 
 def dump_parameters(src, dst) -> None:
     os.makedirs(os.path.dirname(src), exist_ok=True)
-    with open(src, "w", encoding="utf-8") as file:
+    with open(src, "w", encoding=const.CHARSET) as file:
         json.dump(dst, file, indent=4, separators=(",", ":"), ensure_ascii=False)
 
 
 def load_parameters(src, dst) -> None:
-    with open(src, "r", encoding="utf-8") as file:
+    with open(src, "r", encoding=const.CHARSET) as file:
         dst.update(json.load(file))
 
 
 class Deploy(object):
 
     deploys = {
-        "alone": False,
-        "group": False,
-        "boost": False,
-        "color": False,
+        "alone": const.ALONE,
+        "group": const.GROUP,
+        "boost": const.BOOST,
+        "color": const.COLOR,
 
-        "shape": None,
-        "scale": None,
-        "start": None,
-        "close": None,
-        "limit": None,
-        "begin": (0, 1),
-        "final": (-1, -1),
+        "shape": const.SHAPE,
+        "scale": const.SCALE,
+        "start": const.START,
+        "close": const.CLOSE,
+        "limit": const.LIMIT,
+        "begin": const.BEGIN,
+        "final": const.FINAL,
 
-        "frate": 60,
-        "thres": 0.97,
-        "shift": 3,
-        "block": 6,
-        "crops": [{"x": 0, "y": 0, "x_size": 0, "y_size": 0}],
-        "omits": [{"x": 0, "y": 0, "x_size": 0, "y_size": 0}]
+        "frate": const.FRATE,
+        "thres": const.THRES,
+        "shift": const.SHIFT,
+        "block": const.BLOCK,
+        "crops": const.CROPS,
+        "omits": const.OMITS
     }
 
     def __init__(self, deploy_file: str):
@@ -211,7 +212,7 @@ class Deploy(object):
         c = {0: "#AF5FD7", 1: "#D75F87", 2: "#87AFD7", 3: "#00AF5F"}
 
         table = Table(
-            title=f"[bold {c[0]}]Framix Analyzer Deploy",
+            title=f"[bold {c[0]}]{const.DESC} Analyzer Deploy",
             header_style=f"bold {c[0]}",
             title_justify="center",
             show_header=True
