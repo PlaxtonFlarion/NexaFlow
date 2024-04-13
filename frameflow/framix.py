@@ -813,7 +813,7 @@ class Mission(object):
             else:
                 Show.console.print(f"[bold][bold red]没有该选项,请重新输入[/bold red] ...[/bold]\n")
 
-    async def analysis(self, deploy, loop) -> typing.Optional[bool]:
+    async def analysis(self, deploy) -> typing.Optional[bool]:
 
         device_events = {}
         all_stop_event = asyncio.Event()
@@ -1021,9 +1021,9 @@ class Mission(object):
                 logger.debug(f"{const.DESC} Analyzer: {'智能模式' if kc else '基础模式'} ...")
 
                 # TODO
-                with ProcessPoolExecutor() as executor:
+                with ProcessPoolExecutor(_power, None, active, (_level,)) as executor:
                     tasks = [
-                        loop.run_in_executor(
+                        _main_loop.run_in_executor(
                             executor, self.amazing, temp_video, deploy, kc, self.fmp, self.fpb
                         ) for temp_video, *_, frame_path, extra_path, _ in task_list
                     ]
@@ -1708,7 +1708,7 @@ async def scheduling(*args, **__) -> None:
 
     # --flick --carry --fully ==========================================================================================
     if cmd_lines.flick or cmd_lines.carry or cmd_lines.fully:
-        await mission.analysis(deploy, loop)
+        await mission.analysis(deploy)
     # --paint ==========================================================================================================
     elif cmd_lines.paint:
         await mission.painting(deploy)
@@ -1720,12 +1720,6 @@ async def scheduling(*args, **__) -> None:
         await mission.combines_main(cmd_lines.merge, mission.group)
     else:
         Show.help_document()
-
-
-def main(*args, **__):
-    main_loop = asyncio.get_event_loop()
-    main_loop.run_until_complete(arithmetic(*args))
-    main_loop.run_until_complete(scheduling(*args))
 
 
 if __name__ == '__main__':
@@ -1861,7 +1855,14 @@ if __name__ == '__main__':
     from multiprocessing import Pool
     from concurrent.futures import ProcessPoolExecutor
 
+    _main_loop = asyncio.get_event_loop()
+
     try:
-        main(_mission, _cmd_lines, _level, _power)
+        _main_loop.run_until_complete(arithmetic(
+            _mission, _cmd_lines, _level, _power, _main_loop)
+        )
+        _main_loop.run_until_complete(scheduling(
+            _mission, _cmd_lines, _level, _power, _main_loop)
+        )
     except KeyboardInterrupt:
         sys.exit(0)
