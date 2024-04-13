@@ -14,7 +14,8 @@ class Terminal(object):
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
 
-        (stdout, stderr), encode = await transports.communicate(), "GBK" if sys.platform == "win32" else "UTF-8"
+        encode = "GBK" if sys.platform == "win32" else "UTF-8"
+        stdout, stderr = await transports.communicate()
 
         if stdout:
             return stdout.decode(encoding=encode, errors="ignore").strip()
@@ -40,7 +41,8 @@ class Terminal(object):
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
 
-        (stdout, stderr), encode = await transports.communicate(), "GBK" if sys.platform == "win32" else "UTF-8"
+        encode = "GBK" if sys.platform == "win32" else "UTF-8"
+        stdout, stderr = await transports.communicate()
 
         if stdout:
             return stdout.decode(encoding=encode, errors="ignore").strip()
