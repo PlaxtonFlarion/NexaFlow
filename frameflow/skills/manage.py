@@ -15,25 +15,44 @@ class Manage(object):
 
         async def device_info(serial):
             cmd_initial = [self.adb, "-s", serial, "wait-for-usb-device", "shell"]
-            brand, version, screen = await asyncio.gather(
+            information_list = await asyncio.gather(
                 Terminal.cmd_line(*(cmd_initial + ["getprop", "ro.product.brand"])),
                 Terminal.cmd_line(*(cmd_initial + ["getprop", "ro.build.version.release"])),
-                Terminal.cmd_line(*(cmd_initial + ["wm", "size"]))
+                Terminal.cmd_line(*(cmd_initial + ["wm", "size"])),
+                return_exceptions=True
             )
-            mate = re.search(r"(?<=Physical size:\s)(\d+)x(\d+)", screen)
+
+            for information in information_list:
+                if isinstance(information, Exception):
+                    return information
+            species, version, display = information_list
+
+            mate = re.search(r"(?<=Physical size:\s)(\d+)x(\d+)", display)
             size = tuple(mate.group().split("x")) if mate else ()
-            return Device(self.adb, serial, brand, version, size)
+            return Device(self.adb, serial, species, version, size)
 
         device_dict = {}
         devices = await Terminal.cmd_line(self.adb, "devices")
-        if len(serial_list := [i.split()[0] for i in devices.split("\n")[1:]]) > 0:
-            result = await asyncio.gather(
-                *(device_info(serial) for serial in serial_list)
+        if serial_list := [i.split()[0] for i in devices.split("\n")[1:]]:
+            result_list = await asyncio.gather(
+                *(device_info(serial) for serial in serial_list), return_exceptions=True
             )
-            device_dict = {str(i + 1): device for i, device in enumerate(result)}
+
+            for result in result_list:
+                if isinstance(result, Exception):
+                    return device_dict
+
+            device_dict = {str(i + 1): device for i, device in enumerate(result_list)}
         return device_dict
 
     async def operate_device(self) -> list["Device"]:
+
+        async def device_mode():
+            Show.console.print(f"[bold]<Link> <{'单设备模式' if len(device_list) == 1 else '多设备模式'}>")
+            for device in device_list:
+                Show.console.print(f"[bold #00FFAF]Connect:[/bold #00FFAF] {device}")
+            return device_list
+
         while True:
             device_list = []
             if len(device_dict := await self.current_device()) == 0:
@@ -57,6 +76,8 @@ class Manage(object):
             except KeyError:
                 Show.console.print(f"[bold red]没有该序号,请重新选择 ...[/bold red]\n")
                 await asyncio.sleep(1)
+
+        return await device_mode()
 
 
 if __name__ == '__main__':
