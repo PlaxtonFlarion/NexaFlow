@@ -46,13 +46,6 @@ class Manage(object):
         return device_dict
 
     async def operate_device(self) -> list["Device"]:
-
-        async def device_mode():
-            Show.console.print(f"[bold]<Link> <{'单设备模式' if len(device_list) == 1 else '多设备模式'}>")
-            for device in device_list:
-                Show.console.print(f"[bold #00FFAF]Connect:[/bold #00FFAF] {device}")
-            return device_list
-
         while True:
             device_list = []
             if len(device_dict := await self.current_device()) == 0:
@@ -76,8 +69,6 @@ class Manage(object):
             except KeyError:
                 Show.console.print(f"[bold red]没有该序号,请重新选择 ...[/bold red]\n")
                 await asyncio.sleep(1)
-
-        return await device_mode()
 
 
 if __name__ == '__main__':
