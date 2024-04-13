@@ -1,6 +1,6 @@
 import os
 
-ITEM = r"NEXAFLOW"
+ITEM = r"NexaFlow"
 NAME = r"framix"
 VERSION = r"0.1.0-beta"
 URL = r"https://github.com/PlaxtonFlarion/NexaFlow"
