@@ -4,17 +4,16 @@ import signal
 import pygame
 import threading
 from loguru import logger
-from subprocess import Popen
-from typing import Union, IO, Optional
+from typing import Union, IO
 from engine.terminal import Terminal
 
 
 class Medias(object):
 
     def __init__(self):
-        self.__volume: float = 1.0
-        self.__connection: Optional[Popen] = None
-        self.__record_event: threading.Event = threading.Event()
+        self.__volume = 1.0
+        self.__online = None
+        self.__record = threading.Event()
 
     def audio_player(self, audio_file: str):
         pygame.mixer.init()
@@ -24,31 +23,31 @@ class Medias(object):
         while pygame.mixer.music.get_busy():
             pygame.time.Clock().tick(10)
 
-    def start_record(self, video_path: str, serial: str = None) -> None:
+    def start_record(self, video_path: str, sn: str = None) -> None:
         cmd = [
             "scrcpy", "--no-audio", "--video-bit-rate", "8M", "--max-fps", "60", "-Nr",
             f"{os.path.join(video_path, 'screen')}.mkv"
         ]
-        if serial:
+        if sn:
             cmd.insert(1, "-s")
-            cmd.insert(2, serial)
-        self.__connection = Terminal.cmd_connect(cmd)
+            cmd.insert(2, sn)
+        self.__online = Terminal.cmd_connect(cmd)
 
         def stream(flow: Union[int, IO[str]]) -> None:
             for line in iter(flow.readline, ""):
                 logger.info(" ".join(line.strip().split()))
             flow.close()
 
-        if self.__connection:
-            self.__record_event.set()
-            threading.Thread(target=stream, args=(self.__connection.stdout, )).start()
-            threading.Thread(target=stream, args=(self.__connection.stderr, )).start()
+        if self.__online:
+            self.__record.set()
+            threading.Thread(target=stream, args=(self.__online.stdout, )).start()
+            threading.Thread(target=stream, args=(self.__online.stderr, )).start()
             time.sleep(1)
 
     def close_record(self) -> None:
-        self.__connection.send_signal(signal.CTRL_C_EVENT)
-        self.__record_event.clear()
-        self.__connection = None
+        self.__online.send_signal(signal.CTRL_C_EVENT)
+        self.__record.clear()
+        self.__online = None
 
         try:
             Terminal.cmd_oneshot(["taskkill", "/im", "scrcpy.exe"])

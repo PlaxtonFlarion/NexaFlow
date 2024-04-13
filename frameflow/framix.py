@@ -220,7 +220,7 @@ class Mission(object):
 
         if self.quick:
             logger.info(f"{const.DESC} Analyzer: 快速模式 ...")
-            video_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
+            const_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
             if deploy.shape:
                 original_shape = loop.run_until_complete(
                     Switch.ask_video_larger(self.fpb, new_video_path)
@@ -228,15 +228,17 @@ class Mission(object):
                 w, h, ratio = loop.run_until_complete(
                     Switch.ask_magic_frame(original_shape, deploy.shape)
                 )
+                video_filter_list = const_filter + [f"scale={w}:{h}"]
                 logger.debug(f"Image Shape: [W:{w} H{h} Ratio:{ratio}]")
-                video_filter.append(f"scale={w}:{h}")
             elif deploy.scale:
                 scale = max(0.1, min(1.0, deploy.scale))
-                video_filter.append(f"scale=iw*{scale}:ih*{scale}")
+                video_filter_list = const_filter + [f"scale=iw*{scale}:ih*{scale}"]
                 logger.debug(f"Image Scale: {deploy.scale}")
             else:
-                video_filter.append(f"scale=iw*{const.COMPRESS}:ih*{const.COMPRESS}")
-            logger.info(f"应用过滤器: {video_filter}")
+                scale = const.COMPRESS
+                video_filter_list = const_filter + [f"scale=iw*{scale}:ih*{scale}"]
+
+            logger.info(f"应用过滤器: {video_filter_list}")
 
             duration = loop.run_until_complete(
                 Switch.ask_video_length(self.fpb, new_video_path)
@@ -257,7 +259,7 @@ class Mission(object):
 
             loop.run_until_complete(
                 Switch.ask_video_detach(
-                    self.fmp, video_filter, new_video_path, reporter.frame_path,
+                    self.fmp, video_filter_list, new_video_path, reporter.frame_path,
                     start=vision_start, close=vision_close, limit=vision_limit
                 )
             )
@@ -360,7 +362,7 @@ class Mission(object):
                     shutil.copy(path, reporter.video_path)
                     new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
 
-                    video_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
+                    const_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
                     if deploy.shape:
                         original_shape = loop.run_until_complete(
                             Switch.ask_video_larger(self.fpb, new_video_path)
@@ -368,15 +370,17 @@ class Mission(object):
                         w, h, ratio = loop.run_until_complete(
                             Switch.ask_magic_frame(original_shape, deploy.shape)
                         )
+                        video_filter_list = const_filter + [f"scale={w}:{h}"]
                         logger.debug(f"Image Shape: [W:{w} H{h} Ratio:{ratio}]")
-                        video_filter.append(f"scale={w}:{h}")
                     elif deploy.scale:
                         scale = max(0.1, min(1.0, deploy.scale))
-                        video_filter.append(f"scale=iw*{scale}:ih*{scale}")
+                        video_filter_list = const_filter + [f"scale=iw*{scale}:ih*{scale}"]
                         logger.debug(f"Image Scale: {deploy.scale}")
                     else:
-                        video_filter.append(f"scale=iw*{const.COMPRESS}:ih*{const.COMPRESS}")
-                    logger.info(f"应用过滤器: {video_filter}")
+                        scale = const.COMPRESS
+                        video_filter_list = const_filter + [f"scale=iw*{scale}:ih*{scale}"]
+
+                    logger.info(f"应用过滤器: {video_filter_list}")
 
                     duration = loop.run_until_complete(
                         Switch.ask_video_length(self.fpb, new_video_path)
@@ -397,7 +401,7 @@ class Mission(object):
 
                     loop.run_until_complete(
                         Switch.ask_video_detach(
-                            self.fmp, video_filter, new_video_path, reporter.frame_path,
+                            self.fmp, video_filter_list, new_video_path, reporter.frame_path,
                             start=deploy.start, close=deploy.close, limit=deploy.limit
                         )
                     )
@@ -540,8 +544,7 @@ class Mission(object):
 
         video = VideoObject(video_temp_file)
         video.load_frames(
-            silently_load_hued=False,
-            not_transform_gray=True
+            silently_load_hued=False, not_transform_gray=True
         )
 
         cutter = VideoCutter()
@@ -860,26 +863,26 @@ class Mission(object):
 
             stop_event_control = events["stop_event"] if deploy.alone else all_stop_event
 
-            flag_video = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
-            temp_video = f"{os.path.join(dst, 'screen')}_{flag_video}"
+            video_flag = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
+            video_temp = f"{os.path.join(dst, 'screen')}_{video_flag}"
             cmd = [self.scc, "-s", serial, "--no-audio", "--video-bit-rate", "8M", "--max-fps", "60"]
-            cmd += ["--record", temp_video]
+            cmd += ["--record", video_temp]
 
             transports = await Terminal.cmd_link(*cmd)
             asyncio.create_task(input_stream())
             asyncio.create_task(error_stream())
             await asyncio.sleep(1)
 
-            return temp_video, transports
+            return video_temp, transports
 
-        async def close_record(temp_video, transports, events):
+        async def close_record(video_temp, transports, events):
             if _platform == "win32":
                 await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
             else:
                 transports.terminate()
                 await transports.wait()
 
-            well, fail, basis = f"成功", f"失败", os.path.basename(temp_video)
+            well, fail, basis = f"成功", f"失败", os.path.basename(video_temp)
             for _ in range(10):
                 if events["done_event"].is_set():
                     logger.info(f"视频录制{well}: {basis}")
@@ -902,20 +905,20 @@ class Mission(object):
 
             todo_list = []
 
-            group_fmt_dirs = reporter.clock() if self.quick or self.basic or self.keras else None
+            fmt_dir = reporter.clock() if self.quick or self.basic or self.keras else None
             for device in device_list:
                 await asyncio.sleep(0.2)
                 device_events[device.serial] = {
                     "head_event": asyncio.Event(), "done_event": asyncio.Event(),
                     "stop_event": asyncio.Event(), "fail_event": asyncio.Event()
                 }
-                if group_fmt_dirs:
-                    reporter.query = os.path.join(group_fmt_dirs, device.serial)
-                temp_video, transports = await start_record(
+                if fmt_dir:
+                    reporter.query = os.path.join(fmt_dir, device.serial)
+                video_temp, transports = await start_record(
                     device.serial, reporter.video_path, device_events[device.serial]
                 )
                 todo_list.append(
-                    [temp_video, transports, reporter.total_path, reporter.title, reporter.query_path,
+                    [video_temp, transports, reporter.total_path, reporter.title, reporter.query_path,
                      reporter.query, reporter.frame_path, reporter.extra_path, reporter.proto_path]
                 )
             return todo_list
@@ -926,37 +929,33 @@ class Mission(object):
 
             if self.quick:
                 logger.debug(f"{const.DESC} Analyzer: 快速模式 ...")
-                video_filter_list = []
-                default_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
+                const_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
                 if deploy.shape:
                     original_shape_list = await asyncio.gather(
-                        *(Switch.ask_video_larger(self.fpb, temp_video) for temp_video, *_ in task_list)
+                        *(Switch.ask_video_larger(self.fpb, video_temp) for video_temp, *_ in task_list)
                     )
                     final_shape_list = await asyncio.gather(
                         *(Switch.ask_magic_frame(original_shape, deploy.shape) for original_shape in original_shape_list)
                     )
-                    for final_shape in final_shape_list:
-                        video_filter = default_filter.copy()
-                        w, h, ratio = final_shape
-                        video_filter.append(f"scale={w}:{h}")
-                        video_filter_list.append(video_filter)
+                    video_filter_list = [
+                        const_filter + [f"scale={w}:{h}"] for w, h, ratio in final_shape_list
+                    ]
                 elif deploy.scale:
-                    for temp_video, *_ in task_list:
-                        video_filter = default_filter.copy()
-                        scale = max(0.1, min(1.0, deploy.scale))
-                        video_filter.append(f"scale=iw*{scale}:ih*{scale}")
-                        video_filter_list.append(video_filter)
+                    scale = max(0.1, min(1.0, deploy.scale))
+                    video_filter_list = [
+                        const_filter + [f"scale=iw*{scale}:ih*{scale}"] for video_temp, *_ in task_list
+                    ]
                 else:
-                    for temp_video, *_ in task_list:
-                        video_filter = default_filter.copy()
-                        video_filter.append(f"scale=iw*{const.COMPRESS}:ih*{const.COMPRESS}")
-                        video_filter_list.append(video_filter)
+                    scale = const.COMPRESS
+                    video_filter_list = [
+                        const_filter + [f"scale=iw*{scale}:ih*{scale}"] for video_temp, *_ in task_list
+                    ]
 
-                for filters in video_filter_list:
-                    logger.info(f"应用过滤器: {filters}")
+                for flt in video_filter_list:
+                    logger.info(f"应用过滤器: {flt}")
 
                 duration_list = await asyncio.gather(
-                    *(Switch.ask_video_length(self.fpb, temp_video) for temp_video, *_ in task_list)
+                    *(Switch.ask_video_length(self.fpb, video_temp) for video_temp, *_ in task_list)
                 )
                 duration_result_list = await asyncio.gather(
                     *(Switch.ask_magic_point(
@@ -981,16 +980,12 @@ class Mission(object):
 
                 await asyncio.gather(
                     *(Switch.ask_video_detach(
-                        self.fmp, video_filter, temp_video, frame_path,
+                        self.fmp, video_filter, video_temp, frame_path,
                         start=vision_start, close=vision_close, limit=vision_limit
-                    )
-                      for (
-                        temp_video, *_, frame_path, _, _
-                    ), video_filter, (
+                    ) for (
+                        video_temp, *_, frame_path, _, _), video_filter, (
                         vision_start, vision_close, vision_limit
-                    ) in zip(
-                        task_list, video_filter_list, duration_result_list
-                    ))
+                    ) in zip(task_list, video_filter_list, duration_result_list))
                 )
                 for *_, total_path, title, query_path, query, frame_path, _, _ in task_list:
                     result = {
@@ -1010,17 +1005,17 @@ class Mission(object):
                 with ProcessPoolExecutor(_power, None, Active.active, (_level,)) as executor:
                     tasks = [
                         _main_loop.run_in_executor(
-                            executor, self.amazing, temp_video, deploy, kc, self.fmp, self.fpb
-                        ) for temp_video, *_, frame_path, extra_path, _ in task_list
+                            executor, self.amazing, video_temp, deploy, kc, self.fmp, self.fpb
+                        ) for video_temp, *_, frame_path, extra_path, _ in task_list
                     ]
                 futures = await asyncio.gather(*tasks)
 
                 # TODO
                 # futures = await asyncio.gather(
                 #     *(Core.ask_analyzer(
-                #         temp_video, deploy, kc,
+                #         video_temp, deploy, kc,
                 #         frame_path, extra_path, ffmpeg=self.ffmpeg, ffprobe=self.ffprobe
-                #     ) for temp_video, *_, frame_path, extra_path, _ in task_list)
+                #     ) for video_temp, *_, frame_path, extra_path, _ in task_list)
                 # )
 
                 for future, todo in zip(futures, task_list):
@@ -1096,12 +1091,12 @@ class Mission(object):
                 return video_dst
 
             effective_list = await asyncio.gather(
-                *(close_record(temp_video, transports, events)
-                  for (_, events), (temp_video, transports, *_) in zip(device_events.items(), task_list))
+                *(close_record(video_temp, transports, events)
+                  for (_, events), (video_temp, transports, *_) in zip(device_events.items(), task_list))
             )
-            for (idx, effective), (temp_video, *_) in zip(enumerate(effective_list), task_list):
+            for (idx, effective), (video_temp, *_) in zip(enumerate(effective_list), task_list):
                 if not effective:
-                    logger.info(f"移除录制失败的视频: {Path(temp_video).name} ...")
+                    logger.info(f"移除录制失败的视频: {Path(video_temp).name} ...")
                     task_list.pop(idx)
 
             if deploy.alone:
@@ -1113,7 +1108,7 @@ class Mission(object):
                 return task_list
 
             duration_list = await asyncio.gather(
-                *(Switch.ask_video_length(self.fpb, temp_video) for temp_video, *_ in task_list)
+                *(Switch.ask_video_length(self.fpb, video_temp) for video_temp, *_ in task_list)
             )
             duration_list = [duration for duration in duration_list if not isinstance(duration, Exception)]
             if len(duration_list) == 0:
