@@ -459,7 +459,7 @@ class Tmp(object):
         self.alynex = Aly(const.MODEL, const.MODEL_SHAPE, const.MODEL_AISLE)
 
     async def test_01(self):
-        audio = os.path.join(const.AUDIO, query := "关闭蓝牙.mp4")
+        audio = os.path.join(const.AUDIO, query := "关闭蓝牙.mp3")
         self.report.title = query
 
         device_events = {}

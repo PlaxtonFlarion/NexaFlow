@@ -280,7 +280,7 @@ class Alynex(object):
             original_inform = self.report.draw(
                 classifier_result=classify,
                 proto_path=self.report.proto_path,
-                template_file=self.report.get_template(template_file)
+                template_file=self.report.template(template_file)
             )
             result = {
                 "total_path": self.report.total_path,

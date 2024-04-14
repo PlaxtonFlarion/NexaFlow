@@ -68,7 +68,7 @@ class Report(object):
         self.__title = title
         self.query_path = os.path.join(self.total_path, self.title)
         os.makedirs(self.query_path, exist_ok=True)
-        logger.info(f"✪✪✪✪✪✪✪✪✪✪ {self.title} ✪✪✪✪✪✪✪✪✪✪\n")
+        logger.info(f"✪✪✪✪✪✪✪✪✪✪ {self.title} ✪✪✪✪✪✪✪✪✪✪")
 
     @title.deleter
     def title(self):
@@ -94,7 +94,7 @@ class Report(object):
         del self.__query
 
     @staticmethod
-    def get_template(template_path: str) -> str:
+    def template(template_path: str) -> str:
         with open(template_path, encoding=const.CHARSET) as t:
             template_file = t.read()
         return template_file
@@ -102,7 +102,7 @@ class Report(object):
     def load(self, inform: Optional[dict[str, Union[str | dict]]]) -> None:
         if inform:
             self.range_list.append(inform)
-        logger.info(f"End -> {inform.get('query', '......')}\n")
+        logger.info(f"End -> {inform.get('query', '......')}")
 
     def create_report(self, template_file: str) -> None:
 
@@ -153,108 +153,110 @@ class Report(object):
 
             return handler_list
 
-        if len(self.range_list) > 0:
-            if len(self.range_list) == 1:
-                images_list = start_create(self.range_list[0])
-            else:
-                with ThreadPoolExecutor() as executor:
-                    future = executor.map(start_create, self.range_list)
-                images_list = [i for f in future for i in f]
-
-            template = Template(self.get_template(template_file))
-            html = template.render(
-                name=const.NAME,
-                title=self.title,
-                images_list=images_list
-            )
-            report_html = os.path.join(self.query_path, f"{self.title}.html")
-            with open(file=report_html, mode="w", encoding="utf-8") as f:
-                f.write(html)
-                logger.info(f"生成聚合报告: {os.path.basename(report_html)}")
-
-            cost_list = [cost['stage']['cost'] for cost in images_list]
-            href_path = os.path.join(
-                os.path.basename(self.total_path),
-                self.title,
-                os.path.basename(report_html)
-            )
-            single = {
-                "case": self.title,
-                "cost_list": cost_list,
-                "avg": f"{sum(map(float, cost_list)) / len(cost_list):.5f}",
-                "href": href_path
-            }
-            logger.debug("Recovery: " + json.dumps(single, ensure_ascii=False))
-            self.total_list.append(single)
-            self.range_list.clear()
-        else:
+        if len(self.range_list) == 0:
             logger.info("没有可以聚合的报告 ...")
+            return logger.info(f"✪✪✪✪✪✪✪✪✪✪ {self.title} ✪✪✪✪✪✪✪✪✪✪")
 
-        logger.info(f"✪✪✪✪✪✪✪✪✪✪ {self.title} ✪✪✪✪✪✪✪✪✪✪\n\n")
+        if len(self.range_list) == 1:
+            images_list = start_create(self.range_list[0])
+        else:
+            with ThreadPoolExecutor() as executor:
+                future = executor.map(start_create, self.range_list)
+            images_list = [i for f in future for i in f]
+
+        html = Template(self.template(template_file)).render(
+            name=const.NAME,
+            title=self.title,
+            images_list=images_list
+        )
+        report_html = os.path.join(self.query_path, f"{self.title}.html")
+        with open(report_html, "w", encoding=const.CHARSET) as f:
+            f.write(html)
+            logger.info(f"生成聚合报告: {os.path.basename(report_html)}")
+
+        cost_list = [cost['stage']['cost'] for cost in images_list]
+        try:
+            avg = sum(map(float, cost_list)) / len(cost_list)
+        except ZeroDivisionError:
+            avg = 0.00000
+            logger.warning("未获取到平均值 ...")
+
+        href_path = os.path.join(
+            os.path.basename(self.total_path),
+            self.title,
+            os.path.basename(report_html)
+        )
+        single = {
+            "case": self.title, "cost_list": cost_list, "avg": avg, "href": href_path
+        }
+        logger.debug("Recovery: " + json.dumps(single, ensure_ascii=False))
+        self.total_list.append(single)
+        self.range_list.clear()
+        return logger.info(f"✪✪✪✪✪✪✪✪✪✪ {self.title} ✪✪✪✪✪✪✪✪✪✪")
 
     def create_total_report(self, template_file: str) -> None:
-        if len(self.total_list) > 0:
-            template = Template(self.get_template(template_file))
-            html = template.render(
-                report_time=time.strftime('%Y.%m.%d %H:%M:%S'),
-                total_list=self.total_list
-            )
-            total_html_path = os.path.join(os.path.dirname(self.total_path), "NexaFlow.html")
-            with open(total_html_path, "w", encoding="utf-8") as f:
-                f.write(html)
-                logger.info(f"生成汇总报告: {total_html_path}\n\n")
-            self.total_list.clear()
-        else:
-            logger.info("没有可以汇总的报告 ...")
+        if len(self.total_list) == 0:
+            return logger.info("没有可以汇总的报告 ...")
+
+        html = Template(self.template(template_file)).render(
+            report_time=time.strftime('%Y.%m.%d %H:%M:%S'),
+            total_list=self.total_list
+        )
+        report_html = os.path.join(os.path.dirname(self.total_path), "NexaFlow.html")
+        with open(report_html, "w", encoding=const.CHARSET) as f:
+            f.write(html)
+            logger.info(f"生成汇总报告: {report_html}")
+        self.total_list.clear()
 
     @staticmethod
     def reset_report(file_name: str, template_file: str) -> None:
         with open(os.path.join(file_name, "Nexa_Recovery", "nexaflow.log"), "r", encoding="utf-8") as f:
             log_restore = re.findall(r"(?<=Recovery: ).*}", f.read())
 
-        template = Template(template_file)
         total_list = [json.loads(file) for file in log_restore]
-        html = template.render(
+
+        html = Template(template_file).render(
             report_time=time.strftime('%Y.%m.%d %H:%M:%S'),
             total_list=total_list
         )
-        total_html_path = os.path.join(file_name, "NexaFlow.html")
-        with open(total_html_path, "w", encoding="utf-8") as f:
+        report_html = os.path.join(file_name, "NexaFlow.html")
+        with open(report_html, "w", encoding=const.CHARSET) as f:
             f.write(html)
-            logger.info(f"生成汇总报告: {total_html_path}\n\n")
+            logger.info(f"生成汇总报告: {report_html}")
 
     @staticmethod
     def merge_report(merge_list: list[str], merge_loc: str, quick: bool = False) -> None:
+        merge_time = time.strftime("%Y%m%d%H%M%S")
         merge_path = os.path.join(
             os.path.dirname(os.path.dirname(merge_list[0])),
-            "Merge_Report_" + time.strftime("%Y%m%d%H%M%S"),
-            "Nexa_Collection"
+            f"Union_Report_{merge_time}", "Nexa_Collection"
         )
         os.makedirs(merge_path, exist_ok=True)
 
         pattern = "View" if quick else "Recovery"
 
-        log_restore = []
+        log_list = []
         for merge in merge_list:
             logs = os.path.join(os.path.dirname(merge), "Nexa_Recovery", "nexaflow.log")
-            with open(logs, "r", encoding="utf-8") as f:
-                log_restore.extend(re.findall(fr"(?<={pattern}: ).*}}", f.read()))
+            with open(logs, "r", encoding=const.CHARSET) as f:
+                log_list.extend(re.findall(fr"(?<={pattern}: ).*}}", f.read()))
+
             shutil.copytree(
                 merge, merge_path, dirs_exist_ok=True,
                 ignore=shutil.ignore_patterns("NexaFlow.html", "nexaflow.log")
             )
 
-        template = Template(merge_loc)
-        total_list = [json.loads(file) for file in log_restore]
-        html = template.render(
-            report_time=time.strftime("%Y.%m.%d %H:%M:%S"),
-            total_list=total_list
+        if not (total_list := [json.loads(file) for file in log_list]):
+            return logger.warning(f"没有可以合并的报告 ...")
+
+        html = Template(merge_loc).render(
+            report_time=merge_time, total_list=total_list
         )
 
-        total_html_path = os.path.join(os.path.dirname(merge_path), "NexaFlow.html")
-        with open(total_html_path, "w", encoding="utf-8") as f:
+        report_html = os.path.join(os.path.dirname(merge_path), "NexaFlow.html")
+        with open(report_html, "w", encoding=const.CHARSET) as f:
             f.write(html)
-            logger.info(f"合并汇总报告: {total_html_path}\n\n")
+            logger.info(f"合并汇总报告: {report_html}")
 
     @staticmethod
     async def ask_invent_report(total_path: Path, title: str, serial: str, parts_list: list, views_loc: str):
@@ -295,8 +297,7 @@ class Report(object):
                 results = await asyncio.gather(*tasks)
                 images_list = [ele for res in results for ele in res]
 
-                major_template = Template(views_loc)
-                range_html_temp = major_template.render(
+                range_html_temp = Template(views_loc).render(
                     title=f"{const.DESC}",
                     report_time=time.strftime('%Y.%m.%d %H:%M:%S'),
                     images_list=images_list
@@ -307,7 +308,7 @@ class Report(object):
                     await range_file.write(range_html_temp)
                     logger.info(f"生成聚合报告: {range_html.name}")
 
-                cost_list = [cost['stage']['cost'] for cost in images_list]
+                cost_list = [cost["stage"]["cost"] for cost in images_list]
                 try:
                     avg = sum(map(float, cost_list)) / len(cost_list)
                 except ZeroDivisionError:
@@ -322,7 +323,7 @@ class Report(object):
             else:
                 logger.info("没有可以聚合的报告 ...")
 
-            logger.info(f"✪✪✪✪✪✪✪✪✪✪ {title} ✪✪✪✪✪✪✪✪✪✪\n\n")
+            logger.info(f"✪✪✪✪✪✪✪✪✪✪ {title} ✪✪✪✪✪✪✪✪✪✪")
             return single
 
         return await handler_start()
@@ -356,12 +357,7 @@ class Report(object):
 
         tasks = [
             Report.ask_invent_report(
-                total_path=Path(os.path.join(file_name, k[0])), title=k[1], serial=k[2],
-                parts_list=parts_list, views_loc=views_loc
-            ) if len(k) == 3 else
-            Report.ask_invent_report(
-                total_path=Path(os.path.join(file_name, k[0])), title=k[1], serial="",
-                parts_list=parts_list, views_loc=views_loc
+                Path(os.path.join(file_name, k[0])), k[1], k[2] if len(k) == 3 else "", parts_list, views_loc
             ) for k, parts_list in grouped_dict.items()
         ]
         merge_result = await asyncio.gather(*tasks)
@@ -374,8 +370,7 @@ class Report(object):
                     if k != 'case':
                         merged[case['case']][k].append(v)
             total_list = [
-                {'case': case, **{k: v for k, v in attrs.items()}}
-                for case, attrs in merged.items()
+                {'case': case, **{k: v for k, v in attrs.items()}} for case, attrs in merged.items()
             ]
             for item in total_list:
                 item["merge_list"] = list(zip(item.pop("href"), item.pop("avg"), item.pop("cost_list")))
@@ -393,15 +388,14 @@ class Report(object):
             logger.warning("没有可以汇总的报告 ...")
             return False
 
-        total_template = Template(total_loc)
-        total_html_temp = total_template.render(
+        total_html_temp = Template(total_loc).render(
             title=f"{const.DESC}",
             report_time=time.strftime('%Y.%m.%d %H:%M:%S'),
             total_list=total_list
         )
         total_html = os.path.join(file_name, "NexaFlow.html")
-        async with aiofiles.open(total_html, "w", encoding="utf-8") as total_file:
-            await total_file.write(total_html_temp)
+        async with aiofiles.open(total_html, "w", encoding="utf-8") as f:
+            await f.write(total_html_temp)
             logger.info(f"生成汇总报告: {total_html}")
 
     @staticmethod
@@ -468,8 +462,7 @@ class Report(object):
                 results = await asyncio.gather(*tasks)
                 images_list = [ele for res in results for ele in res]
 
-                major_template = Template(major_loc)
-                range_html_temp = major_template.render(
+                range_html_temp = Template(major_loc).render(
                     name=const.NAME,
                     title=title,
                     images_list=images_list
@@ -480,7 +473,7 @@ class Report(object):
                     await range_file.write(range_html_temp)
                     logger.info(f"生成聚合报告: {range_html.name}")
 
-                cost_list = [cost['stage']['cost'] for cost in images_list]
+                cost_list = [cost["stage"]["cost"] for cost in images_list]
                 try:
                     avg = sum(map(float, cost_list)) / len(cost_list)
                 except ZeroDivisionError:
@@ -495,7 +488,7 @@ class Report(object):
             else:
                 logger.info("没有可以聚合的报告 ...")
 
-            logger.info(f"✪✪✪✪✪✪✪✪✪✪ {title} ✪✪✪✪✪✪✪✪✪✪\n\n")
+            logger.info(f"✪✪✪✪✪✪✪✪✪✪ {title} ✪✪✪✪✪✪✪✪✪✪")
             return single
 
         return await handler_start()
@@ -529,12 +522,7 @@ class Report(object):
 
         tasks = [
             Report.ask_create_report(
-                total_path=Path(os.path.join(file_name, k[0])), title=k[1], serial=k[2],
-                parts_list=parts_list, major_loc=major_loc
-            ) if len(k) == 3 else
-            Report.ask_create_report(
-                total_path=Path(os.path.join(file_name, k[0])), title=k[1], serial="",
-                parts_list=parts_list, major_loc=major_loc
+                Path(os.path.join(file_name, k[0])), k[1], k[2] if len(k) == 3 else "", parts_list, major_loc
             ) for k, parts_list in grouped_dict.items()
         ]
         merge_result = await asyncio.gather(*tasks)
@@ -547,8 +535,7 @@ class Report(object):
                     if k != 'case':
                         merged[case['case']][k].append(v)
             total_list = [
-                {'case': case, **{k: v for k, v in attrs.items()}}
-                for case, attrs in merged.items()
+                {'case': case, **{k: v for k, v in attrs.items()}} for case, attrs in merged.items()
             ]
             for item in total_list:
                 item["merge_list"] = list(zip(item.pop("href"), item.pop("avg"), item.pop("cost_list")))
@@ -566,14 +553,13 @@ class Report(object):
             logger.warning("没有可以汇总的报告 ...")
             return False
 
-        total_template = Template(total_loc)
-        total_html_temp = total_template.render(
+        total_html_temp = Template(total_loc).render(
             report_time=time.strftime('%Y.%m.%d %H:%M:%S'),
             total_list=total_list
         )
         total_html = os.path.join(file_name, "NexaFlow.html")
-        async with aiofiles.open(total_html, "w", encoding=const.CHARSET) as total_file:
-            await total_file.write(total_html_temp)
+        async with aiofiles.open(total_html, "w", encoding=const.CHARSET) as f:
+            await f.write(total_html_temp)
             logger.info(f"生成汇总报告: {total_html}")
 
     @staticmethod
@@ -685,8 +671,7 @@ class Report(object):
         extra_dict["总计帧数"] = str(classifier_result.get_length())
         extra_dict["每帧间隔"] = str(classifier_result.get_offset())
 
-        template = Template(template_file)
-        template_content = template.render(
+        template_content = Template(template_file).render(
             thumbnail_list=thumbnail_list,
             extras=extra_dict,
             background_color=const.BACKGROUND_COLOR,

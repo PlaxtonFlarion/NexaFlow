@@ -1683,8 +1683,12 @@ async def arithmetic(*args, **__) -> None:
     async def multiple_merge(transfer):
         if len(transfer) <= 1:
             return None
-        template_total = await achieve(mission.view_total_temp if mission.quick else mission.main_total_temp)
-        Report.merge_report(results, template_total, mission.quick)
+        template_total = await achieve(
+            mission.view_total_temp if mission.quick else mission.main_total_temp
+        )
+        await loop.run_in_executor(
+            None, Report.merge_report, results, template_total, mission.quick
+        )
 
     mission, cmd_lines, level, power, loop, *_ = args
     # --video ==========================================================================================================
