@@ -193,7 +193,7 @@ class Mission(object):
                 )
 
     @staticmethod
-    def amazing(vision, deploy, kc, *args):
+    def amazing(vision, deploy: "Deploy", kc: "KerasClassifier", *args):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop_complete = loop.run_until_complete(
@@ -202,7 +202,8 @@ class Mission(object):
         loop.close()
         return loop_complete
 
-    def video_task(self, video_file: str):
+    def video_file_task(self, video_file: str):
+        """Child Process"""
         reporter = Report(self.total_place)
         reporter.title = f"{const.DESC}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
         reporter.query = time.strftime('%Y%m%d%H%M%S')
@@ -345,7 +346,8 @@ class Mission(object):
         )
         return reporter.total_path
 
-    def video_dir_task(self, folder: str):
+    def video_data_task(self, video_data: str):
+        """Child Process"""
         reporter = Report(self.total_place)
 
         deploy = Deploy(self.initial_deploy)
@@ -358,7 +360,7 @@ class Mission(object):
 
         if self.quick:
             logger.debug(f"{const.DESC} Analyzer: 快速模式 ...")
-            for video in self.accelerate(folder):
+            for video in self.accelerate(video_data):
                 reporter.title = video.title
                 for path in video.sheet:
                     reporter.query = os.path.basename(path).split(".")[0]
@@ -440,7 +442,7 @@ class Mission(object):
 
         logger.info(f"{const.DESC} Analyzer: {'智能模式' if kc else '基础模式'} ...")
 
-        for video in self.accelerate(folder):
+        for video in self.accelerate(video_data):
             reporter.title = video.title
             for path in video.sheet:
                 reporter.query = os.path.basename(path).split(".")[0]
@@ -497,6 +499,7 @@ class Mission(object):
         return reporter.total_path
 
     def train_model(self, video_file: str):
+        """Child Process"""
         if not os.path.isfile(video_file):
             return logger.error(f"{video_file} 视频文件未找到 ...")
         logger.info(f"视频文件 {video_file} ...")
@@ -590,6 +593,7 @@ class Mission(object):
         os.remove(video_temp_file)
 
     def build_model(self, src: str):
+        """Child Process"""
         if not os.path.isdir(src):
             return logger.error("训练模型需要一个分类文件夹 ...")
 
@@ -625,41 +629,47 @@ class Mission(object):
                 logger.info("The image is grayscale image ...")
             break
 
+        deploy = Deploy(self.initial_deploy)
+        for attr in self.attrs:
+            if any(line.startswith(f"--{attr}") for line in self.lines):
+                logger.debug(f"Set {attr} = {(attribute := getattr(self, attr))}")
+                setattr(deploy, attr, attribute)
+
         final_path = os.path.dirname(real_path)
         new_model_path = os.path.join(final_path, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
-        w, h = self.shape if self.shape else (image.shape if image else (0, 0))
+        w, h = deploy.shape if deploy.shape else (image.shape if image else (0, 0))
         name = "Gray" if image_aisle == 1 else "Hued"
         new_model_name = f"Keras_{name}_W{w}_H{h}_{random.randint(10000, 99999)}.h5"
-        fc = FramixClassifier(color=image_color, aisle=image_aisle, data_size=self.shape)
+        fc = FramixClassifier(color=image_color, aisle=image_aisle, data_size=deploy.shape)
         fc.build(final_path, new_model_path, new_model_name)
 
-    async def combines_main(self, merge: list, group: bool):
+    async def combines_main(self, merge: list, deploy: "Deploy"):
         major, total = await asyncio.gather(
             achieve(self.main_share_temp), achieve(self.main_total_temp),
             return_exceptions=True
         )
         tasks = [
-            Report.ask_create_total_report(m, major, total, group) for m in merge
+            Report.ask_create_total_report(m, major, total, deploy.group) for m in merge
         ]
         error_list = await asyncio.gather(*tasks)
         for e in error_list:
             if isinstance(e, Exception):
                 logger.error(e)
 
-    async def combines_view(self, merge: list, group: bool):
+    async def combines_view(self, merge: list, deploy: "Deploy"):
         views, total = await asyncio.gather(
             achieve(self.view_share_temp), achieve(self.view_total_temp),
             return_exceptions=True
         )
         tasks = [
-            Report.ask_invent_total_report(m, views, total, group) for m in merge
+            Report.ask_invent_total_report(m, views, total, deploy.group) for m in merge
         ]
         error_list = await asyncio.gather(*tasks)
         for e in error_list:
             if isinstance(e, Exception):
                 logger.error(e)
 
-    async def painting(self, deploy):
+    async def painting(self, deploy: "Deploy"):
 
         import tempfile
         import PIL.Image
@@ -807,7 +817,7 @@ class Mission(object):
             else:
                 Show.console.print(f"[bold][bold red]没有该选项,请重新输入[/bold red] ...[/bold]\n")
 
-    async def analysis(self, deploy) -> typing.Optional[bool]:
+    async def analysis(self, deploy: "Deploy") -> typing.Optional[bool]:
 
         device_events = {}
         all_stop_event = asyncio.Event()
@@ -1220,7 +1230,7 @@ class Mission(object):
         reporter = Report(self.total_place)
 
         if self.keras and not self.quick and not self.basic:
-            kc = KerasClassifier(data_size=deploy.model_shape, aisle=deploy.model_aisle)
+            kc = KerasClassifier(data_size=self.model_shape, aisle=self.model_aisle)
             try:
                 kc.load_model(self.model_place)
             except ValueError as err:
@@ -1363,7 +1373,9 @@ class Mission(object):
 class Core(object):
 
     @staticmethod
-    async def ask_analyzer(vision, deploy, kc, *args, **kwargs) -> typing.Optional["Review"]:
+    async def ask_analyzer(
+            vision, deploy: "Deploy", kc: "KerasClassifier", *args, **kwargs
+    ) -> typing.Optional["Review"]:
 
         frame_path, extra_path, fmp, fpb = args
 
@@ -1690,26 +1702,32 @@ async def arithmetic(*args, **__) -> None:
             None, Report.merge_report, results, template_total, mission.quick
         )
 
-    mission, cmd_lines, level, power, loop, *_ = args
+    mission, deploy, cmd_lines, level, power, loop, *_ = args
     # --video ==========================================================================================================
     if video_list := cmd_lines.video:
+        # Start Child Process
+        deploy.view_deploy()
         with Pool(*(await initialization(video_list))) as pool:
-            results = pool.starmap(mission.video_task, [(i,) for i in video_list])
+            results = pool.starmap(mission.video_file_task, [(i,) for i in video_list])
         await multiple_merge(video_list)
         sys.exit(0)
     # --stack ==========================================================================================================
     elif stack_list := cmd_lines.stack:
+        # Start Child Process
+        deploy.view_deploy()
         with Pool(*(await initialization(stack_list))) as pool:
-            results = pool.starmap(mission.video_dir_task, [(i,) for i in stack_list])
+            results = pool.starmap(mission.video_data_task, [(i,) for i in stack_list])
         await multiple_merge(stack_list)
         sys.exit(0)
     # --train ==========================================================================================================
     elif train_list := cmd_lines.train:
+        # Start Child Process
         with Pool(*(await initialization(train_list))) as pool:
             pool.starmap(mission.train_model, [(i,) for i in train_list])
         sys.exit(0)
     # --build ==========================================================================================================
     elif build_list := cmd_lines.build:
+        # Start Child Process
         with Pool(*(await initialization(build_list))) as pool:
             pool.starmap(mission.build_model, [(i,) for i in build_list])
         sys.exit(0)
@@ -1718,13 +1736,7 @@ async def arithmetic(*args, **__) -> None:
 
 
 async def scheduling(*args, **__) -> None:
-    mission, cmd_lines, level, power, loop, *_ = args
-
-    deploy = Deploy(mission.initial_deploy)
-    for attr in mission.attrs:
-        if any(line.startswith(f"--{attr}") for line in mission.lines):
-            logger.debug(f"Set {attr} = {(attribute := getattr(mission, attr))}")
-            setattr(deploy, attr, attribute)
+    mission, deploy, cmd_lines, level, power, loop, *_ = args
 
     # --flick --carry --fully ==========================================================================================
     if cmd_lines.flick or cmd_lines.carry or cmd_lines.fully:
@@ -1872,19 +1884,25 @@ if __name__ == '__main__':
         scc=_scc,
     )
 
+    _deploy = Deploy(_mission.initial_deploy)
+    for _attr in _mission.attrs:
+        if any(_line.startswith(f"--{_attr}") for _line in _mission.lines):
+            logger.debug(f"Set {_attr} = {(_attribute := getattr(_mission, _attr))}")
+            setattr(_deploy, _attr, _attribute)
+
     from multiprocessing import Pool
     from concurrent.futures import ProcessPoolExecutor
 
     _main_loop = asyncio.get_event_loop()
 
+    # Main Process =====================================================================================================
     try:
-        # 子进程
-        _main_loop.run_until_complete(arithmetic(
-            _mission, _cmd_lines, _level, _power, _main_loop)
+        _main_loop.run_until_complete(
+            arithmetic(_mission, _deploy, _cmd_lines, _level, _power, _main_loop)
         )
-        # 主线程
-        _main_loop.run_until_complete(scheduling(
-            _mission, _cmd_lines, _level, _power, _main_loop)
+        _main_loop.run_until_complete(
+            scheduling(_mission, _deploy, _cmd_lines, _level, _power, _main_loop)
         )
     except KeyboardInterrupt:
         sys.exit(0)
+    # Main Process =====================================================================================================
