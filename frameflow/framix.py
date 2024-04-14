@@ -125,8 +125,8 @@ except (RuntimeError, ModuleNotFoundError) as _error:
 class Mission(object):
 
     def __init__(self, *args, **kwargs):
-        self.carry, self.fully, self.quick, self.basic, self.keras, *_ = args
-        _, _, _, _, _, self.alone, self.group, self.boost, self.color, self.shape, self.scale, *_ = args
+        self.flick, self.carry, self.fully, self.quick, self.basic, self.keras, *_ = args
+        _, _, _, _, _, _, self.alone, self.group, self.boost, self.color, self.shape, self.scale, *_ = args
         *_, self.start, self.close, self.limit, self.begin, self.final, _, _, _, _, _, _ = args
         *_, self.frate, self.thres, self.shift, self.block, self.crops, self.omits = args
 
@@ -1229,11 +1229,21 @@ class Mission(object):
         else:
             kc = None
 
-        logger.info(f"{const.DESC} Analyzer: {'智能模式' if kc else '基础模式'} ...")
+        if self.quick:
+            Show.load_animation(f"{const.DESC} Quick")
+        elif self.basic:
+            Show.load_animation(f"{const.DESC} Basic")
+        elif self.keras and kc:
+            Show.load_animation(f"{const.DESC} Keras")
+        elif self.keras and not kc:
+            Show.load_animation(f"{const.DESC} Basic")
+        else:
+            Show.load_animation(f"{const.DESC} Photo")
+
         # Initialization ===============================================================================================
 
         # Flick Loop ===================================================================================================
-        if self.quick:
+        if self.flick:
             const_title = f"{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
             reporter.title = f"{input_title}_{const_title}"
             timer_mode = 5
@@ -1758,6 +1768,7 @@ if __name__ == '__main__':
     logger.debug(f"* 模版 * {'=' * 30}\n")
     # Debug Mode =======================================================================================================
 
+    _flick = _cmd_lines.flick
     _carry = _cmd_lines.carry
     _fully = _cmd_lines.fully
 
@@ -1833,7 +1844,7 @@ if __name__ == '__main__':
     logger.debug(f"处理器核心数: {(_power := os.cpu_count())}")
 
     _mission = Mission(
-        _carry, _fully, _quick, _basic, _keras,
+        _flick, _carry, _fully, _quick, _basic, _keras,
         _alone, _group, _boost, _color, _shape, _scale,
         _start, _close, _limit, _begin, _final,
         _frate, _thres, _shift, _block, _crops, _omits,
@@ -1863,9 +1874,11 @@ if __name__ == '__main__':
     _main_loop = asyncio.get_event_loop()
 
     try:
+        # 子进程
         _main_loop.run_until_complete(arithmetic(
             _mission, _cmd_lines, _level, _power, _main_loop)
         )
+        # 主线程
         _main_loop.run_until_complete(scheduling(
             _mission, _cmd_lines, _level, _power, _main_loop)
         )

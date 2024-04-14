@@ -67,7 +67,7 @@ class KerasClassifier(BaseModelClassifier):
 
     def load_model(self, model_path: str, overwrite: bool = None):
         # logger.debug(f"load model from {model_path}")
-        logger.info(f"加载Keras神经网络引擎 ...")
+
         # assert model file
         assert os.path.isfile(model_path), f"model file {model_path} not existed"
         # assert model data is empty
@@ -80,7 +80,7 @@ class KerasClassifier(BaseModelClassifier):
 
     def create_model(self) -> keras.Sequential:
         # logger.info(f"creating Keras sequential model")
-        logger.info("Keras神经网络引擎创建图像分析模型 ...")
+
         if keras.backend.image_data_format() == "channels_first":
             input_shape = (self.aisle, *self.follow_tf_size)
         else:
@@ -108,7 +108,6 @@ class KerasClassifier(BaseModelClassifier):
         model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
 
         # logger.info("Keras model created")
-        logger.info("Keras神经网络引擎加载完成，开始分析图像 ...")
         return model
 
     def train(self, data_path: str = None, *_, **__):
