@@ -284,7 +284,6 @@ class Mission(object):
             return reporter.total_path
 
         elif self.keras and not self.basic:
-            logger.info(f"{const.DESC} Analyzer: 智能模式 ...")
             kc = KerasClassifier(data_size=self.model_shape, aisle=self.model_aisle)
             try:
                 kc.load_model(self.model_place)
@@ -292,11 +291,15 @@ class Mission(object):
                 logger.error(f"{err}")
                 kc = None
         else:
-            logger.info(f"{const.DESC} Analyzer: 基础模式 ...")
             kc = None
 
+        logger.info(f"{const.DESC} Analyzer: {'智能模式' if kc else '基础模式'} ...")
+
         futures = loop.run_until_complete(
-            Core.ask_analyzer(new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path, self.fmp, self.fpb)
+            Core.ask_analyzer(
+                new_video_path, deploy, kc,
+                reporter.frame_path, reporter.extra_path, self.fmp, self.fpb
+            )
         )
 
         if futures is None:
@@ -426,7 +429,6 @@ class Mission(object):
             return reporter.total_path
 
         elif self.keras and not self.basic:
-            logger.info(f"{const.DESC} Analyzer: 智能模式 ...")
             kc = KerasClassifier(data_size=self.model_shape, aisle=self.model_aisle)
             try:
                 kc.load_model(self.model_place)
@@ -434,8 +436,9 @@ class Mission(object):
                 logger.error(f"{err}")
                 kc = None
         else:
-            logger.info(f"{const.DESC} Analyzer: 基础模式 ...")
             kc = None
+
+        logger.info(f"{const.DESC} Analyzer: {'智能模式' if kc else '基础模式'} ...")
 
         for video in self.accelerate(folder):
             reporter.title = video.title
@@ -445,8 +448,10 @@ class Mission(object):
                 new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
 
                 futures = loop.run_until_complete(
-                    Core.ask_analyzer(new_video_path, deploy, kc, reporter.frame_path, reporter.extra_path, self.fmp,
-                                      self.fpb)
+                    Core.ask_analyzer(
+                        new_video_path, deploy, kc,
+                        reporter.frame_path, reporter.extra_path, self.fmp, self.fpb
+                    )
                 )
                 if futures is None:
                     continue
@@ -1001,19 +1006,18 @@ class Mission(object):
                 logger.debug(f"{const.DESC} Analyzer: {'智能模式' if kc else '基础模式'} ...")
 
                 # TODO
-                with ProcessPoolExecutor(_power, None, Active.active, (_level,)) as executor:
+                with ProcessPoolExecutor(_power, None, Active.active, (_level,)) as exe:
                     tasks = [
                         _main_loop.run_in_executor(
-                            executor, self.amazing, video_temp, deploy, kc, self.fmp, self.fpb
+                            exe, self.amazing, video_temp, deploy, kc, self.fmp, self.fpb
                         ) for video_temp, *_, frame_path, extra_path, _ in task_list
                     ]
-                futures = await asyncio.gather(*tasks)
+                    futures = await asyncio.gather(*tasks)
 
                 # TODO
                 # futures = await asyncio.gather(
                 #     *(Core.ask_analyzer(
-                #         video_temp, deploy, kc,
-                #         frame_path, extra_path, ffmpeg=self.ffmpeg, ffprobe=self.ffprobe
+                #         video_temp, deploy, kc, frame_path, extra_path, self.fmp, self.fpb
                 #     ) for video_temp, *_, frame_path, extra_path, _ in task_list)
                 # )
 
@@ -1224,6 +1228,8 @@ class Mission(object):
                 kc = None
         else:
             kc = None
+
+        logger.info(f"{const.DESC} Analyzer: {'智能模式' if kc else '基础模式'} ...")
         # Initialization ===============================================================================================
 
         # Flick Loop ===================================================================================================
@@ -1347,11 +1353,31 @@ class Mission(object):
 class Core(object):
 
     @staticmethod
-    async def ask_analyzer(vision, deploy, kc, *args) -> typing.Optional["Review"]:
+    async def ask_analyzer(vision, deploy, kc, *args, **kwargs) -> typing.Optional["Review"]:
 
         frame_path, extra_path, fmp, fpb = args
 
-        async def validate():
+        boost = deploy.boost if deploy else kwargs.get("boost", const.BOOST)
+        color = deploy.color if deploy else kwargs.get("color", const.COLOR)
+
+        shape = deploy.shape if deploy else kwargs.get("shape", const.SHAPE)
+        scale = deploy.scale if deploy else kwargs.get("scale", const.SCALE)
+        start = deploy.start if deploy else kwargs.get("start", const.START)
+        close = deploy.close if deploy else kwargs.get("close", const.CLOSE)
+        limit = deploy.limit if deploy else kwargs.get("limit", const.LIMIT)
+
+        begin = deploy.begin if deploy else kwargs.get("begin", const.BEGIN)
+        final = deploy.final if deploy else kwargs.get("final", const.FINAL)
+
+        crops = deploy.crops if deploy else kwargs.get("crops", const.CROPS)
+        omits = deploy.omits if deploy else kwargs.get("omits", const.OMITS)
+
+        frate = deploy.frate if deploy else kwargs.get("frate", const.FRATE)
+        thres = deploy.thres if deploy else kwargs.get("thres", const.THRES)
+        shift = deploy.shift if deploy else kwargs.get("shift", const.SHIFT)
+        block = deploy.block if deploy else kwargs.get("block", const.BLOCK)
+
+        async def check():
             screen_cap = None
             if os.path.isfile(vision):
                 screen = cv2.VideoCapture(vision)
@@ -1372,14 +1398,14 @@ class Core(object):
         async def frame_flip():
             change_record = os.path.join(
                 os.path.dirname(vision),
-                f"screen_fps{deploy.frate}_{random.randint(100, 999)}.mp4"
+                f"screen_fps{frate}_{random.randint(100, 999)}.mp4"
             )
 
             duration = await Switch.ask_video_length(fpb, vision)
             vision_start, vision_close, vision_limit = await Switch.ask_magic_point(
-                Parser.parse_mills(deploy.start),
-                Parser.parse_mills(deploy.close),
-                Parser.parse_mills(deploy.limit),
+                Parser.parse_mills(start),
+                Parser.parse_mills(close),
+                Parser.parse_mills(limit),
                 duration
             )
             vision_start = Parser.parse_times(vision_start)
@@ -1389,29 +1415,29 @@ class Core(object):
             logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
 
             await Switch.ask_video_change(
-                fmp, deploy.frate, vision, change_record,
+                fmp, frate, vision, change_record,
                 start=vision_start, close=vision_close, limit=vision_limit
             )
             logger.info(f"视频转换完成: {Path(change_record).name}")
             os.remove(vision)
             logger.info(f"移除旧的视频: {Path(vision).name}")
 
-            if deploy.shape:
+            if shape:
                 original_shape = await Switch.ask_video_larger(fpb, change_record)
-                w, h, ratio = await Switch.ask_magic_frame(original_shape, deploy.shape)
+                w, h, ratio = await Switch.ask_magic_frame(original_shape, shape)
                 target_shape = w, h
-                target_scale = deploy.scale
+                target_scale = scale
                 logger.info(f"调整宽高比: {w} x {h}")
-            elif deploy.scale:
-                target_shape = deploy.shape
-                target_scale = max(0.1, min(1.0, deploy.scale))
+            elif scale:
+                target_shape = shape
+                target_scale = max(0.1, min(1.0, scale))
             else:
-                target_shape = deploy.shape
+                target_shape = shape
                 target_scale = 0.4
 
             video = VideoObject(change_record)
             task, hued = video.load_frames(
-                silently_load_hued=deploy.color,
+                silently_load_hued=color,
                 not_transform_gray=False,
                 shape=target_shape,
                 scale=target_scale
@@ -1425,14 +1451,14 @@ class Core(object):
             compress_hook = CompressHook(1, None, False)
             cutter.add_hook(compress_hook)
 
-            if len(crop_list := deploy.crops) > 0 and sum([j for i in crop_list for j in i.values()]) > 0:
+            if len(crop_list := crops) > 0 and sum([j for i in crop_list for j in i.values()]) > 0:
                 for crop in crop_list:
                     x, y, x_size, y_size = crop.values()
                     crop_hook = PaintCropHook((y_size, x_size), (y, x))
                     cutter.add_hook(crop_hook)
                     logger.debug(f"{crop_hook.__class__.__name__}: {x, y, x_size, y_size}")
 
-            if len(omit_list := deploy.omits) > 0 and sum([j for i in omit_list for j in i.values()]) > 0:
+            if len(omit_list := omits) > 0 and sum([j for i in omit_list for j in i.values()]) > 0:
                 for omit in omit_list:
                     x, y, x_size, y_size = omit.values()
                     omit_hook = PaintOmitHook((y_size, x_size), (y, x))
@@ -1443,11 +1469,11 @@ class Core(object):
             cutter.add_hook(save_hook)
 
             res = cutter.cut(
-                video=video, block=deploy.block
+                video=video, block=block
             )
 
             stable, unstable = res.get_range(
-                threshold=deploy.thres, offset=deploy.shift
+                threshold=thres, offset=shift
             )
 
             file_list = os.listdir(extra_path)
@@ -1478,7 +1504,7 @@ class Core(object):
 
             pbar = toolbox.show_progress(classify.get_length(), 50, "Faster")
             frames_list = []
-            if deploy.boost:
+            if boost:
                 frames_list.append(previous := important_frames[0])
                 pbar.update(1)
                 for current in important_frames[1:]:
@@ -1497,7 +1523,7 @@ class Core(object):
                     pbar.update(1)
                 pbar.close()
 
-            if deploy.color:
+            if color:
                 video.hued_data = tuple(hued.result())
                 logger.info(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
                 task.shutdown()
@@ -1509,8 +1535,8 @@ class Core(object):
 
         async def frame_flick(classify):
             logger.info(f"阶段划分: {classify.get_ordered_stage_set()}")
-            begin_stage, begin_frame = deploy.begin
-            final_stage, final_frame = deploy.final
+            begin_stage, begin_frame = begin
+            final_stage, final_frame = final
             try:
                 start_frame = classify.get_not_stable_stage_range()[begin_stage][begin_frame]
                 end_frame = classify.get_not_stable_stage_range()[final_stage][final_frame]
@@ -1555,7 +1581,7 @@ class Core(object):
         async def analytics_basic():
             video, task, hued = await frame_flip()
 
-            if deploy.color:
+            if color:
                 video.hued_data = tuple(hued.result())
                 logger.info(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
                 task.shutdown()
@@ -1617,7 +1643,7 @@ class Core(object):
             return flick_result, classify
 
         # Analyzer first ===============================================================================================
-        if (screen_record := await validate()) is None:
+        if (screen_record := await check()) is None:
             return logger.error(f"{vision} 不是一个标准的视频文件或视频文件已损坏 ...")
         logger.info(f"{screen_record.name} 可正常播放，准备加载视频 ...")
         # Analyzer first ===============================================================================================
