@@ -1,7 +1,7 @@
 import sqlite3
 
 
-class DataBase(object):
+class DataGram(object):
 
     def __init__(self, db: str):
         self.conn = sqlite3.connect(db)

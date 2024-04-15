@@ -102,12 +102,12 @@ try:
     from engine.switch import Switch
     from engine.terminal import Terminal
     from engine.activate import Active, Review
+    from frameflow.skills.comply import Option
+    from frameflow.skills.comply import Deploy
+    from frameflow.skills.comply import Script
+    from frameflow.skills.datagram import DataGram
     from frameflow.skills.manage import Manage
     from frameflow.skills.parser import Parser
-    from frameflow.skills.configure import Option
-    from frameflow.skills.configure import Deploy
-    from frameflow.skills.configure import Script
-    from frameflow.skills.database import DataBase
     from nexaflow import toolbox
     from nexaflow.report import Report
     from nexaflow.video import VideoObject, VideoFrame
@@ -122,7 +122,7 @@ except (RuntimeError, ModuleNotFoundError) as _error:
     sys.exit(1)
 
 
-class Mission(object):
+class Missions(object):
 
     def __init__(self, *args, **kwargs):
         self.flick, self.carry, self.fully, self.quick, self.basic, self.keras, *_ = args
@@ -155,21 +155,23 @@ class Mission(object):
         class Entry(object):
 
             def __init__(self, title: str, place: str, sheet: list):
-                self.title = title
-                self.place = place
-                self.sheet = sheet
+                self.title, self.place, self.sheet = title, place, sheet
 
-        return [
+        entry_list = [
             Entry(
-                Path(root).name, root,
-                [os.path.join(root, f) for f in sorted(file) if Path(f).name.split(".")[-1] != "log"]
-            )
-            for root, _, file in os.walk(folder) if file
+                Path(root).name,
+                root,
+                [
+                    os.path.join(root, f)
+                    for f in sorted(file) if Path(f).name.split(".")[-1] != "log"
+                ]
+            ) for root, _, file in os.walk(folder) if file
         ]
+        return entry_list
 
     @staticmethod
-    def enforce(r, c, start: int, end: int, cost: float):
-        with DataBase(os.path.join(r.reset_path, f"{const.NAME}_data.db")) as database:
+    def enforce(r: "Report", c: "KerasClassifier", start: int, end: int, cost: float):
+        with DataGram(os.path.join(r.reset_path, f"{const.NAME}_data.db")) as database:
             if c:
                 column_list = [
                     'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
@@ -192,18 +194,16 @@ class Mission(object):
                     (r.total_path, r.title, r.query_path, r.query, json.dumps(stage), r.frame_path)
                 )
 
-    @staticmethod
-    def amazing(vision, deploy: "Deploy", kc: "KerasClassifier", *args):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+    def amazing(self, *args, **kwargs):
+        alynex = Alynex(self.model_place, self.model_shape, self.model_aisle)
+        loop = asyncio.get_event_loop()
         loop_complete = loop.run_until_complete(
-            Core.ask_analyzer(vision, deploy, kc, *args)
+            alynex.ask_analyzer(*args, **kwargs)
         )
-        loop.close()
         return loop_complete
 
+    # """Child Process"""
     def video_file_task(self, video_file: str):
-        """Child Process"""
         reporter = Report(self.total_place)
         reporter.title = f"{const.DESC}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
         reporter.query = time.strftime('%Y%m%d%H%M%S')
@@ -285,21 +285,16 @@ class Mission(object):
             return reporter.total_path
 
         elif self.keras and not self.basic:
-            kc = KerasClassifier(data_size=self.model_shape, aisle=self.model_aisle)
-            try:
-                kc.load_model(self.model_place)
-            except ValueError as err:
-                logger.error(f"{err}")
-                kc = None
+            attack = self.model_place, self.model_shape, self.model_aisle
         else:
-            kc = None
+            attack = None, None, None
 
-        logger.info(f"{const.DESC} Analyzer: {'智能模式' if kc else '基础模式'} ...")
+        alynex = Alynex(*attack)
+        logger.info(f"{const.DESC} Analyzer: {'智能模式' if alynex.kc else '基础模式'} ...")
 
         futures = loop.run_until_complete(
-            Core.ask_analyzer(
-                new_video_path, deploy, kc,
-                reporter.frame_path, reporter.extra_path, self.fmp, self.fpb
+            alynex.ask_analyzer(
+                new_video_path, deploy, reporter.frame_path, reporter.extra_path, self.fmp, self.fpb
             )
         )
 
@@ -346,8 +341,8 @@ class Mission(object):
         )
         return reporter.total_path
 
+    # """Child Process"""
     def video_data_task(self, video_data: str):
-        """Child Process"""
         reporter = Report(self.total_place)
 
         deploy = Deploy(self.initial_deploy)
@@ -431,16 +426,12 @@ class Mission(object):
             return reporter.total_path
 
         elif self.keras and not self.basic:
-            kc = KerasClassifier(data_size=self.model_shape, aisle=self.model_aisle)
-            try:
-                kc.load_model(self.model_place)
-            except ValueError as err:
-                logger.error(f"{err}")
-                kc = None
+            attack = self.model_place, self.model_shape, self.model_aisle
         else:
-            kc = None
+            attack = None, None, None
 
-        logger.info(f"{const.DESC} Analyzer: {'智能模式' if kc else '基础模式'} ...")
+        alynex = Alynex(*attack)
+        logger.info(f"{const.DESC} Analyzer: {'智能模式' if alynex.kc else '基础模式'} ...")
 
         for video in self.accelerate(video_data):
             reporter.title = video.title
@@ -450,9 +441,8 @@ class Mission(object):
                 new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
 
                 futures = loop.run_until_complete(
-                    Core.ask_analyzer(
-                        new_video_path, deploy, kc,
-                        reporter.frame_path, reporter.extra_path, self.fmp, self.fpb
+                    alynex.ask_analyzer(
+                        new_video_path, deploy, reporter.frame_path, reporter.extra_path, self.fmp, self.fpb
                     )
                 )
                 if futures is None:
@@ -498,8 +488,8 @@ class Mission(object):
         )
         return reporter.total_path
 
+    # """Child Process"""
     def train_model(self, video_file: str):
-        """Child Process"""
         if not os.path.isfile(video_file):
             return logger.error(f"{video_file} 视频文件未找到 ...")
         logger.info(f"视频文件 {video_file} ...")
@@ -592,14 +582,14 @@ class Mission(object):
 
         os.remove(video_temp_file)
 
-    def build_model(self, src: str):
-        """Child Process"""
-        if not os.path.isdir(src):
-            return logger.error("训练模型需要一个分类文件夹 ...")
+    # """Child Process"""
+    def build_model(self, video_data: str):
+        if not os.path.isdir(video_data):
+            return logger.error("训练模型需要一个已经分类的文件夹 ...")
 
         real_path, file_list = "", []
-        logger.debug(f"搜索文件夹: {src}")
-        for root, dirs, files in os.walk(src, topdown=False):
+        logger.debug(f"搜索文件夹: {video_data}")
+        for root, dirs, files in os.walk(video_data, topdown=False):
             for name in files:
                 file_list.append(os.path.join(root, name))
             for name in dirs:
@@ -623,8 +613,7 @@ class Mission(object):
                     logger.info("The image is grayscale image, stored in RGB format ...")
                 else:
                     logger.info("The image is color image ...")
-                    image_color = "rgb"
-                    image_aisle = image.ndim
+                    image_color, image_aisle = "rgb", image.ndim
             else:
                 logger.info("The image is grayscale image ...")
             break
@@ -643,33 +632,33 @@ class Mission(object):
         fc = FramixClassifier(color=image_color, aisle=image_aisle, data_size=deploy.shape)
         fc.build(final_path, new_model_path, new_model_name)
 
-    async def combines_main(self, merge: list, deploy: "Deploy"):
+    async def combines_main(self, merge: list, group: bool):
         major, total = await asyncio.gather(
             achieve(self.main_share_temp), achieve(self.main_total_temp),
             return_exceptions=True
         )
         tasks = [
-            Report.ask_create_total_report(m, major, total, deploy.group) for m in merge
+            Report.ask_create_total_report(m, major, total, group) for m in merge
         ]
         error_list = await asyncio.gather(*tasks)
         for e in error_list:
             if isinstance(e, Exception):
                 logger.error(e)
 
-    async def combines_view(self, merge: list, deploy: "Deploy"):
+    async def combines_view(self, merge: list, group: bool):
         views, total = await asyncio.gather(
             achieve(self.view_share_temp), achieve(self.view_total_temp),
             return_exceptions=True
         )
         tasks = [
-            Report.ask_invent_total_report(m, views, total, deploy.group) for m in merge
+            Report.ask_invent_total_report(m, views, total, group) for m in merge
         ]
         error_list = await asyncio.gather(*tasks)
         for e in error_list:
             if isinstance(e, Exception):
                 logger.error(e)
 
-    async def painting(self, deploy: "Deploy"):
+    async def painting(self, *args, **__):
 
         import tempfile
         import PIL.Image
@@ -792,6 +781,8 @@ class Mission(object):
             )
             return resized
 
+        deploy, cmd_lines, level, power, loop, *_ = args
+
         manage = Manage(self.adb)
         device_list = await manage.operate_device()
         tasks = [paint_lines(device.serial) for device in device_list]
@@ -817,10 +808,7 @@ class Mission(object):
             else:
                 Show.console.print(f"[bold][bold red]没有该选项,请重新输入[/bold red] ...[/bold]\n")
 
-    async def analysis(self, deploy: "Deploy") -> typing.Optional[bool]:
-
-        device_events = {}
-        all_stop_event = asyncio.Event()
+    async def analysis(self, *args, **__):
 
         async def timing_less(amount, serial, events) -> None:
             stop_event_control = events["stop_event"] if deploy.alone else all_stop_event
@@ -1013,23 +1001,22 @@ class Mission(object):
                     reporter.load(result)
 
             elif self.basic or self.keras:
-                logger.debug(f"{const.DESC} Analyzer: {'智能模式' if kc else '基础模式'} ...")
+                logger.debug(f"{const.DESC} Analyzer: {'智能模式' if alynex.kc else '基础模式'} ...")
 
-                # TODO
-                with ProcessPoolExecutor(_power, None, Active.active, (_level,)) as exe:
-                    tasks = [
-                        _main_loop.run_in_executor(
-                            exe, self.amazing, video_temp, deploy, kc, self.fmp, self.fpb
-                        ) for video_temp, *_, frame_path, extra_path, _ in task_list
-                    ]
-                    futures = await asyncio.gather(*tasks)
-
-                # TODO
-                # futures = await asyncio.gather(
-                #     *(Core.ask_analyzer(
-                #         video_temp, deploy, kc, frame_path, extra_path, self.fmp, self.fpb
-                #     ) for video_temp, *_, frame_path, extra_path, _ in task_list)
-                # )
+                if len(task_list) == 1:
+                    futures = await asyncio.gather(
+                        *(alynex.ask_analyzer(
+                            video_temp, deploy, frame_path, extra_path, self.fmp, self.fpb
+                        ) for video_temp, *_, frame_path, extra_path, _ in task_list)
+                    )
+                else:
+                    with ProcessPoolExecutor(power, None, Active.active, ("ERROR",)) as exe:
+                        task = [
+                            loop.run_in_executor(
+                                exe, self.amazing, video_temp, deploy, frame_path, extra_path, self.fmp, self.fpb
+                            ) for video_temp, *_, frame_path, extra_path, _ in task_list
+                        ]
+                        futures = await asyncio.gather(*task)
 
                 for future, todo in zip(futures, task_list):
                     if future is None:
@@ -1155,7 +1142,7 @@ class Mission(object):
         async def combines_report():
             combined = False
             if len(reporter.range_list) > 0:
-                combines = getattr(_mission, "combines_view") if self.quick else getattr(_mission, "combines_main")
+                combines = getattr(_missions, "combines_view") if self.quick else getattr(_missions, "combines_main")
                 await combines([os.path.dirname(reporter.total_path)], deploy.group)
                 combined = True
             return combined
@@ -1222,33 +1209,26 @@ class Mission(object):
                 logger.error(f"{e}")
 
         # Initialization ===============================================================================================
+        deploy, cmd_lines, level, power, loop, *_ = args
+
         manage = Manage(self.adb)
         device_list = await manage.operate_device()
+
+        device_events = {}
+        all_stop_event = asyncio.Event()
 
         titles = {"quick": "Quick", "basic": "Basic", "keras": "Keras"}
         input_title = next((title for key, title in titles.items() if getattr(self, key)), "Video")
         reporter = Report(self.total_place)
 
         if self.keras and not self.quick and not self.basic:
-            kc = KerasClassifier(data_size=self.model_shape, aisle=self.model_aisle)
-            try:
-                kc.load_model(self.model_place)
-            except ValueError as err:
-                logger.error(f"{err}")
-                kc = None
+            attack = self.model_place, self.model_shape, self.model_aisle
         else:
-            kc = None
+            attack = None, None, None
 
-        if self.quick:
-            Show.load_animation(f"{const.DESC} Quick")
-        elif self.basic:
-            Show.load_animation(f"{const.DESC} Basic")
-        elif self.keras and kc:
-            Show.load_animation(f"{const.DESC} Keras")
-        elif self.keras and not kc:
-            Show.load_animation(f"{const.DESC} Basic")
-        else:
-            Show.load_animation(f"{const.DESC} Photo")
+        alynex = Alynex(*attack)
+
+        Show.load_animation(cmd_lines)
 
         # Initialization ===============================================================================================
 
@@ -1370,11 +1350,43 @@ class Mission(object):
         return None
 
 
-class Core(object):
+class Alynex(object):
 
-    @staticmethod
+    __kc: typing.Optional["KerasClassifier"] = None
+
+    def __init__(
+            self,
+            model_place: typing.Union[typing.Optional[str], os.PathLike],
+            model_shape: typing.Optional[tuple],
+            model_aisle: typing.Optional[int],
+            *_,
+            **__
+    ):
+
+        if model_place and model_shape and model_aisle:
+            try:
+                self.kc = KerasClassifier(data_size=model_shape, aisle=model_aisle)
+                self.kc.load_model(model_place)
+            except ValueError as err:
+                logger.error(f"{err}")
+                self.kc = None
+
+    @property
+    def kc(self) -> typing.Optional["KerasClassifier"]:
+        return self.__kc
+
+    @kc.setter
+    def kc(self, value):
+        self.__kc = value
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        pass
+
     async def ask_analyzer(
-            vision, deploy: "Deploy", kc: "KerasClassifier", *args, **kwargs
+            self, vision: str, deploy: "Deploy", *args, **kwargs
     ) -> typing.Optional["Review"]:
 
         frame_path, extra_path, fmp, fpb = args
@@ -1518,7 +1530,7 @@ class Core(object):
             for draw in os.listdir(extra_path):
                 toolbox.draw_line(os.path.join(extra_path, draw))
 
-            classify = kc.classify(
+            classify = self.kc.classify(
                 video=video, valid_range=stable, keep_data=True
             )
 
@@ -1671,7 +1683,7 @@ class Core(object):
         # Analyzer first ===============================================================================================
 
         # Analyzer last ================================================================================================
-        (start, end, cost), classifier = await analytics_keras() if kc else await analytics_basic()
+        (start, end, cost), classifier = await analytics_keras() if self.kc else await analytics_basic()
         return Review(start, end, cost, classifier)
         # Analyzer last ================================================================================================
 
@@ -1690,66 +1702,80 @@ async def arithmetic(*args, **__) -> None:
     async def initialization(transfer):
         proc = members if (members := len(transfer)) <= power else power
         rank = "ERROR" if members > 1 else level
-        return proc, Active.active, (rank,)
+        return proc, None, Active.active, (rank,)
 
     async def multiple_merge(transfer):
         if len(transfer) <= 1:
             return None
         template_total = await achieve(
-            mission.view_total_temp if mission.quick else mission.main_total_temp
+            missions.view_total_temp if missions.quick else missions.main_total_temp
         )
         await loop.run_in_executor(
-            None, Report.merge_report, results, template_total, mission.quick
+            None, Report.merge_report, results, template_total, missions.quick
         )
 
-    mission, deploy, cmd_lines, level, power, loop, *_ = args
+    missions, deploy, cmd_lines, level, power, loop, *_ = args
+
     # --video ==========================================================================================================
     if video_list := cmd_lines.video:
         # Start Child Process
+        Show.load_animation(cmd_lines)
         deploy.view_deploy()
-        with Pool(*(await initialization(video_list))) as pool:
-            results = pool.starmap(mission.video_file_task, [(i,) for i in video_list])
+        with ProcessPoolExecutor(*(await initialization(video_list))) as exe:
+            results = await asyncio.gather(
+                *(loop.run_in_executor(exe, missions.video_file_task, i) for i in video_list)
+            )
         await multiple_merge(video_list)
         sys.exit(0)
+
     # --stack ==========================================================================================================
     elif stack_list := cmd_lines.stack:
         # Start Child Process
+        Show.load_animation(cmd_lines)
         deploy.view_deploy()
-        with Pool(*(await initialization(stack_list))) as pool:
-            results = pool.starmap(mission.video_data_task, [(i,) for i in stack_list])
+        with ProcessPoolExecutor(*(await initialization(stack_list))) as exe:
+            results = await asyncio.gather(
+                *(loop.run_in_executor(exe, missions.video_data_task, i) for i in stack_list)
+            )
         await multiple_merge(stack_list)
         sys.exit(0)
+
     # --train ==========================================================================================================
     elif train_list := cmd_lines.train:
         # Start Child Process
-        with Pool(*(await initialization(train_list))) as pool:
-            pool.starmap(mission.train_model, [(i,) for i in train_list])
+        with ProcessPoolExecutor(*(await initialization(train_list))) as exe:
+            results = await asyncio.gather(
+                *(loop.run_in_executor(exe, missions.train_model, i) for i in train_list)
+            )
         sys.exit(0)
+
     # --build ==========================================================================================================
     elif build_list := cmd_lines.build:
         # Start Child Process
-        with Pool(*(await initialization(build_list))) as pool:
-            pool.starmap(mission.build_model, [(i,) for i in build_list])
+        with ProcessPoolExecutor(*(await initialization(build_list))) as exe:
+            results = await asyncio.gather(
+                *(loop.run_in_executor(exe, missions.build_model, i) for i in build_list)
+            )
         sys.exit(0)
 
     return None
 
 
 async def scheduling(*args, **__) -> None:
-    mission, deploy, cmd_lines, level, power, loop, *_ = args
+    missions, deploy, cmd_lines, level, power, loop, *_ = args
 
     # --flick --carry --fully ==========================================================================================
     if cmd_lines.flick or cmd_lines.carry or cmd_lines.fully:
-        await mission.analysis(deploy)
+        await missions.analysis(deploy, cmd_lines, level, power, loop)
     # --paint ==========================================================================================================
     elif cmd_lines.paint:
-        await mission.painting(deploy)
+        await missions.painting(deploy, cmd_lines, level, power, loop)
     # --union ==========================================================================================================
     elif cmd_lines.union:
-        await mission.combines_view(cmd_lines.union, mission.group)
+        await missions.combines_view(cmd_lines.union)
     # --merge ==========================================================================================================
     elif cmd_lines.merge:
-        await mission.combines_main(cmd_lines.merge, mission.group)
+        await missions.combines_main(cmd_lines.merge)
     else:
         Show.help_document()
 
@@ -1859,7 +1885,7 @@ if __name__ == '__main__':
 
     logger.debug(f"处理器核心数: {(_power := os.cpu_count())}")
 
-    _mission = Mission(
+    _missions = Missions(
         _flick, _carry, _fully, _quick, _basic, _keras,
         _alone, _group, _boost, _color, _shape, _scale,
         _start, _close, _limit, _begin, _final,
@@ -1884,13 +1910,12 @@ if __name__ == '__main__':
         scc=_scc,
     )
 
-    _deploy = Deploy(_mission.initial_deploy)
-    for _attr in _mission.attrs:
-        if any(_line.startswith(f"--{_attr}") for _line in _mission.lines):
-            logger.debug(f"Set {_attr} = {(_attribute := getattr(_mission, _attr))}")
+    _deploy = Deploy(_missions.initial_deploy)
+    for _attr in _missions.attrs:
+        if any(_line.startswith(f"--{_attr}") for _line in _missions.lines):
+            logger.debug(f"Set {_attr} = {(_attribute := getattr(_missions, _attr))}")
             setattr(_deploy, _attr, _attribute)
 
-    from multiprocessing import Pool
     from concurrent.futures import ProcessPoolExecutor
 
     _main_loop = asyncio.get_event_loop()
@@ -1898,10 +1923,10 @@ if __name__ == '__main__':
     # Main Process =====================================================================================================
     try:
         _main_loop.run_until_complete(
-            arithmetic(_mission, _deploy, _cmd_lines, _level, _power, _main_loop)
+            arithmetic(_missions, _deploy, _cmd_lines, _level, _power, _main_loop)
         )
         _main_loop.run_until_complete(
-            scheduling(_mission, _deploy, _cmd_lines, _level, _power, _main_loop)
+            scheduling(_missions, _deploy, _cmd_lines, _level, _power, _main_loop)
         )
     except KeyboardInterrupt:
         sys.exit(0)

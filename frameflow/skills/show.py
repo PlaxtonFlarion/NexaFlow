@@ -161,7 +161,7 @@ class Show(object):
         Show.simulation_progress(f"{const.DESC} Terminal Command.", 1, 0.05)
 
     @staticmethod
-    def load_animation(style: str):
+    def load_animation(style):
 
         c = {
             1: "bold #D7AFAF", 2: "bold #5FD75F", 3: "bold #5FD7FF", 4: "bold #D7AF5F",
@@ -191,53 +191,52 @@ class Show(object):
 
         def keras_engine(stage):
             engine_stages = [
-                Text("""          
-                  (●)
+                Text("""                  (●)
                    |
                    |""", style=c[1]),
-                Text("""          (●)------(●)
-                   |         |
-                   |         |""", style=c[2]),
-                Text("""          (●)------(●)
-                   | \\       |
-                   |  \\      |
+                Text("""         (●)------(●)
+                   |       |
+                   |       |""", style=c[2]),
+                Text("""         (●)------(●)
+                   | \\     |
+                   |  \\    |
                   (●)---(●)""", style=c[3]),
-                Text("""          (●)------(●)
-                 / | \\     / |
+                Text("""         (●)------(●)
+                 / | \\   / |
                 (●) (●)---(●)
                      |     |
-                     (●)---(●)
+                    (●)---(●)
                 """, style=c[4])
             ]
             return engine_stages[stage % len(engine_stages)]
 
         def photo_engine(stage):
             engine_stages = [
-                Text("○", style=c[1]),
-                Text("○──┐", style=c[2]),
-                Text("○──┤  ", style=c[3]),
-                Text("○──┤◉ ", style=c[4])
+                Text("\n○   ○", style=c[1]),
+                Text("○──┐○──┐", style=c[2]),
+                Text("○──┤○──┤", style=c[3]),
+                Text("○──┤○──┤◉\n", style=c[4])
             ]
             return engine_stages[stage % len(engine_stages)]
 
         def animation(step, function):
-            Show.console.print(start_view, style="bold magenta")
+            Show.console.print(start_view, style="bold 	#FFD700")
             for i in range(step):
                 Show.console.print(function(i), justify="left")
                 time.sleep(0.5)
-            return Show.console.print(close_view, style="bold magenta")
+            return Show.console.print(close_view, style="bold #FFD700")
 
-        start_view = f"[bold]Initializing [bold #D7AF87]{style}[/bold #D7AF87] Engine ..."
-        close_view = f"[bold][bold #D7AF87]{style}[/bold #D7AF87] Engine [bold #00D787]successfully[/bold #00D787] loaded !"
+        start_view = f"[bold][bold #D7AF87]{const.DESC}[/bold #D7AF87] Analyzer Engine Initializing ..."
+        close_view = f"[bold][bold #D7AF87]{const.DESC}[/bold #D7AF87] Analyzer Engine Loaded ...\n"
 
-        if (mode := style.split(" ")[1]) == "Quick":
-            return animation(4, quick_engine)
-        elif mode == "Basic":
-            return animation(8, basic_engine)
-        elif mode == "Keras":
-            return animation(4, keras_engine)
-        elif mode == "Photo":
-            return animation(4, photo_engine)
+        if style.quick:
+            animation(4, quick_engine)
+        elif style.basic:
+            animation(4, basic_engine)
+        elif style.keras:
+            animation(4, keras_engine)
+        else:
+            animation(4, photo_engine)
 
 
 if __name__ == '__main__':

@@ -337,8 +337,8 @@ class Option(object):
     options = {
         "Total Place": "",
         "Model Place": "",
-        "Model Shape": (256, 256),
-        "Model Aisle": 1
+        "Model Shape": const.MODEL_SHAPE,
+        "Model Aisle": const.MODEL_AISLE
     }
 
     def __init__(self, option_file: str):
