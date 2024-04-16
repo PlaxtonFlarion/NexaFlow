@@ -640,10 +640,10 @@ class Missions(object):
         tasks = [
             Report.ask_create_total_report(m, major, total, group) for m in merge
         ]
-        error_list = await asyncio.gather(*tasks)
-        for e in error_list:
-            if isinstance(e, Exception):
-                logger.error(e)
+        state_list = await asyncio.gather(*tasks)
+        for state in state_list:
+            if isinstance(state, Exception):
+                logger.error(state)
 
     async def combines_view(self, merge: list, group: bool):
         views, total = await asyncio.gather(
@@ -653,10 +653,10 @@ class Missions(object):
         tasks = [
             Report.ask_invent_total_report(m, views, total, group) for m in merge
         ]
-        error_list = await asyncio.gather(*tasks)
-        for e in error_list:
-            if isinstance(e, Exception):
-                logger.error(e)
+        state_list = await asyncio.gather(*tasks)
+        for state in state_list:
+            if isinstance(state, Exception):
+                logger.error(state)
 
     async def painting(self, *args, **__):
 
@@ -811,18 +811,16 @@ class Missions(object):
     async def analysis(self, *args, **__):
 
         async def timing_less(amount, serial, events) -> None:
-            stop_event_control = events["stop_event"] if deploy.alone else all_stop_event
+            controller = events["stop_event"] if deploy.alone else rhythm_events
             while True:
                 if events["head_event"].is_set():
                     for i in range(amount):
                         row = amount - i if amount - i <= 10 else 10
                         logger.warning(f"{serial} 剩余时间 -> {amount - i:02} 秒 {'----' * row} ...")
-                        if stop_event_control.is_set() and i != amount:
-                            logger.success(f"{serial} 主动停止 ...")
-                            break
+                        if controller.is_set() and i != amount:
+                            return logger.success(f"{serial} 主动停止 ...")
                         elif events["fail_event"].is_set():
-                            logger.error(f"{serial} 意外停止 ...")
-                            break
+                            return logger.error(f"{serial} 意外停止 ...")
                         await asyncio.sleep(1)
                     return logger.warning(f"{serial} 剩余时间 -> 00 秒")
                 elif events["fail_event"].is_set():
@@ -830,33 +828,33 @@ class Missions(object):
                 await asyncio.sleep(0.2)
 
         async def timing_many(serial, events) -> None:
-            stop_event_control = events["stop_event"] if deploy.alone else all_stop_event
+            controller = events["stop_event"] if deploy.alone else rhythm_events
             while True:
                 if events["head_event"].is_set():
                     while True:
-                        if stop_event_control.is_set():
+                        if controller.is_set():
                             return logger.success(f"{serial} 主动停止 ...")
                         elif events["fail_event"].is_set():
                             return logger.error(f"{serial} 意外停止 ...")
-                        await asyncio.sleep(0.2)
+                        await asyncio.sleep(1)
                 elif events["fail_event"].is_set():
                     return logger.error(f"{serial} 意外停止 ...")
                 await asyncio.sleep(0.2)
 
         async def start_record(serial, dst, events):
 
-            # Stream
+            # Input Stream
             async def input_stream():
                 async for line in transports.stdout:
                     logger.info(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
                     if "Recording started" in stream:
                         events["head_event"].set()
                     elif "Recording complete" in stream:
-                        stop_event_control.set()
+                        controller.set()
                         events["done_event"].set()
                         break
 
-            # Stream
+            # Error Stream
             async def error_stream():
                 async for line in transports.stderr:
                     logger.info(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
@@ -864,13 +862,16 @@ class Missions(object):
                         events["fail_event"].set()
                         break
 
-            stop_event_control = events["stop_event"] if deploy.alone else all_stop_event
+            controller = events["stop_event"] if deploy.alone else rhythm_events
 
             video_flag = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
-            cmd = [self.scc, "-s", serial, "--no-audio", "--video-bit-rate", "8M", "--max-fps", "60"]
+
+            cmd = [self.scc, "-s", serial]
+            cmd += ["--no-audio", "--video-bit-rate", "8M", "--max-fps", "60"]
             cmd += ["--record", video_temp := f"{os.path.join(dst, 'screen')}_{video_flag}"]
 
             transports = await Terminal.cmd_link(*cmd)
+
             asyncio.create_task(input_stream())
             asyncio.create_task(error_stream())
             await asyncio.sleep(1)
@@ -887,12 +888,11 @@ class Missions(object):
             well, fail, basis = f"成功", f"失败", os.path.basename(video_temp)
             for _ in range(10):
                 if events["done_event"].is_set():
-                    logger.info(f"视频录制{well}: {basis}")
-                    return True
+                    return f"视频录制{well}", basis
                 elif events["fail_event"].is_set():
-                    return logger.info(f"视频录制{fail}: {basis}")
+                    return f"视频录制{fail}", basis
                 await asyncio.sleep(0.2)
-            return logger.info(f"视频录制{fail}: {basis}")
+            return f"视频录制{fail}", basis
 
         async def commence():
 
@@ -1094,29 +1094,25 @@ class Missions(object):
                 *(close_record(video_temp, transports, events)
                   for (_, events), (video_temp, transports, *_) in zip(device_events.items(), task_list))
             )
-            for (idx, effective), (video_temp, *_) in zip(enumerate(effective_list), task_list):
-                if not effective:
-                    logger.info(f"移除录制失败的视频: {Path(video_temp).name} ...")
+            for (idx, (effective, video_name)), _ in zip(enumerate(effective_list), task_list):
+                if effective.startswith("视频录制失败"):
                     task_list.pop(idx)
-
-            if deploy.alone:
-                logger.warning(f"独立控制模式不会平衡视频录制时间 ...")
-                return task_list
+                logger.info(f"{effective}: {video_name} ...")
 
             if len(task_list) == 0:
-                logger.warning(f"没有有效任务 ...")
-                return task_list
+                return logger.warning(f"没有有效任务 ...")
+
+            if deploy.alone:
+                return logger.warning(f"独立控制模式不会平衡视频录制时间 ...")
 
             duration_list = await asyncio.gather(
                 *(Switch.ask_video_length(self.fpb, video_temp) for video_temp, *_ in task_list)
             )
             duration_list = [duration for duration in duration_list if not isinstance(duration, Exception)]
             if len(duration_list) == 0:
-                task_list.clear()
-                return task_list
+                return task_list.clear()
 
-            standard = min(duration_list)
-            logger.info(f"标准录制时间: {standard}")
+            logger.info(f"标准录制时间: {(standard := min(duration_list))}")
             balance_task = [
                 balance(duration, video_src)
                 for duration, (video_src, *_) in zip(duration_list, task_list)
@@ -1126,26 +1122,24 @@ class Missions(object):
                 task_list[idx][0] = dst
 
         async def event_check():
-            for _, event in device_events.items():
-                if event["fail_event"].is_set():
-                    return False
-            return True
+            return any(
+                event["fail_event"].is_set() for event in device_events.values()
+            )
 
         async def clean_check():
-            all_stop_event.clear()
-            for _, event in device_events.items():
-                for _, v in event.items():
-                    if isinstance(v, asyncio.Event):
-                        v.clear()
+            rhythm_events.clear()
+            for event_dict in device_events.values():
+                for event in event_dict.values():
+                    if isinstance(event, asyncio.Event):
+                        event.clear()
             device_events.clear()
 
         async def combines_report():
-            combined = False
-            if len(reporter.range_list) > 0:
-                combines = getattr(_missions, "combines_view") if self.quick else getattr(_missions, "combines_main")
-                await combines([os.path.dirname(reporter.total_path)], deploy.group)
-                combined = True
-            return combined
+            if len(reporter.range_list) == 0:
+                return False
+            combines = getattr(self, "combines_view" if self.quick else "combines_main")
+            await combines([os.path.dirname(reporter.total_path)], deploy.group)
+            return True
 
         async def load_commands(script):
             try:
@@ -1192,10 +1186,6 @@ class Missions(object):
                 yield [dynamically(device_func, method_args, device.serial)
                        for device_func, device in zip(device_func_list, device_list) if device_func]
 
-            # TODO
-            for device in device_list:
-                device_events[device.serial]["stop_event"].set() if deploy.alone else all_stop_event.set()
-
         async def dynamically(function, arg_list, device_sn=None):
             logger.info(
                 f"{device_sn if device_sn else 'Device'} {function.__name__} {arg_list}"
@@ -1215,7 +1205,7 @@ class Missions(object):
         device_list = await manage.operate_device()
 
         device_events = {}
-        all_stop_event = asyncio.Event()
+        rhythm_events = asyncio.Event()
 
         titles = {"quick": "Quick", "basic": "Basic", "keras": "Keras"}
         input_title = next((title for key, title in titles.items() if getattr(self, key)), "Video")
@@ -1227,8 +1217,10 @@ class Missions(object):
             attack = None, None, None
 
         alynex = Alynex(*attack)
-
         Show.load_animation(cmd_lines)
+
+        from engine.medias import Medias
+        medias = Medias()
 
         # Initialization ===============================================================================================
 
@@ -1284,7 +1276,7 @@ class Missions(object):
                     await all_over()
                     await analysis_tactics()
                     check = await event_check()
-                    device_list = device_list if check else await manage.operate_device()
+                    device_list = await manage.operate_device() if check else device_list
                 finally:
                     await clean_check()
         # Flick Loop ===================================================================================================
@@ -1308,9 +1300,6 @@ class Missions(object):
                     return logger.error(f"缺少有效的脚本文件 {' '.join(self.fully)}...")
                 script_storage = script_data
 
-            from engine.medias import Medias
-            medias = Medias()
-
             await device_mode_view()
             for script_dict in script_storage:
                 for key, value in script_dict.items():
@@ -1328,17 +1317,11 @@ class Missions(object):
                                         if isinstance(exec_func, Exception):
                                             logger.error(f"{exec_func}")
 
-                            # TODO
-                            # for _device in device_list:
-                            #     device_events[
-                            #         _device.serial
-                            #     ]["stop_event"].set() if deploy.alone else all_stop_event.set()
-
                             await all_time("many")
                             await all_over()
                             await analysis_tactics()
                             check = await event_check()
-                            device_list = device_list if check else await manage.operate_device()
+                            device_list = await manage.operate_device() if check else device_list
                         finally:
                             await clean_check()
 

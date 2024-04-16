@@ -2,57 +2,139 @@ import os
 import time
 import signal
 import pygame
-import threading
+import random
+import asyncio
 from loguru import logger
-from typing import Union, IO
 from engine.terminal import Terminal
 
 
 class Medias(object):
 
-    def __init__(self):
-        self.__volume = 1.0
-        self.__online = None
-        self.__record = threading.Event()
+    device_events = {}
+    rhythm_events = asyncio.Event()
 
-    def audio_player(self, audio_file: str):
+    def __init__(self, scrcpy=None, alone=None, whist=None, platform=None):
+        self.scc = scrcpy
+        self.alone = alone
+        self.whist = whist
+        self.platform = platform
+
+    async def timing_less(self, serial, events, amount) -> None:
+        controller = events["stop_event"] if self.alone else self.rhythm_events
+        while True:
+            if events["head_event"].is_set():
+                for i in range(amount):
+                    row = amount - i if amount - i <= 10 else 10
+                    logger.warning(f"{serial} 剩余时间 -> {amount - i:02} 秒 {'----' * row} ...")
+                    if controller.is_set() and i != amount:
+                        return logger.success(f"{serial} 主动停止 ...")
+                    elif events["fail_event"].is_set():
+                        return logger.error(f"{serial} 意外停止 ...")
+                    await asyncio.sleep(1)
+                return logger.warning(f"{serial} 剩余时间 -> 00 秒")
+            elif events["fail_event"].is_set():
+                return logger.error(f"{serial} 意外停止 ...")
+            await asyncio.sleep(0.2)
+
+    async def timing_many(self, serial, events) -> None:
+        controller = events["stop_event"] if self.alone else self.rhythm_events
+        while True:
+            if events["head_event"].is_set():
+                while True:
+                    if controller.is_set():
+                        return logger.success(f"{serial} 主动停止 ...")
+                    elif events["fail_event"].is_set():
+                        return logger.error(f"{serial} 意外停止 ...")
+                    await asyncio.sleep(1)
+            elif events["fail_event"].is_set():
+                return logger.error(f"{serial} 意外停止 ...")
+            await asyncio.sleep(0.2)
+
+    async def start_record(self, serial, dst, events):
+
+        # Input Stream
+        async def ask_input_stream():
+            async for line in transports.stdout:
+                logger.info(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
+                if "Recording started" in stream:
+                    events["head_event"].set()
+                elif "Recording complete" in stream:
+                    controller.set()
+                    events["done_event"].set()
+                    break
+
+        # Error Stream
+        async def ask_error_stream():
+            async for line in transports.stderr:
+                logger.info(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
+                if "Could not find" in stream or "connection failed" in stream or "Recorder error" in stream:
+                    events["fail_event"].set()
+                    break
+
+        controller = events["stop_event"] if self.alone else self.rhythm_events
+
+        video_flag = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
+
+        cmd = [self.scc, "-s", serial]
+        cmd += ["--no-audio", "--video-bit-rate", "8M", "--max-fps", "60"]
+        cmd += ["--record", video_temp := f"{os.path.join(dst, 'screen')}_{video_flag}"]
+
+        transports = await Terminal.cmd_link(*cmd)
+
+        asyncio.create_task(ask_input_stream())
+        asyncio.create_task(ask_error_stream())
+        await asyncio.sleep(1)
+
+        return video_temp, transports
+
+    async def close_record(self, video_temp, transports, events):
+
+        async def close():
+            for _ in range(10):
+                if events["done_event"].is_set():
+                    return f"视频录制{well}", basis
+                elif events["fail_event"].is_set():
+                    return f"视频录制{fail}", basis
+                await asyncio.sleep(0.2)
+            return f"视频录制{fail}", basis
+
+        well, fail, basis = f"成功", f"失败", os.path.basename(video_temp)
+
+        if self.platform != "win32":
+            transports.terminate()
+            return await close()
+
+        kill_line = "taskkill", "/im", "scrcpy.exe"
+        if self.whist:
+            transports.send_signal(signal.CTRL_C_EVENT)
+
+        try:
+            await Terminal.cmd_line(*kill_line)
+        except KeyboardInterrupt:
+            logger.warning(f"Stop With Ctrl C Event ...")
+        return await close()
+
+    async def event_check(self):
+        return any(
+            event["fail_event"].is_set() for event in self.device_events.values()
+        )
+
+    async def clean_check(self):
+        self.rhythm_events.clear()
+        for event_dict in self.device_events.values():
+            for event in event_dict.values():
+                if isinstance(event, asyncio.Event):
+                    event.clear()
+        self.device_events.clear()
+
+    @staticmethod
+    async def audio_player(audio_file: str):
         pygame.mixer.init()
         pygame.mixer.music.load(audio_file)
-        pygame.mixer.music.set_volume(self.__volume)
+        pygame.mixer.music.set_volume(1.0)
         pygame.mixer.music.play()
         while pygame.mixer.music.get_busy():
             pygame.time.Clock().tick(10)
-
-    def start_record(self, video_path: str, sn: str = None) -> None:
-        cmd = [
-            "scrcpy", "--no-audio", "--video-bit-rate", "8M", "--max-fps", "60", "-Nr",
-            f"{os.path.join(video_path, 'screen')}.mkv"
-        ]
-        if sn:
-            cmd.insert(1, "-s")
-            cmd.insert(2, sn)
-        self.__online = Terminal.cmd_connect(cmd)
-
-        def stream(flow: Union[int, IO[str]]) -> None:
-            for line in iter(flow.readline, ""):
-                logger.info(" ".join(line.strip().split()))
-            flow.close()
-
-        if self.__online:
-            self.__record.set()
-            threading.Thread(target=stream, args=(self.__online.stdout, )).start()
-            threading.Thread(target=stream, args=(self.__online.stderr, )).start()
-            time.sleep(1)
-
-    def close_record(self) -> None:
-        self.__online.send_signal(signal.CTRL_C_EVENT)
-        self.__record.clear()
-        self.__online = None
-
-        try:
-            Terminal.cmd_oneshot(["taskkill", "/im", "scrcpy.exe"])
-        except KeyboardInterrupt:
-            logger.info("Stop with Ctrl_C_Event ...")
 
 
 if __name__ == '__main__':

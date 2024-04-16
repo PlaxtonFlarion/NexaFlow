@@ -232,7 +232,7 @@ class Show(object):
         if style.quick:
             animation(4, quick_engine)
         elif style.basic:
-            animation(4, basic_engine)
+            animation(8, basic_engine)
         elif style.keras:
             animation(4, keras_engine)
         else:
