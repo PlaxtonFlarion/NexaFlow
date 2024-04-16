@@ -21,8 +21,6 @@ def load_parameters(src, dst) -> None:
 class Deploy(object):
 
     deploys = {
-        "alone": const.ALONE,
-        "group": const.GROUP,
         "boost": const.BOOST,
         "color": const.COLOR,
 
@@ -46,14 +44,6 @@ class Deploy(object):
         self.load_deploy(deploy_file)
 
 # Getter ###############################################################################################################
-
-    @property
-    def alone(self):
-        return self.deploys["alone"]
-
-    @property
-    def group(self):
-        return self.deploys["group"]
 
     @property
     def boost(self):
@@ -116,14 +106,6 @@ class Deploy(object):
         return self.deploys["omits"]
 
 # Setter ###############################################################################################################
-
-    @alone.setter
-    def alone(self, value):
-        self.deploys["alone"] = value
-
-    @group.setter
-    def group(self, value):
-        self.deploys["group"] = value
 
     @boost.setter
     def boost(self, value):
@@ -223,18 +205,6 @@ class Deploy(object):
         table.add_column("效果", no_wrap=True)
 
         information = [
-            [
-                f"[bold {c[1]}]独立控制",
-                f"[bold {c[2]}]{self.alone}",
-                f"[bold][[bold {c[3]}]T | F[/bold {c[3]}] ]",
-                f"[bold green]开启[/bold green]" if self.alone else "[bold red]关闭[/bold red]"
-            ],
-            [
-                f"[bold {c[1]}]分组报告",
-                f"[bold {c[2]}]{self.group}",
-                f"[bold][[bold {c[3]}]T | F[/bold {c[3]}] ]",
-                f"[bold green]开启[/bold green]" if self.group else "[bold red]关闭[/bold red]",
-            ],
             [
                 f"[bold {c[1]}]跳帧模式",
                 f"[bold {c[2]}]{self.boost}",

@@ -13,13 +13,13 @@ class Medias(object):
     device_events = {}
     rhythm_events = asyncio.Event()
 
-    def __init__(self, scrcpy=None, alone=None, whist=None, platform=None):
-        self.scc = scrcpy
-        self.alone = alone
-        self.whist = whist
-        self.platform = platform
+    def __init__(self, scrcpy: str, system: str, *args, **__):
+        self.scrcpy, self.system = scrcpy, system
+        self.alone, self.whist, *_ = args
+        if self.alone and self.whist:
+            self.whist = False
 
-    async def timing_less(self, serial, events, amount) -> None:
+    async def timing_less(self, serial, events, amount):
         controller = events["stop_event"] if self.alone else self.rhythm_events
         while True:
             if events["head_event"].is_set():
@@ -36,7 +36,7 @@ class Medias(object):
                 return logger.error(f"{serial} 意外停止 ...")
             await asyncio.sleep(0.2)
 
-    async def timing_many(self, serial, events) -> None:
+    async def timing_many(self, serial, events):
         controller = events["stop_event"] if self.alone else self.rhythm_events
         while True:
             if events["head_event"].is_set():
@@ -53,7 +53,7 @@ class Medias(object):
     async def start_record(self, serial, dst, events):
 
         # Input Stream
-        async def ask_input_stream():
+        async def input_stream():
             async for line in transports.stdout:
                 logger.info(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
                 if "Recording started" in stream:
@@ -64,7 +64,7 @@ class Medias(object):
                     break
 
         # Error Stream
-        async def ask_error_stream():
+        async def error_stream():
             async for line in transports.stderr:
                 logger.info(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
                 if "Could not find" in stream or "connection failed" in stream or "Recorder error" in stream:
@@ -75,14 +75,14 @@ class Medias(object):
 
         video_flag = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
 
-        cmd = [self.scc, "-s", serial]
+        cmd = [self.scrcpy, "-s", serial]
         cmd += ["--no-audio", "--video-bit-rate", "8M", "--max-fps", "60"]
         cmd += ["--record", video_temp := f"{os.path.join(dst, 'screen')}_{video_flag}"]
 
         transports = await Terminal.cmd_link(*cmd)
 
-        asyncio.create_task(ask_input_stream())
-        asyncio.create_task(ask_error_stream())
+        asyncio.create_task(input_stream())
+        asyncio.create_task(error_stream())
         await asyncio.sleep(1)
 
         return video_temp, transports
@@ -100,7 +100,7 @@ class Medias(object):
 
         well, fail, basis = f"成功", f"失败", os.path.basename(video_temp)
 
-        if self.platform != "win32":
+        if self.system != "win32":
             transports.terminate()
             return await close()
 

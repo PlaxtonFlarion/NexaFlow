@@ -23,7 +23,9 @@ MODEL_SHAPE = (256, 256)
 MODEL_AISLE = 1
 
 ALONE = False
+WHIST = False
 GROUP = False
+
 BOOST = False
 COLOR = False
 SHAPE = None
