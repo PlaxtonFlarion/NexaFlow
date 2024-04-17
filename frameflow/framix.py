@@ -1,3 +1,5 @@
+__all__ = []
+
 import os
 import sys
 import shutil
@@ -195,11 +197,14 @@ class Missions(object):
                     (r.total_path, r.title, r.query_path, r.query, json.dumps(stage), r.frame_path)
                 )
 
-    def amazing(self, *args, **kwargs):
-        alynex = Alynex(self.model_place, self.model_shape, self.model_aisle)
+    # """Child Process"""
+    def amazing(self, vision: str, deploy: typing.Optional["Deploy"], *args, **kwargs):
+        attack = self.total_place, self.model_place, self.model_shape, self.model_aisle
+        charge = _platform, self.fmp, self.fpb
+        alynex = Alynex(*attack, *charge)
         loop = asyncio.get_event_loop()
         loop_complete = loop.run_until_complete(
-            alynex.ask_analyzer(*args, **kwargs)
+            alynex.ask_analyzer(vision, deploy, *args, **kwargs)
         )
         return loop_complete
 
@@ -266,18 +271,19 @@ class Missions(object):
                 )
             )
             result = {
+                "style": "quick",
                 "total_path": Path(reporter.total_path).name,
                 "title": reporter.title,
                 "query": reporter.query,
                 "stage": {"start": 0, "end": 0, "cost": 0},
                 "frame": Path(reporter.frame_path).name
             }
-            logger.debug(f"Quick: {result}")
-            reporter.load(result)
+            logger.debug(f"Quicker: {result}")
+            loop.run_until_complete(reporter.load(result))
 
             loop.run_until_complete(
-                reporter.ask_invent_total_report(
-                    os.path.dirname(reporter.total_path),
+                reporter.ask_create_total_report(
+                    os.path.dirname(reporter.total_path), "view",
                     loop.run_until_complete(achieve(self.view_share_temp)),
                     loop.run_until_complete(achieve(self.view_total_temp)),
                     self.group
@@ -286,16 +292,18 @@ class Missions(object):
             return reporter.total_path
 
         elif self.keras and not self.basic:
-            attack = self.model_place, self.model_shape, self.model_aisle
+            attack = self.total_place, self.model_place, self.model_shape, self.model_aisle
         else:
-            attack = None, None, None
+            attack = self.total_place, None, None, None
 
-        alynex = Alynex(*attack)
+        charge = _platform, self.fmp, self.fpb
+
+        alynex = Alynex(*attack, *charge)
         logger.info(f"{const.DESC} Analyzer: {'智能模式' if alynex.kc else '基础模式'} ...")
 
         futures = loop.run_until_complete(
             alynex.ask_analyzer(
-                new_video_path, deploy, reporter.frame_path, reporter.extra_path, self.fmp, self.fpb
+                new_video_path, deploy, reporter.frame_path, reporter.extra_path
             )
         )
 
@@ -319,22 +327,19 @@ class Missions(object):
             ):
                 return Show.console.print(f"[bold red]{template_file}")
 
-            original_inform = reporter.draw(
-                classifier_result=classifier,
-                proto_path=reporter.proto_path,
-                template_file=template_file
-            )
+            original_inform = loop.run_until_complete(reporter.ask_draw(classifier, reporter.proto_path, template_file))
             result["extra"] = Path(reporter.extra_path).name
             result["proto"] = Path(original_inform).name
 
+        result["style"] = "basic"
         logger.debug(f"Restore: {result}")
-        reporter.load(result)
+        loop.run_until_complete(reporter.load(result))
 
         self.enforce(reporter, classifier, start, end, cost)
 
         loop.run_until_complete(
             reporter.ask_create_total_report(
-                os.path.dirname(reporter.total_path),
+                os.path.dirname(reporter.total_path), "main",
                 loop.run_until_complete(achieve(self.main_share_temp)),
                 loop.run_until_complete(achieve(self.main_total_temp)),
                 self.group
@@ -407,18 +412,19 @@ class Missions(object):
                         )
                     )
                     result = {
+                        "style": "quick",
                         "total_path": Path(reporter.total_path).name,
                         "title": reporter.title,
                         "query": reporter.query,
                         "stage": {"start": 0, "end": 0, "cost": 0},
                         "frame": Path(reporter.frame_path).name
                     }
-                    logger.debug(f"Quick: {result}")
-                    reporter.load(result)
+                    logger.debug(f"Quicker: {result}")
+                    loop.run_until_complete(reporter.load(result))
 
             loop.run_until_complete(
-                reporter.ask_invent_total_report(
-                    os.path.dirname(reporter.total_path),
+                reporter.ask_create_total_report(
+                    os.path.dirname(reporter.total_path), "view",
                     loop.run_until_complete(achieve(self.view_share_temp)),
                     loop.run_until_complete(achieve(self.view_total_temp)),
                     self.group
@@ -427,11 +433,13 @@ class Missions(object):
             return reporter.total_path
 
         elif self.keras and not self.basic:
-            attack = self.model_place, self.model_shape, self.model_aisle
+            attack = self.total_place, self.model_place, self.model_shape, self.model_aisle
         else:
-            attack = None, None, None
+            attack = self.total_place, None, None, None
 
-        alynex = Alynex(*attack)
+        charge = _platform, self.fmp, self.fpb
+
+        alynex = Alynex(*attack, *charge)
         logger.info(f"{const.DESC} Analyzer: {'智能模式' if alynex.kc else '基础模式'} ...")
 
         for video in self.accelerate(video_data):
@@ -443,7 +451,7 @@ class Missions(object):
 
                 futures = loop.run_until_complete(
                     alynex.ask_analyzer(
-                        new_video_path, deploy, reporter.frame_path, reporter.extra_path, self.fmp, self.fpb
+                        new_video_path, deploy, reporter.frame_path, reporter.extra_path
                     )
                 )
                 if futures is None:
@@ -466,22 +474,20 @@ class Missions(object):
                     ):
                         return Show.console.print(f"[bold red]{template_file}")
 
-                    original_inform = reporter.draw(
-                        classifier_result=classifier,
-                        proto_path=reporter.proto_path,
-                        template_file=template_file
-                    )
+                    original_inform = loop.run_until_complete(
+                        reporter.ask_draw(classifier, reporter.proto_path, template_file))
                     result["extra"] = Path(reporter.extra_path).name
                     result["proto"] = Path(original_inform).name
 
+                result["style"] = "basic"
                 logger.debug(f"Restore: {result}")
-                reporter.load(result)
+                loop.run_until_complete(reporter.load(result))
 
                 self.enforce(reporter, classifier, start, end, cost)
 
         loop.run_until_complete(
             reporter.ask_create_total_report(
-                os.path.dirname(reporter.total_path),
+                os.path.dirname(reporter.total_path), "main",
                 loop.run_until_complete(achieve(self.main_share_temp)),
                 loop.run_until_complete(achieve(self.main_total_temp)),
                 self.group
@@ -639,7 +645,7 @@ class Missions(object):
             return_exceptions=True
         )
         tasks = [
-            Report.ask_create_total_report(m, major, total, group) for m in merge
+            Report.ask_create_total_report(m, "main", major, total, group) for m in merge
         ]
         state_list = await asyncio.gather(*tasks)
         for state in state_list:
@@ -652,7 +658,7 @@ class Missions(object):
             return_exceptions=True
         )
         tasks = [
-            Report.ask_invent_total_report(m, views, total, group) for m in merge
+            Report.ask_create_total_report(m, "view", views, total, group) for m in merge
         ]
         state_list = await asyncio.gather(*tasks)
         for state in state_list:
@@ -908,14 +914,15 @@ class Missions(object):
                 )
                 for *_, total_path, title, query_path, query, frame_path, _, _ in task_list:
                     result = {
+                        "style": "quick",
                         "total_path": Path(total_path).name,
                         "title": title,
                         "query": query,
                         "stage": {"start": 0, "end": 0, "cost": 0},
                         "frame": Path(frame_path).name
                     }
-                    logger.debug(f"Quick: {result}")
-                    reporter.load(result)
+                    logger.debug(f"Quicker: {result}")
+                    await reporter.load(result)
 
             elif self.basic or self.keras:
                 logger.debug(f"{const.DESC} Analyzer: {'智能模式' if alynex.kc else '基础模式'} ...")
@@ -923,14 +930,14 @@ class Missions(object):
                 if len(task_list) == 1:
                     futures = await asyncio.gather(
                         *(alynex.ask_analyzer(
-                            video_temp, deploy, frame_path, extra_path, self.fmp, self.fpb
+                            video_temp, deploy, frame_path, extra_path
                         ) for video_temp, *_, frame_path, extra_path, _ in task_list)
                     )
                 else:
                     with ProcessPoolExecutor(power, None, Active.active, ("ERROR",)) as exe:
                         task = [
                             loop.run_in_executor(
-                                exe, self.amazing, video_temp, deploy, frame_path, extra_path, self.fmp, self.fpb
+                                exe, self.amazing, video_temp, deploy, frame_path, extra_path
                             ) for video_temp, *_, frame_path, extra_path, _ in task_list
                         ]
                         futures = await asyncio.gather(*task)
@@ -956,16 +963,14 @@ class Missions(object):
                         ):
                             return Show.console.print(f"[bold red]{template_file}")
 
-                        original_inform = reporter.draw(
-                            classifier_result=classifier,
-                            proto_path=proto_path,
-                            template_file=template_file,
-                        )
+                        original_inform = loop.run_until_complete(
+                            reporter.ask_draw(classifier, proto_path, template_file))
                         result["extra"] = Path(extra_path).name
                         result["proto"] = Path(original_inform).name
 
+                    result["style"] = "basic"
                     logger.debug(f"Restore: {result}")
-                    reporter.load(result)
+                    await reporter.load(result)
 
                     self.enforce(reporter, classifier, start, end, cost)
 
@@ -1019,7 +1024,7 @@ class Missions(object):
             if len(task_list) == 0:
                 return logger.warning(f"没有有效任务 ...")
 
-            if deploy.alone:
+            if self.alone:
                 return logger.warning(f"独立控制模式不会平衡视频录制时间 ...")
 
             duration_list = await asyncio.gather(
@@ -1042,7 +1047,7 @@ class Missions(object):
             if len(reporter.range_list) == 0:
                 return False
             combines = getattr(self, "combines_view" if self.quick else "combines_main")
-            await combines([os.path.dirname(reporter.total_path)], deploy.group)
+            await combines([os.path.dirname(reporter.total_path)], self.group)
             return True
 
         async def load_commands(script):
@@ -1113,15 +1118,17 @@ class Missions(object):
         reporter = Report(self.total_place)
 
         if self.keras and not self.quick and not self.basic:
-            attack = self.model_place, self.model_shape, self.model_aisle
+            attack = self.total_place, self.model_place, self.model_shape, self.model_aisle
         else:
-            attack = None, None, None
+            attack = self.total_place, None, None, None
 
-        alynex = Alynex(*attack)
+        charge = _platform, self.fmp, self.fpb
+
+        alynex = Alynex(*attack, *charge)
         Show.load_animation(cmd_lines)
 
         from engine.medias import Medias
-        medias = Medias(self.scc, _platform, self.alone, self.whist)
+        medias = Medias(_platform, self.scc, self.alone, self.whist)
 
         # Initialization ===============================================================================================
 
@@ -1240,10 +1247,11 @@ class Alynex(object):
 
     def __init__(
             self,
-            model_place: typing.Union[typing.Optional[str], os.PathLike],
+            total_place: typing.Optional[typing.Union[str, os.PathLike]],
+            model_place: typing.Optional[typing.Union[str, os.PathLike]],
             model_shape: typing.Optional[tuple],
             model_aisle: typing.Optional[int],
-            *_,
+            *args,
             **__
     ):
 
@@ -1254,6 +1262,9 @@ class Alynex(object):
             except ValueError as err:
                 logger.error(f"{err}")
                 self.kc = None
+
+        self.total_place = total_place
+        self.oss, self.fmp, self.fpb, *_ = args
 
     @property
     def kc(self) -> typing.Optional["KerasClassifier"]:
@@ -1270,10 +1281,10 @@ class Alynex(object):
         pass
 
     async def ask_analyzer(
-            self, vision: str, deploy: "Deploy", *args, **kwargs
+            self, vision: str, deploy: "Deploy" = None, *args, **kwargs
     ) -> typing.Optional["Review"]:
 
-        frame_path, extra_path, fmp, fpb, *_ = args
+        frame_path, extra_path, *_ = args
 
         boost = deploy.boost if deploy else kwargs.get("boost", const.BOOST)
         color = deploy.color if deploy else kwargs.get("color", const.COLOR)
@@ -1319,7 +1330,7 @@ class Alynex(object):
                 f"screen_fps{frate}_{random.randint(100, 999)}.mp4"
             )
 
-            duration = await Switch.ask_video_length(fpb, vision)
+            duration = await Switch.ask_video_length(self.fpb, vision)
             vision_start, vision_close, vision_limit = await Switch.ask_magic_point(
                 Parser.parse_mills(start),
                 Parser.parse_mills(close),
@@ -1333,7 +1344,7 @@ class Alynex(object):
             logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
 
             await Switch.ask_video_change(
-                fmp, frate, vision, change_record,
+                self.fmp, frate, vision, change_record,
                 start=vision_start, close=vision_close, limit=vision_limit
             )
             logger.info(f"视频转换完成: {Path(change_record).name}")
@@ -1341,7 +1352,7 @@ class Alynex(object):
             logger.info(f"移除旧的视频: {Path(vision).name}")
 
             if shape:
-                original_shape = await Switch.ask_video_larger(fpb, change_record)
+                original_shape = await Switch.ask_video_larger(self.fpb, change_record)
                 w, h, ratio = await Switch.ask_magic_frame(original_shape, shape)
                 target_shape = w, h
                 target_scale = scale
@@ -1459,12 +1470,12 @@ class Alynex(object):
                 start_frame = classify.get_not_stable_stage_range()[begin_stage][begin_frame]
                 end_frame = classify.get_not_stable_stage_range()[final_stage][final_frame]
             except AssertionError as e:
-                logger.error(f"{e}")
+                logger.warning(f"{e}")
                 start_frame = classify.get_important_frame_list()[0]
                 end_frame = classify.get_important_frame_list()[-1]
                 logger.warning(f"{const.DESC} Analyzer recalculate ...")
             except IndexError as e:
-                logger.error(f"{e}")
+                logger.warning(f"{e}")
                 for i, unstable_stage in enumerate(classify.get_specific_stage_range("-3")):
                     Show.console.print(f"[bold]第 {i:02} 个非稳定阶段")
                     Show.console.print(f"[bold]{'=' * 30}")
@@ -1475,8 +1486,8 @@ class Alynex(object):
                 end_frame = classify.get_important_frame_list()[-1]
                 logger.warning(f"{const.DESC} Analyzer recalculate ...")
 
-            if start_frame == end_frame:
-                logger.warning(f"{start_frame} == {end_frame}")
+            if end_frame.frame_id <= start_frame.frame_id:
+                logger.warning(f"{end_frame} <= {start_frame}")
                 start_frame, end_frame = classify.data[0], classify.data[-1]
                 logger.warning(f"{const.DESC} Analyzer recalculate ...")
 
@@ -1507,8 +1518,7 @@ class Alynex(object):
             else:
                 frames = [i for i in video.grey_data]
 
-            logger.debug(f"运行环境: {_platform}")
-            if _platform == "win32":
+            if self.oss == "win32":
                 forge_result = await asyncio.gather(
                     *(frame_forge(frame) for frame in frames), return_exceptions=True
                 )
@@ -1535,8 +1545,7 @@ class Alynex(object):
         async def analytics_keras():
             classify, frames = await frame_flow()
 
-            logger.debug(f"运行环境: {_platform}")
-            if _platform == "win32":
+            if self.oss == "win32":
                 flick_result, *forge_result = await asyncio.gather(
                     frame_flick(classify), *(frame_forge(frame) for frame in frames),
                     return_exceptions=True
@@ -1560,16 +1569,12 @@ class Alynex(object):
 
             return flick_result, classify
 
-        # Analyzer first ===============================================================================================
         if (screen_record := await check()) is None:
             return logger.error(f"{vision} 不是一个标准的视频文件或视频文件已损坏 ...")
         logger.info(f"{screen_record.name} 可正常播放，准备加载视频 ...")
-        # Analyzer first ===============================================================================================
 
-        # Analyzer last ================================================================================================
         (start, end, cost), classifier = await analytics_keras() if self.kc else await analytics_basic()
         return Review(start, end, cost, classifier)
-        # Analyzer last ================================================================================================
 
 
 async def achieve(template_path: str) -> str | Exception:
@@ -1595,7 +1600,7 @@ async def arithmetic(*args, **__) -> None:
             missions.view_total_temp if missions.quick else missions.main_total_temp
         )
         await loop.run_in_executor(
-            None, Report.merge_report, results, template_total, missions.quick
+            None, Report.merge_report, results, template_total
         )
 
     missions, deploy, cmd_lines, level, power, loop, *_ = args
@@ -1604,7 +1609,6 @@ async def arithmetic(*args, **__) -> None:
     if video_list := cmd_lines.video:
         # Start Child Process
         Show.load_animation(cmd_lines)
-        deploy.view_deploy()
         with ProcessPoolExecutor(*(await initialization(video_list))) as exe:
             results = await asyncio.gather(
                 *(loop.run_in_executor(exe, missions.video_file_task, i) for i in video_list)
@@ -1616,7 +1620,6 @@ async def arithmetic(*args, **__) -> None:
     elif stack_list := cmd_lines.stack:
         # Start Child Process
         Show.load_animation(cmd_lines)
-        deploy.view_deploy()
         with ProcessPoolExecutor(*(await initialization(stack_list))) as exe:
             results = await asyncio.gather(
                 *(loop.run_in_executor(exe, missions.video_data_task, i) for i in stack_list)

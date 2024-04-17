@@ -43,6 +43,14 @@ class Deploy(object):
     def __init__(self, deploy_file: str):
         self.load_deploy(deploy_file)
 
+    def __getstate__(self):
+        logger.critical(f"{const.DESC} Serialization ...")
+        return self.deploys
+
+    def __setstate__(self, state):
+        logger.critical(f"{const.DESC} Deserialization ...")
+        self.deploys = state
+
 # Getter ###############################################################################################################
 
     @property

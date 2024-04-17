@@ -1,20 +1,26 @@
 import os
 import time
 import signal
-import pygame
 import random
 import asyncio
+
+try:
+    os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
+    import pygame
+except ImportError as e:
+    raise ImportError("AudioPlayer requires pygame. install it first.")
+
 from loguru import logger
 from engine.terminal import Terminal
 
 
 class Medias(object):
 
-    device_events = {}
-    rhythm_events = asyncio.Event()
+    device_events: dict = {}
+    rhythm_events: asyncio.Event = asyncio.Event()
 
-    def __init__(self, scrcpy: str, system: str, *args, **__):
-        self.scrcpy, self.system = scrcpy, system
+    def __init__(self, system: str, scrcpy: str, *args, **__):
+        self.system, self.scrcpy = system, scrcpy
         self.alone, self.whist, *_ = args
         if self.alone and self.whist:
             self.whist = False
@@ -77,7 +83,7 @@ class Medias(object):
 
         cmd = [self.scrcpy, "-s", serial]
         cmd += ["--no-audio", "--video-bit-rate", "8M", "--max-fps", "60"]
-        cmd += ["--record", video_temp := f"{os.path.join(dst, 'screen')}_{video_flag}"]
+        cmd += ["-Nr" if self.whist else "--record", video_temp := f"{os.path.join(dst, 'screen')}_{video_flag}"]
 
         transports = await Terminal.cmd_link(*cmd)
 
@@ -104,14 +110,14 @@ class Medias(object):
             transports.terminate()
             return await close()
 
-        kill_line = "taskkill", "/im", "scrcpy.exe"
         if self.whist:
+            logger.info(f"PID: {transports.pid}")
             transports.send_signal(signal.CTRL_C_EVENT)
 
         try:
-            await Terminal.cmd_line(*kill_line)
+            await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
         except KeyboardInterrupt:
-            logger.warning(f"Stop With Ctrl C Event ...")
+            logger.warning(f"Stop With Ctrl_C_Event ...")
         return await close()
 
     async def event_check(self):
