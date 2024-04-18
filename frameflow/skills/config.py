@@ -44,11 +44,9 @@ class Deploy(object):
         self.load_deploy(deploy_file)
 
     def __getstate__(self):
-        logger.critical(f"{const.DESC} Serialization ...")
         return self.deploys
 
     def __setstate__(self, state):
-        logger.critical(f"{const.DESC} Deserialization ...")
         self.deploys = state
 
 # Getter ###############################################################################################################
@@ -321,6 +319,12 @@ class Option(object):
 
     def __init__(self, option_file: str):
         self.load_option(option_file)
+
+    def __getstate__(self):
+        return self.options
+
+    def __setstate__(self, state):
+        self.options = state
 
     @property
     def total_place(self):

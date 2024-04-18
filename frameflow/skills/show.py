@@ -192,7 +192,8 @@ class Show(object):
 
         def keras_engine(stage):
             engine_stages = [
-                Text("""                  (●)
+                Text("""                  
+                  (●)
                    |
                    |""", style=c[1]),
                 Text("""         (●)------(●)

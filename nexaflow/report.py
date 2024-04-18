@@ -1,5 +1,6 @@
 import os
 import re
+import ast
 import json
 import time
 import shutil
@@ -67,7 +68,6 @@ class Report(object):
         self.__title = title
         self.query_path = os.path.join(self.total_path, self.title)
         os.makedirs(self.query_path, exist_ok=True)
-        logger.info(f"✪✪✪✪✪✪✪✪✪✪ {self.title} ✪✪✪✪✪✪✪✪✪✪")
 
     @title.deleter
     def title(self):
@@ -86,7 +86,6 @@ class Report(object):
         os.makedirs(self.video_path, exist_ok=True)
         os.makedirs(self.frame_path, exist_ok=True)
         os.makedirs(self.extra_path, exist_ok=True)
-        logger.info(f"Start -> {self.query}")
 
     @query.deleter
     def query(self):
@@ -95,7 +94,6 @@ class Report(object):
     async def load(self, inform: dict) -> None:
         if inform:
             self.range_list.append(inform)
-        logger.info(f"End -> {inform.get('query', '......')}")
 
     @staticmethod
     def reset_report(file_name: str, template_file: str) -> None:
@@ -148,121 +146,106 @@ class Report(object):
             logger.info(f"合并汇总报告: {report_html}")
 
     @staticmethod
+    async def ask_create_report(total: "Path", title: str, serial: str, parts_list: list, style_loc: str):
+
+        async def views_frame(query, frame):
+            frame_list = []
+            for image in os.listdir(os.path.join(total, title, query, frame)):
+                image_src = os.path.join(query, frame, image)
+                image_idx = int(re.search(r"(?<=frame_)\d+", image).group())
+                frame_list.append(
+                    {
+                        "src": image_src,
+                        "frames_id": image_idx,
+                    }
+                )
+            frame_list.sort(key=lambda x: x["frames_id"])
+            return frame_list
+
+        async def major_frame(query, frame):
+            frame_list = []
+            for image in os.listdir(os.path.join(total, title, query, frame)):
+                image_src = os.path.join(query, frame, image)
+                image_idx = re.search(r"\d+(?=_)", image).group()
+                timestamp = float(re.search(r"(?<=_).+(?=\.)", image).group())
+                frame_list.append(
+                    {
+                        "src": image_src,
+                        "frames_id": image_idx,
+                        "timestamp": f"{timestamp:.5f}"
+                    }
+                )
+            frame_list.sort(key=lambda x: int(x["frames_id"]))
+            return frame_list
+
+        async def extra_frame(query, frame):
+            frame_list = []
+            for image in os.listdir(os.path.join(total, title, query, frame)):
+                image_src = os.path.join(query, frame, image)
+                image_idx = image.split("(")[0]
+                frame_list.append(
+                    {
+                        "src": image_src,
+                        "idx": image_idx
+                    }
+                )
+            frame_list.sort(key=lambda x: int(x["idx"].split("(")[0]))
+            return frame_list
+
+        async def transform(inform_part):
+            inform_list = []
+            style = inform_part.get("style", "")
+            query = inform_part.get("query", "")
+            stage = inform_part.get("stage", {})
+            frame = inform_part.get("frame", "")
+
+            inform_dict: dict[str | int | list | bytes] = {"query": query, "stage": stage}
+
+            if style == "quick":
+                inform_dict["image_list"] = await views_frame(query, frame)
+            elif style == "basic":
+                inform_dict["image_list"] = await major_frame(query, frame)
+            else:
+                extra = inform_part.get("extra", "")
+                proto = inform_part.get("proto", "")
+                image_list, extra_list = await asyncio.gather(
+                    major_frame(query, frame), extra_frame(query, extra)
+                )
+                inform_dict["extra_list"] = extra_list
+                inform_dict["proto"] = os.path.join(query, proto)
+            return inform_list
+
+        if len(parts_list) == 0:
+            return None
+
+        transform_result = await asyncio.gather(
+            *(transform(parts) for parts in parts_list)
+        )
+        images_list = [i for result in transform_result for i in result]
+
+        html_temp = Template(style_loc).render(
+            name=const.NAME, title=title, images_list=images_list
+        )
+        teams = serial if serial else random.randint(10000, 99999)
+        html_path = Path(os.path.join(total, title, f"{title}_{teams}.html"))
+        async with aiofiles.open(html_path, "w", encoding=const.CHARSET) as range_file:
+            await range_file.write(html_temp)
+
+        cost_list = [cost["stage"]["cost"] for cost in images_list]
+        try:
+            avg = sum(map(float, cost_list)) / len(cost_list)
+        except ZeroDivisionError:
+            avg = 0.00000
+
+        href = os.path.join(total.name, title, html_path.name)
+        single = {
+            "case": title, "cost_list": cost_list, "avg": f"{avg:.5f}", "href": href
+        }
+        logger.debug("Recovery: " + json.dumps(single, ensure_ascii=False))
+        return single
+
+    @staticmethod
     async def ask_create_total_report(file_name: str, file_term: str, style_loc: str, total_loc: str, group: bool):
-
-        async def create(total_path: "Path", title: str, serial: str):
-
-            async def together():
-                single = {}
-                if len(parts_list) == 0:
-                    logger.info(f"没有可以聚合的报告 ...")
-                    logger.info(f"✪✪✪✪✪✪✪✪✪✪ {title} ✪✪✪✪✪✪✪✪✪✪")
-                    return single
-
-                results = await asyncio.gather(
-                    *(deal_with_inform(result) for result in parts_list)
-                )
-                images_list = [element for res in results for element in res]
-
-                range_html_temp = Template(style_loc).render(
-                    name=const.NAME,
-                    title=title,
-                    images_list=images_list
-                )
-                teams = serial if serial else random.randint(10000, 99999)
-                range_html = Path(os.path.join(total_path, title, f"{title}_{teams}.html"))
-                async with aiofiles.open(range_html, "w", encoding=const.CHARSET) as range_file:
-                    await range_file.write(range_html_temp)
-                    logger.info(f"生成聚合报告: {range_html.name}")
-
-                cost_list = [cost["stage"]["cost"] for cost in images_list]
-                try:
-                    avg = sum(map(float, cost_list)) / len(cost_list)
-                except ZeroDivisionError:
-                    avg = 0.00000
-                    logger.warning(f"未获取到平均值 ...")
-
-                href = os.path.join(total_path.name, title, range_html.name)
-                single = {
-                    "case": title, "cost_list": cost_list, "avg": f"{avg:.5f}", "href": href
-                }
-                logger.debug("Recovery: " + json.dumps(single, ensure_ascii=False))
-
-                logger.info(f"✪✪✪✪✪✪✪✪✪✪ {title} ✪✪✪✪✪✪✪✪✪✪")
-                return single
-
-            async def deal_with_inform(inform_dict):
-
-                async def views_frame():
-                    handler_frame_list = []
-                    for image in os.listdir(os.path.join(total_path, title, query, frame)):
-                        image_src = os.path.join(query, os.path.basename(frame), image)
-                        image_ids = int(re.search(r"(?<=frame_)\d+", image).group())
-                        handler_frame_list.append(
-                            {
-                                "src": image_src,
-                                "frames_id": image_ids,
-                            }
-                        )
-                    handler_frame_list.sort(key=lambda x: x["frames_id"])
-                    return handler_frame_list
-
-                async def major_frame():
-                    handler_frame_list = []
-                    for image in os.listdir(os.path.join(total_path, title, query, frame)):
-                        image_src = os.path.join(query, os.path.basename(frame), image)
-                        image_ids = re.search(r"\d+(?=_)", image).group()
-                        timestamp = float(re.search(r"(?<=_).+(?=\.)", image).group())
-                        handler_frame_list.append(
-                            {
-                                "src": image_src,
-                                "frames_id": image_ids,
-                                "timestamp": f"{timestamp:.5f}"
-                            }
-                        )
-                    handler_frame_list.sort(key=lambda x: int(x["frames_id"]))
-                    return handler_frame_list
-
-                async def extra_frame():
-                    handler_extra_list = []
-                    for ex in os.listdir(os.path.join(total_path, title, query, extra)):
-                        extra_src = os.path.join(query, extra, ex)
-                        extra_idx = ex.split("(")[0]
-                        handler_extra_list.append(
-                            {
-                                "src": extra_src,
-                                "idx": extra_idx
-                            }
-                        )
-                    handler_extra_list.sort(key=lambda x: int(x["idx"].split("(")[0]))
-                    return handler_extra_list
-
-                inform_list = []
-                style = inform_dict.get("style", "")
-                query = inform_dict.get("query", "")
-                stage = inform_dict.get("stage", {})
-                frame = inform_dict.get("frame", "")
-                extra = inform_dict.get("extra", "")
-                proto = inform_dict.get("proto", "")
-
-                data = {"query": query, "stage": stage}
-
-                if extra and proto:
-                    image_list, extra_list = await asyncio.gather(
-                        major_frame(), extra_frame()
-                    )
-                    data["extra_list"] = extra_list
-                    data["proto"] = os.path.join(query, proto)
-                else:
-                    image_list = await views_frame() if style == "quick" else major_frame()
-
-                data["image_list"] = image_list
-                inform_list.append(data)
-
-                return inform_list
-
-            return await together()
-
         try:
             file_path = os.path.join(file_name, "Nexa_Recovery", "nexaflow.log")
             async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
@@ -273,37 +256,26 @@ class Report(object):
         pattern = "Restore" if file_term == "main" else "Quicker"
 
         if len(match_list := re.findall(fr"(?<={pattern}: ).*}}", open_file)) == 0:
-            return FileNotFoundError(f"没有符合条件的数据 ...")
+            return logger.warning(f"没有符合条件的数据 ...")
 
-        parts_list = [json.loads(file.replace("'", '"')) for file in match_list if file]
-        grouped_dict = defaultdict(list)
-        for part in parts_list:
-            part["query"] = Path(part["query"])
-            if group:
-                if len(part["query"].parts) == 2:
-                    parts = part.pop("total_path"), part.pop("title"), part["query"].name
-                else:
-                    logger.warning(f"不符合分组规则,使用默认分组 ...")
-                    parts = part.pop("total_path"), part.pop("title")
-            else:
-                parts = part.pop("total_path"), part.pop("title")
-            grouped_dict[parts].append(part)
+        parts_list = [json.loads(file) for file in match_list if file]
+        parts_dict = {ast.literal_eval(k): [v] for parts in parts_list for k, v in parts.items()}
 
-        tasks = [
-            create(Path(os.path.join(file_name, k[0])), k[1], k[2] if len(k) == 3 else "")
-            for k, parts_list in grouped_dict.items()
-        ]
-        merge_result = await asyncio.gather(*tasks)
-        total_result = [merge for merge in merge_result]
+        create_result = await asyncio.gather(
+            *(Report.ask_create_report(
+                Path(os.path.join(file_name, a)), b, c, v, style_loc)
+                for (a, b, c), v in parts_dict.items())
+        )
+        total_result = [create for create in create_result if create]
 
         if group:
             merged = defaultdict(lambda: defaultdict(list))
             for case in total_result:
                 for k, v in case.items():
-                    if k != 'case':
-                        merged[case['case']][k].append(v)
+                    if k != "case":
+                        merged[case["case"]][k].append(v)
             total_list = [
-                {'case': case, **{k: v for k, v in attrs.items()}} for case, attrs in merged.items()
+                {"case": case, **{k: v for k, v in attrs.items()}} for case, attrs in merged.items()
             ]
             for item in total_list:
                 item["merge_list"] = list(zip(item.pop("href"), item.pop("avg"), item.pop("cost_list")))
@@ -317,8 +289,7 @@ class Report(object):
             total_list = total_result
 
         if len(total_list := [single for single in total_list if single]) == 0:
-            logger.warning(f"没有可以汇总的报告 ...")
-            return False
+            return logger.warning(f"没有可以汇总的报告 ...")
 
         total_html_temp = Template(total_loc).render(
             report_time=time.strftime('%Y.%m.%d %H:%M:%S'),

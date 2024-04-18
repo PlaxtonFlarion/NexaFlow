@@ -270,15 +270,20 @@ class Missions(object):
                     start=vision_start, close=vision_close, limit=vision_limit
                 )
             )
+
+            header = str((
+                os.path.basename(reporter.total_path), reporter.title,
+                Path(reporter.query).name if self.group and len(Path(reporter.query).parts) == 2 else ""
+            ))
             result = {
-                "style": "quick",
-                "total_path": Path(reporter.total_path).name,
-                "title": reporter.title,
-                "query": reporter.query,
-                "stage": {"start": 0, "end": 0, "cost": 0},
-                "frame": Path(reporter.frame_path).name
+                header: {
+                    "query": reporter.query,
+                    "stage": {"start": 0, "end": 0, "cost": 0},
+                    "frame": os.path.basename(reporter.frame_path),
+                    "style": "quick",
+                }
             }
-            logger.debug(f"Quicker: {result}")
+            logger.debug(f"Quicker: {json.dumps(result)}")
             loop.run_until_complete(reporter.load(result))
 
             loop.run_until_complete(
@@ -311,28 +316,29 @@ class Missions(object):
             return None
         start, end, cost, classifier = futures.data
 
+        header = str((
+            os.path.basename(reporter.total_path), reporter.title,
+            Path(reporter.query).name if self.group and len(Path(reporter.query).parts) == 2 else ""
+        ))
         result = {
-            "total_path": Path(reporter.total_path).name,
-            "title": reporter.title,
-            "query": reporter.query,
-            "stage": {"start": start, "end": end, "cost": f"{cost:.5f}"},
-            "frame": Path(reporter.frame_path).name
+            header: {
+                "query": reporter.query,
+                "stage": {"start": start, "end": end, "cost": f"{cost:.5f}"},
+                "frame": os.path.basename(reporter.frame_path)
+            }
         }
 
         if classifier:
-            if isinstance(
-                    template_file := loop.run_until_complete(
-                        achieve(self.atom_total_temp)
-                    ), Exception
-            ):
-                return Show.console.print(f"[bold red]{template_file}")
+            if isinstance(tmp := loop.run_until_complete(achieve(self.atom_total_temp)), Exception):
+                return Show.console.print(f"[bold red]{tmp}")
+            original_inform = loop.run_until_complete(reporter.ask_draw(classifier, reporter.proto_path, tmp))
+            result[header]["extra"] = os.path.basename(reporter.extra_path)
+            result[header]["proto"] = os.path.basename(original_inform)
+            result[header]["style"] = "keras"
+        else:
+            result[header]["style"] = "basic"
 
-            original_inform = loop.run_until_complete(reporter.ask_draw(classifier, reporter.proto_path, template_file))
-            result["extra"] = Path(reporter.extra_path).name
-            result["proto"] = Path(original_inform).name
-
-        result["style"] = "basic"
-        logger.debug(f"Restore: {result}")
+        logger.debug(f"Restore: {json.dumps(result)}")
         loop.run_until_complete(reporter.load(result))
 
         self.enforce(reporter, classifier, start, end, cost)
@@ -411,15 +417,20 @@ class Missions(object):
                             start=deploy.start, close=deploy.close, limit=deploy.limit
                         )
                     )
+
+                    header = str((
+                        os.path.basename(reporter.total_path), reporter.title,
+                        Path(reporter.query).name if self.group and len(Path(reporter.query).parts) == 2 else ""
+                    ))
                     result = {
-                        "style": "quick",
-                        "total_path": Path(reporter.total_path).name,
-                        "title": reporter.title,
-                        "query": reporter.query,
-                        "stage": {"start": 0, "end": 0, "cost": 0},
-                        "frame": Path(reporter.frame_path).name
+                        header: {
+                            "query": reporter.query,
+                            "stage": {"start": 0, "end": 0, "cost": 0},
+                            "frame": os.path.basename(reporter.frame_path),
+                            "style": "quick"
+                        }
                     }
-                    logger.debug(f"Quicker: {result}")
+                    logger.debug(f"Quicker: {json.dumps(result)}")
                     loop.run_until_complete(reporter.load(result))
 
             loop.run_until_complete(
@@ -458,29 +469,30 @@ class Missions(object):
                     continue
                 start, end, cost, classifier = futures.data
 
+                header = str((
+                    os.path.basename(reporter.total_path), reporter.title,
+                    Path(reporter.query).name if self.group and len(Path(reporter.query).parts) == 2 else ""
+                ))
                 result = {
-                    "total_path": Path(reporter.total_path).name,
-                    "title": reporter.title,
-                    "query": reporter.query,
-                    "stage": {"start": start, "end": end, "cost": f"{cost:.5f}"},
-                    "frame": Path(reporter.frame_path).name
+                    header: {
+                        "query": reporter.query,
+                        "stage": {"start": start, "end": end, "cost": f"{cost:.5f}"},
+                        "frame": os.path.basename(reporter.frame_path)
+                    }
                 }
 
                 if classifier:
-                    if isinstance(
-                            template_file := loop.run_until_complete(
-                                achieve(self.atom_total_temp)
-                            ), Exception
-                    ):
-                        return Show.console.print(f"[bold red]{template_file}")
-
+                    if isinstance(tmp := loop.run_until_complete(achieve(self.atom_total_temp)), Exception):
+                        return Show.console.print(f"[bold red]{tmp}")
                     original_inform = loop.run_until_complete(
-                        reporter.ask_draw(classifier, reporter.proto_path, template_file))
-                    result["extra"] = Path(reporter.extra_path).name
-                    result["proto"] = Path(original_inform).name
+                        reporter.ask_draw(classifier, reporter.proto_path, tmp))
+                    result[header]["extra"] = os.path.basename(reporter.extra_path)
+                    result[header]["proto"] = os.path.basename(original_inform)
+                    result[header]["style"] = "keras"
+                else:
+                    result[header]["style"] = "basic"
 
-                result["style"] = "basic"
-                logger.debug(f"Restore: {result}")
+                logger.debug(f"Restore: {json.dumps(result)}")
                 loop.run_until_complete(reporter.load(result))
 
                 self.enforce(reporter, classifier, start, end, cost)
@@ -913,15 +925,19 @@ class Missions(object):
                     ) in zip(task_list, video_filter_list, duration_result_list))
                 )
                 for *_, total_path, title, query_path, query, frame_path, _, _ in task_list:
+                    header = str((
+                        os.path.basename(reporter.total_path), reporter.title,
+                        Path(reporter.query).name if self.group and len(Path(reporter.query).parts) == 2 else ""
+                    ))
                     result = {
-                        "style": "quick",
-                        "total_path": Path(total_path).name,
-                        "title": title,
-                        "query": query,
-                        "stage": {"start": 0, "end": 0, "cost": 0},
-                        "frame": Path(frame_path).name
+                        header: {
+                            "query": reporter.query,
+                            "stage": {"start": 0, "end": 0, "cost": 0},
+                            "frame": os.path.basename(reporter.frame_path),
+                            "style": "quick"
+                        }
                     }
-                    logger.debug(f"Quicker: {result}")
+                    logger.debug(f"Quicker: {json.dumps(result)}")
                     await reporter.load(result)
 
             elif self.basic or self.keras:
@@ -949,27 +965,29 @@ class Missions(object):
                     start, end, cost, classifier = future.data
                     *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo
 
+                    header = str((
+                        os.path.basename(total_path), title,
+                        Path(query).name if self.group and len(Path(query).parts) == 2 else ""
+                    ))
                     result = {
-                        "total_path": Path(total_path).name,
-                        "title": title,
-                        "query": query,
-                        "stage": {"start": start, "end": end, "cost": f"{cost:.5f}"},
-                        "frame": Path(frame_path).name
+                        header: {
+                            "query": query,
+                            "stage": {"start": start, "end": end, "cost": f"{cost:.5f}"},
+                            "frame": os.path.basename(frame_path)
+                        }
                     }
 
                     if classifier:
-                        if isinstance(
-                                template_file := await achieve(self.atom_total_temp), Exception
-                        ):
-                            return Show.console.print(f"[bold red]{template_file}")
+                        if isinstance(tmp := await achieve(self.atom_total_temp), Exception):
+                            return Show.console.print(f"[bold red]{tmp}")
+                        original_inform = await reporter.ask_draw(classifier, proto_path, tmp)
+                        result[header]["extra"] = os.path.basename(extra_path)
+                        result[header]["proto"] = os.path.basename(original_inform)
+                        result[header]["style"] = "keras"
+                    else:
+                        result[header]["style"] = "basic"
 
-                        original_inform = loop.run_until_complete(
-                            reporter.ask_draw(classifier, proto_path, template_file))
-                        result["extra"] = Path(extra_path).name
-                        result["proto"] = Path(original_inform).name
-
-                    result["style"] = "basic"
-                    logger.debug(f"Restore: {result}")
+                    logger.debug(f"Restore: {json.dumps(result)}")
                     await reporter.load(result)
 
                     self.enforce(reporter, classifier, start, end, cost)
@@ -1772,6 +1790,12 @@ if __name__ == '__main__':
     logger.debug(f"模型文件色彩: {'灰度' if _model_aisle == 1 else '彩色'}模型")
 
     logger.debug(f"处理器核心数: {(_power := os.cpu_count())}")
+
+    # _deploy = Deploy(_initial_deploy)
+    # for _attr in _attrs:
+    #     if any(_line.startswith(f"--{_attr}") for _line in _lines):
+    #         logger.debug(f"Set {_attr} = {(_attribute := getattr(_cmd_lines, _attr))}")
+    #         setattr(_deploy, _attr, _attribute)
 
     _missions = Missions(
         _flick, _carry, _fully, _quick, _basic, _keras, _alone, _whist, _group,
