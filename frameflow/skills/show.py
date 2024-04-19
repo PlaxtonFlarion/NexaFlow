@@ -228,8 +228,8 @@ class Show(object):
                 time.sleep(0.5)
             return Show.console.print(close_view, style="bold #FFD700")
 
-        start_view = f"[bold][bold #D7AF87]{const.DESC}[/bold #D7AF87] Analyzer Engine Initializing ..."
-        close_view = f"[bold][bold #D7AF87]{const.DESC}[/bold #D7AF87] Analyzer Engine Loaded ...\n"
+        start_view = f"[bold][bold #D7AF87]{const.DESC} |[/bold #D7AF87] Analyzer | Engine Initializing ..."
+        close_view = f"[bold][bold #D7AF87]{const.DESC} |[/bold #D7AF87] Analyzer | Engine Loaded ...\n"
 
         if style.quick:
             animation(4, quick_engine)

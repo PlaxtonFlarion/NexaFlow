@@ -35,8 +35,6 @@ class Report(object):
         if not self.__initialized:
             self.__initialized = True
 
-            self.clock: typing.Any = lambda: time.strftime("%Y%m%d%H%M%S")
-
             self.__title = ""
             self.__query = ""
             self.query_path = ""
@@ -47,7 +45,9 @@ class Report(object):
             self.range_list = []
             self.total_list = []
 
-            self.total_path = os.path.join(total_path, f"Nexa_{self.clock()}_{os.getpid()}", "Nexa_Collection")
+            self.total_path = os.path.join(
+                total_path, f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
+            )
             os.makedirs(self.total_path, exist_ok=True)
 
             self.reset_path = os.path.join(os.path.dirname(self.total_path), "Nexa_Recovery")
@@ -325,7 +325,7 @@ class Report(object):
 
         image_list = []
         if boost:
-            for cur_index in range(len(stage_range)):
+            for cur_index, _ in enumerate(stage_range):
                 each_range = stage_range[cur_index]
                 middle = each_range[len(each_range) // 2]
                 if middle.is_stable():
@@ -334,9 +334,7 @@ class Report(object):
                         middle.get_data(), compress_rate=scale, target_size=shape
                     )
                     frame = {
-                        "frame_id": middle.frame_id,
-                        "timestamp": f"{middle.timestamp:.5f}",
-                        "image": toolbox.np2b64str(image)
+                        "frame_id": middle.frame_id, "timestamp": f"{middle.timestamp:.5f}", "image": toolbox.np2b64str(image)
                     }
                     image_list.append(frame)
                 else:
@@ -355,9 +353,7 @@ class Report(object):
                             i.get_data(), compress_rate=scale, target_size=shape
                         )
                         frame = {
-                            "frame_id": i.frame_id,
-                            "timestamp": f"{i.timestamp:.5f}",
-                            "image": toolbox.np2b64str(image)
+                            "frame_id": i.frame_id, "timestamp": f"{i.timestamp:.5f}", "image": toolbox.np2b64str(image)
                         }
                         image_list.append(frame)
 
@@ -369,7 +365,7 @@ class Report(object):
                 thumbnail_list.append({title: image_list})
 
         else:
-            for cur_index in range(len(stage_range)):
+            for cur_index, _ in enumerate(stage_range):
                 each_range = stage_range[cur_index]
                 middle = each_range[len(each_range) // 2]
 
@@ -381,18 +377,16 @@ class Report(object):
                     label = label_unstable
 
                 if cur_index + 1 < len(stage_range):
-                    range_for_display = [*each_range, stage_range[cur_index + 1][0]]
+                    new_each = [*each_range, stage_range[cur_index + 1][0]]
                 else:
-                    range_for_display = each_range
+                    new_each = each_range
 
-                for i in range_for_display:
+                for i in new_each:
                     image = toolbox.compress_frame(
                         i.get_data(), compress_rate=scale, target_size=shape
                     )
                     frame = {
-                        "frame_id": i.frame_id,
-                        "timestamp": f"{i.timestamp:.5f}",
-                        "image": toolbox.np2b64str(image)
+                        "frame_id": i.frame_id, "timestamp": f"{i.timestamp:.5f}", "image": toolbox.np2b64str(image)
                     }
                     image_list.append(frame)
 
@@ -427,7 +421,7 @@ class Report(object):
 
         async with aiofiles.open(report_path, "w", encoding=const.CHARSET) as f:
             await f.write(html_template)
-        logger.info(f"生成单次报告: {os.path.basename(report_path)}")
+        logger.info(f"生成阶段报告: {os.path.basename(report_path)}")
 
         return report_path
 

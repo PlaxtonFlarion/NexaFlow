@@ -319,7 +319,9 @@ class Missions(object):
         if classifier:
             if isinstance(tmp := loop.run_until_complete(achieve(self.atom_total_temp)), Exception):
                 return Show.console.print(f"[bold red]{tmp}")
+            logger.info(f"模版引擎正在渲染 ...")
             original_inform = loop.run_until_complete(reporter.ask_draw(classifier, reporter.proto_path, tmp))
+            logger.info(f"模版引擎渲染完毕 ...")
             result[header]["extra"] = os.path.basename(reporter.extra_path)
             result[header]["proto"] = os.path.basename(original_inform)
             result[header]["style"] = "keras"
@@ -818,7 +820,7 @@ class Missions(object):
 
             todo_list = []
 
-            fmt_dir = reporter.clock() if self.quick or self.basic or self.keras else None
+            fmt_dir = time.strftime("%Y%m%d%H%M%S") if self.quick or self.basic or self.keras else None
             for device in device_list:
                 await asyncio.sleep(0.2)
                 record.device_events[device.serial] = {
@@ -1763,7 +1765,6 @@ if __name__ == '__main__':
             setattr(_deploy, _attr, _attribute)
 
     _missions = Missions(
-        _platform, _software, _deploy, _level, _power,
         _flick, _carry, _fully, _quick, _basic, _keras, _alone, _whist, _group,
         atom_total_temp=_atom_total_temp,
         main_share_temp=_main_share_temp,

@@ -19,6 +19,8 @@ from skimage.metrics import normalized_root_mse as compare_nrmse
 from skimage.metrics import peak_signal_noise_ratio as compare_psnr
 from skimage.metrics import structural_similarity as origin_compare_ssim
 
+from nexaflow import const
+
 
 @contextlib.contextmanager
 def video_capture(video_path: str):
@@ -338,7 +340,7 @@ def show_progress(total: int, color: int, title: str) -> tqdm:
     progress_bar = tqdm(
         total=total,
         position=0, ncols=progress_bar_length, leave=True, bar_format=colored_bar_format,
-        desc=": " + title + "   "
+        desc=f"{const.DESC} : " + title + "   "
     )
     return progress_bar
 
