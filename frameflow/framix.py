@@ -283,7 +283,7 @@ class Missions(object):
                     "style": "quick",
                 }
             }
-            logger.debug(f"Quicker: {json.dumps(result)}")
+            logger.debug(f"Quicker: {json.dumps(result, ensure_ascii=False)}")
             loop.run_until_complete(reporter.load(result))
 
             loop.run_until_complete(
@@ -338,7 +338,7 @@ class Missions(object):
         else:
             result[header]["style"] = "basic"
 
-        logger.debug(f"Restore: {json.dumps(result)}")
+        logger.debug(f"Restore: {json.dumps(result, ensure_ascii=False)}")
         loop.run_until_complete(reporter.load(result))
 
         self.enforce(reporter, classifier, start, end, cost)
@@ -430,7 +430,7 @@ class Missions(object):
                             "style": "quick"
                         }
                     }
-                    logger.debug(f"Quicker: {json.dumps(result)}")
+                    logger.debug(f"Quicker: {json.dumps(result, ensure_ascii=False)}")
                     loop.run_until_complete(reporter.load(result))
 
             loop.run_until_complete(
@@ -492,7 +492,7 @@ class Missions(object):
                 else:
                     result[header]["style"] = "basic"
 
-                logger.debug(f"Restore: {json.dumps(result)}")
+                logger.debug(f"Restore: {json.dumps(result, ensure_ascii=False)}")
                 loop.run_until_complete(reporter.load(result))
 
                 self.enforce(reporter, classifier, start, end, cost)
@@ -937,7 +937,7 @@ class Missions(object):
                             "style": "quick"
                         }
                     }
-                    logger.debug(f"Quicker: {json.dumps(result)}")
+                    logger.debug(f"Quicker: {json.dumps(result, ensure_ascii=False)}")
                     await reporter.load(result)
 
             elif self.basic or self.keras:
@@ -987,7 +987,7 @@ class Missions(object):
                     else:
                         result[header]["style"] = "basic"
 
-                    logger.debug(f"Restore: {json.dumps(result)}")
+                    logger.debug(f"Restore: {json.dumps(result, ensure_ascii=False)}")
                     await reporter.load(result)
 
                     self.enforce(reporter, classifier, start, end, cost)

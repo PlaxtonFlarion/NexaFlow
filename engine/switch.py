@@ -111,17 +111,34 @@ class Switch(object):
 
         start_point = close_point = limit_point = None
 
+        if not duration or duration <= 0:
+            return None, None, None
+
         if start:
-            if start == duration:
-                return None, None, None
-            start_point = max(0, min(start, duration))
+            if 0 <= start <= duration:
+                start_point = start
+            else:
+                start_point = 0
 
         if close:
-            close_point = max(start_point, min(close, duration)) if start else max(0, min(close, duration))
-            if close_point - start_point < 0.09:
+            min_start = start_point if start_point else 0
+            if 0 <= close <= duration:
+                close_point = max(min_start, close)
+            else:
+                close_point = duration
+
+            if close_point - min_start < 0.09:
                 return None, None, None
+
         elif limit:
-            limit_point = max(0, min(limit, duration - start)) if start else max(0, min(limit, duration))
+            if start_point:
+                if limit >= 0 and start_point + limit <= duration:
+                    limit_point = limit
+                else:
+                    limit_point = duration - start_point
+            else:
+                limit_point = min(limit, duration)
+
             if limit_point < 0.09:
                 return None, None, None
 
