@@ -110,16 +110,17 @@ class FramixClassifier(object):
 
     def build(self, *args):
         src, new_model_path, new_model_name = args
+
         try:
             model = self.train(src)
         except AssertionError as e:
-            logger.error(e)
-        else:
-            final_model = os.path.join(new_model_path, new_model_name)
-            os.makedirs(new_model_path, exist_ok=True)
-            model.save_weights(final_model, save_format="h5")
-            model.summary()
-            logger.info(f"模型保存完成 {final_model}")
+            return logger.error(f"{e}")
+
+        final_model = os.path.join(new_model_path, new_model_name)
+        os.makedirs(new_model_path, exist_ok=True)
+        model.save_weights(final_model, save_format="h5")
+        model.summary()
+        logger.info(f"模型保存完成 {final_model}")
 
 
 if __name__ == '__main__':

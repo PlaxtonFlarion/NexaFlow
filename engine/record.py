@@ -14,7 +14,7 @@ from loguru import logger
 from engine.terminal import Terminal
 
 
-class Medias(object):
+class Record(object):
 
     device_events: dict = {}
     rhythm_events: asyncio.Event = asyncio.Event()
@@ -132,6 +132,9 @@ class Medias(object):
                 if isinstance(event, asyncio.Event):
                     event.clear()
         self.device_events.clear()
+
+
+class Player(object):
 
     @staticmethod
     async def audio_player(audio_file: str):

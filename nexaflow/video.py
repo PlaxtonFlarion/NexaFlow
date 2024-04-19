@@ -221,8 +221,8 @@ class VideoObject(object):
 
     def load_frames(
             self,
-            silently_load_hued: bool = False,
-            not_transform_gray: bool = False,
+            load_hued: bool = False,
+            none_gray: bool = False,
             shape: tuple = None,
             scale: int | float = None
     ):
@@ -238,7 +238,7 @@ class VideoObject(object):
             with toolbox.video_capture(self.path) as cap:
                 for success, frame in iter(lambda: cap.read(), (False, None)):
                     if success:
-                        data.append(frames.initial(cap, frame, not_transform_gray, shape, scale))
+                        data.append(frames.initial(cap, frame, none_gray, shape, scale))
                         pbar.update(1)
             pbar.close()
             return data
@@ -248,7 +248,7 @@ class VideoObject(object):
             with toolbox.video_capture(self.path) as cap:
                 for success, frame in iter(lambda: cap.read(), (False, None)):
                     if success:
-                        data.append(frames.initial(cap, frame, silently_load_hued, shape, scale))
+                        data.append(frames.initial(cap, frame, load_hued, shape, scale))
             return data
 
         def load_stream_sync(brand):
@@ -259,16 +259,16 @@ class VideoObject(object):
             self.sync_backstage(tuple(frame_data := back_ground(brand)))
             return frame_data
 
-        start_time, task, hued = time.time(), None, None
-        if silently_load_hued:
-            task = ThreadPoolExecutor()
-            hued = task.submit(back_ground_sync, ColorFrame)
+        start_time, hued_task, hued_data = time.time(), None, None
+        if load_hued:
+            hued_task = ThreadPoolExecutor()
+            hued_data = hued_task.submit(back_ground_sync, ColorFrame)
 
         grey = load_stream_sync(VideoFrame)
         self.grey_data = tuple(grey)
         logger.info(f"灰度帧已加载: {self.frame_details(self.grey_data)}")
         logger.info(f"视频加载耗时: {time.time() - start_time:.2f} 秒")
-        return task, hued
+        return hued_task, hued_data
 
     def _read_from_file(self) -> typing.Generator["VideoFrame", None, None]:
         """

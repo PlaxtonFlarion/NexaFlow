@@ -198,7 +198,8 @@ class Report(object):
             query = inform_part.get("query", "")
             stage = inform_part.get("stage", {})
             frame = inform_part.get("frame", "")
-
+            extra = inform_part.get("extra", "")
+            proto = inform_part.get("proto", "")
             inform_dict: dict[str | int | list | bytes] = {"query": query, "stage": stage}
 
             if style == "quick":
@@ -206,13 +207,13 @@ class Report(object):
             elif style == "basic":
                 inform_dict["image_list"] = await major_frame(query, frame)
             else:
-                extra = inform_part.get("extra", "")
-                proto = inform_part.get("proto", "")
                 image_list, extra_list = await asyncio.gather(
                     major_frame(query, frame), extra_frame(query, extra)
                 )
+                inform_dict["image_list"] = image_list
                 inform_dict["extra_list"] = extra_list
                 inform_dict["proto"] = os.path.join(query, proto)
+            inform_list.append(inform_dict)
             return inform_list
 
         if len(parts_list) == 0:

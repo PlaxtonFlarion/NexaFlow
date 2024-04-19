@@ -118,7 +118,7 @@ try:
     from nexaflow.hook import CompressHook, FrameSaveHook
     from nexaflow.hook import PaintCropHook, PaintOmitHook
     from nexaflow.classifier.keras_classifier import KerasClassifier
-    from nexaflow.classifier.framix_classifier import FramixClassifier
+    # from nexaflow.classifier.framix_classifier import FramixClassifier
 except (RuntimeError, ModuleNotFoundError) as _error:
     Show.console.print(f"[bold red]Error: {_error}")
     Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
@@ -129,12 +129,6 @@ class Missions(object):
 
     def __init__(self, *args, **kwargs):
         self.flick, self.carry, self.fully, self.quick, self.basic, self.keras, self.alone, self.whist, self.group, *_ = args
-        _, _, _, _, _, _, _, _, _, self.boost, self.color, self.shape, self.scale, *_ = args
-        *_, self.start, self.close, self.limit, self.begin, self.final, _, _, _, _, _, _ = args
-        *_, self.frate, self.thres, self.shift, self.block, self.crops, self.omits = args
-
-        self.attrs = kwargs["attrs"]
-        self.lines = kwargs["lines"]
         self.atom_total_temp = kwargs["atom_total_temp"]
         self.main_share_temp = kwargs["main_share_temp"]
         self.main_total_temp = kwargs["main_total_temp"]
@@ -198,7 +192,7 @@ class Missions(object):
                 )
 
     # """Child Process"""
-    def amazing(self, vision: str, deploy: typing.Optional["Deploy"], *args, **kwargs):
+    def amazing(self, vision: typing.Union[str, os.PathLike], deploy: typing.Optional["Deploy"], *args, **kwargs):
         attack = self.total_place, self.model_place, self.model_shape, self.model_aisle
         charge = _platform, self.fmp, self.fpb
         alynex = Alynex(*attack, *charge)
@@ -209,19 +203,13 @@ class Missions(object):
         return loop_complete
 
     # """Child Process"""
-    def video_file_task(self, video_file: str):
+    def video_file_task(self, video_file: str, deploy: "Deploy"):
         reporter = Report(self.total_place)
         reporter.title = f"{const.DESC}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
         reporter.query = time.strftime('%Y%m%d%H%M%S')
         new_video_path = os.path.join(reporter.video_path, os.path.basename(video_file))
 
         shutil.copy(video_file, new_video_path)
-
-        deploy = Deploy(self.initial_deploy)
-        for attr in self.attrs:
-            if any(line.startswith(f"--{attr}") for line in self.lines):
-                logger.debug(f"Set {attr} = {(attribute := getattr(self, attr))}")
-                setattr(deploy, attr, attribute)
 
         loop = asyncio.get_event_loop()
 
@@ -354,14 +342,8 @@ class Missions(object):
         return reporter.total_path
 
     # """Child Process"""
-    def video_data_task(self, video_data: str):
+    def video_data_task(self, video_data: str, deploy: "Deploy"):
         reporter = Report(self.total_place)
-
-        deploy = Deploy(self.initial_deploy)
-        for attr in self.attrs:
-            if any(line.startswith(f"--{attr}") for line in self.lines):
-                logger.debug(f"Set {attr} = {(attribute := getattr(self, attr))}")
-                setattr(deploy, attr, attribute)
 
         loop = asyncio.get_event_loop()
 
@@ -508,7 +490,7 @@ class Missions(object):
         return reporter.total_path
 
     # """Child Process"""
-    def train_model(self, video_file: str):
+    def train_model(self, video_file: str, deploy: "Deploy"):
         if not os.path.isfile(video_file):
             return logger.error(f"{video_file} 视频文件未找到 ...")
         logger.info(f"视频文件 {video_file} ...")
@@ -523,12 +505,6 @@ class Missions(object):
         reporter.title = f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
         if not os.path.exists(reporter.query_path):
             os.makedirs(reporter.query_path, exist_ok=True)
-
-        deploy = Deploy(self.initial_deploy)
-        for attr in self.attrs:
-            if any(line.startswith(f"--{attr}") for line in self.lines):
-                logger.debug(f"Set {attr} = {(attribute := getattr(self, attr))}")
-                setattr(deploy, attr, attribute)
 
         video_temp_file = os.path.join(
             reporter.query_path, f"tmp_fps{deploy.frate}.mp4"
@@ -561,7 +537,7 @@ class Missions(object):
 
         video = VideoObject(video_temp_file)
         video.load_frames(
-            silently_load_hued=False, not_transform_gray=True
+            load_hued=False, none_gray=True
         )
 
         cutter = VideoCutter()
@@ -602,7 +578,8 @@ class Missions(object):
         os.remove(video_temp_file)
 
     # """Child Process"""
-    def build_model(self, video_data: str):
+    @staticmethod
+    def build_model(video_data: str, deploy: "Deploy"):
         if not os.path.isdir(video_data):
             return logger.error("训练模型需要一个已经分类的文件夹 ...")
 
@@ -637,40 +614,39 @@ class Missions(object):
                 logger.info("The image is grayscale image ...")
             break
 
-        deploy = Deploy(self.initial_deploy)
-        for attr in self.attrs:
-            if any(line.startswith(f"--{attr}") for line in self.lines):
-                logger.debug(f"Set {attr} = {(attribute := getattr(self, attr))}")
-                setattr(deploy, attr, attribute)
-
         final_path = os.path.dirname(real_path)
-        new_model_path = os.path.join(final_path, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}")
-        w, h = deploy.shape if deploy.shape else (image.shape if image else (0, 0))
+        new_model_path = os.path.join(
+            final_path, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}", f"{random.randint(100, 999)}"
+        )
+
+        image_shape = deploy.shape if deploy.shape else (image.shape if image.shape else const.MODEL_SHAPE)
+        w, h, *_ = image_shape
         name = "Gray" if image_aisle == 1 else "Hued"
         new_model_name = f"Keras_{name}_W{w}_H{h}_{random.randint(10000, 99999)}.h5"
-        fc = FramixClassifier(color=image_color, aisle=image_aisle, data_size=deploy.shape)
-        fc.build(final_path, new_model_path, new_model_name)
 
-    async def combines_main(self, merge: list, group: bool):
+        kc = KerasClassifier(color=image_color, aisle=image_aisle, data_size=image_shape)
+        kc.build(final_path, new_model_path, new_model_name)
+
+    async def combines_main(self, merge: list):
         major, total = await asyncio.gather(
             achieve(self.main_share_temp), achieve(self.main_total_temp),
             return_exceptions=True
         )
         tasks = [
-            Report.ask_create_total_report(m, "main", major, total, group) for m in merge
+            Report.ask_create_total_report(m, "main", major, total, self.group) for m in merge
         ]
         state_list = await asyncio.gather(*tasks)
         for state in state_list:
             if isinstance(state, Exception):
                 logger.error(state)
 
-    async def combines_view(self, merge: list, group: bool):
+    async def combines_view(self, merge: list):
         views, total = await asyncio.gather(
             achieve(self.view_share_temp), achieve(self.view_total_temp),
             return_exceptions=True
         )
         tasks = [
-            Report.ask_create_total_report(m, "view", views, total, group) for m in merge
+            Report.ask_create_total_report(m, "view", views, total, self.group) for m in merge
         ]
         state_list = await asyncio.gather(*tasks)
         for state in state_list:
@@ -800,7 +776,7 @@ class Missions(object):
             )
             return resized
 
-        deploy, cmd_lines, level, power, loop, *_ = args
+        cmd_lines, platform, deploy, level, power, loop, *_ = args
 
         manage = Manage(self.adb)
         device_list = await manage.operate_device()
@@ -845,14 +821,14 @@ class Missions(object):
             fmt_dir = reporter.clock() if self.quick or self.basic or self.keras else None
             for device in device_list:
                 await asyncio.sleep(0.2)
-                medias.device_events[device.serial] = {
+                record.device_events[device.serial] = {
                     "head_event": asyncio.Event(), "done_event": asyncio.Event(),
                     "stop_event": asyncio.Event(), "fail_event": asyncio.Event()
                 }
                 if fmt_dir:
                     reporter.query = os.path.join(fmt_dir, device.serial)
-                video_temp, transports = await medias.start_record(
-                    device.serial, reporter.video_path, medias.device_events[device.serial]
+                video_temp, transports = await record.start_record(
+                    device.serial, reporter.video_path, record.device_events[device.serial]
                 )
                 todo_list.append(
                     [video_temp, transports, reporter.total_path, reporter.title, reporter.query_path,
@@ -1003,11 +979,11 @@ class Missions(object):
         async def all_time(style):
             if style == "less":
                 await asyncio.gather(
-                    *(medias.timing_less(serial, events, timer_mode) for serial, events in medias.device_events.items())
+                    *(record.timing_less(serial, events, timer_mode) for serial, events in record.device_events.items())
                 )
             elif style == "many":
                 await asyncio.gather(
-                    *(medias.timing_many(serial, events) for serial, events in medias.device_events.items())
+                    *(record.timing_many(serial, events) for serial, events in record.device_events.items())
                 )
 
         async def all_over():
@@ -1031,8 +1007,8 @@ class Missions(object):
                 return video_dst
 
             effective_list = await asyncio.gather(
-                *(medias.close_record(video_temp, transports, events)
-                  for (_, events), (video_temp, transports, *_) in zip(medias.device_events.items(), task_list))
+                *(record.close_record(video_temp, transports, events)
+                  for (_, events), (video_temp, transports, *_) in zip(record.device_events.items(), task_list))
             )
             for (idx, (effective, video_name)), _ in zip(enumerate(effective_list), task_list):
                 if effective.startswith("视频录制失败"):
@@ -1065,7 +1041,7 @@ class Missions(object):
             if len(reporter.range_list) == 0:
                 return False
             combines = getattr(self, "combines_view" if self.quick else "combines_main")
-            await combines([os.path.dirname(reporter.total_path)], self.group)
+            await combines([os.path.dirname(reporter.total_path)])
             return True
 
         async def load_commands(script):
@@ -1098,7 +1074,7 @@ class Missions(object):
                     continue
 
                 for device_func in (device_func_list := await asyncio.gather(
-                        *(is_function(device_cmds, device, medias) for device in device_list)
+                        *(is_function(device_cmds, device, player) for device in device_list)
                 )):
                     if device_func is None:
                         logger.error(f"There is no such command {device_cmds} ...")
@@ -1126,7 +1102,7 @@ class Missions(object):
                 logger.error(f"{e}")
 
         # Initialization ===============================================================================================
-        deploy, cmd_lines, level, power, loop, *_ = args
+        cmd_lines, platform, deploy, level, power, loop, *_ = args
 
         manage = Manage(self.adb)
         device_list = await manage.operate_device()
@@ -1140,13 +1116,14 @@ class Missions(object):
         else:
             attack = self.total_place, None, None, None
 
-        charge = _platform, self.fmp, self.fpb
+        charge = platform, self.fmp, self.fpb
 
         alynex = Alynex(*attack, *charge)
         Show.load_animation(cmd_lines)
 
-        from engine.medias import Medias
-        medias = Medias(_platform, self.scc, self.alone, self.whist)
+        from engine.record import Record, Player
+        record = Record(platform, self.scc, self.alone, self.whist)
+        player = Player()
 
         # Initialization ===============================================================================================
 
@@ -1179,7 +1156,7 @@ class Missions(object):
                         elif select == "deploy":
                             Show.console.print("[bold yellow]修改 deploy.json 文件后请完全退出编辑器进程再继续操作 ...")
                             deploy.dump_deploy(self.initial_deploy)
-                            first = ["Notepad"] if _platform == "win32" else ["open", "-W", "-a", "TextEdit"]
+                            first = ["Notepad"] if platform == "win32" else ["open", "-W", "-a", "TextEdit"]
                             first.append(self.initial_deploy)
                             await Terminal.cmd_line(*first)
                             deploy.load_deploy(self.initial_deploy)
@@ -1201,10 +1178,10 @@ class Missions(object):
                     await all_time("less")
                     await all_over()
                     await analysis_tactics()
-                    check = await medias.event_check()
+                    check = await record.event_check()
                     device_list = await manage.operate_device() if check else device_list
                 finally:
-                    await medias.clean_check()
+                    await record.clean_check()
         # Flick Loop ===================================================================================================
 
         # Other Loop ===================================================================================================
@@ -1246,10 +1223,10 @@ class Missions(object):
                             await all_time("many")
                             await all_over()
                             await analysis_tactics()
-                            check = await medias.event_check()
+                            check = await record.event_check()
                             device_list = await manage.operate_device() if check else device_list
                         finally:
-                            await medias.clean_check()
+                            await record.clean_check()
 
             if await combines_report():
                 return True
@@ -1299,7 +1276,7 @@ class Alynex(object):
         pass
 
     async def ask_analyzer(
-            self, vision: str, deploy: "Deploy" = None, *args, **kwargs
+            self, vision: typing.Union[str, os.PathLike], deploy: "Deploy" = None, *args, **kwargs
     ) -> typing.Optional["Review"]:
 
         frame_path, extra_path, *_ = args
@@ -1324,12 +1301,12 @@ class Alynex(object):
         shift = deploy.shift if deploy else kwargs.get("shift", const.SHIFT)
         block = deploy.block if deploy else kwargs.get("block", const.BLOCK)
 
-        async def check():
-            screen_cap = None
+        async def frame_check():
+            target_screen = None
             if os.path.isfile(vision):
                 screen = cv2.VideoCapture(vision)
                 if screen.isOpened():
-                    screen_cap = Path(vision)
+                    target_screen = Path(vision)
                 screen.release()
             elif os.path.isdir(vision):
                 file_list = [
@@ -1338,14 +1315,58 @@ class Alynex(object):
                 if len(file_list) >= 1:
                     screen = cv2.VideoCapture(open_file := os.path.join(vision, file_list[0]))
                     if screen.isOpened():
-                        screen_cap = Path(open_file)
+                        target_screen = Path(open_file)
                     screen.release()
-            return screen_cap
+            return target_screen
+
+        async def frame_forge(frame):
+            try:
+                (_, codec), pic_path = cv2.imencode(".png", frame.data), os.path.join(
+                    frame_path, f"{frame.frame_id}_{format(round(frame.timestamp, 5), '.5f')}.png"
+                )
+                async with aiofiles.open(pic_path, "wb") as f:
+                    await f.write(codec.tobytes())
+            except Exception as e:
+                return e
+
+        async def frame_flick():
+            logger.info(f"阶段划分: {fabric.get_ordered_stage_set()}")
+            begin_stage_index, begin_frame_index = begin
+            final_stage_index, final_frame_index = final
+            try:
+                begin_frame = fabric.get_not_stable_stage_range()[begin_stage_index][begin_frame_index]
+                final_frame = fabric.get_not_stable_stage_range()[final_stage_index][final_frame_index]
+            except AssertionError as e:
+                logger.warning(f"{e}")
+                begin_frame = fabric.get_important_frame_list()[0]
+                final_frame = fabric.get_important_frame_list()[-1]
+                logger.warning(f"{const.DESC} Analyzer recalculate ...")
+            except IndexError as e:
+                logger.warning(f"{e}")
+                for i, unstable_stage in enumerate(fabric.get_specific_stage_range("-3")):
+                    Show.console.print(f"[bold]第 {i:02} 个非稳定阶段")
+                    Show.console.print(f"[bold]{'=' * 30}")
+                    for j, frame in enumerate(unstable_stage):
+                        Show.console.print(f"[bold]第 {j:05} 帧: {frame}")
+                    Show.console.print(f"[bold]{'=' * 30}\n")
+                begin_frame = fabric.get_important_frame_list()[0]
+                final_frame = fabric.get_important_frame_list()[-1]
+                logger.warning(f"{const.DESC} Analyzer recalculate ...")
+
+            if final_frame.frame_id <= begin_frame.frame_id:
+                logger.warning(f"{final_frame} <= {begin_frame}")
+                begin_frame, end_frame = fabric.data[0], fabric.data[-1]
+                logger.warning(f"{const.DESC} Analyzer recalculate ...")
+
+            time_cost = final_frame.timestamp - begin_frame.timestamp
+            logger.info(
+                f"图像分类结果: [开始帧: {begin_frame.timestamp:.5f}] [结束帧: {final_frame.timestamp:.5f}] [总耗时: {time_cost:.5f}]"
+            )
+            return begin_frame.frame_id, final_frame.frame_id, time_cost
 
         async def frame_flip():
-            change_record = os.path.join(
-                os.path.dirname(vision),
-                f"screen_fps{frate}_{random.randint(100, 999)}.mp4"
+            target_vision = os.path.join(
+                os.path.dirname(vision), f"screen_fps{frate}_{random.randint(100, 999)}.mp4"
             )
 
             duration = await Switch.ask_video_length(self.fpb, vision)
@@ -1362,15 +1383,15 @@ class Alynex(object):
             logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
 
             await Switch.ask_video_change(
-                self.fmp, frate, vision, change_record,
+                self.fmp, frate, vision, target_vision,
                 start=vision_start, close=vision_close, limit=vision_limit
             )
-            logger.info(f"视频转换完成: {Path(change_record).name}")
+            logger.info(f"视频转换完成: {Path(target_vision).name}")
             os.remove(vision)
             logger.info(f"移除旧的视频: {Path(vision).name}")
 
             if shape:
-                original_shape = await Switch.ask_video_larger(self.fpb, change_record)
+                original_shape = await Switch.ask_video_larger(self.fpb, target_vision)
                 w, h, ratio = await Switch.ask_magic_frame(original_shape, shape)
                 target_shape = w, h
                 target_scale = scale
@@ -1382,21 +1403,49 @@ class Alynex(object):
                 target_shape = shape
                 target_scale = 0.4
 
-            video = VideoObject(change_record)
-            task, hued = video.load_frames(
-                silently_load_hued=color,
-                not_transform_gray=False,
-                shape=target_shape,
-                scale=target_scale
-            )
-            return video, task, hued
+            return target_vision, target_shape, target_scale
+
+        async def frame_hold():
+            if fabric is None:
+                if color:
+                    video.hued_data = tuple(hued_data.result())
+                    logger.info(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
+                    hued_task.shutdown()
+                    return [i for i in video.hued_data]
+                return [i for i in video.grey_data]
+
+            important_frames = fabric.get_important_frame_list()
+            pbar = toolbox.show_progress(fabric.get_length(), 50, "Faster")
+            frames_list = []
+            if boost:
+                frames_list.append(previous := important_frames[0])
+                pbar.update(1)
+                for current in important_frames[1:]:
+                    frames_list.append(current)
+                    pbar.update(1)
+                    frames_diff = current.frame_id - previous.frame_id
+                    if not previous.is_stable() and not current.is_stable() and frames_diff > 1:
+                        for specially in fabric.data[previous.frame_id: current.frame_id - 1]:
+                            frames_list.append(specially)
+                            pbar.update(1)
+                    previous = current
+                pbar.close()
+            else:
+                for current in fabric.data:
+                    frames_list.append(current)
+                    pbar.update(1)
+                pbar.close()
+
+            if color:
+                video.hued_data = tuple(hued_data.result())
+                logger.info(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
+                hued_task.shutdown()
+                return [video.hued_data[frame.frame_id - 1] for frame in frames_list]
+            return [frame for frame in frames_list]
 
         async def frame_flow():
-            video, task, hued = await frame_flip()
-            cutter = VideoCutter()
 
-            compress_hook = CompressHook(1, None, False)
-            cutter.add_hook(compress_hook)
+            cutter = VideoCutter()
 
             if len(crop_list := crops) > 0 and sum([j for i in crop_list for j in i.values()]) > 0:
                 for crop in crop_list:
@@ -1415,13 +1464,9 @@ class Alynex(object):
             save_hook = FrameSaveHook(extra_path)
             cutter.add_hook(save_hook)
 
-            res = cutter.cut(
-                video=video, block=block
-            )
+            cut_range = cutter.cut(video=video, block=block)
 
-            stable, unstable = res.get_range(
-                threshold=thres, offset=shift
-            )
+            stable, unstable = cut_range.get_range(threshold=thres, offset=shift)
 
             file_list = os.listdir(extra_path)
             file_list.sort(key=lambda n: int(n.split("(")[0]))
@@ -1443,141 +1488,50 @@ class Alynex(object):
             for draw in os.listdir(extra_path):
                 toolbox.draw_line(os.path.join(extra_path, draw))
 
-            classify = self.kc.classify(
-                video=video, valid_range=stable, keep_data=True
-            )
-
-            important_frames = classify.get_important_frame_list()
-
-            pbar = toolbox.show_progress(classify.get_length(), 50, "Faster")
-            frames_list = []
-            if boost:
-                frames_list.append(previous := important_frames[0])
-                pbar.update(1)
-                for current in important_frames[1:]:
-                    frames_list.append(current)
-                    pbar.update(1)
-                    frames_diff = current.frame_id - previous.frame_id
-                    if not previous.is_stable() and not current.is_stable() and frames_diff > 1:
-                        for specially in classify.data[previous.frame_id: current.frame_id - 1]:
-                            frames_list.append(specially)
-                            pbar.update(1)
-                    previous = current
-                pbar.close()
-            else:
-                for current in classify.data:
-                    frames_list.append(current)
-                    pbar.update(1)
-                pbar.close()
-
-            if color:
-                video.hued_data = tuple(hued.result())
-                logger.info(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
-                task.shutdown()
-                frames = [video.hued_data[frame.frame_id - 1] for frame in frames_list]
-            else:
-                frames = [frame for frame in frames_list]
-
-            return classify, frames
-
-        async def frame_flick(classify):
-            logger.info(f"阶段划分: {classify.get_ordered_stage_set()}")
-            begin_stage, begin_frame = begin
-            final_stage, final_frame = final
             try:
-                start_frame = classify.get_not_stable_stage_range()[begin_stage][begin_frame]
-                end_frame = classify.get_not_stable_stage_range()[final_stage][final_frame]
+                return self.kc.classify(video=video, valid_range=stable, keep_data=True)
             except AssertionError as e:
-                logger.warning(f"{e}")
-                start_frame = classify.get_important_frame_list()[0]
-                end_frame = classify.get_important_frame_list()[-1]
-                logger.warning(f"{const.DESC} Analyzer recalculate ...")
-            except IndexError as e:
-                logger.warning(f"{e}")
-                for i, unstable_stage in enumerate(classify.get_specific_stage_range("-3")):
-                    Show.console.print(f"[bold]第 {i:02} 个非稳定阶段")
-                    Show.console.print(f"[bold]{'=' * 30}")
-                    for j, frame in enumerate(unstable_stage):
-                        Show.console.print(f"[bold]第 {j:05} 帧: {frame}")
-                    Show.console.print(f"[bold]{'=' * 30}\n")
-                start_frame = classify.get_important_frame_list()[0]
-                end_frame = classify.get_important_frame_list()[-1]
-                logger.warning(f"{const.DESC} Analyzer recalculate ...")
-
-            if end_frame.frame_id <= start_frame.frame_id:
-                logger.warning(f"{end_frame} <= {start_frame}")
-                start_frame, end_frame = classify.data[0], classify.data[-1]
-                logger.warning(f"{const.DESC} Analyzer recalculate ...")
-
-            time_cost = end_frame.timestamp - start_frame.timestamp
-            logger.info(
-                f"图像分类结果: [开始帧: {start_frame.timestamp:.5f}] [结束帧: {end_frame.timestamp:.5f}] [总耗时: {time_cost:.5f}]"
-            )
-            return start_frame.frame_id, end_frame.frame_id, time_cost
-
-        async def frame_forge(frame):
-            try:
-                (_, codec), pic_path = cv2.imencode(".png", frame.data), os.path.join(
-                    frame_path, f"{frame.frame_id}_{format(round(frame.timestamp, 5), '.5f')}.png"
-                )
-                async with aiofiles.open(pic_path, "wb") as f:
-                    await f.write(codec.tobytes())
-            except Exception as e:
-                return e
+                return logger.warning(f"{e}")
 
         async def analytics_basic():
-            video, task, hued = await frame_flip()
-
-            if color:
-                video.hued_data = tuple(hued.result())
-                logger.info(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
-                task.shutdown()
-                frames = [i for i in video.hued_data]
-            else:
-                frames = [i for i in video.grey_data]
-
             if self.oss == "win32":
                 forge_result = await asyncio.gather(
                     *(frame_forge(frame) for frame in frames), return_exceptions=True
                 )
             else:
-                tasks = [
+                forge_tasks = [
                     [frame_forge(frame) for frame in chunk] for chunk in
                     [frames[i:i + 100] for i in range(0, len(frames), 100)]
                 ]
                 forge_list = []
-                for task in tasks:
-                    task_result = await asyncio.gather(*task, return_exceptions=True)
-                    forge_list.extend(task_result)
+                for ft in forge_tasks:
+                    ft_result = await asyncio.gather(*ft, return_exceptions=True)
+                    forge_list.extend(ft_result)
                 forge_result = tuple(forge_list)
 
             for result in forge_result:
                 if isinstance(result, Exception):
                     logger.error(f"Error: {result}")
 
-            start_frame, end_frame = frames[0], frames[-1]
-
-            time_cost = end_frame.timestamp - start_frame.timestamp
-            return (start_frame.frame_id, end_frame.frame_id, time_cost), None
+            begin_frame, final_frame = frames[0], frames[-1]
+            time_cost = final_frame.timestamp - begin_frame.timestamp
+            return begin_frame.frame_id, final_frame.frame_id, time_cost, None
 
         async def analytics_keras():
-            classify, frames = await frame_flow()
-
             if self.oss == "win32":
                 flick_result, *forge_result = await asyncio.gather(
-                    frame_flick(classify), *(frame_forge(frame) for frame in frames),
-                    return_exceptions=True
+                    frame_flick(), *(frame_forge(frame) for frame in frames), return_exceptions=True
                 )
             else:
-                tasks = [
+                forge_tasks = [
                     [frame_forge(frame) for frame in chunk] for chunk in
                     [frames[i:i + 100] for i in range(0, len(frames), 100)]
                 ]
-                flick_task = asyncio.create_task(frame_flick(classify))
+                flick_task = asyncio.create_task(frame_flick())
                 forge_list = []
-                for task in tasks:
-                    task_result = await asyncio.gather(*task, return_exceptions=True)
-                    forge_list.extend(task_result)
+                for ft in forge_tasks:
+                    ft_result = await asyncio.gather(*ft, return_exceptions=True)
+                    forge_list.extend(ft_result)
                 forge_result = tuple(forge_list)
                 flick_result = await flick_task
 
@@ -1585,14 +1539,25 @@ class Alynex(object):
                 if isinstance(result, Exception):
                     logger.error(f"Error: {result}")
 
-            return flick_result, classify
+            begin_frame_id, final_frame_id, time_cost = flick_result
+            return begin_frame_id, final_frame_id, time_cost, fabric
 
-        if (screen_record := await check()) is None:
+        if (target_record := await frame_check()) is None:
             return logger.error(f"{vision} 不是一个标准的视频文件或视频文件已损坏 ...")
-        logger.info(f"{screen_record.name} 可正常播放，准备加载视频 ...")
+        logger.info(f"{target_record.name} 可正常播放，准备加载视频 ...")
 
-        (start, end, cost), classifier = await analytics_keras() if self.kc else await analytics_basic()
-        return Review(start, end, cost, classifier)
+        movie, shape, scale = await frame_flip()
+        video = VideoObject(movie)
+        hued_task, hued_data = video.load_frames(
+            load_hued=color, none_gray=False, shape=shape, scale=scale
+        )
+
+        fabric = await frame_flow() if self.kc else None
+        frames = await frame_hold()
+
+        if fabric:
+            return Review(*(await analytics_keras()))
+        return Review(*(await analytics_basic()))
 
 
 async def achieve(template_path: str) -> str | Exception:
@@ -1621,7 +1586,7 @@ async def arithmetic(*args, **__) -> None:
             None, Report.merge_report, results, template_total
         )
 
-    missions, deploy, cmd_lines, level, power, loop, *_ = args
+    missions, platform, cmd_lines, deploy, level, power, loop, *_ = args
 
     # --video ==========================================================================================================
     if video_list := cmd_lines.video:
@@ -1629,7 +1594,7 @@ async def arithmetic(*args, **__) -> None:
         Show.load_animation(cmd_lines)
         with ProcessPoolExecutor(*(await initialization(video_list))) as exe:
             results = await asyncio.gather(
-                *(loop.run_in_executor(exe, missions.video_file_task, i) for i in video_list)
+                *(loop.run_in_executor(exe, missions.video_file_task, i, deploy) for i in video_list)
             )
         await multiple_merge(video_list)
         sys.exit(0)
@@ -1640,7 +1605,7 @@ async def arithmetic(*args, **__) -> None:
         Show.load_animation(cmd_lines)
         with ProcessPoolExecutor(*(await initialization(stack_list))) as exe:
             results = await asyncio.gather(
-                *(loop.run_in_executor(exe, missions.video_data_task, i) for i in stack_list)
+                *(loop.run_in_executor(exe, missions.video_data_task, i, deploy) for i in stack_list)
             )
         await multiple_merge(stack_list)
         sys.exit(0)
@@ -1650,7 +1615,7 @@ async def arithmetic(*args, **__) -> None:
         # Start Child Process
         with ProcessPoolExecutor(*(await initialization(train_list))) as exe:
             results = await asyncio.gather(
-                *(loop.run_in_executor(exe, missions.train_model, i) for i in train_list)
+                *(loop.run_in_executor(exe, missions.train_model, i, deploy) for i in train_list)
             )
         sys.exit(0)
 
@@ -1659,7 +1624,7 @@ async def arithmetic(*args, **__) -> None:
         # Start Child Process
         with ProcessPoolExecutor(*(await initialization(build_list))) as exe:
             results = await asyncio.gather(
-                *(loop.run_in_executor(exe, missions.build_model, i) for i in build_list)
+                *(loop.run_in_executor(exe, missions.build_model, i, deploy) for i in build_list)
             )
         sys.exit(0)
 
@@ -1667,14 +1632,14 @@ async def arithmetic(*args, **__) -> None:
 
 
 async def scheduling(*args, **__) -> None:
-    missions, deploy, cmd_lines, level, power, loop, *_ = args
+    missions, platform, cmd_lines, deploy, level, power, loop, *_ = args
 
     # --flick --carry --fully ==========================================================================================
     if cmd_lines.flick or cmd_lines.carry or cmd_lines.fully:
-        await missions.analysis(deploy, cmd_lines, level, power, loop)
+        await missions.analysis(cmd_lines, deploy, level, power, loop)
     # --paint ==========================================================================================================
     elif cmd_lines.paint:
-        await missions.painting(deploy, cmd_lines, level, power, loop)
+        await missions.painting(cmd_lines, deploy, level, power, loop)
     # --union ==========================================================================================================
     elif cmd_lines.union:
         await missions.combines_view(cmd_lines.union)
@@ -1791,19 +1756,15 @@ if __name__ == '__main__':
 
     logger.debug(f"处理器核心数: {(_power := os.cpu_count())}")
 
-    # _deploy = Deploy(_initial_deploy)
-    # for _attr in _attrs:
-    #     if any(_line.startswith(f"--{_attr}") for _line in _lines):
-    #         logger.debug(f"Set {_attr} = {(_attribute := getattr(_cmd_lines, _attr))}")
-    #         setattr(_deploy, _attr, _attribute)
+    _deploy = Deploy(_initial_deploy)
+    for _attr in _attrs:
+        if any(_line.startswith(f"--{_attr}") for _line in _lines):
+            logger.debug(f"Set {_attr} = {(_attribute := getattr(_cmd_lines, _attr))}")
+            setattr(_deploy, _attr, _attribute)
 
     _missions = Missions(
+        _platform, _software, _deploy, _level, _power,
         _flick, _carry, _fully, _quick, _basic, _keras, _alone, _whist, _group,
-        _boost, _color, _shape, _scale,
-        _start, _close, _limit, _begin, _final,
-        _frate, _thres, _shift, _block, _crops, _omits,
-        attrs=_attrs,
-        lines=_lines,
         atom_total_temp=_atom_total_temp,
         main_share_temp=_main_share_temp,
         main_total_temp=_main_total_temp,
@@ -1822,12 +1783,6 @@ if __name__ == '__main__':
         scc=_scc,
     )
 
-    _deploy = Deploy(_missions.initial_deploy)
-    for _attr in _missions.attrs:
-        if any(_line.startswith(f"--{_attr}") for _line in _missions.lines):
-            logger.debug(f"Set {_attr} = {(_attribute := getattr(_missions, _attr))}")
-            setattr(_deploy, _attr, _attribute)
-
     from concurrent.futures import ProcessPoolExecutor
 
     _main_loop = asyncio.get_event_loop()
@@ -1835,10 +1790,10 @@ if __name__ == '__main__':
     # Main Process =====================================================================================================
     try:
         _main_loop.run_until_complete(
-            arithmetic(_missions, _deploy, _cmd_lines, _level, _power, _main_loop)
+            arithmetic(_missions, _platform, _cmd_lines, _deploy, _level, _power, _main_loop)
         )
         _main_loop.run_until_complete(
-            scheduling(_missions, _deploy, _cmd_lines, _level, _power, _main_loop)
+            scheduling(_missions, _platform, _cmd_lines, _deploy, _level, _power, _main_loop)
         )
     except KeyboardInterrupt:
         sys.exit(0)

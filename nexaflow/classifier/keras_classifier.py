@@ -28,14 +28,17 @@ class KerasClassifier(BaseModelClassifier):
         # 模型
         self._model: typing.Optional[keras.Sequential] = None
         # 配置
+        self.color: str = kwargs.get("color", "grayscale")
         self.aisle: int = kwargs.get("aisle", 1)
-        self.score_threshold: float = kwargs.get("score_threshold", 0.0)
         self.data_size: typing.Sequence[int] = kwargs.get("data_size", (256, 256))
+        self.score_threshold: float = kwargs.get("score_threshold", 0.0)
         self.nb_train_samples: int = kwargs.get("nb_train_samples", 64)
         self.nb_validation_samples: int = kwargs.get("nb_validation_samples", 64)
         self.epochs: int = kwargs.get("epochs", 20)
         self.batch_size: int = kwargs.get("batch_size", 4)
 
+        # logger.debug(f"color: {self.color}")
+        # logger.debug(f"aisle: {self.aisle}")
         # logger.debug(f"score threshold: {self.score_threshold}")
         # logger.debug(f"data size: {self.data_size}")
         # logger.debug(f"nb train samples: {self.nb_train_samples}")
@@ -142,7 +145,7 @@ class KerasClassifier(BaseModelClassifier):
             data_path,
             target_size=self.follow_tf_size,
             batch_size=self.batch_size,
-            color_mode="grayscale",
+            color_mode=self.color,
             class_mode="sparse",
             subset="training",
         )
@@ -151,7 +154,7 @@ class KerasClassifier(BaseModelClassifier):
             data_path,
             target_size=self.follow_tf_size,
             batch_size=self.batch_size,
-            color_mode="grayscale",
+            color_mode=self.color,
             class_mode="sparse",
             subset="validation",
         )
@@ -163,6 +166,20 @@ class KerasClassifier(BaseModelClassifier):
         )
 
         logger.debug("train finished")
+
+    def build(self, *args):
+        src, new_model_path, new_model_name = args
+
+        try:
+            self.train(src)
+        except AssertionError as e:
+            return logger.error(f"{e}")
+
+        final_model = os.path.join(new_model_path, new_model_name)
+        os.makedirs(new_model_path, exist_ok=True)
+        self._model.save_weights(final_model, save_format="h5")
+        self._model.summary()
+        logger.info(f"模型保存完成 {final_model}")
 
     def predict(self, pic_path: str, *args, **kwargs) -> str:
         pic_object = toolbox.imread(pic_path)
