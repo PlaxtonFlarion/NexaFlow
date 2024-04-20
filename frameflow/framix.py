@@ -118,8 +118,8 @@ try:
     from nexaflow.hook import CompressHook, FrameSaveHook
     from nexaflow.hook import PaintCropHook, PaintOmitHook
     from nexaflow.classifier.keras_classifier import KerasStruct
-except (RuntimeError, ModuleNotFoundError) as _error:
-    Show.console.print(f"[bold red]Error: {_error}")
+except (ImportError, RuntimeError, ModuleNotFoundError) as _e:
+    Show.console.print(f"[bold red]Error: {_e}")
     Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
     sys.exit(Show.abnormal_exit())
 
@@ -583,10 +583,9 @@ class Missions(object):
         os.remove(video_temp_file)
 
     # """Child Process"""
-    @staticmethod
-    def build_model(video_data: str, deploy: "Deploy"):
+    def build_model(self, video_data: str, deploy: "Deploy"):
         if not os.path.isdir(video_data):
-            return logger.error("训练模型需要一个已经分类的文件夹 ...")
+            return logger.error(f"编译模型需要一个已经分类的文件夹 ...")
 
         real_path, file_list = "", []
         logger.debug(f"搜索文件夹: {video_data}")
@@ -611,12 +610,12 @@ class Missions(object):
             logger.info(f"图像分辨率: {image.shape}")
             if image.ndim == 3:
                 if numpy.array_equal(image[:, :, 0], image[:, :, 1]) and numpy.array_equal(image[:, :, 1], image[:, :, 2]):
-                    logger.info("The image is grayscale image, stored in RGB format ...")
+                    logger.info(f"The image is grayscale image, stored in RGB format ...")
                 else:
-                    logger.info("The image is color image ...")
+                    logger.info(f"The image is color image ...")
                     image_color, image_aisle = "rgb", image.ndim
             else:
-                logger.info("The image is grayscale image ...")
+                logger.info(f"The image is grayscale image ...")
             break
 
         final_path = os.path.dirname(real_path)
@@ -624,9 +623,9 @@ class Missions(object):
             final_path, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}", f"{random.randint(100, 999)}"
         )
 
-        image_shape = deploy.shape if deploy.shape else (image.shape if image.shape else const.MODEL_SHAPE)
-        w, h, *_ = image_shape
-        name = "Gray" if image_aisle == 1 else "Hued"
+        image_shape = deploy.shape if deploy.shape else (image.shape if image.shape else self.model_shape)
+        w, h, *_ = image_shape if image_shape else const.MODEL_SHAPE
+        name = f"Gray" if image_aisle == 1 else f"Hued"
         new_model_name = f"Keras_{name}_W{w}_H{h}_{random.randint(10000, 99999)}.h5"
 
         kc = KerasStruct(color=image_color, aisle=image_aisle, data_size=image_shape)
@@ -1266,6 +1265,9 @@ class Alynex(object):
                 self.kc = None
 
         self.total_place = total_place
+        self.model_place = model_place
+        self.model_shape = model_shape
+        self.model_aisle = model_aisle
         self.oss, self.fmp, self.fpb, *_ = args
 
     @property
@@ -1576,7 +1578,7 @@ async def achieve(template_path: str) -> str | Exception:
     return template_file
 
 
-async def arithmetic(*args, **__) -> None:
+async def arithmetic(*args, **kwargs) -> None:
 
     async def initialization(transfer):
         proc = members if (members := len(transfer)) <= power else power
@@ -1592,6 +1594,14 @@ async def arithmetic(*args, **__) -> None:
         await Report.ask_merge_report(results, template_total)
 
     missions, platform, cmd_lines, deploy, level, power, loop, *_ = args
+    total_place = kwargs["total_place"]
+    model_place = kwargs["model_place"]
+    model_shape = kwargs["model_shape"]
+    model_aisle = kwargs["model_aisle"]
+    adb = kwargs["adb"]
+    fmp = kwargs["fmp"]
+    fpb = kwargs["fpb"]
+    scc = kwargs["scc"]
 
     # --video ==========================================================================================================
     if video_list := cmd_lines.video:
@@ -1636,8 +1646,16 @@ async def arithmetic(*args, **__) -> None:
     return None
 
 
-async def scheduling(*args, **__) -> None:
+async def scheduling(*args, **kwargs) -> None:
     missions, platform, cmd_lines, deploy, level, power, loop, *_ = args
+    total_place = kwargs["total_place"]
+    model_place = kwargs["model_place"]
+    model_shape = kwargs["model_shape"]
+    model_aisle = kwargs["model_aisle"]
+    adb = kwargs["adb"]
+    fmp = kwargs["fmp"]
+    fpb = kwargs["fpb"]
+    scc = kwargs["scc"]
 
     # --flick --carry --fully ==========================================================================================
     if cmd_lines.flick or cmd_lines.carry or cmd_lines.fully:
@@ -1794,10 +1812,30 @@ if __name__ == '__main__':
     # Main Process =====================================================================================================
     try:
         _main_loop.run_until_complete(
-            arithmetic(_missions, _platform, _cmd_lines, _deploy, _level, _power, _main_loop)
+            arithmetic(
+                _missions, _platform, _cmd_lines, _deploy, _level, _power, _main_loop,
+                total_place=_total_place,
+                model_place=_model_place,
+                model_shape=_model_shape,
+                model_aisle=_model_aisle,
+                adb=_adb,
+                fmp=_fmp,
+                fpb=_fpb,
+                scc=_scc,
+            )
         )
         _main_loop.run_until_complete(
-            scheduling(_missions, _platform, _cmd_lines, _deploy, _level, _power, _main_loop)
+            scheduling(
+                _missions, _platform, _cmd_lines, _deploy, _level, _power, _main_loop,
+                total_place=_total_place,
+                model_place=_model_place,
+                model_shape=_model_shape,
+                model_aisle=_model_aisle,
+                adb=_adb,
+                fmp=_fmp,
+                fpb=_fpb,
+                scc=_scc,
+            )
         )
     except KeyboardInterrupt:
         _main_loop.close()
