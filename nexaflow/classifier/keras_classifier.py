@@ -1,12 +1,8 @@
 import os
 import cv2
+import numpy
 import typing
 import pathlib
-import numpy as np
-from loguru import logger
-from nexaflow import toolbox, const
-from nexaflow.video import VideoFrame
-from nexaflow.classifier.base import BaseModelClassifier
 
 try:
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -14,19 +10,22 @@ try:
 except ImportError:
     raise ImportError("KerasClassifier requires tensorflow. install it first.")
 
+from loguru import logger
 from tensorflow import keras
+from nexaflow import toolbox, const
+from nexaflow.video import VideoFrame
+from nexaflow.classifier.base import BaseModelClassifier
 
 
-class KerasClassifier(BaseModelClassifier):
+class KerasStruct(BaseModelClassifier):
 
-    UNKNOWN_STAGE_NAME = const.UNKNOWN_STAGE_FLAG
     MODEL_DENSE = 6
 
     def __init__(self, *_, **kwargs):
-        super(KerasClassifier, self).__init__(*_, **kwargs)
+        super(KerasStruct, self).__init__(*_, **kwargs)
 
-        # 模型
-        self._model: typing.Optional[keras.Sequential] = None
+        # Model
+        self.__model: typing.Optional[keras.Sequential] = None
         # 配置
         self.color: str = kwargs.get("color", "grayscale")
         self.aisle: int = kwargs.get("aisle", 1)
@@ -47,6 +46,18 @@ class KerasClassifier(BaseModelClassifier):
         # logger.debug(f"batch size: {self.batch_size}")
 
     @property
+    def model(self):
+        return self.__model
+
+    @model.setter
+    def model(self, value):
+        self.__model = value
+
+    @model.deleter
+    def model(self):
+        self.__model = None
+
+    @property
     def follow_tf_size(self):
         return self.data_size[1], self.data_size[0]
 
@@ -54,35 +65,31 @@ class KerasClassifier(BaseModelClassifier):
     def follow_cv_size(self):
         return self.data_size[0], self.data_size[1]
 
-    def clean_model(self):
-        self._model = None
-
     def save_model(self, model_path: str, overwrite: bool = None):
-        logger.debug(f"save model to {model_path}")
-        # assert model file
+        logger.debug(f"Save model to {model_path}")
+
         if os.path.isfile(model_path) and not overwrite:
             raise FileExistsError(
                 f"model file {model_path} already existed, you can set `overwrite` True to cover it"
             )
-        # assert model data is not empty
-        assert self._model, "model is empty"
-        self._model.save_weights(model_path)
+
+        assert self.model, "model is empty"
+        self.model.save_weights(model_path)
 
     def load_model(self, model_path: str, overwrite: bool = None):
-        # logger.debug(f"load model from {model_path}")
+        logger.debug(f"Load model from {model_path}")
 
-        # assert model file
         assert os.path.isfile(model_path), f"model file {model_path} not existed"
-        # assert model data is empty
-        if self._model and not overwrite:
+
+        if self.model and not overwrite:
             raise RuntimeError(
                 f"model is not empty, you can set `overwrite` True to cover it"
             )
-        self._model = self.create_model()
-        self._model.load_weights(model_path)
+        self.model = self.create_model()
+        self.model.load_weights(model_path)
 
     def create_model(self) -> keras.Sequential:
-        # logger.info(f"creating Keras sequential model")
+        logger.info(f"Keras sequence model is being created")
 
         if keras.backend.image_data_format() == "channels_first":
             input_shape = (self.aisle, *self.follow_tf_size)
@@ -110,12 +117,12 @@ class KerasClassifier(BaseModelClassifier):
 
         model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
 
-        # logger.info("Keras model created")
+        logger.info("Keras sequence model is created")
         return model
 
     def train(self, data_path: str = None, *_, **__):
 
-        def _data_verify(p: str):
+        def check(p: str):
             p = pathlib.Path(p)
             assert p.is_dir(), f"{p} is not a valid directory"
 
@@ -128,17 +135,17 @@ class KerasClassifier(BaseModelClassifier):
                 f"dataset has {number_of_dir} classes (more than " + str(self.MODEL_DENSE) + ")"
             )
 
-        _data_verify(data_path)
+        check(data_path)
 
-        if not self._model:
-            self._model = self.create_model()
+        if not self.model:
+            self.model = self.create_model()
 
         datagen = keras.preprocessing.image.ImageDataGenerator(
             rescale=1.0 / 16,
             shear_range=0.2,
             zoom_range=0.2,
             validation_split=0.33,
-            horizontal_flip=True  # 水平翻转增强
+            horizontal_flip=True
         )
 
         train_generator = datagen.flow_from_directory(
@@ -159,13 +166,13 @@ class KerasClassifier(BaseModelClassifier):
             subset="validation",
         )
 
-        self._model.fit(
+        self.model.fit(
             train_generator,
             epochs=self.epochs,
             validation_data=validation_generator,
         )
 
-        logger.debug("train finished")
+        logger.info("Model train finished")
 
     def build(self, *args):
         src, new_model_path, new_model_name = args
@@ -177,32 +184,29 @@ class KerasClassifier(BaseModelClassifier):
 
         final_model = os.path.join(new_model_path, new_model_name)
         os.makedirs(new_model_path, exist_ok=True)
-        self._model.save_weights(final_model, save_format="h5")
-        self._model.summary()
-        logger.info(f"模型保存完成 {final_model}")
+        self.model.save_weights(final_model, save_format="h5")
+        self.model.summary()
+        logger.info(f"Model saved successfully {final_model}")
 
     def predict(self, pic_path: str, *args, **kwargs) -> str:
-        pic_object = toolbox.imread(pic_path)
-        # fake VideoFrame for apply_hook
-        fake_frame = VideoFrame(0, 0.0, pic_object)
+        picture = toolbox.imread(pic_path)
+        fake_frame = VideoFrame(0, 0.0, picture)
         fake_frame = self._apply_hook(fake_frame, *args, **kwargs)
         return self.predict_with_object(fake_frame.data)
 
-    def predict_with_object(self, frame: np.ndarray) -> str:
-        # resize for model
+    def predict_with_object(self, frame: numpy.ndarray) -> str:
         frame = cv2.resize(frame, dsize=self.follow_cv_size)
-        frame = np.expand_dims(frame, axis=[0, -1])
-        # verbose = 0, 静默Keras分类显示
-        result = self._model.predict(frame, verbose=0)
-        tag = str(np.argmax(result, axis=1)[0])
-        confidence = result.max()
-        # logger.debug(f"confidence: {confidence}")
-        if confidence < self.score_threshold:
+        frame = numpy.expand_dims(frame, axis=[0, -1])
+        frame_result = self.model.predict(frame, verbose=0)
+        frame_tag = str(numpy.argmax(frame_result, axis=1)[0])
+        frame_confidence = frame_result.max()
+
+        if frame_confidence < self.score_threshold:
             logger.warning(
                 f"max score is lower than {self.score_threshold}, unknown class"
             )
-            return self.UNKNOWN_STAGE_NAME
-        return tag
+            return const.UNKNOWN_STAGE_FLAG
+        return frame_tag
 
     def _classify_frame(self, frame: VideoFrame, *_, **__) -> str:
         return self.predict_with_object(frame.data)

@@ -1,9 +1,9 @@
 import re
 import asyncio
 from rich.prompt import Prompt
+from engine.device import Device
 from engine.terminal import Terminal
 from frameflow.skills.show import Show
-from frameflow.skills.device import Device
 
 
 class Manage(object):

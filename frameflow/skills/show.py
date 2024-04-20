@@ -1,4 +1,5 @@
 import time
+import typing
 from rich.text import Text
 from rich.table import Table
 from rich.console import Console
@@ -11,6 +12,12 @@ class Show(object):
     console = Console()
 
     @staticmethod
+    def show(msg: typing.Any):
+        Show.console.print(
+            f"[bold][bold #D7AF87]{const.DESC} | Analyzer |[/bold #D7AF87] {msg}[/bold]"
+        )
+
+    @staticmethod
     def simulation_progress(desc: str, advance: int | float, interval: int | float):
         with Progress() as progress:
             task = progress.add_task(f"[bold #FFFFD7]{desc}", total=100)
@@ -19,18 +26,26 @@ class Show(object):
                 time.sleep(interval)
 
     @staticmethod
-    def hint():
-        logo = """[bold]
-        ╔════════════════════════════════╗
-        ║         Mission Failed         ║
-        ╚════════════════════════════════╝
+    def normal_exit():
+        return f"""
+    \033[1m╔════════════════════════════════╗
+    ║       \033[1m\033[32mMissions  Complete\033[0m       ║
+    ╚════════════════════════════════╝
 
-        🚫 程序现在将自动退出 🚫
+    ✦✦✦ {const.DESC} will now automatically exit ✦✦✦
+    ✧✧✧ See you next ✧✧✧\033[0m
+    """
 
-        请检查您的设备或联系技术支持。
-        感谢您的耐心，期待下次再见！
-        """
-        Show.console.print(logo)
+    @staticmethod
+    def abnormal_exit():
+        return f"""
+    \033[1m╔════════════════════════════════╗
+    ║        \033[1m\033[31mMissions  Failed\033[0m        ║
+    ╚════════════════════════════════╝
+
+    ✦✦✦ {const.DESC} will now automatically exit ✦✦✦
+    ✧✧✧ See you next ✧✧✧\033[0m
+    """
 
     @staticmethod
     def major_logo():

@@ -16,13 +16,13 @@ class Review(object):
 
     data = tuple()
 
-    def __init__(self, start: int, end: int, cost: float, classifier=None):
-        self.data = start, end, cost, classifier
+    def __init__(self, start: int, end: int, cost: float, struct=None):
+        self.data = start, end, cost, struct
 
     def __str__(self):
-        start, end, cost, classifier = self.data
-        kc = "KC" if classifier else "None"
-        return f"<Review start={start} end={end} cost={cost} classifier={kc}>"
+        start, end, cost, struct = self.data
+        kc = "KC" if struct else "None"
+        return f"<Review start={start} end={end} cost={cost} struct={kc}>"
 
     __repr__ = __str__
 

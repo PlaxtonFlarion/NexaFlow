@@ -14,6 +14,7 @@ from loguru import logger
 from jinja2 import Template
 from collections import defaultdict
 from nexaflow import toolbox, const
+from nexaflow.classifier.base import ClassifierResult
 
 
 class Report(object):
@@ -96,53 +97,58 @@ class Report(object):
             self.range_list.append(inform)
 
     @staticmethod
-    def reset_report(file_name: str, template_file: str) -> None:
-        with open(os.path.join(file_name, "Nexa_Recovery", "nexaflow.log"), "r", encoding="utf-8") as f:
-            log_restore = re.findall(r"(?<=Recovery: ).*}", f.read())
+    async def ask_reset_report(file_name: str, template_file: str) -> None:
+        reset_path = os.path.join(file_name, "Nexa_Recovery", "nexaflow.log")
+        async with aiofiles.open(reset_path, "r", encoding=const.CHARSET) as f:
+            log_restore = re.findall(r"(?<=Recovery: ).*}", await f.read())
 
-        total_list = [json.loads(file) for file in log_restore]
+        if not (total_list := [json.loads(file) for file in log_restore]):
+            return logger.warning(f"没有可以汇总的报告 ...")
 
         html = Template(template_file).render(
             report_time=time.strftime('%Y.%m.%d %H:%M:%S'),
             total_list=total_list
         )
         report_html = os.path.join(file_name, "NexaFlow.html")
-        with open(report_html, "w", encoding=const.CHARSET) as f:
-            f.write(html)
+        async with aiofiles.open(report_html, "w", encoding=const.CHARSET) as f:
+            await f.write(html)
             logger.info(f"生成汇总报告: {report_html}")
 
     @staticmethod
-    def merge_report(merge_list: list[str], merge_loc: str) -> None:
-        merge_time = time.strftime("%Y%m%d%H%M%S")
-        merge_path = os.path.join(
-            os.path.dirname(os.path.dirname(merge_list[0])),
-            f"Union_Report_{merge_time}", "Nexa_Collection"
-        )
-        os.makedirs(merge_path, exist_ok=True)
+    async def ask_merge_report(merge_list: typing.Union[list, tuple], template_file: str) -> None:
 
-        pattern = "Recovery"
+        async def assemble(file):
+            async with aiofiles.open(file) as recovery_file:
+                return re.findall(r"(?<=Recovery: ).*}", await recovery_file.read())
 
-        log_list = []
-        for merge in merge_list:
-            logs = os.path.join(os.path.dirname(merge), "Nexa_Recovery", "nexaflow.log")
-            with open(logs, "r", encoding=const.CHARSET) as f:
-                log_list.extend(re.findall(fr"(?<={pattern}: ).*}}", f.read()))
-
-            shutil.copytree(
-                merge, merge_path, dirs_exist_ok=True,
-                ignore=shutil.ignore_patterns("NexaFlow.html", "nexaflow.log")
-            )
-
-        if not (total_list := [json.loads(file.replace("'", '"')) for file in log_list if file]):
+        log_file = "Nexa_Recovery", "nexaflow.log"
+        if not (log_file_list := [os.path.join(os.path.dirname(merge), *log_file) for merge in merge_list]):
             return logger.warning(f"没有可以合并的报告 ...")
 
-        html = Template(merge_loc).render(
+        merge_name = f"Union_Report_{(merge_time := time.strftime('%Y%m%d%H%M%S'))}", "Nexa_Collection"
+        merge_path = os.path.join(os.path.dirname(os.path.dirname(merge_list[0])), *merge_name)
+        os.makedirs(merge_path, exist_ok=True)
+
+        merge_log_list = await asyncio.gather(
+            *(assemble(log) for log in log_file_list), return_exceptions=True
+        )
+
+        ignore = "NexaFlow.html", "nexaflow.log"
+        for m in merge_list:
+            if isinstance(m, Exception):
+                return logger.error(f"{m}")
+            shutil.copytree(m, merge_path, ignore=shutil.ignore_patterns(*ignore), dirs_exist_ok=True)
+
+        if not (total_list := [json.loads(i) for logs in merge_log_list for i in logs if i]):
+            return logger.warning(f"没有可以合并的报告 ...")
+
+        html = Template(template_file).render(
             report_time=merge_time, total_list=total_list
         )
 
         report_html = os.path.join(os.path.dirname(merge_path), "NexaFlow.html")
-        with open(report_html, "w", encoding=const.CHARSET) as f:
-            f.write(html)
+        async with aiofiles.open(report_html, "w", encoding=const.CHARSET) as f:
+            await f.write(html)
             logger.info(f"合并汇总报告: {report_html}")
 
     @staticmethod
@@ -206,13 +212,14 @@ class Report(object):
                 inform_dict["image_list"] = await views_frame(query, frame)
             elif style == "basic":
                 inform_dict["image_list"] = await major_frame(query, frame)
-            else:
+            elif style == "keras":
                 image_list, extra_list = await asyncio.gather(
                     major_frame(query, frame), extra_frame(query, extra)
                 )
                 inform_dict["image_list"] = image_list
                 inform_dict["extra_list"] = extra_list
                 inform_dict["proto"] = os.path.join(query, proto)
+
             inform_list.append(inform_dict)
             return inform_list
 
@@ -246,17 +253,19 @@ class Report(object):
         return single
 
     @staticmethod
-    async def ask_create_total_report(file_name: str, file_term: str, style_loc: str, total_loc: str, group: bool):
+    async def ask_create_total_report(file_name: str, group: bool, style_loc: str, total_loc: str):
         try:
-            file_path = os.path.join(file_name, "Nexa_Recovery", "nexaflow.log")
-            async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
+            log_file = "Nexa_Recovery", "nexaflow.log"
+            async with aiofiles.open(os.path.join(file_name, *log_file), "r", encoding=const.CHARSET) as f:
                 open_file = await f.read()
         except FileNotFoundError as e:
             return e
 
-        pattern = "Restore" if file_term == "main" else "Quicker"
-
-        if len(match_list := re.findall(fr"(?<={pattern}: ).*}}", open_file)) == 0:
+        if match_quicker_list := re.findall(r"(?<=Quicker: ).*}", open_file):
+            match_list = match_quicker_list
+        elif match_restore_list := re.findall(r"(?<=Restore: ).*}", open_file):
+            match_list = match_restore_list
+        else:
             return logger.warning(f"没有符合条件的数据 ...")
 
         parts_list = [json.loads(file) for file in match_list if file]
@@ -303,12 +312,12 @@ class Report(object):
 
     @staticmethod
     async def ask_draw(
-        classifier_result,
+        classifier_result: "ClassifierResult",
         proto_path: str,
         template_file: str,
-        scale: typing.Optional[float] = None,
-        shape: typing.Optional[tuple[int, int]] = None,
         boost: bool = False,
+        shape: typing.Optional[tuple[int, int]] = None,
+        scale: typing.Optional[float] = None,
     ) -> str:
 
         label_stable = "稳定阶段"

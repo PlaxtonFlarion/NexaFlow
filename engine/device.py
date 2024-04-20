@@ -16,8 +16,8 @@ class _Phone(object):
 
 class Device(_Phone):
 
-    def __init__(self, adb: str, serial: str, brand: str, version: str, size: tuple):
-        super().__init__(serial, brand, version, size)
+    def __init__(self, adb: str, serial: str, species: str, version: str, size: tuple):
+        super().__init__(serial, species, version, size)
         self.initial = [adb, "-s", serial, "wait-for-usb-device"]
 
     @staticmethod
