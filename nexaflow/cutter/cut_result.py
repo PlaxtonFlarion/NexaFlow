@@ -127,7 +127,7 @@ class VideoCutResult(object):
         # stable start
         if first_stable_range_end_id >= 1:
             # logger.debug(f"stable start")
-            logger.info("稳定阶段开始 ...")
+            logger.debug("稳定阶段开始 ...")
             range_list.append(
                 VideoCutRange(
                     video=self.video,
@@ -143,12 +143,12 @@ class VideoCutResult(object):
         # unstable start
         else:
             # logger.debug("unstable start")
-            logger.info("不稳定阶段开始 ...")
+            logger.debug("不稳定阶段开始 ...")
 
         # stable end
         if end_stable_range_start_id <= video_end_frame_id:
             # logger.debug("stable end")
-            logger.info("稳定阶段结束 ...")
+            logger.debug("稳定阶段结束 ...")
             range_list.append(
                 VideoCutRange(
                     video=self.video,
@@ -164,7 +164,7 @@ class VideoCutResult(object):
         # unstable end
         else:
             # logger.debug("unstable end")
-            logger.info("不稳定阶段结束 ...")
+            logger.debug("不稳定阶段结束 ...")
 
         for i in range(len(unstable_range_list) - 1):
             range_start_id = unstable_range_list[i].end + 1

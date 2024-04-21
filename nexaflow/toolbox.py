@@ -324,9 +324,9 @@ def match_template_with_path(
     return match_template_with_object(template_object, target, **kwargs)
 
 
-def show_progress(total: int, color: int, title: str) -> tqdm:
+def show_progress(total: int, color: int) -> tqdm:
     """https://www.ditig.com/256-colors-cheat-sheet"""
-    colors = {"start": f"\033[38;5;{color}m", "end": "\033[0m"}
+    colors = {"start": f"\033[1m\033[38;5;{color}m", "end": "\033[0m"}
     bar_format = "{l_bar}%{bar}%|{n_fmt:5}/{total_fmt:5}"
     colored_bar_format = f"{colors['start']}{bar_format}{colors['end']}"
     if sys.stdout.isatty():
@@ -340,7 +340,7 @@ def show_progress(total: int, color: int, title: str) -> tqdm:
     progress_bar = tqdm(
         total=total,
         position=0, ncols=progress_bar_length, leave=True, bar_format=colored_bar_format,
-        desc=f"{const.DESC} : " + title + "   "
+        desc=f"{const.DESC} : Analyzer "
     )
     return progress_bar
 

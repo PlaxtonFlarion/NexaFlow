@@ -10,7 +10,6 @@ class BaseHook(object):
 
     def __init__(self, *_, **__):
         # logger.debug(f"start initialing: {self.__class__.__name__} ...")
-        logger.info(f"加载视频帧处理单元: Frame Processor {self.__class__.__name__} ...")
         self.result = dict()
 
     def do(self, frame: VideoFrame, *_, **__) -> typing.Optional[VideoFrame]:

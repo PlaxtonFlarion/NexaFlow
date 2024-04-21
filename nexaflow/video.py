@@ -153,6 +153,7 @@ class VideoObject(object):
         初始化，检查文件路径是否有效，执行其他一些初始化操作
         """
         assert os.path.isfile(path), f"video {path} not existed"
+        self.name: str = str(os.path.basename(path))
         self.path: str = str(path)
         self.grey_data: typing.Optional[typing.Tuple["VideoFrame"]] = tuple()  # 灰度帧
         self.hued_data: typing.Optional[typing.Tuple["ColorFrame"]] = tuple()  # 彩色帧
@@ -170,10 +171,8 @@ class VideoObject(object):
             self.frame_count = toolbox.get_frame_count(cap)
             self.frame_size = toolbox.get_frame_size(cap)
 
-        logger.info(f"视频已生成，视频帧长度: {self.frame_count} 分辨率: {self.frame_size}")
-
     def __str__(self):
-        return f"<VideoObject path={self.path}>"
+        return f"<VideoObject name={self.name} path={self.path}>"
 
     __repr__ = __str__
 
@@ -182,7 +181,7 @@ class VideoObject(object):
         vid = mpy.VideoFileClip(self.path)
 
         vid_count = vid.reader.nframes
-        pbar = toolbox.show_progress(vid_count, 153, "Synzer")
+        pbar = toolbox.show_progress(vid_count, 153)
         for frame_id, (timestamp, _) in enumerate(vid.iter_frames(with_times=True)):
             if frame_id >= len(frame_data):
                 break
@@ -217,7 +216,7 @@ class VideoObject(object):
         each_cost = frame_type[0].data.nbytes / (1024 ** 2)
         total_cost = each_cost * len(frame_type)
         frame_size = frame_type[0].data.shape[::-1]
-        return f"{frame_type[0].__class__.__name__}: [{each_cost:.2f} MB] [{total_cost:.2f} MB] {frame_size}"
+        return f"{frame_type[0].__class__.__name__} [{each_cost:.2f} MB] [{total_cost:.2f} MB] {frame_size}"
 
     def load_frames(
             self,
@@ -230,10 +229,9 @@ class VideoObject(object):
         """
         从文件中加载所有帧到内存
         """
-        logger.info(f"加载视频帧到内存: {os.path.basename(self.path)}")
 
         def load_stream(frames: type[VideoFrame]):
-            pbar = toolbox.show_progress(self.frame_count, 180, "Loader")
+            pbar = toolbox.show_progress(self.frame_count, 180)
             data: list[VideoFrame] = []
             with toolbox.video_capture(self.path) as cap:
                 for success, frame in iter(lambda: cap.read(), (False, None)):
@@ -266,9 +264,7 @@ class VideoObject(object):
 
         grey = load_stream_sync(VideoFrame)
         self.grey_data = tuple(grey)
-        logger.info(f"灰度帧已加载: {self.frame_details(self.grey_data)}")
-        logger.info(f"视频加载耗时: {time.time() - start_time:.2f} 秒")
-        return hued_task, hued_data
+        return hued_task, hued_data, time.time() - start_time
 
     def _read_from_file(self) -> typing.Generator["VideoFrame", None, None]:
         """

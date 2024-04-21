@@ -1,7 +1,5 @@
-import os
-import time
+import numpy
 import typing
-import numpy as np
 from loguru import logger
 from concurrent.futures import ThreadPoolExecutor
 from nexaflow import toolbox
@@ -81,10 +79,10 @@ class VideoCutter(object):
         # logger.debug(f"add hook: {new_hook.__class__.__name__}")
 
     @staticmethod
-    def pic_split(origin: np.ndarray, block: int) -> list[np.ndarray]:
-        result: list[np.ndarray] = list()
-        for each_block in np.array_split(origin, block, axis=0):
-            sub_block = np.array_split(each_block, block, axis=1)
+    def pic_split(origin: numpy.ndarray, block: int) -> list[numpy.ndarray]:
+        result: list[numpy.ndarray] = list()
+        for each_block in numpy.array_split(origin, block, axis=0):
+            sub_block = numpy.array_split(each_block, block, axis=1)
             result += sub_block
         return result
 
@@ -94,9 +92,7 @@ class VideoCutter(object):
         return frame
 
     @staticmethod
-    def compare_frame_list(
-        src: list[np.ndarray], target: list[np.ndarray]
-    ) -> list[float]:
+    def compare_frame_list(src: list[numpy.ndarray], target: list[numpy.ndarray]) -> list[float]:
 
         ssim = 1.0
         mse = 0.0
@@ -172,7 +168,7 @@ class VideoCutter(object):
             )
 
         range_list_part = []
-        pbar = toolbox.show_progress(window.frame_total, 174, "Cutter")
+        pbar = toolbox.show_progress(window.frame_total, 174)
         while True:
             cutting()
             pbar.update(1)
@@ -186,29 +182,22 @@ class VideoCutter(object):
 
     def magic_frame_range(
         self, video: "VideoObject", block: int, window_size: int, window_coefficient: int
-    ) -> list[VideoCutRange]:
+    ) -> list["Window"]:
 
         video_length = video.frame_count
-        logger.info(f"总帧数: {video_length} 片段数: {video_length - 1} 分辨率: {video.frame_size}")
 
         window_list = []
         for index, parts in enumerate(self.split_range(video_length, 1 if video_length < 500 else 2)):
-            start, end, size = parts
-            logger.info(f"帧片段: {index + 1:02} Start: {start:03} End: {end:03} Length: {size:03}")
+            part_begin, part_final, part_score = parts
+            logger.debug(
+                f"帧片段: {index + 1:02} Start: {part_begin:03} End: {part_final:03} Length: {part_score:03}"
+            )
             window = Window(
-                video, self.step, block, window_size, window_coefficient, start, end, size
+                video, self.step, block, window_size, window_coefficient, *parts
             )
             window_list.append(window)
 
-        with ThreadPoolExecutor() as exe:
-            futures = [
-                exe.submit(self.window_slice, window) for window in window_list
-            ]
-            range_list = [
-                part for future in futures for part in future.result()
-            ]
-
-        return range_list
+        return window_list
 
     def cut(
         self,
@@ -221,18 +210,22 @@ class VideoCutter(object):
         window_size = window_size or 1
         window_coefficient = window_coefficient or 2
 
-        start_time = time.time()
         video = VideoObject(video) if isinstance(video, str) else video
 
-        logger.info(f"开始压缩视频: {os.path.basename(video.path)}")
         # 如果视频包含 100 帧
         # 从1开始，列表长度是99，而不是100
         # [范围(1-2)、范围(2-3)、范围(3-4) ... 范围(99-100)]
-        range_list = self.magic_frame_range(
+        window_list = self.magic_frame_range(
             video, block, window_size, window_coefficient
         )
-        logger.info(f"视频压缩完成: {os.path.basename(video.path)}")
-        logger.info(f"视频压缩耗时: {(time.time() - start_time):.2f}秒")
+
+        with ThreadPoolExecutor() as exe:
+            futures = [
+                exe.submit(self.window_slice, window) for window in window_list
+            ]
+            range_list = [
+                part for future in futures for part in future.result()
+            ]
 
         return VideoCutResult(video, range_list, cut_kwargs=kwargs)
 

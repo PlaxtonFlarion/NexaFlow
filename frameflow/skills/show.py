@@ -14,7 +14,7 @@ class Show(object):
     @staticmethod
     def show(msg: typing.Any):
         Show.console.print(
-            f"[bold][bold #D7AF87]{const.DESC} | Analyzer |[/bold #D7AF87] {msg}[/bold]"
+            f"[bold]{const.DESC} | Analyzer | {msg}[/bold]"
         )
 
     @staticmethod
@@ -33,7 +33,7 @@ class Show(object):
     ╚════════════════════════════════╝
 
     ✦✦✦ {const.DESC} will now automatically exit ✦✦✦
-    ✧✧✧ See you next ✧✧✧\033[0m
+    ✧✧✧ {const.DESC} see you next ✧✧✧\033[0m
     """
 
     @staticmethod
@@ -44,7 +44,7 @@ class Show(object):
     ╚════════════════════════════════╝
 
     ✦✦✦ {const.DESC} will now automatically exit ✦✦✦
-    ✧✧✧ See you next ✧✧✧\033[0m
+    ✧✧✧ {const.DESC} see you next ✧✧✧\033[0m
     """
 
     @staticmethod
@@ -237,14 +237,14 @@ class Show(object):
             return engine_stages[stage % len(engine_stages)]
 
         def animation(step, function):
-            Show.console.print(start_view, style="bold 	#FFD700")
+            Show.show(start_view)
             for i in range(step):
                 Show.console.print(function(i), justify="left")
                 time.sleep(0.5)
-            return Show.console.print(close_view, style="bold #FFD700")
+            return Show.show(close_view)
 
-        start_view = f"[bold][bold #D7AF87]{const.DESC} |[/bold #D7AF87] Analyzer | Engine Initializing ..."
-        close_view = f"[bold][bold #D7AF87]{const.DESC} |[/bold #D7AF87] Analyzer | Engine Loaded ...\n"
+        start_view = f"[bold #FFD700]Engine Initializing ...[/bold #FFD700]"
+        close_view = f"[bold #FFD700]Engine Loaded ...[/bold #FFD700]"
 
         if style.quick:
             animation(4, quick_engine)

@@ -19,9 +19,10 @@ class Record(object):
     device_events: dict = {}
     rhythm_events: asyncio.Event = asyncio.Event()
 
-    def __init__(self, system: str, scrcpy: str, *args, **__):
-        self.system, self.scrcpy = system, scrcpy
-        self.alone, self.whist, *_ = args
+    def __init__(self, scrcpy: str, system: str,  *_, **kwargs):
+        self.scrcpy, self.system = scrcpy, system
+        self.alone = kwargs.get("alone", False)
+        self.whist = kwargs.get("whist", False)
         if self.alone and self.whist:
             self.whist = False
 

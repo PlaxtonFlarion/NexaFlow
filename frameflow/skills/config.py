@@ -190,11 +190,11 @@ class Deploy(object):
             load_parameters(deploy_file, self.deploys)
             for k, v in self.deploys.items():
                 setattr(self, k, v)
-            logger.debug(f"读取部署文件，使用部署参数 ...")
-        except (FileNotFoundError, json.decoder.JSONDecodeError):
-            logger.debug(f"未找到部署文件或文件解析错误，使用默认参数 ...")
+                logger.debug(f"Load <{k}> = {v}")
+        except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
+            logger.debug(f"Use default parameters because {e}")
         except Exception as e:
-            logger.error(f"发生未知错误: {e}")
+            logger.error(f"An unknown error occurred {e}")
 
     def view_deploy(self) -> None:
         c = {0: "#AF5FD7", 1: "#D75F87", 2: "#87AFD7", 3: "#00AF5F"}
@@ -367,12 +367,12 @@ class Option(object):
             load_parameters(option_file, self.options)
             for k, v in self.options.items():
                 setattr(self, k, v)
-            logger.debug(f"读取配置文件，使用配置参数 ...")
-        except (FileNotFoundError, json.decoder.JSONDecodeError):
-            logger.debug(f"未找到配置文件或文件解析错误，使用默认参数 ...")
+                logger.debug(f"Load <{k}> = {v}")
+        except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
+            logger.debug(f"Use default parameters because {e}")
             self.dump_option(option_file)
         except Exception as e:
-            logger.error(f"发生未知错误: {e}")
+            logger.error(f"An unknown error occurred {e}")
 
     def dump_option(self, option_file: str) -> None:
         dump_parameters(option_file, self.options)

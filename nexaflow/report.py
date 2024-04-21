@@ -308,7 +308,7 @@ class Report(object):
         total_html = os.path.join(file_name, "NexaFlow.html")
         async with aiofiles.open(total_html, "w", encoding=const.CHARSET) as f:
             await f.write(total_html_temp)
-            logger.info(f"生成汇总报告: {total_html}")
+            logger.info(f"生成汇总报告: {os.path.relpath(total_html)}")
 
     @staticmethod
     async def ask_draw(

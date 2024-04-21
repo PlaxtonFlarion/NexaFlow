@@ -296,7 +296,7 @@ class Missions(object):
 
         if futures is None:
             return None
-        start, end, cost, struct = futures.data
+        start, end, cost, struct = futures.material
 
         header = str((
             os.path.basename(reporter.total_path), reporter.title,
@@ -449,7 +449,7 @@ class Missions(object):
                 )
                 if futures is None:
                     continue
-                start, end, cost, struct = futures.data
+                start, end, cost, struct = futures.material
 
                 header = str((
                     os.path.basename(reporter.total_path), reporter.title,
@@ -541,15 +541,22 @@ class Missions(object):
         )
 
         video = VideoObject(video_temp_file)
+        Show.show(f"视频帧长度: {video.frame_count} 分辨率: {video.frame_size}")
+        Show.show(f"加载到内存: {video.name}")
         video.load_frames(
             load_hued=False, none_gray=True
         )
 
         cutter = VideoCutter()
-        res = cutter.cut(
-            video=video, block=deploy.block
-        )
-        stable, unstable = res.get_range(
+
+        Show.show(f"压缩视频: {video.name}")
+        Show.show(f"视频帧数: {video.frame_count} 帧片段数: {video.frame_count - 1} 帧分辨率: {video.frame_size}")
+        cut_start_time = time.time()
+        cut_range = cutter.cut(video=video, block=deploy.block)
+        Show.show(f"压缩完成: {os.path.basename(video.path)}")
+        Show.show(f"压缩耗时: {time.time() - cut_start_time:.2f} 秒")
+
+        stable, unstable = cut_range.get_range(
             threshold=deploy.thres, offset=deploy.shift
         )
 
@@ -570,7 +577,7 @@ class Missions(object):
             target_shape = deploy.shape
             target_scale = const.COMPRESS
 
-        res.pick_and_save(
+        cut_range.pick_and_save(
             range_list=stable,
             frame_count=20,
             to_dir=reporter.query_path,
@@ -1127,8 +1134,8 @@ class Missions(object):
         alynex = Alynex(*attack, *charge)
         Show.load_animation(cmd_lines)
 
-        from engine.record import Record, Player
-        record = Record(platform, self.scc, self.alone, self.whist)
+        from engine.medias import Record, Player
+        record = Record(self.scc, platform, alone=self.alone, whist=self.whist)
         player = Player()
 
         # Initialization ===============================================================================================
@@ -1315,7 +1322,7 @@ class Alynex(object):
             if os.path.isfile(vision):
                 screen = cv2.VideoCapture(vision)
                 if screen.isOpened():
-                    target_screen = Path(vision)
+                    target_screen = vision
                 screen.release()
             elif os.path.isdir(vision):
                 file_list = [
@@ -1324,7 +1331,7 @@ class Alynex(object):
                 if len(file_list) >= 1:
                     screen = cv2.VideoCapture(open_file := os.path.join(vision, file_list[0]))
                     if screen.isOpened():
-                        target_screen = Path(open_file)
+                        target_screen = open_file
                     screen.release()
             return target_screen
 
@@ -1339,7 +1346,7 @@ class Alynex(object):
                 return e
 
         async def frame_flick():
-            logger.info(f"阶段划分: {struct.get_ordered_stage_set()}")
+            Show.show(f"阶段划分: {struct.get_ordered_stage_set()}")
             begin_stage_index, begin_frame_index = begin
             final_stage_index, final_frame_index = final
             try:
@@ -1353,11 +1360,11 @@ class Alynex(object):
             except IndexError as e:
                 logger.warning(f"{e}")
                 for i, unstable_stage in enumerate(struct.get_specific_stage_range("-3")):
-                    Show.console.print(f"[bold]第 {i:02} 个非稳定阶段")
-                    Show.console.print(f"[bold]{'=' * 30}")
+                    Show.show(f"第 {i:02} 个非稳定阶段")
+                    Show.show(f"{'=' * 30}")
                     for j, frame in enumerate(unstable_stage):
-                        Show.console.print(f"[bold]第 {j:05} 帧: {frame}")
-                    Show.console.print(f"[bold]{'=' * 30}\n")
+                        Show.show(f"第 {j:05} 帧: {frame}")
+                    Show.show(f"{'=' * 30}\n")
                 begin_frame = struct.get_important_frame_list()[0]
                 final_frame = struct.get_important_frame_list()[-1]
                 logger.warning(f"{const.DESC} Analyzer recalculate ...")
@@ -1368,8 +1375,8 @@ class Alynex(object):
                 logger.warning(f"{const.DESC} Analyzer recalculate ...")
 
             time_cost = final_frame.timestamp - begin_frame.timestamp
-            logger.info(
-                f"图像分类结果: [开始帧: {begin_frame.timestamp:.5f}] [结束帧: {final_frame.timestamp:.5f}] [总耗时: {time_cost:.5f}]"
+            Show.show(
+                f"分类结果: [开始帧: {begin_frame.timestamp:.5f}] [结束帧: {final_frame.timestamp:.5f}] [总耗时: {time_cost:.5f}]"
             )
             return begin_frame.frame_id, final_frame.frame_id, time_cost
 
@@ -1388,23 +1395,24 @@ class Alynex(object):
             vision_start = Parser.parse_times(vision_start)
             vision_close = Parser.parse_times(vision_close)
             vision_limit = Parser.parse_times(vision_limit)
-            logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}]")
-            logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
+            Show.show(f"视频时长: [{duration}] [{Parser.parse_times(duration)}]")
+            Show.show(f"视频帧率: [{frate}]")
+            Show.show(f"视频剪辑: start=[{vision_start}] close=[{vision_close}] limit=[{vision_limit}]")
 
             await Switch.ask_video_change(
                 self.fmp, frate, vision, target_vision,
                 start=vision_start, close=vision_close, limit=vision_limit
             )
-            logger.info(f"视频转换完成: {Path(target_vision).name}")
+            Show.show(f"视频转换完成: {os.path.basename(target_vision)}")
             os.remove(vision)
-            logger.info(f"移除旧的视频: {Path(vision).name}")
+            Show.show(f"移除旧的视频: {os.path.basename(vision)}")
 
             if shape:
                 original_shape = await Switch.ask_video_larger(self.fpb, target_vision)
                 w, h, ratio = await Switch.ask_magic_frame(original_shape, shape)
                 target_shape = w, h
                 target_scale = scale
-                logger.info(f"调整宽高比: {w} x {h}")
+                Show.show(f"调整宽高比: {w} x {h}")
             elif scale:
                 target_shape = shape
                 target_scale = max(0.1, min(1.0, scale))
@@ -1418,13 +1426,13 @@ class Alynex(object):
             if struct is None:
                 if color:
                     video.hued_data = tuple(hued_data.result())
-                    logger.info(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
+                    Show.show(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
                     hued_task.shutdown()
                     return [i for i in video.hued_data]
                 return [i for i in video.grey_data]
 
             important_frames = struct.get_important_frame_list()
-            pbar = toolbox.show_progress(struct.get_length(), 50, "Faster")
+            pbar = toolbox.show_progress(struct.get_length(), 50)
             frames_list = []
             if boost:
                 frames_list.append(previous := important_frames[0])
@@ -1447,7 +1455,7 @@ class Alynex(object):
 
             if color:
                 video.hued_data = tuple(hued_data.result())
-                logger.info(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
+                Show.show(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
                 hued_task.shutdown()
                 return [video.hued_data[frame.frame_id - 1] for frame in frames_list]
             return [frame for frame in frames_list]
@@ -1461,19 +1469,25 @@ class Alynex(object):
                     x, y, x_size, y_size = crop.values()
                     crop_hook = PaintCropHook((y_size, x_size), (y, x))
                     cutter.add_hook(crop_hook)
-                    logger.debug(f"{crop_hook.__class__.__name__}: {x, y, x_size, y_size}")
+                    Show.show(f"加载视频帧处理单元: {crop_hook.__class__.__name__} {x, y, x_size, y_size}")
 
             if len(omit_list := omits) > 0 and sum([j for i in omit_list for j in i.values()]) > 0:
                 for omit in omit_list:
                     x, y, x_size, y_size = omit.values()
                     omit_hook = PaintOmitHook((y_size, x_size), (y, x))
                     cutter.add_hook(omit_hook)
-                    logger.debug(f"{omit_hook.__class__.__name__}: {x, y, x_size, y_size}")
+                    Show.show(f"加载视频帧处理单元: {omit_hook.__class__.__name__} {x, y, x_size, y_size}")
 
             save_hook = FrameSaveHook(extra_path)
             cutter.add_hook(save_hook)
+            Show.show(f"加载视频帧处理单元: {save_hook.__class__.__name__} {[os.path.basename(extra_path)]}")
 
+            Show.show(f"压缩视频: {video.name}")
+            Show.show(f"视频帧数: {video.frame_count} 片段数: {video.frame_count - 1} 分辨率: {video.frame_size}")
+            cut_start_time = time.time()
             cut_range = cutter.cut(video=video, block=block)
+            Show.show(f"压缩完成: {os.path.basename(video.path)}")
+            Show.show(f"压缩耗时: {time.time() - cut_start_time:.2f} 秒")
 
             stable, unstable = cut_range.get_range(threshold=thres, offset=shift)
 
@@ -1497,10 +1511,16 @@ class Alynex(object):
             for draw in os.listdir(extra_path):
                 toolbox.draw_line(os.path.join(extra_path, draw))
 
+            struct_start_time = time.time()
             try:
-                return self.kc.classify(video=video, valid_range=stable, keep_data=True)
+                struct_data = self.kc.classify(
+                    video=video, valid_range=stable, keep_data=True
+                )
             except AssertionError as e:
                 return logger.warning(f"{e}")
+
+            Show.show(f"分类耗时: {time.time() - struct_start_time:.2f}秒")
+            return struct_data
 
         async def analytics_basic():
             if self.oss == "win32":
@@ -1520,7 +1540,7 @@ class Alynex(object):
 
             for result in forge_result:
                 if isinstance(result, Exception):
-                    logger.error(f"Error: {result}")
+                    logger.error(f"{result}")
 
             begin_frame, final_frame = frames[0], frames[-1]
             time_cost = final_frame.timestamp - begin_frame.timestamp
@@ -1546,20 +1566,25 @@ class Alynex(object):
 
             for result in forge_result:
                 if isinstance(result, Exception):
-                    logger.error(f"Error: {result}")
+                    logger.error(f"{result}")
 
             begin_frame_id, final_frame_id, time_cost = flick_result
             return begin_frame_id, final_frame_id, time_cost, struct
 
+        # Start
         if (target_record := await frame_check()) is None:
-            return logger.error(f"{vision} 不是一个标准的视频文件或视频文件已损坏 ...")
-        logger.info(f"{target_record.name} 可正常播放，准备加载视频 ...")
+            return logger.warning(f"视频文件损坏: {os.path.basename(vision)}")
+        Show.show(f"开始加载视频: {os.path.basename(target_record)}")
 
         movie, shape, scale = await frame_flip()
         video = VideoObject(movie)
-        hued_task, hued_data = video.load_frames(
+        Show.show(f"视频帧长度: {video.frame_count} 分辨率: {video.frame_size}")
+        Show.show(f"加载到内存: {video.name}")
+        hued_task, hued_data, load_cost = video.load_frames(
             load_hued=color, none_gray=False, shape=shape, scale=scale
         )
+        Show.show(f"灰度帧已加载: {video.frame_details(video.grey_data)}")
+        Show.show(f"视频加载耗时: {load_cost:.2f} 秒")
 
         struct = await frame_flow() if self.kc else None
         frames = await frame_hold()
@@ -1569,9 +1594,9 @@ class Alynex(object):
         return Review(*(await analytics_basic()))
 
 
-async def achieve(template_path: str) -> str | Exception:
+async def achieve(template: typing.Union[str, os.PathLike]) -> str | Exception:
     try:
-        async with aiofiles.open(template_path, "r", encoding="utf-8") as f:
+        async with aiofiles.open(template, "r", encoding=const.CHARSET) as f:
             template_file = await f.read()
     except FileNotFoundError as e:
         return e
@@ -1594,14 +1619,12 @@ async def arithmetic(*args, **kwargs) -> None:
         await Report.ask_merge_report(results, template_total)
 
     missions, platform, cmd_lines, deploy, level, power, loop, *_ = args
-    total_place = kwargs["total_place"]
-    model_place = kwargs["model_place"]
-    model_shape = kwargs["model_shape"]
-    model_aisle = kwargs["model_aisle"]
-    adb = kwargs["adb"]
-    fmp = kwargs["fmp"]
-    fpb = kwargs["fpb"]
-    scc = kwargs["scc"]
+    _ = kwargs["total_place"]
+    _ = kwargs["model_place"]
+    _ = kwargs["model_shape"]
+    _ = kwargs["model_aisle"]
+    _ = kwargs["fmp"]
+    _ = kwargs["fpb"]
 
     # --video ==========================================================================================================
     if video_list := cmd_lines.video:
@@ -1648,14 +1671,12 @@ async def arithmetic(*args, **kwargs) -> None:
 
 async def scheduling(*args, **kwargs) -> None:
     missions, platform, cmd_lines, deploy, level, power, loop, *_ = args
-    total_place = kwargs["total_place"]
-    model_place = kwargs["model_place"]
-    model_shape = kwargs["model_shape"]
-    model_aisle = kwargs["model_aisle"]
-    adb = kwargs["adb"]
-    fmp = kwargs["fmp"]
-    fpb = kwargs["fpb"]
-    scc = kwargs["scc"]
+    _ = kwargs["total_place"]
+    _ = kwargs["model_place"]
+    _ = kwargs["model_shape"]
+    _ = kwargs["model_aisle"]
+    _ = kwargs["fmp"]
+    _ = kwargs["fpb"]
 
     # --flick --carry --fully ==========================================================================================
     if cmd_lines.flick or cmd_lines.carry or cmd_lines.fully:
@@ -1703,6 +1724,8 @@ if __name__ == '__main__':
     logger.debug(f"* 模版 * {'=' * 30}\n")
     # Debug Mode =======================================================================================================
 
+    _main_loop = asyncio.get_event_loop()
+
     _flick = _cmd_lines.flick
     _carry = _cmd_lines.carry
     _fully = _cmd_lines.fully
@@ -1715,50 +1738,6 @@ if __name__ == '__main__':
     _whist = _cmd_lines.whist
 
     _group = _cmd_lines.group
-
-    _boost = _cmd_lines.boost
-    _color = _cmd_lines.color
-    _shape = _cmd_lines.shape
-    _scale = _cmd_lines.scale
-    _start = _cmd_lines.start
-    _close = _cmd_lines.close
-    _limit = _cmd_lines.limit
-    _begin = _cmd_lines.begin
-    _final = _cmd_lines.final
-    _frate = _cmd_lines.frate
-    _thres = _cmd_lines.thres
-    _shift = _cmd_lines.shift
-    _block = _cmd_lines.block
-
-    _crops = []
-    if _cmd_lines.crops:
-        for _hook in _cmd_lines.crops:
-            if len(match_list := re.findall(r"-?\d*\.?\d+", _hook)) == 4:
-                _valid_list = [
-                    float(num) if "." in num else int(num) for num in match_list
-                ]
-                if len(_valid_list) == 4 and sum(_valid_list) > 0:
-                    _valid_dict = {
-                        _k: _v for _k, _v in zip(["x", "y", "x_size", "y_size"], _valid_list)
-                    }
-                    _crops.append(_valid_dict)
-    _unique_crops = {tuple(_i.items()) for _i in _crops}
-    _crops = [dict(_i) for _i in _unique_crops]
-
-    _omits = []
-    if _cmd_lines.omits:
-        for _hook in _cmd_lines.omits:
-            if len(match_list := re.findall(r"-?\d*\.?\d+", _hook)) == 4:
-                _valid_list = [
-                    float(num) if "." in num else int(num) for num in match_list
-                ]
-                if len(_valid_list) == 4 and sum(_valid_list) > 0:
-                    _valid_dict = {
-                        _k: _v for _k, _v in zip(["x", "y", "x_size", "y_size"], _valid_list)
-                    }
-                    _omits.append(_valid_dict)
-    _unique_omits = {tuple(_i.items()) for _i in _omits}
-    _omits = [dict(_i) for _i in _unique_omits]
 
     _initial_option = os.path.join(_initial_source, "option.json")
     _initial_deploy = os.path.join(_initial_source, "deploy.json")
@@ -1782,8 +1761,8 @@ if __name__ == '__main__':
     _deploy = Deploy(_initial_deploy)
     for _attr in _attrs:
         if any(_line.startswith(f"--{_attr}") for _line in _lines):
-            logger.debug(f"Set {_attr} = {(_attribute := getattr(_cmd_lines, _attr))}")
-            setattr(_deploy, _attr, _attribute)
+            setattr(_deploy, _attr, getattr(_cmd_lines, _attr))
+            Show.show(f"Set <{_attr}> = {getattr(_deploy, _attr)}")
 
     _missions = Missions(
         _flick, _carry, _fully, _quick, _basic, _keras, _alone, _whist, _group,
@@ -1807,8 +1786,6 @@ if __name__ == '__main__':
 
     from concurrent.futures import ProcessPoolExecutor
 
-    _main_loop = asyncio.get_event_loop()
-
     # Main Process =====================================================================================================
     try:
         _main_loop.run_until_complete(
@@ -1818,10 +1795,8 @@ if __name__ == '__main__':
                 model_place=_model_place,
                 model_shape=_model_shape,
                 model_aisle=_model_aisle,
-                adb=_adb,
                 fmp=_fmp,
-                fpb=_fpb,
-                scc=_scc,
+                fpb=_fpb
             )
         )
         _main_loop.run_until_complete(
@@ -1831,10 +1806,8 @@ if __name__ == '__main__':
                 model_place=_model_place,
                 model_shape=_model_shape,
                 model_aisle=_model_aisle,
-                adb=_adb,
                 fmp=_fmp,
-                fpb=_fpb,
-                scc=_scc,
+                fpb=_fpb
             )
         )
     except KeyboardInterrupt:

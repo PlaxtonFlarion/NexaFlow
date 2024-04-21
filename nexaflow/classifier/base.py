@@ -1,7 +1,6 @@
 import os
 import cv2
 import json
-import time
 import typing
 import pathlib
 import difflib
@@ -125,7 +124,7 @@ class ClassifierResult(object):
 
     def to_dict(
         self,
-    ) -> typing.Dict[str, typing.List[typing.List[SingleClassifierResult]]]:
+    ) -> typing.Dict[str, typing.List[typing.List["SingleClassifierResult"]]]:
         stage_list = list(self.get_stage_set())
         try:
             int(stage_list[0])
@@ -234,9 +233,7 @@ class ClassifierResult(object):
         self,
     ) -> typing.Dict[str, typing.Tuple[SingleClassifierResult, SingleClassifierResult]]:
 
-        cost_dict: typing.Dict[
-            str, typing.Tuple[SingleClassifierResult, SingleClassifierResult]
-        ] = {}
+        cost_dict: typing.Dict[str, typing.Tuple[SingleClassifierResult, SingleClassifierResult]] = {}
         i = 0
         while i < len(self.data) - 1:
             cur = self.data[i]
@@ -395,22 +392,18 @@ class BaseClassifier(object):
 
     def classify(
         self,
-        video: typing.Union[str, VideoObject],
-        valid_range: typing.List[VideoCutRange] = None,
+        video: typing.Union[str, "VideoObject"],
+        valid_range: typing.List["VideoCutRange"] = None,
         step: int = None,
         keep_data: bool = None,
         boost_mode: bool = None,
         *args,
         **kwargs,
-    ) -> ClassifierResult:
+    ) -> "ClassifierResult":
 
         # logger.debug(f"classify with {self.__class__.__name__}")
-        start_time = time.time()
-
-        if not step:
-            step = 1
-        if boost_mode is None:
-            boost_mode = True
+        step = step or 1
+        boost_mode = boost_mode or True
 
         assert (boost_mode and valid_range) or (
             not (boost_mode or valid_range)
@@ -424,7 +417,7 @@ class BaseClassifier(object):
         frame = operator.get_frame_by_id(1)
 
         prev_result: typing.Optional[str] = None
-        pbar = toolbox.show_progress(video.frame_count, 38, "Engine")
+        pbar = toolbox.show_progress(video.frame_count, 38)
         while frame is not None:
             frame = self._apply_hook(frame, *args, **kwargs)
             if valid_range and not any(
@@ -455,11 +448,8 @@ class BaseClassifier(object):
             )
             frame = operator.get_frame_by_id(frame.frame_id + step)
             pbar.update(1)
-
         pbar.close()
-        end_time = time.time()
-        # logger.debug(f"classifier cost: {end_time - start_time}")
-        logger.info(f"图像分类耗时: {(end_time - start_time):.2f}秒")
+
         return ClassifierResult(final_result)
 
 
