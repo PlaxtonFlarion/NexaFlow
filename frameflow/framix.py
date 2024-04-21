@@ -78,11 +78,6 @@ if len(sys.argv) == 1:
     Show.help_document()
     sys.exit(Show.normal_exit())
 
-_attrs = [
-    "boost", "color", "shape", "scale",
-    "start", "close", "limit", "begin", "final",
-    "frate", "thres", "shift", "block", "crops", "omits"
-]
 _lines = sys.argv[1:]
 
 try:
@@ -543,9 +538,12 @@ class Missions(object):
         video = VideoObject(video_temp_file)
         Show.show(f"视频帧长度: {video.frame_count} 分辨率: {video.frame_size}")
         Show.show(f"加载到内存: {video.name}")
+        video_load_time = time.time()
         video.load_frames(
             load_hued=False, none_gray=True
         )
+        Show.show(f"灰度帧已加载: {video.frame_details(video.grey_data)}")
+        Show.show(f"视频加载耗时: {time.time() - video_load_time:.2f} 秒")
 
         cutter = VideoCutter()
 
@@ -553,7 +551,7 @@ class Missions(object):
         Show.show(f"视频帧数: {video.frame_count} 帧片段数: {video.frame_count - 1} 帧分辨率: {video.frame_size}")
         cut_start_time = time.time()
         cut_range = cutter.cut(video=video, block=deploy.block)
-        Show.show(f"压缩完成: {os.path.basename(video.path)}")
+        Show.show(f"压缩完成: {video.name}")
         Show.show(f"压缩耗时: {time.time() - cut_start_time:.2f} 秒")
 
         stable, unstable = cut_range.get_range(
@@ -1422,18 +1420,21 @@ class Alynex(object):
 
             return target_vision, target_shape, target_scale
 
+        async def frame_load():
+            video.hued_data = tuple(hued_future.result())
+            Show.show(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
+            hued_thread.shutdown()
+
         async def frame_hold():
             if struct is None:
                 if color:
-                    video.hued_data = tuple(hued_data.result())
-                    Show.show(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
-                    hued_task.shutdown()
+                    await frame_load()
                     return [i for i in video.hued_data]
                 return [i for i in video.grey_data]
 
+            frames_list = []
             important_frames = struct.get_important_frame_list()
             pbar = toolbox.show_progress(struct.get_length(), 50)
-            frames_list = []
             if boost:
                 frames_list.append(previous := important_frames[0])
                 pbar.update(1)
@@ -1447,16 +1448,16 @@ class Alynex(object):
                             pbar.update(1)
                     previous = current
                 pbar.close()
+                Show.show(f"获取关键帧: {len(frames_list)}")
             else:
                 for current in struct.data:
                     frames_list.append(current)
                     pbar.update(1)
                 pbar.close()
+                Show.show(f"获取全部帧: {len(frames_list)}")
 
             if color:
-                video.hued_data = tuple(hued_data.result())
-                Show.show(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
-                hued_task.shutdown()
+                await frame_load()
                 return [video.hued_data[frame.frame_id - 1] for frame in frames_list]
             return [frame for frame in frames_list]
 
@@ -1486,7 +1487,7 @@ class Alynex(object):
             Show.show(f"视频帧数: {video.frame_count} 片段数: {video.frame_count - 1} 分辨率: {video.frame_size}")
             cut_start_time = time.time()
             cut_range = cutter.cut(video=video, block=block)
-            Show.show(f"压缩完成: {os.path.basename(video.path)}")
+            Show.show(f"压缩完成: {video.name}")
             Show.show(f"压缩耗时: {time.time() - cut_start_time:.2f} 秒")
 
             stable, unstable = cut_range.get_range(threshold=thres, offset=shift)
@@ -1519,7 +1520,7 @@ class Alynex(object):
             except AssertionError as e:
                 return logger.warning(f"{e}")
 
-            Show.show(f"分类耗时: {time.time() - struct_start_time:.2f}秒")
+            Show.show(f"分类耗时: {time.time() - struct_start_time:.2f} 秒")
             return struct_data
 
         async def analytics_basic():
@@ -1577,14 +1578,15 @@ class Alynex(object):
         Show.show(f"开始加载视频: {os.path.basename(target_record)}")
 
         movie, shape, scale = await frame_flip()
+        video_load_time = time.time()
         video = VideoObject(movie)
         Show.show(f"视频帧长度: {video.frame_count} 分辨率: {video.frame_size}")
         Show.show(f"加载到内存: {video.name}")
-        hued_task, hued_data, load_cost = video.load_frames(
+        hued_thread, hued_future = video.load_frames(
             load_hued=color, none_gray=False, shape=shape, scale=scale
         )
         Show.show(f"灰度帧已加载: {video.frame_details(video.grey_data)}")
-        Show.show(f"视频加载耗时: {load_cost:.2f} 秒")
+        Show.show(f"视频加载耗时: {time.time() - video_load_time:.2f} 秒")
 
         struct = await frame_flow() if self.kc else None
         frames = await frame_hold()
@@ -1759,7 +1761,7 @@ if __name__ == '__main__':
     logger.debug(f"处理器核心数: {(_power := os.cpu_count())}")
 
     _deploy = Deploy(_initial_deploy)
-    for _attr in _attrs:
+    for _attr, _ in _deploy.deploys.items():
         if any(_line.startswith(f"--{_attr}") for _line in _lines):
             setattr(_deploy, _attr, getattr(_cmd_lines, _attr))
             Show.show(f"Set <{_attr}> = {getattr(_deploy, _attr)}")

@@ -1,25 +1,10 @@
 import re
 import datetime
 import argparse
-
 from nexaflow import const
 
 
 class Parser(object):
-
-    @staticmethod
-    def parse_shape(dim_str):
-        match_size_list = re.findall(r"-?\d*\.?\d+", dim_str)
-        if len(match_size_list) >= 2:
-            converted = []
-            for num in match_size_list:
-                try:
-                    converted_num = int(num)
-                except ValueError:
-                    converted_num = float(num)
-                converted.append(converted_num)
-            return tuple(converted[:2])
-        return None
 
     @staticmethod
     def parse_aisle(dim_str):
@@ -27,6 +12,24 @@ class Parser(object):
             return value if (value := int(dim_str)) in [1, 3] else None
         except (ValueError, TypeError):
             return None
+
+    @staticmethod
+    def parse_shape(dim_str):
+        if type(dim_str) is list and len(dim_str) >= 2:
+            if all(type(i) is int for i in dim_str):
+                return tuple(dim_str[:2])
+        elif type(dim_str) is str:
+            match_size_list = re.findall(r"-?\d*\.?\d+", dim_str)
+            if len(match_size_list) >= 2:
+                converted = []
+                for num in match_size_list:
+                    try:
+                        converted_num = int(num)
+                    except ValueError:
+                        converted_num = float(num)
+                    converted.append(converted_num)
+                return tuple(converted[:2])
+        return None
 
     @staticmethod
     def parse_scale(dim_str):
@@ -44,25 +47,32 @@ class Parser(object):
                 return None
             return str(datetime.timedelta(seconds=dim_str))
         elif type(dim_str) is str:
-            time_pattern = re.compile(r"(?:(\d+):)?(\d+):(\d+)(?:\.(\d+))?|^\d*(?:\.\d+)?$")
+            time_pattern = re.compile(r"^(?:(\d+):)?(\d+):(\d+)(?:\.(\d+))?$|^\d+(?:\.\d+)?$")
             if match := time_pattern.match(dim_str):
-                hours = int(match.group(1)) if match.group(1) else 0
-                minutes = int(match.group(2)) if match.group(2) else 0
-                seconds = int(match.group(3)) if match.group(3) else 0
-                milliseconds = int(float("0." + match.group(4)) * 1000) if match.group(4) else 0
-                if match.group(0) and '.' in match.group(0):
+                if ':' in dim_str:
+                    hours = int(match.group(1)) if match.group(1) else 0
+                    minutes = int(match.group(2)) if match.group(2) else 0
+                    seconds = int(match.group(3)) if match.group(3) else 0
+                    milliseconds = int(float("0." + match.group(4)) * 1000) if match.group(4) else 0
+                    if hours > hour_scope:
+                        return None
+                    time_str = datetime.timedelta(
+                        hours=hours, minutes=minutes, seconds=seconds, milliseconds=milliseconds
+                    )
+                    return str(time_str)
+                else:
                     seconds = float(match.group(0))
                     milliseconds = int((seconds - int(seconds)) * 1000)
                     seconds = int(seconds)
-                time_str = datetime.timedelta(
-                    hours=hours, minutes=minutes, seconds=seconds, milliseconds=milliseconds
-                )
-                return str(time_str) if hours <= hour_scope else None
+                    time_str = datetime.timedelta(
+                        seconds=seconds, milliseconds=milliseconds
+                    )
+                    return str(time_str)
         return None
 
     @staticmethod
     def parse_mills(dim_str):
-        if type(dim_str) is int or type(dim_str) is float:
+        if type(str) is int or type(dim_str) is float:
             return float(dim_str)
         if type(dim_str) is str:
             seconds_pattern = re.compile(r"^\d+(\.\d+)?$")
@@ -79,32 +89,42 @@ class Parser(object):
 
     @staticmethod
     def parse_stage(dim_str):
-        stage_parts = []
-        parts = re.split(r"[.,;:\s]+", dim_str)
-        match_parts = [part for part in parts if re.match(r"-?\d+(\.\d+)?", part)]
-        for number in match_parts:
-            try:
-                stage_parts.append(int(number))
-            except ValueError:
-                stage_parts = []
-                break
-        return tuple(stage_parts[:2]) if len(stage_parts) >= 2 else None
+        if type(dim_str) is list and len(dim_str) >= 2:
+            if all(type(i) is int for i in dim_str):
+                return tuple(dim_str[:2])
+        elif type(dim_str) is str:
+            stage_parts = []
+            parts = re.split(r"[.,;:\s]+", dim_str)
+            match_parts = [part for part in parts if re.match(r"-?\d+(\.\d+)?", part)]
+            for number in match_parts:
+                try:
+                    stage_parts.append(int(number))
+                except ValueError:
+                    stage_parts = []
+                    break
+            return tuple(stage_parts[:2]) if len(stage_parts) >= 2 else None
+        return None
 
     @staticmethod
     def parse_hooks(dim_str):
-        hook_list = []
+        effective_hook_list = []
         for hook in dim_str:
-            if len(match_list := re.findall(r"-?\d*\.?\d+", hook)) == 4:
-                valid_list = [
-                    float(num) if "." in num else int(num) for num in match_list
-                ]
-                if len(valid_list) == 4 and sum(valid_list) > 0:
-                    valid_dict = {
-                        k: v for k, v in zip(["x", "y", "x_size", "y_size"], valid_list)
-                    }
-                    hook_list.append(valid_dict)
-        unique_hooks = {tuple(i.items()) for i in hook_list}
-        return [dict(i) for i in unique_hooks]
+            if type(hook) is dict:
+                requires = {"x", "y", "x_size", "y_size"}
+                if hook.keys() >= requires and all(isinstance(hook[key], (int, float)) for key in requires):
+                    if sum([hook[key] for key in requires]) > 0:
+                        effective_hook_list.append({key: hook[key] for key in requires})
+            elif type(hook) is str:
+                if len(match_list := re.findall(r"-?\d*\.?\d+", hook)) == 4:
+                    valid_list = [
+                        float(num) if "." in num else int(num) for num in match_list
+                    ]
+                    if len(valid_list) == 4 and sum(valid_list) > 0:
+                        valid_dict = {
+                            k: v for k, v in zip(["x", "y", "x_size", "y_size"], valid_list)
+                        }
+                        effective_hook_list.append(dict(tuple(valid_dict.items())))
+        return effective_hook_list
 
     @staticmethod
     def parse_frate(dim_str):

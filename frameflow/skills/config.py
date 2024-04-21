@@ -1,5 +1,6 @@
 import os
 import json
+import typing
 from loguru import logger
 from rich.table import Table
 from frameflow.skills.parser import Parser
@@ -7,15 +8,15 @@ from frameflow.skills.show import Show
 from nexaflow import const
 
 
-def dump_parameters(src, dst) -> None:
+def dump_parameters(src: str, dst: dict) -> None:
     os.makedirs(os.path.dirname(src), exist_ok=True)
     with open(src, "w", encoding=const.CHARSET) as file:
         json.dump(dst, file, indent=4, separators=(",", ":"), ensure_ascii=False)
 
 
-def load_parameters(src, dst) -> None:
+def load_parameters(src: str) -> typing.Any:
     with open(src, "r", encoding=const.CHARSET) as file:
-        dst.update(json.load(file))
+        return json.load(file)
 
 
 class Deploy(object):
@@ -187,10 +188,10 @@ class Deploy(object):
 
     def load_deploy(self, deploy_file: str) -> None:
         try:
-            load_parameters(deploy_file, self.deploys)
+            parameters = load_parameters(deploy_file)
             for k, v in self.deploys.items():
-                setattr(self, k, v)
-                logger.debug(f"Load <{k}> = {v}")
+                setattr(self, k, parameters.get(k, v))
+                logger.debug(f"Load <{k}> = {getattr(self, k)}")
         except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
             logger.debug(f"Use default parameters because {e}")
         except Exception as e:
@@ -364,10 +365,10 @@ class Option(object):
 
     def load_option(self, option_file: str) -> None:
         try:
-            load_parameters(option_file, self.options)
+            parameters = load_parameters(option_file)
             for k, v in self.options.items():
-                setattr(self, k, v)
-                logger.debug(f"Load <{k}> = {v}")
+                setattr(self, k, parameters.get(k, v))
+                logger.debug(f"Load <{k}> = {getattr(self, k)}")
         except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
             logger.debug(f"Use default parameters because {e}")
             self.dump_option(option_file)

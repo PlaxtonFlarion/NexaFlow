@@ -1,6 +1,5 @@
 import os
 import cv2
-import time
 import typing
 import tempfile
 import numpy as np
@@ -176,7 +175,7 @@ class VideoObject(object):
 
     __repr__ = __str__
 
-    def sync_timestamp(self, frame_data: tuple[VideoFrame]) -> None:
+    def sync_timestamp(self, frame_data: tuple["VideoFrame"]) -> None:
         assert frame_data, "load_frames() first"
         vid = mpy.VideoFileClip(self.path)
 
@@ -192,7 +191,7 @@ class VideoObject(object):
             pbar.update(1)
         pbar.close()
 
-    def sync_backstage(self, frame_data: tuple[ColorFrame]) -> None:
+    def sync_backstage(self, frame_data: tuple["ColorFrame"]) -> None:
         assert frame_data, "load_frames() first"
         vid = mpy.VideoFileClip(self.path)
 
@@ -213,10 +212,11 @@ class VideoObject(object):
 
     @staticmethod
     def frame_details(frame_type):
-        each_cost = frame_type[0].data.nbytes / (1024 ** 2)
+        frame = frame_type[0]
+        each_cost = frame.data.nbytes / (1024 ** 2)
         total_cost = each_cost * len(frame_type)
-        frame_size = frame_type[0].data.shape[::-1]
-        return f"{frame_type[0].__class__.__name__} [{each_cost:.2f} MB] [{total_cost:.2f} MB] {frame_size}"
+        frame_size = frame.data.shape[::-1]
+        return f"{frame.__class__.__name__} [{each_cost:.2f} MB] [{total_cost:.2f} MB] {frame_size}"
 
     def load_frames(
             self,
@@ -230,24 +230,24 @@ class VideoObject(object):
         从文件中加载所有帧到内存
         """
 
-        def load_stream(frames: type[VideoFrame]):
+        def load_stream(frames: type["VideoFrame"]):
             pbar = toolbox.show_progress(self.frame_count, 180)
-            data: list[VideoFrame] = []
+            frame_data_list: list["VideoFrame"] = []
             with toolbox.video_capture(self.path) as cap:
                 for success, frame in iter(lambda: cap.read(), (False, None)):
                     if success:
-                        data.append(frames.initial(cap, frame, none_gray, shape, scale))
+                        frame_data_list.append(frames.initial(cap, frame, none_gray, shape, scale))
                         pbar.update(1)
             pbar.close()
-            return data
+            return frame_data_list
 
-        def back_ground(frames: type[ColorFrame]):
-            data: list[ColorFrame] = []
+        def back_ground(frames: type["ColorFrame"]):
+            frame_data_list: list["ColorFrame"] = []
             with toolbox.video_capture(self.path) as cap:
                 for success, frame in iter(lambda: cap.read(), (False, None)):
                     if success:
-                        data.append(frames.initial(cap, frame, load_hued, shape, scale))
-            return data
+                        frame_data_list.append(frames.initial(cap, frame, load_hued, shape, scale))
+            return frame_data_list
 
         def load_stream_sync(brand):
             self.sync_timestamp(tuple(frame_data := load_stream(brand)))
@@ -257,14 +257,15 @@ class VideoObject(object):
             self.sync_backstage(tuple(frame_data := back_ground(brand)))
             return frame_data
 
-        start_time, hued_task, hued_data = time.time(), None, None
+        hued_thread, hued_future = None, None
         if load_hued:
-            hued_task = ThreadPoolExecutor()
-            hued_data = hued_task.submit(back_ground_sync, ColorFrame)
+            hued_thread = ThreadPoolExecutor()
+            hued_future = hued_thread.submit(back_ground_sync, ColorFrame)
 
-        grey = load_stream_sync(VideoFrame)
-        self.grey_data = tuple(grey)
-        return hued_task, hued_data, time.time() - start_time
+        grey_frame_data = load_stream_sync(VideoFrame)
+        self.grey_data = tuple(grey_frame_data)
+
+        return hued_thread, hued_future
 
     def _read_from_file(self) -> typing.Generator["VideoFrame", None, None]:
         """
