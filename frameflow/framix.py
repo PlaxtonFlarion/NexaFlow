@@ -1034,7 +1034,7 @@ class Missions(object):
 
         async def load_commands(script):
             try:
-                async with aiofiles.open(script, "r", encoding="utf-8") as f:
+                async with aiofiles.open(script, "r", encoding=const.CHARSET) as f:
                     file = await f.read()
                     exec_dict = {
                         cmds["name"]: {
@@ -1198,9 +1198,10 @@ class Missions(object):
                     logger.info(f"Exec: {key}")
                     for _ in range(value["loop"]):
                         try:
+                            # prefix
                             task_list = await commence()
 
-                            if device_action_list := value.get("actions", None):
+                            if device_action_list := value.get("action", None):
                                 async for exec_func_list in exec_commands():
                                     if len(exec_func_list) == 0:
                                         continue
@@ -1210,6 +1211,7 @@ class Missions(object):
 
                             await all_time("many")
                             await all_over()
+                            # suffix
                             await analysis_tactics()
                             check = await record.event_check()
                             device_list = await manage.operate_device() if check else device_list
