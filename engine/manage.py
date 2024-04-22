@@ -1,9 +1,9 @@
 import re
 import asyncio
 from rich.prompt import Prompt
+from engine.active import Active
 from engine.device import Device
 from engine.terminal import Terminal
-from frameflow.skills.show import Show
 
 
 class Manage(object):
@@ -49,7 +49,7 @@ class Manage(object):
         while True:
             device_list = []
             if len(device_dict := await self.current_device()) == 0:
-                Show.console.print(f"[bold yellow]设备未连接,等待设备连接 ...")
+                Active.console.print(f"[bold yellow]设备未连接,等待设备连接 ...")
                 await asyncio.sleep(5)
                 continue
 
@@ -60,14 +60,14 @@ class Manage(object):
                 return device_list
 
             for k, v in device_dict.items():
-                Show.console.print(f"[bold][bold yellow]Connect:[/bold yellow] [{k}] {v}")
+                Active.console.print(f"[bold][bold yellow]Connect:[/bold yellow] [{k}] {v}")
 
             try:
-                if (action := Prompt.ask("[bold #5FD7FF]请输入编号选择一台设备", console=Show.console)) == "000":
+                if (action := Prompt.ask("[bold #5FD7FF]请输入编号选择一台设备", console=Active.console)) == "000":
                     return device_list
                 return [device_dict[action]]
             except KeyError:
-                Show.console.print(f"[bold red]没有该序号,请重新选择 ...[/bold red]\n")
+                Active.console.print(f"[bold red]没有该序号,请重新选择 ...[/bold red]\n")
                 await asyncio.sleep(1)
 
 

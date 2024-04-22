@@ -323,7 +323,7 @@ class BaseClassifier(object):
         self._data: typing.Dict[str, typing.Union[typing.List[pathlib.Path]]] = dict()
 
         self._hook_list: typing.List[BaseHook] = list()
-        # compress_hook = CompressHook(
+        # compress_hook = FrameSizeHook(
         #     overwrite=True, compress_rate=compress_rate, target_size=target_size
         # )
         # grey_hook = GreyHook(overwrite=True)

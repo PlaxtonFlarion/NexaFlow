@@ -1,21 +1,13 @@
 import time
-import typing
+from loguru import logger
 from rich.text import Text
 from rich.table import Table
-from rich.console import Console
 from rich.progress import Progress
+from engine.active import Active
 from nexaflow import const
 
 
 class Show(object):
-
-    console = Console()
-
-    @staticmethod
-    def show(msg: typing.Any):
-        Show.console.print(
-            f"[bold]{const.DESC} | Analyzer | {msg}[/bold]"
-        )
 
     @staticmethod
     def simulation_progress(desc: str, advance: int | float, interval: int | float):
@@ -57,7 +49,7 @@ class Show(object):
     ██║  ╚███║███████╗██╔╝ ██╗██║  ██║  ██║     ███████╗╚██████╔╝╚███╔███╔╝
     ╚═╝   ╚══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝  ╚═╝     ╚══════╝ ╚═════╝  ╚══╝╚══╝
         """
-        Show.console.print(logo)
+        Active.console.print(logo)
 
     @staticmethod
     def minor_logo():
@@ -69,7 +61,7 @@ class Show(object):
               ██║     ██║  ██║██║  ██║     ██║ ╚═╝ ██║██║██╔╝ ██╗
               ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝     ╚═╝     ╚═╝╚═╝╚═╝  ╚═╝
         """
-        Show.console.print(logo)
+        Active.console.print(logo)
 
     @staticmethod
     def help_document():
@@ -143,11 +135,11 @@ class Show(object):
             table_minor.add_row(*minor)
 
         Show.major_logo()
-        Show.console.print(table_major)
+        Active.console.print(table_major)
         Show.simulation_progress(f"{const.DESC} Terminal Command.", 1, 0.05)
 
         Show.minor_logo()
-        Show.console.print(table_minor)
+        Active.console.print(table_minor)
         Show.simulation_progress(f"{const.DESC} Terminal Command.", 1, 0.05)
 
     @staticmethod
@@ -173,7 +165,7 @@ class Show(object):
         for info in information:
             table.add_row(*info)
 
-        Show.console.print(table)
+        Active.console.print(table)
         Show.simulation_progress(f"{const.DESC} Terminal Command.", 1, 0.05)
 
     @staticmethod
@@ -237,14 +229,14 @@ class Show(object):
             return engine_stages[stage % len(engine_stages)]
 
         def animation(step, function):
-            Show.show(start_view)
+            logger.info(start_view)
             for i in range(step):
-                Show.console.print(function(i), justify="left")
+                Active.console.print(function(i), justify="left")
                 time.sleep(0.5)
-            return Show.show(close_view)
+            return logger.info(close_view)
 
-        start_view = f"[bold #FFD700]Engine Initializing ...[/bold #FFD700]"
-        close_view = f"[bold #FFD700]Engine Loaded ...[/bold #FFD700]"
+        start_view = f"[bold #FFD700]Engine Initializing[/bold #FFD700] ..."
+        close_view = f"[bold #FFD700]Engine Loaded[/bold #FFD700] ..."
 
         if style.quick:
             animation(4, quick_engine)

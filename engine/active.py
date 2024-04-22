@@ -1,15 +1,28 @@
-import sys
+from rich.console import Console
+from rich.logging import RichHandler
 from loguru import logger
 from nexaflow import const
 
 
+class RichSink(RichHandler):
+
+    def __init__(self, console):
+        super().__init__(console=console, rich_tracebacks=True, show_path=False, show_time=False)
+
+    def emit(self, record):
+        log_message = self.format(record)
+        self.console.print(log_message)
+
+
 class Active(object):
+
+    console = Console()
 
     @staticmethod
     def active(log_level: str):
         logger.remove(0)
-        log_format = f"\033[1m{const.DESC}\033[0m | <level>{{level: <8}}</level> | <level>{{message}}</level>"
-        logger.add(sys.stderr, format=log_format, level=log_level.upper())
+        log_format = f"[bold]{const.DESC} | <level>{{level: <8}}</level> | <level>{{message}}</level>"
+        logger.add(RichSink(Active.console), format=log_format, level=log_level.upper(), diagnose=False)
 
 
 class Review(object):

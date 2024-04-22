@@ -67,7 +67,7 @@ class VideoCutter(object):
         self.target_size = target_size
 
         self._hook_list: list["BaseHook"] = list()
-        # compress_hook = CompressHook(
+        # compress_hook = FrameSizeHook(
         #     overwrite=True, compress_rate=compress_rate, target_size=target_size
         # )
         # grey_hook = GreyHook(overwrite=True)
@@ -203,7 +203,8 @@ class VideoCutter(object):
         self,
         video: typing.Union[str, "VideoObject"],
         block: int = None, window_size: int = None, window_coefficient: int = None,
-        *_, **kwargs,
+        *_,
+        **kwargs,
     ) -> "VideoCutResult":
 
         block = block or 3
@@ -219,6 +220,10 @@ class VideoCutter(object):
             video, block, window_size, window_coefficient
         )
 
+        if len(window_list) == 1:
+            range_list = self.window_slice(window_list[0])
+            return VideoCutResult(video, range_list, cut_kwargs=kwargs)
+
         with ThreadPoolExecutor() as exe:
             futures = [
                 exe.submit(self.window_slice, window) for window in window_list
@@ -226,7 +231,6 @@ class VideoCutter(object):
             range_list = [
                 part for future in futures for part in future.result()
             ]
-
         return VideoCutResult(video, range_list, cut_kwargs=kwargs)
 
 

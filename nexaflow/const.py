@@ -39,8 +39,8 @@ FRATE = 60
 THRES = 0.97
 SHIFT = 3
 BLOCK = 6
-CROPS = [{"x": 0, "y": 0, "x_size": 0, "y_size": 0}]
-OMITS = [{"x": 0, "y": 0, "x_size": 0, "y_size": 0}]
+CROPS = []
+OMITS = []
 
 LOG_FORMAT = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>"
 

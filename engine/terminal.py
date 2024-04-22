@@ -1,3 +1,4 @@
+import os
 import sys
 import asyncio
 import subprocess
@@ -8,7 +9,7 @@ class Terminal(object):
 
     @staticmethod
     async def cmd_line(*cmd: str):
-        logger.debug(" ".join(cmd))
+        logger.debug(" ".join([os.path.basename(c) for c in cmd]))
         transports = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
@@ -24,7 +25,7 @@ class Terminal(object):
 
     @staticmethod
     async def cmd_link(*cmd: str):
-        logger.debug(" ".join(cmd))
+        logger.debug(" ".join([os.path.basename(c) for c in cmd]))
         transports = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
@@ -35,7 +36,7 @@ class Terminal(object):
 
     @staticmethod
     async def cmd_line_shell(cmd: str):
-        logger.debug(cmd)
+        logger.debug(" ".join([os.path.basename(c) for c in cmd.split()]))
         transports = await asyncio.create_subprocess_shell(
             cmd,
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
@@ -51,7 +52,7 @@ class Terminal(object):
 
     @staticmethod
     async def cmd_link_shell(cmd: str):
-        logger.debug(cmd)
+        logger.debug(" ".join([os.path.basename(c) for c in cmd.split()]))
         transports = await asyncio.create_subprocess_shell(
             cmd,
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
@@ -62,7 +63,7 @@ class Terminal(object):
 
     @staticmethod
     def cmd_oneshot(cmd: list[str]):
-        logger.debug(" ".join(cmd))
+        logger.debug(" ".join([os.path.basename(c) for c in cmd]))
         transports = subprocess.run(
             cmd,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -75,7 +76,7 @@ class Terminal(object):
 
     @staticmethod
     def cmd_connect(cmd: list[str]):
-        logger.debug(" ".join(cmd))
+        logger.debug(" ".join([os.path.basename(c) for c in cmd]))
         transports = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,

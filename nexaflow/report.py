@@ -1,6 +1,5 @@
 import os
 import re
-import ast
 import json
 import time
 import shutil
@@ -268,42 +267,58 @@ class Report(object):
         else:
             return logger.warning(f"没有符合条件的数据 ...")
 
-        parts_list = [json.loads(file) for file in match_list if file]
-        parts_dict = {ast.literal_eval(k): [v] for parts in parts_list for k, v in parts.items()}
+        parts_list: list[dict] = [
+            json.loads(file) for file in match_list if file
+        ]
+        parts_list: list[dict] = [
+            {(p.pop("total"), p.pop("title"), Path(p["query"]).name if group else ""): p} for p in parts_list
+        ]
+
+        async def format_packed():
+            parts_dict = defaultdict(lambda: defaultdict(list))
+            for parts in parts_list:
+                for key, value in parts.items():
+                    for k, v in value.items():
+                        parts_dict[key][k].append(v)
+            normal_dict = {k: dict(v) for k, v in parts_dict.items()}
+
+            return {
+                k: [dict(zip(v.keys(), entry)) for entry in zip(*v.values())] for k, v in normal_dict.items()
+            }
+
+        async def format_merged():
+            parts_dict = defaultdict(lambda: defaultdict(list))
+            for case in create_total_result:
+                for key, value in case.items():
+                    if key != "case":
+                        parts_dict[case["case"]][key].append(value)
+
+            return [
+                {"case": case, **{k: v for k, v in attrs.items()}} for case, attrs in parts_dict.items()
+            ]
+
+        packed_dict = await format_packed()
+        for detail in packed_dict.values():
+            logger.debug(f"{detail}")
 
         create_result = await asyncio.gather(
             *(Report.ask_create_report(
-                Path(os.path.join(file_name, a)), b, c, v, style_loc)
-                for (a, b, c), v in parts_dict.items())
+                Path(os.path.join(file_name, total)), title, sn, result_dict, style_loc)
+                for (total, title, sn), result_dict in packed_dict.items())
         )
-        total_result = [create for create in create_result if create]
+        create_total_result = [create for create in create_result if create]
+        merged_list = await format_merged()
 
-        if group:
-            merged = defaultdict(lambda: defaultdict(list))
-            for case in total_result:
-                for k, v in case.items():
-                    if k != "case":
-                        merged[case["case"]][k].append(v)
-            total_list = [
-                {"case": case, **{k: v for k, v in attrs.items()}} for case, attrs in merged.items()
-            ]
-            for item in total_list:
-                item["merge_list"] = list(zip(item.pop("href"), item.pop("avg"), item.pop("cost_list")))
-            logger.debug("=" * 30)
-            for item in total_list:
-                logger.debug(item["case"])
-                for detail in item["merge_list"]:
-                    logger.debug(detail)
-            logger.debug("=" * 30)
-        else:
-            total_list = total_result
+        for i in merged_list:
+            i["merge_list"] = list(zip(i.pop("href"), i.pop("avg"), i.pop("cost_list")))
+            for j in i["merge_list"]:
+                logger.debug(f"{j}")
 
-        if len(total_list := [single for single in total_list if single]) == 0:
+        if len(total_list := [single for single in merged_list if single]) == 0:
             return logger.warning(f"没有可以汇总的报告 ...")
 
         total_html_temp = Template(total_loc).render(
-            report_time=time.strftime('%Y.%m.%d %H:%M:%S'),
-            total_list=total_list
+            report_time=time.strftime('%Y.%m.%d %H:%M:%S'), total_list=total_list
         )
         total_html = os.path.join(file_name, "NexaFlow.html")
         async with aiofiles.open(total_html, "w", encoding=const.CHARSET) as f:

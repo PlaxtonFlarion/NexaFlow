@@ -3,8 +3,8 @@ import json
 import typing
 from loguru import logger
 from rich.table import Table
+from engine.active import Active
 from frameflow.skills.parser import Parser
-from frameflow.skills.show import Show
 from nexaflow import const
 
 
@@ -306,7 +306,7 @@ class Deploy(object):
 
         for info in information:
             table.add_row(*info)
-        Show.console.print(table)
+        Active.console.print(table)
 
 
 class Option(object):

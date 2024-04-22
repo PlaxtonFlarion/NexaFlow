@@ -35,7 +35,7 @@ class ExampleHook(BaseHook):
         return frame
 
 
-class CompressHook(BaseHook):
+class FrameSizeHook(BaseHook):
 
     def __init__(
         self,
