@@ -385,9 +385,27 @@ class Script(object):
     def dump_script(script_file: str) -> None:
         scripts = {
             "commands": [
-                {"name": "script_1", "loop": 1, "actions": [{"command": "", "args": []}, {"command": "", "args": []}]},
-                {"name": "script_2", "loop": 1, "actions": [{"command": "", "args": []}, {"command": "", "args": []}]},
-                {"name": "script_3", "loop": 1, "actions": [{"command": "", "args": []}, {"command": "", "args": []}]}
+                {
+                    "name": "script_1",
+                    "loop": 1,
+                    "prefix": [{"command": "", "args": []}, {"command": "", "args": []}],
+                    "action": [{"command": "", "args": []}, {"command": "", "args": []}],
+                    "suffix": [{"command": "", "args": []}, {"command": "", "args": []}]
+                },
+                {
+                    "name": "script_2",
+                    "loop": 1,
+                    "prefix": [{"command": "", "args": []}, {"command": "", "args": []}],
+                    "action": [{"command": "", "args": []}, {"command": "", "args": []}],
+                    "suffix": [{"command": "", "args": []}, {"command": "", "args": []}]
+                },
+                {
+                    "name": "script_3",
+                    "loop": 1,
+                    "prefix": [{"command": "", "args": []}, {"command": "", "args": []}],
+                    "action": [{"command": "", "args": []}, {"command": "", "args": []}],
+                    "suffix": [{"command": "", "args": []}, {"command": "", "args": []}]
+                }
             ]
         }
         dump_parameters(script_file, scripts)

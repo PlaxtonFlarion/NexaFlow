@@ -1038,7 +1038,10 @@ class Missions(object):
                     file = await f.read()
                     exec_dict = {
                         cmds["name"]: {
-                            "loop": cmds["loop"], "actions": cmds["actions"]
+                            "loop": cmds["loop"],
+                            "prefix": cmds["prefix"],
+                            "action": cmds["action"],
+                            "suffix": cmds["suffix"]
                         } for cmds in json.loads(file)["commands"]
                     }
             except FileNotFoundError as e:
@@ -1058,14 +1061,14 @@ class Missions(object):
 
             for device_action in device_action_list:
                 if not (device_cmds := device_action["command"]):
-                    logger.error(f"No order found {device_cmds} ...")
+                    logger.error(f"No order found [bold red]{device_cmds}[/bold red] ...")
                     continue
 
                 for device_func in (device_func_list := await asyncio.gather(
                         *(is_function(device_cmds, device, player) for device in device_list)
                 )):
                     if device_func is None:
-                        logger.error(f"There is no such command {device_cmds} ...")
+                        logger.error(f"There is no such command [bold red]{device_cmds}[/bold red] ...")
                         break
                     if device_func.__name__ == "audio_player":
                         device_func_list = [device_func_list[0]]
@@ -1077,9 +1080,28 @@ class Missions(object):
                 yield [dynamically(device_func, method_args, None if len(device_func_list) == 1 else device.serial)
                        for device_func, device in zip(device_func_list, device_list) if device_func]
 
-        async def dynamically(function, arg_list, device_sn=None):
+        async def background(device):
+
+            device_exec_list = [
+                [device_action["command"], device_action["args"]]
+                for device_action in device_action_list
+            ]
+            await asyncio.gather(
+                *(dynamically(device_func, method_args, device.serial))
+                for device_func, method_args in device_exec_list
+            )
+
+        async def exec_function():
+            async for exec_func_list in exec_commands():
+                if len(exec_func_list) == 0:
+                    continue
+                for exec_func in await asyncio.gather(*exec_func_list, return_exceptions=True):
+                    if isinstance(exec_func, Exception):
+                        logger.error(f"{exec_func}")
+
+        async def dynamically(function, arg_list, device_sn):
             logger.info(
-                f"{device_sn if device_sn else 'Device'} {function.__name__} {arg_list}"
+                f"{device_sn or 'Device'} {function.__name__} {arg_list}"
             )
             try:
                 if inspect.iscoroutinefunction(function):
@@ -1199,19 +1221,22 @@ class Missions(object):
                     for _ in range(value["loop"]):
                         try:
                             # prefix
+                            if device_action_list := value.get("prefix", None):
+                                await exec_function()
+
                             task_list = await commence()
 
-                            if device_action_list := value.get("actions", None):
-                                async for exec_func_list in exec_commands():
-                                    if len(exec_func_list) == 0:
-                                        continue
-                                    for exec_func in await asyncio.gather(*exec_func_list, return_exceptions=True):
-                                        if isinstance(exec_func, Exception):
-                                            logger.error(f"{exec_func}")
+                            # action
+                            if device_action_list := value.get("action", None):
+                                await exec_function()
 
                             await all_time("many")
                             await all_over()
+
                             # suffix
+                            if device_action_list := value.get("suffix", None):
+                                await exec_function()
+
                             await analysis_tactics()
                             check = await record.event_check()
                             device_list = await manage.operate_device() if check else device_list
