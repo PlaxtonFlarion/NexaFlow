@@ -1201,7 +1201,7 @@ class Missions(object):
                             # prefix
                             task_list = await commence()
 
-                            if device_action_list := value.get("action", None):
+                            if device_action_list := value.get("actions", None):
                                 async for exec_func_list in exec_commands():
                                     if len(exec_func_list) == 0:
                                         continue
