@@ -191,7 +191,7 @@ class Deploy(object):
             parameters = load_parameters(deploy_file)
             for k, v in self.deploys.items():
                 setattr(self, k, parameters.get(k, v))
-                logger.debug(f"Load <{k}> = {getattr(self, k)}")
+                logger.debug(f"Load <{k}> = {v} -> {getattr(self, k)}")
         except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
             logger.debug(f"Use default parameters because {e}")
         except Exception as e:
@@ -312,10 +312,10 @@ class Deploy(object):
 class Option(object):
 
     options = {
-        "Total Place": "",
-        "Model Place": "",
-        "Model Shape": const.MODEL_SHAPE,
-        "Model Aisle": const.MODEL_AISLE
+        "total_place": "",
+        "model_place": "",
+        "model_shape": const.MODEL_SHAPE,
+        "model_aisle": const.MODEL_AISLE
     }
 
     def __init__(self, option_file: str):
@@ -329,19 +329,19 @@ class Option(object):
 
     @property
     def total_place(self):
-        return self.options["Total Place"]
+        return self.options["total_place"]
 
     @property
     def model_place(self):
-        return self.options["Model Place"]
+        return self.options["model_place"]
 
     @property
     def model_shape(self):
-        return self.options["Model Shape"]
+        return self.options["model_shape"]
 
     @property
     def model_aisle(self):
-        return self.options["Model Aisle"]
+        return self.options["model_aisle"]
 
     @total_place.setter
     def total_place(self, value):
@@ -356,19 +356,19 @@ class Option(object):
     @model_shape.setter
     def model_shape(self, value):
         if effective := Parser.parse_shape(value):
-            self.options["Model Shape"] = effective
+            self.options["model_shape"] = effective
 
     @model_aisle.setter
     def model_aisle(self, value):
         if effective := Parser.parse_aisle(value):
-            self.options["Model Aisle"] = effective
+            self.options["model_aisle"] = effective
 
     def load_option(self, option_file: str) -> None:
         try:
             parameters = load_parameters(option_file)
             for k, v in self.options.items():
                 setattr(self, k, parameters.get(k, v))
-                logger.debug(f"Load <{k}> = {getattr(self, k)}")
+                logger.debug(f"Load <{k}> = {v} -> {getattr(self, k)}")
         except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
             logger.debug(f"Use default parameters because {e}")
             self.dump_option(option_file)
@@ -384,27 +384,15 @@ class Script(object):
     @staticmethod
     def dump_script(script_file: str) -> None:
         scripts = {
-            "commands": [
+            "command": [
                 {
-                    "name": "script_1",
-                    "loop": 1,
-                    "prefix": [{"command": "", "args": []}, {"command": "", "args": []}],
-                    "action": [{"command": "", "args": []}, {"command": "", "args": []}],
-                    "suffix": [{"command": "", "args": []}, {"command": "", "args": []}]
-                },
-                {
-                    "name": "script_2",
-                    "loop": 1,
-                    "prefix": [{"command": "", "args": []}, {"command": "", "args": []}],
-                    "action": [{"command": "", "args": []}, {"command": "", "args": []}],
-                    "suffix": [{"command": "", "args": []}, {"command": "", "args": []}]
-                },
-                {
-                    "name": "script_3",
-                    "loop": 1,
-                    "prefix": [{"command": "", "args": []}, {"command": "", "args": []}],
-                    "action": [{"command": "", "args": []}, {"command": "", "args": []}],
-                    "suffix": [{"command": "", "args": []}, {"command": "", "args": []}]
+                    "ID-X": {
+                        "header": ["script"],
+                        "looper": 1,
+                        "prefix": [{"cmds": "", "args": []}, {"cmds": "", "args": []}],
+                        "action": [{"cmds": "", "args": []}, {"cmds": "", "args": []}],
+                        "suffix": [{"cmds": "", "args": []}, {"cmds": "", "args": []}]
+                    }
                 }
             ]
         }

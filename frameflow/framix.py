@@ -4,6 +4,7 @@ import os
 import sys
 import shutil
 from loguru import logger
+from engine.active import Active
 from frameflow.skills.show import Show
 from nexaflow import const
 
@@ -72,8 +73,6 @@ _initial_source = os.path.join(_feasible, f"{const.NAME}.source")
 
 _total_place = os.path.join(_feasible, f"{const.NAME}.report")
 _model_place = os.path.join(_workable, "archivix", "molds", "Keras_Gray_W256_H256_00000.h5")
-_model_shape = const.MODEL_SHAPE
-_model_aisle = const.MODEL_AISLE
 
 if len(sys.argv) == 1:
     Show.help_document()
@@ -94,13 +93,19 @@ try:
     import asyncio
     import aiofiles
     import datetime
+except KeyboardInterrupt:
+    sys.exit(Show.exit())
+except ImportError:
+    Active.console.print_exception()
+    sys.exit(Show.abnormal_exit())
+
+try:
     from pathlib import Path
     from rich.prompt import Prompt
-# frameflow & nexaflow =================================================================================================
     from engine.manage import Manage
     from engine.switch import Switch
     from engine.terminal import Terminal
-    from engine.active import Active, Review
+    from engine.active import Review
     from frameflow.skills.config import Option
     from frameflow.skills.config import Deploy
     from frameflow.skills.config import Script
@@ -113,9 +118,10 @@ try:
     from nexaflow.hook import FrameSizeHook, FrameSaveHook
     from nexaflow.hook import PaintCropHook, PaintOmitHook
     from nexaflow.classifier.keras_classifier import KerasStruct
-except (ImportError, RuntimeError, ModuleNotFoundError) as _e:
-    logger.error(f"[bold red]Error: {_e}[/bold red]")
-    Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
+except KeyboardInterrupt:
+    sys.exit(Show.exit())
+except ModuleNotFoundError:
+    Active.console.print_exception()
     sys.exit(Show.abnormal_exit())
 
 
@@ -630,7 +636,7 @@ class Missions(object):
         )
         for state in state_list:
             if isinstance(state, Exception):
-                logger.error(state)
+                return logger.error(f"{state}")
 
     async def combines_view(self, merge: list):
         views, total = await asyncio.gather(
@@ -642,7 +648,7 @@ class Missions(object):
         )
         for state in state_list:
             if isinstance(state, Exception):
-                logger.error(state)
+                logger.error(f"{state}")
 
     async def painting(self, *args, **__):
 
@@ -809,7 +815,7 @@ class Missions(object):
 
             todo_list = []
 
-            fmt_dir = time.strftime("%Y%m%d%H%M%S") if self.quick or self.basic or self.keras else None
+            fmt_dir = time.strftime("%Y%m%d%H%M%S") if any((self.quick, self.basic, self.keras)) else None
             for device in device_list:
                 await asyncio.sleep(0.2)
                 record.device_events[device.serial] = {
@@ -964,15 +970,21 @@ class Missions(object):
             for device in device_list:
                 logger.info(f"[bold #00FFAF]Connect:[/bold #00FFAF] {device}")
 
-        async def all_time(style):
-            if style == "less":
-                await asyncio.gather(
-                    *(record.timing_less(serial, events, timer_mode) for serial, events in record.device_events.items())
-                )
-            elif style == "many":
-                await asyncio.gather(
-                    *(record.timing_many(serial, events) for serial, events in record.device_events.items())
-                )
+        async def all_time():
+            await asyncio.gather(
+                *(record.timing_less(serial, events, timer_mode)
+                  for serial, events in record.device_events.items())
+            )
+
+        async def all_stop():
+            effective_list = await asyncio.gather(
+                *(record.close_record(video_temp, transports, events)
+                  for (_, events), (video_temp, transports, *_) in zip(record.device_events.items(), task_list))
+            )
+            for (idx, (effective, video_name)), _ in zip(enumerate(effective_list), task_list):
+                if effective.startswith("视频录制失败"):
+                    task_list.pop(idx)
+                logger.info(f"{effective}: {video_name} ...")
 
         async def all_over():
 
@@ -993,15 +1005,6 @@ class Missions(object):
                 os.remove(video_src)
                 logger.info(f"移除旧的视频 {Path(video_src).name}")
                 return video_dst
-
-            effective_list = await asyncio.gather(
-                *(record.close_record(video_temp, transports, events)
-                  for (_, events), (video_temp, transports, *_) in zip(record.device_events.items(), task_list))
-            )
-            for (idx, (effective, video_name)), _ in zip(enumerate(effective_list), task_list):
-                if effective.startswith("视频录制失败"):
-                    task_list.pop(idx)
-                logger.info(f"{effective}: {video_name} ...")
 
             if len(task_list) == 0:
                 return logger.warning(f"没有有效任务 ...")
@@ -1027,27 +1030,28 @@ class Missions(object):
 
         async def combines_report():
             if len(reporter.range_list) == 0:
-                return False
+                return None
             combines = getattr(self, "combines_view" if self.quick else "combines_main")
-            await combines([os.path.dirname(reporter.total_path)], self.group)
-            return True
+            return await combines([os.path.dirname(reporter.total_path)])
 
         async def load_commands(script):
             try:
                 async with aiofiles.open(script, "r", encoding=const.CHARSET) as f:
-                    file = await f.read()
+                    file_list = json.loads(await f.read())["command"]
                     exec_dict = {
-                        cmds["name"]: {
-                            "loop": cmds["loop"],
-                            "prefix": cmds["prefix"],
-                            "action": cmds["action"],
-                            "suffix": cmds["suffix"]
-                        } for cmds in json.loads(file)["commands"]
+                        file_key: {
+                            **({"header": cmds["header"]} if cmds.get("header") else {}),
+                            **({"looper": cmds["looper"]} if cmds.get("looper") else {}),
+                            **({"prefix": [c for c in cmds.get("prefix", []) if c["cmds"]]} if any(
+                                c["cmds"] for c in cmds.get("prefix", [])) else {}),
+                            **({"action": [c for c in cmds.get("action", []) if c["cmds"]]} if any(
+                                c["cmds"] for c in cmds.get("action", [])) else {}),
+                            **({"suffix": [c for c in cmds.get("suffix", []) if c["cmds"]]} if any(
+                                c["cmds"] for c in cmds.get("suffix", [])) else {}),
+                        } for file_dict in file_list for file_key, cmds in file_dict.items()
+                        if any(c["cmds"] for c in cmds.get("action", []))
                     }
-            except FileNotFoundError as e:
-                Script.dump_script(script)
-                return e
-            except (KeyError, json.JSONDecodeError) as e:
+            except (FileNotFoundError, KeyError, json.JSONDecodeError) as e:
                 return e
             return exec_dict
 
@@ -1060,7 +1064,7 @@ class Missions(object):
                 return None
 
             for device_action in device_action_list:
-                if not (device_cmds := device_action["command"]):
+                if not (device_cmds := device_action["cmds"]):
                     logger.error(f"No order found [bold red]{device_cmds}[/bold red] ...")
                     continue
 
@@ -1079,17 +1083,6 @@ class Missions(object):
 
                 yield [dynamically(device_func, method_args, None if len(device_func_list) == 1 else device.serial)
                        for device_func, device in zip(device_func_list, device_list) if device_func]
-
-        async def background(device):
-
-            device_exec_list = [
-                [device_action["command"], device_action["args"]]
-                for device_action in device_action_list
-            ]
-            await asyncio.gather(
-                *(dynamically(device_func, method_args, device.serial))
-                for device_func, method_args in device_exec_list
-            )
 
         async def exec_function():
             async for exec_func_list in exec_commands():
@@ -1139,45 +1132,43 @@ class Missions(object):
 
         # Flick Loop ===================================================================================================
         if self.flick:
-            const_title = f"{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
-            reporter.title = f"{input_title}_{const_title}"
+            const_title_ = f"{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
+            reporter.title = f"{input_title}_{const_title_}"
             timer_mode = 5
             while True:
                 try:
                     await device_mode_view()
-                    start_tips = f"<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/bold #D7FF5F] 秒>>>"
-                    if action := Prompt.ask(prompt=f"[bold #5FD7FF]{start_tips}[/bold #5FD7FF]", console=Active.console):
-                        if (select := action.strip().lower()) == "serial":
+                    start_tips_ = f"<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/bold #D7FF5F] 秒>>>"
+                    if action_ := Prompt.ask(prompt=f"[bold #5FD7FF]{start_tips_}[/bold #5FD7FF]", console=Active.console):
+                        if (select_ := action_.strip().lower()) == "serial":
                             device_list = await manage.operate_device()
                             continue
-                        elif "header" in select:
-                            if match := re.search(r"(?<=header\s).*", select):
-                                if hd := match.group().strip():
-                                    src_hd, a, b = f"{input_title}_{time.strftime('%Y%m%d_%H%M%S')}", 10000, 99999
-                                    logger.success("新标题设置成功 ...")
-                                    reporter.title = f"{src_hd}_{hd}" if hd else f"{src_hd}_{random.randint(a, b)}"
+                        elif "header" in select_:
+                            if match_ := re.search(r"(?<=header\s).*", select_):
+                                if hd_ := match_.group().strip():
+                                    src_hd_, a_, b_ = f"{input_title}_{time.strftime('%Y%m%d_%H%M%S')}", 10000, 99999
+                                    logger.success("[bold green]新标题设置成功[/bold green] ...")
+                                    reporter.title = f"{src_hd_}_{hd_}" if hd_ else f"{src_hd_}_{random.randint(a_, b_)}"
                                     continue
                             raise ValueError
-                        elif select in ["invent", "create"]:
-                            if await combines_report():
-                                break
-                            logger.error(f"[bold red]没有可以生成的报告[/bold red] ...\n")
-                            continue
-                        elif select == "deploy":
-                            logger.warning("[bold yellow]修改 deploy.json 文件后请完全退出编辑器进程再继续操作[/bold yellow] ...")
+                        elif select_ in ["invent", "create"]:
+                            await combines_report()
+                            break
+                        elif select_ == "deploy":
+                            logger.warning("修改 [bold yellow]deploy.json[/bold yellow] 文件后请完全退出编辑器进程再继续操作 ...")
                             deploy.dump_deploy(self.initial_deploy)
-                            first = ["Notepad"] if platform == "win32" else ["open", "-W", "-a", "TextEdit"]
-                            first.append(self.initial_deploy)
-                            await Terminal.cmd_line(*first)
+                            first_ = ["Notepad"] if platform == "win32" else ["open", "-W", "-a", "TextEdit"]
+                            first_.append(self.initial_deploy)
+                            await Terminal.cmd_line(*first_)
                             deploy.load_deploy(self.initial_deploy)
                             deploy.view_deploy()
                             continue
-                        elif select.isdigit():
-                            timer_value, lower_bound, upper_bound = int(select), 5, 300
-                            if timer_value > 300 or timer_value < 5:
-                                bound_tips = f"{lower_bound} <= [bold #FFD7AF]Time[/bold #FFD7AF] <= {upper_bound}"
-                                logger.info(f"[bold #FFFF87]{bound_tips}[/bold #FFFF87]")
-                            timer_mode = max(lower_bound, min(upper_bound, timer_value))
+                        elif select_.isdigit():
+                            timer_value_, lower_bound_, upper_bound_ = int(select_), 5, 300
+                            if timer_value_ > 300 or timer_value_ < 5:
+                                bound_tips_ = f"{lower_bound_} <= [bold #FFD7AF]Time[/bold #FFD7AF] <= {upper_bound_}"
+                                logger.info(f"[bold #FFFF87]{bound_tips_}[/bold #FFFF87]")
+                            timer_mode = max(lower_bound_, min(upper_bound_, timer_value_))
                         else:
                             raise ValueError
                 except ValueError:
@@ -1185,7 +1176,8 @@ class Missions(object):
                     continue
                 else:
                     task_list = await commence()
-                    await all_time("less")
+                    await all_time()
+                    await all_stop()
                     await all_over()
                     await analysis_tactics()
                     check = await record.event_check()
@@ -1198,54 +1190,74 @@ class Missions(object):
         elif self.carry or self.fully:
 
             if self.carry:
-                if isinstance(script_data := await load_commands(self.initial_script), Exception):
-                    return logger.error(f"{script_data}")
+                if isinstance(script_data_ := await load_commands(self.initial_script), Exception):
+                    if isinstance(script_data_, FileNotFoundError):
+                        Script.dump_script(self.initial_script)
+                    return logger.error(f"[bold red]{script_data_}[/bold red]")
                 try:
-                    script_storage = [{carry: script_data[carry] for carry in list(set(self.carry))}]
-                except KeyError as err:
-                    return logger.error(f"{err}")
+                    script_storage_ = [{carry_: script_data_[carry_] for carry_ in list(set(self.carry))}]
+                except KeyError as err_:
+                    return logger.error(f"{err_}")
 
             else:
-                load_result = await asyncio.gather(
-                    *(load_commands(fully) for fully in self.fully), return_exceptions=True
+                load_script_data_ = await asyncio.gather(
+                    *(load_commands(fully_) for fully_ in self.fully), return_exceptions=True
                 )
-                if len(script_data := [i for i in load_result if not isinstance(i, Exception)]) == 0:
-                    return logger.error(f"缺少有效的脚本文件 {' '.join(self.fully)}")
-                script_storage = script_data
+                for script_data_ in load_script_data_:
+                    if isinstance(script_data_, Exception):
+                        if isinstance(script_data_, FileNotFoundError):
+                            Script.dump_script(self.initial_script)
+                        return logger.error(f"[bold red]{script_data_}[/bold red]")
+                script_storage_ = [script_data for script_data in load_script_data_]
 
             await device_mode_view()
-            for script_dict in script_storage:
-                for key, value in script_dict.items():
-                    reporter.title = f"{key.replace(' ', '')}_{input_title}"
-                    logger.info(f"Exec: {key}")
-                    for _ in range(value["loop"]):
-                        try:
-                            # prefix
-                            if device_action_list := value.get("prefix", None):
-                                await exec_function()
+            for script_dict_ in script_storage_:
+                for script_key_, script_value_ in script_dict_.items():
+                    logger.info(f"Exec: {script_key_}")
 
-                            task_list = await commence()
+                    try:
+                        looper_ = int(looper_) if (looper_ := script_value_.get("looper", None)) else 1
+                    except ValueError:
+                        looper_ = 1
 
-                            # action
-                            if device_action_list := value.get("action", None):
-                                await exec_function()
+                    header_ = header_ if type(
+                        header_ := script_value_.get("header", None)
+                    ) is list else ([header_] if type(header_) is str else [time.strftime("%Y%m%d%H%M%S")])
 
-                            await all_time("many")
-                            await all_over()
+                    for h_ in header_:
+                        reporter.title = f"{script_key_.replace(' ', '').strip()}_{input_title}_{h_}"
+                        for _ in range(looper_):
+                            try:
+                                # prefix
+                                if device_action_list := script_value_.get("prefix", None):
+                                    await exec_function()
 
-                            # suffix
-                            if device_action_list := value.get("suffix", None):
-                                await exec_function()
+                                task_start_time_ = time.time()
+                                task_list = await commence()
 
-                            await analysis_tactics()
-                            check = await record.event_check()
-                            device_list = await manage.operate_device() if check else device_list
-                        finally:
-                            await record.clean_check()
+                                # action
+                                if device_action_list := script_value_.get("action", None):
+                                    await exec_function()
 
-            if await combines_report():
-                return True
-            return logger.error(f"[bold red]没有可以生成的报告[/bold red] ...\n")
+                                if task_time_ := time.time() - task_start_time_ < 5:
+                                    await asyncio.sleep(5 - task_time_)
+                                await all_stop()
+
+                                # suffix
+                                suffix_task_ = None
+                                if device_action_list := script_value_.get("suffix", None):
+                                    suffix_task_ = asyncio.create_task(exec_function(), name="suffix")
+
+                                await all_over()
+
+                                await analysis_tactics()
+                                check = await record.event_check()
+                                device_list = await manage.operate_device() if check else device_list
+                                await suffix_task_ if suffix_task_ else None
+                            finally:
+                                await record.clean_check()
+
+            return await combines_report()
         # Other Loop ===================================================================================================
 
         return None
@@ -1269,8 +1281,8 @@ class Alynex(object):
             try:
                 self.kc = KerasStruct(data_size=model_shape, aisle=model_aisle)
                 self.kc.load_model(model_place)
-            except ValueError as err:
-                logger.error(f"{err}")
+            except ValueError:
+                Active.console.print_exception()
                 self.kc = None
 
         self.total_place = total_place
@@ -1704,12 +1716,16 @@ async def scheduling(*args, **kwargs) -> None:
         Show.help_document()
 
 
+async def main(*args, **kwargs):
+    await arithmetic(*args, **kwargs)
+    await scheduling(*args, **kwargs)
+
+
 if __name__ == '__main__':
     _cmd_lines = Parser.parse_cmd()
 
     Active.active(_level := "DEBUG" if _cmd_lines.debug else "INFO")
 
-    # Debug Mode =======================================================================================================
     logger.debug(f"操作系统: {_platform}")
     logger.debug(f"应用名称: {_software}")
     logger.debug(f"系统路径: {_sys_symbol}")
@@ -1732,7 +1748,6 @@ if __name__ == '__main__':
     for _tmp in _temps:
         logger.debug(f"Html-Template: {_tmp}")
     logger.debug(f"* 模版 * {'=' * 30}\n")
-    # Debug Mode =======================================================================================================
 
     _main_loop = asyncio.get_event_loop()
 
@@ -1759,8 +1774,8 @@ if __name__ == '__main__':
     _option = Option(_initial_option)
     _total_place = _option.total_place or _total_place
     _model_place = _option.model_place or _model_place
-    _model_shape = _option.model_shape or _model_shape
-    _model_aisle = _option.model_aisle or _model_aisle
+    _model_shape = _option.model_shape or const.MODEL_SHAPE
+    _model_aisle = _option.model_aisle or const.MODEL_AISLE
     logger.debug(f"报告文件路径: {_total_place}")
     logger.debug(f"模型文件路径: {_model_place}")
     logger.debug(f"模型文件尺寸: 宽 {_model_shape[0]} 高 {_model_shape[1]}")
@@ -1769,10 +1784,10 @@ if __name__ == '__main__':
     logger.debug(f"处理器核心数: {(_power := os.cpu_count())}")
 
     _deploy = Deploy(_initial_deploy)
-    for _attr, _ in _deploy.deploys.items():
+    for _attr, _attribute in _deploy.deploys.items():
         if any(_line.startswith(f"--{_attr}") for _line in _lines):
             setattr(_deploy, _attr, getattr(_cmd_lines, _attr))
-            logger.info(f"Set <{_attr}> = {getattr(_deploy, _attr)}")
+            logger.info(f"Set <{_attr}> = {_attribute} -> {getattr(_deploy, _attr)}")
 
     _missions = Missions(
         _flick, _carry, _fully, _quick, _basic, _keras, _alone, _whist, _group,
@@ -1799,18 +1814,7 @@ if __name__ == '__main__':
     # Main Process =====================================================================================================
     try:
         _main_loop.run_until_complete(
-            arithmetic(
-                _missions, _platform, _cmd_lines, _deploy, _level, _power, _main_loop,
-                total_place=_total_place,
-                model_place=_model_place,
-                model_shape=_model_shape,
-                model_aisle=_model_aisle,
-                fmp=_fmp,
-                fpb=_fpb
-            )
-        )
-        _main_loop.run_until_complete(
-            scheduling(
+            main(
                 _missions, _platform, _cmd_lines, _deploy, _level, _power, _main_loop,
                 total_place=_total_place,
                 model_place=_model_place,
@@ -1822,5 +1826,11 @@ if __name__ == '__main__':
         )
     except KeyboardInterrupt:
         _main_loop.close()
+        sys.exit(Show.exit())
+    except (ArithmeticError, AttributeError, BufferError, LookupError, MemoryError,
+            OSError, RuntimeError, SyntaxError, SystemError, TypeError, ValueError):
+        Active.console.print_exception()
+        sys.exit(Show.abnormal_exit())
+    else:
         sys.exit(Show.normal_exit())
     # Main Process =====================================================================================================

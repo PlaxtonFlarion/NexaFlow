@@ -24,8 +24,8 @@ class Show(object):
     ║       \033[1m\033[32mMissions  Complete\033[0m       ║
     ╚════════════════════════════════╝
 
-    ✦✦✦ {const.DESC} will now automatically exit ✦✦✦
-    ✧✧✧ {const.DESC} see you next ✧✧✧\033[0m
+    ✦✦✦ \033[35m{const.DESC}\033[0m will now automatically exit ✦✦✦
+    ✧✧✧ \033[35m{const.DESC}\033[0m see you next ✧✧✧\033[0m
     """
 
     @staticmethod
@@ -35,8 +35,19 @@ class Show(object):
     ║        \033[1m\033[31mMissions  Failed\033[0m        ║
     ╚════════════════════════════════╝
 
-    ✦✦✦ {const.DESC} will now automatically exit ✦✦✦
-    ✧✧✧ {const.DESC} see you next ✧✧✧\033[0m
+    ✦✦✦ \033[35m{const.DESC}\033[0m will now automatically exit ✦✦✦
+    ✧✧✧ \033[35m{const.DESC}\033[0m see you next ✧✧✧\033[0m
+    """
+
+    @staticmethod
+    def exit():
+        return f"""
+    \033[1m╔════════════════════════════════╗
+    ║        \033[1m\033[33mMissions  Exited\033[0m        ║
+    ╚════════════════════════════════╝
+
+    ✦✦✦ \033[35m{const.DESC}\033[0m will now automatically exit ✦✦✦
+    ✧✧✧ \033[35m{const.DESC}\033[0m see you next ✧✧✧\033[0m
     """
 
     @staticmethod

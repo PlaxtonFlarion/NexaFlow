@@ -43,20 +43,6 @@ class Record(object):
                 return logger.error(f"{serial} 意外停止 ...")
             await asyncio.sleep(0.2)
 
-    async def timing_many(self, serial, events):
-        controller = events["stop_event"] if self.alone else self.rhythm_events
-        while True:
-            if events["head_event"].is_set():
-                while True:
-                    if controller.is_set():
-                        return logger.success(f"{serial} 主动停止 ...")
-                    elif events["fail_event"].is_set():
-                        return logger.error(f"{serial} 意外停止 ...")
-                    await asyncio.sleep(1)
-            elif events["fail_event"].is_set():
-                return logger.error(f"{serial} 意外停止 ...")
-            await asyncio.sleep(0.2)
-
     async def start_record(self, serial, dst, events):
 
         # Input Stream

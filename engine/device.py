@@ -49,11 +49,11 @@ class Device(_Phone):
         cmd = self.initial + ["shell", "am", "force-stop", package]
         await Terminal.cmd_line(*cmd)
 
-    async def ask_wifi(self, power: str = "enable") -> None:
+    async def ask_wifi(self, power: str) -> None:
         cmd = self.initial + ["shell", "svc", "wifi", power]
         await Terminal.cmd_line(*cmd)
 
-    async def ask_all_package(self, level: int = 10000) -> list[str]:
+    async def ask_all_package(self, level: int) -> list[str]:
         cmd = self.initial + ["shell", "ps"]
         result = await Terminal.cmd_line(*cmd)
         package_list = []
@@ -69,7 +69,7 @@ class Device(_Phone):
         match = re.search(r"(?<=Window\{).*?(?=})", result)
         return match.group().split()[-1].strip() if match else ""
 
-    async def ask_start_app(self, package: str = "com.android.settings/com.android.settings.Settings") -> str:
+    async def ask_start_app(self, package: str) -> str:
         cmd = self.initial + ["shell", "am", "start", "-n", package]
         result = await Terminal.cmd_line(*cmd)
         return result.strip()
