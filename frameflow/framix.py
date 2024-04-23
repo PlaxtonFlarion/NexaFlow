@@ -1107,21 +1107,21 @@ class Missions(object):
         # Initialization ===============================================================================================
         cmd_lines, platform, deploy, level, power, loop, *_ = args
 
-        manage = Manage(self.adb)
-        device_list = await manage.operate_device()
+        manage_ = Manage(self.adb)
+        device_list = await manage_.operate_device()
 
-        titles = {"quick": "Quick", "basic": "Basic", "keras": "Keras"}
-        input_title = next((title for key, title in titles.items() if getattr(self, key)), "Video")
+        titles_ = {"quick": "Quick", "basic": "Basic", "keras": "Keras"}
+        input_title_ = next((title for key, title in titles_.items() if getattr(self, key)), "Video")
         reporter = Report(self.total_place)
 
         if self.keras and not self.quick and not self.basic:
-            attack = self.total_place, self.model_place, self.model_shape, self.model_aisle
+            attack_ = self.total_place, self.model_place, self.model_shape, self.model_aisle
         else:
-            attack = self.total_place, None, None, None
+            attack_ = self.total_place, None, None, None
 
-        charge = platform, self.fmp, self.fpb
+        charge_ = platform, self.fmp, self.fpb
 
-        alynex = Alynex(*attack, *charge)
+        alynex = Alynex(*attack_, *charge_)
         Show.load_animation(cmd_lines)
 
         from engine.medias import Record, Player
@@ -1133,7 +1133,7 @@ class Missions(object):
         # Flick Loop ===================================================================================================
         if self.flick:
             const_title_ = f"{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
-            reporter.title = f"{input_title}_{const_title_}"
+            reporter.title = f"{input_title_}_{const_title_}"
             timer_mode = 5
             while True:
                 try:
@@ -1141,12 +1141,12 @@ class Missions(object):
                     start_tips_ = f"<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/bold #D7FF5F] 秒>>>"
                     if action_ := Prompt.ask(prompt=f"[bold #5FD7FF]{start_tips_}[/bold #5FD7FF]", console=Active.console):
                         if (select_ := action_.strip().lower()) == "serial":
-                            device_list = await manage.operate_device()
+                            device_list = await manage_.operate_device()
                             continue
                         elif "header" in select_:
                             if match_ := re.search(r"(?<=header\s).*", select_):
                                 if hd_ := match_.group().strip():
-                                    src_hd_, a_, b_ = f"{input_title}_{time.strftime('%Y%m%d_%H%M%S')}", 10000, 99999
+                                    src_hd_, a_, b_ = f"{input_title_}_{time.strftime('%Y%m%d_%H%M%S')}", 10000, 99999
                                     logger.success("[bold green]新标题设置成功[/bold green] ...")
                                     reporter.title = f"{src_hd_}_{hd_}" if hd_ else f"{src_hd_}_{random.randint(a_, b_)}"
                                     continue
@@ -1181,7 +1181,7 @@ class Missions(object):
                     await all_over()
                     await analysis_tactics()
                     check = await record.event_check()
-                    device_list = await manage.operate_device() if check else device_list
+                    device_list = await manage_.operate_device() if check else device_list
                 finally:
                     await record.clean_check()
         # Flick Loop ===================================================================================================
@@ -1193,11 +1193,11 @@ class Missions(object):
                 if isinstance(script_data_ := await load_commands(self.initial_script), Exception):
                     if isinstance(script_data_, FileNotFoundError):
                         Script.dump_script(self.initial_script)
-                    return logger.error(f"[bold red]{script_data_}[/bold red]")
+                    return Active.console.print_exception()
                 try:
                     script_storage_ = [{carry_: script_data_[carry_] for carry_ in list(set(self.carry))}]
-                except KeyError as err_:
-                    return logger.error(f"{err_}")
+                except KeyError:
+                    return Active.console.print_exception()
 
             else:
                 load_script_data_ = await asyncio.gather(
@@ -1207,8 +1207,8 @@ class Missions(object):
                     if isinstance(script_data_, Exception):
                         if isinstance(script_data_, FileNotFoundError):
                             Script.dump_script(self.initial_script)
-                        return logger.error(f"[bold red]{script_data_}[/bold red]")
-                script_storage_ = [script_data for script_data in load_script_data_]
+                        return Active.console.print_exception()
+                script_storage_ = [script_data_ for script_data_ in load_script_data_]
 
             await device_mode_view()
             for script_dict_ in script_storage_:
@@ -1218,22 +1218,23 @@ class Missions(object):
                     try:
                         looper_ = int(looper_) if (looper_ := script_value_.get("looper", None)) else 1
                     except ValueError:
-                        looper_ = 1
+                        Active.console.print_exception()
+                        logger.error(f"重置循环次数: {(looper_ := 1)}")
 
                     header_ = header_ if type(
                         header_ := script_value_.get("header", None)
                     ) is list else ([header_] if type(header_) is str else [time.strftime("%Y%m%d%H%M%S")])
 
                     for h_ in header_:
-                        reporter.title = f"{script_key_.replace(' ', '').strip()}_{input_title}_{h_}"
+                        reporter.title = f"{script_key_.replace(' ', '').strip()}_{input_title_}_{h_}"
                         for _ in range(looper_):
                             try:
+
                                 # prefix
                                 if device_action_list := script_value_.get("prefix", None):
                                     await exec_function()
 
-                                task_start_time_ = time.time()
-                                task_list = await commence()
+                                task_start_time_, task_list = time.time(), await commence()
 
                                 # action
                                 if device_action_list := script_value_.get("action", None):
@@ -1252,7 +1253,7 @@ class Missions(object):
 
                                 await analysis_tactics()
                                 check = await record.event_check()
-                                device_list = await manage.operate_device() if check else device_list
+                                device_list = await manage_.operate_device() if check else device_list
                                 await suffix_task_ if suffix_task_ else None
                             finally:
                                 await record.clean_check()
