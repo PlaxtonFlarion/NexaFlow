@@ -1368,12 +1368,12 @@ class Alynex(object):
                 begin_frame = struct.get_not_stable_stage_range()[begin_stage_index][begin_frame_index]
                 final_frame = struct.get_not_stable_stage_range()[final_stage_index][final_frame_index]
             except AssertionError as e:
-                logger.warning(f"{e}")
+                logger.error(f"[bold #FFC0CB]{e}[/bold #FFC0CB]")
                 begin_frame = struct.get_important_frame_list()[0]
                 final_frame = struct.get_important_frame_list()[-1]
-                logger.warning(f"{const.DESC} Analyzer recalculate ...")
+                logger.warning(f"[bold #FFFACD]Analyzer recalculate[/bold #FFFACD] ...")
             except IndexError as e:
-                logger.warning(f"{e}")
+                logger.error(f"[bold #FFC0CB]{e}[/bold #FFC0CB]")
                 for i, unstable_stage in enumerate(struct.get_specific_stage_range("-3")):
                     logger.info(f"第 {i:02} 个非稳定阶段")
                     logger.info(f"{'=' * 30}")
@@ -1382,12 +1382,12 @@ class Alynex(object):
                     logger.info(f"{'=' * 30}\n")
                 begin_frame = struct.get_important_frame_list()[0]
                 final_frame = struct.get_important_frame_list()[-1]
-                logger.warning(f"{const.DESC} Analyzer recalculate ...")
+                logger.warning(f"[bold #FFFACD]Analyzer recalculate[/bold #FFFACD] ...")
 
             if final_frame.frame_id <= begin_frame.frame_id:
                 logger.warning(f"{final_frame} <= {begin_frame}")
                 begin_frame, end_frame = struct.data[0], struct.data[-1]
-                logger.warning(f"{const.DESC} Analyzer recalculate ...")
+                logger.warning(f"[bold #FFFACD]Analyzer recalculate[/bold #FFFACD] ...")
 
             time_cost = final_frame.timestamp - begin_frame.timestamp
             logger.info(
@@ -1484,7 +1484,7 @@ class Alynex(object):
 
             size_hook = FrameSizeHook(1.0, None, True)
             cutter.add_hook(size_hook)
-            logger.info(f"加载视频帧处理单元: {size_hook.__class__.__name__} {size_hook.compress_rate, size_hook.target_size, size_hook.not_grey}")
+            logger.info(f"加载视频帧处理单元: {size_hook.__class__.__name__} {[size_hook.compress_rate, size_hook.target_size, size_hook.not_grey]}")
 
             if len(crop_list := crops) > 0 and sum([j for i in crop_list for j in i.values()]) > 0:
                 for crop in crop_list:

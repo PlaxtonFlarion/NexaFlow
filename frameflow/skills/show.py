@@ -2,12 +2,14 @@ import time
 from loguru import logger
 from rich.text import Text
 from rich.table import Table
+from rich.console import Console
 from rich.progress import Progress
-from engine.active import Active
 from nexaflow import const
 
 
 class Show(object):
+
+    console = Console()
 
     @staticmethod
     def simulation_progress(desc: str, advance: int | float, interval: int | float):
@@ -60,7 +62,7 @@ class Show(object):
     ██║  ╚███║███████╗██╔╝ ██╗██║  ██║  ██║     ███████╗╚██████╔╝╚███╔███╔╝
     ╚═╝   ╚══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝  ╚═╝     ╚══════╝ ╚═════╝  ╚══╝╚══╝
         """
-        Active.console.print(logo)
+        Show.console.print(logo)
 
     @staticmethod
     def minor_logo():
@@ -72,7 +74,7 @@ class Show(object):
               ██║     ██║  ██║██║  ██║     ██║ ╚═╝ ██║██║██╔╝ ██╗
               ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝     ╚═╝     ╚═╝╚═╝╚═╝  ╚═╝
         """
-        Active.console.print(logo)
+        Show.console.print(logo)
 
     @staticmethod
     def help_document():
@@ -146,11 +148,11 @@ class Show(object):
             table_minor.add_row(*minor)
 
         Show.major_logo()
-        Active.console.print(table_major)
+        Show.console.print(table_major)
         Show.simulation_progress(f"{const.DESC} Terminal Command.", 1, 0.05)
 
         Show.minor_logo()
-        Active.console.print(table_minor)
+        Show.console.print(table_minor)
         Show.simulation_progress(f"{const.DESC} Terminal Command.", 1, 0.05)
 
     @staticmethod
@@ -176,7 +178,7 @@ class Show(object):
         for info in information:
             table.add_row(*info)
 
-        Active.console.print(table)
+        Show.console.print(table)
         Show.simulation_progress(f"{const.DESC} Terminal Command.", 1, 0.05)
 
     @staticmethod
@@ -242,7 +244,7 @@ class Show(object):
         def animation(step, function):
             logger.info(start_view)
             for i in range(step):
-                Active.console.print(function(i), justify="left")
+                Show.console.print(function(i), justify="left")
                 time.sleep(0.5)
             return logger.info(close_view)
 
