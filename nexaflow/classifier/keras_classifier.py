@@ -85,7 +85,9 @@ class KerasStruct(BaseModelClassifier):
             raise RuntimeError(
                 f"model is not empty, you can set `overwrite` True to cover it"
             )
+
         self.model = self.create_model()
+        logger.info(f"Keras sequence model load weights")
         self.model.load_weights(model_path)
 
     def create_model(self) -> keras.Sequential:

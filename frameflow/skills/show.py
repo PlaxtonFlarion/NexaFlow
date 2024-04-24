@@ -20,7 +20,7 @@ class Show(object):
                 time.sleep(interval)
 
     @staticmethod
-    def normal_exit():
+    def done():
         return f"""
     \033[1m╔════════════════════════════════╗
     ║       \033[1m\033[32mMissions  Complete\033[0m       ║
@@ -31,7 +31,7 @@ class Show(object):
     """
 
     @staticmethod
-    def abnormal_exit():
+    def fail():
         return f"""
     \033[1m╔════════════════════════════════╗
     ║        \033[1m\033[31mMissions  Failed\033[0m        ║

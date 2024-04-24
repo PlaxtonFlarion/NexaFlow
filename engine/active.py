@@ -6,7 +6,7 @@ from nexaflow import const
 
 class RichSink(RichHandler):
 
-    def __init__(self, console):
+    def __init__(self, console: "Console"):
         super().__init__(console=console, rich_tracebacks=True, show_path=False, show_time=False)
 
     def emit(self, record):
@@ -16,13 +16,11 @@ class RichSink(RichHandler):
 
 class Active(object):
 
-    console = Console()
-
     @staticmethod
     def active(log_level: str):
         logger.remove(0)
         log_format = f"[bold]{const.DESC} | <level>{{level: <8}}</level> | <level>{{message}}</level>"
-        logger.add(RichSink(Active.console), format=log_format, level=log_level.upper(), diagnose=False)
+        logger.add(RichSink(Console()), format=log_format, level=log_level.upper(), diagnose=False)
 
 
 class Review(object):
@@ -46,6 +44,28 @@ class Review(object):
         return f"<Review start={start} end={end} cost={cost} struct={kc}>"
 
     __repr__ = __str__
+
+
+class FramixError(Exception):
+    pass
+
+
+class FramixAnalysisError(FramixError):
+
+    def __init__(self, msg):
+        self.msg = msg
+
+
+class FramixAnalyzerError(FramixError):
+
+    def __init__(self, msg):
+        self.msg = msg
+
+
+class FramixReporterError(FramixError):
+
+    def __init__(self, msg):
+        self.msg = msg
 
 
 if __name__ == '__main__':

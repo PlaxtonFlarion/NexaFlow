@@ -12,6 +12,8 @@ from pathlib import Path
 from loguru import logger
 from jinja2 import Template
 from collections import defaultdict
+
+from engine.active import FramixReporterError
 from nexaflow import toolbox, const
 from nexaflow.classifier.base import ClassifierResult
 
@@ -114,7 +116,7 @@ class Report(object):
             logger.info(f"生成汇总报告: {report_html}")
 
     @staticmethod
-    async def ask_merge_report(merge_list: typing.Union[list, tuple], template_file: str) -> None:
+    async def ask_merge_report(merge_list: typing.Union[list, tuple], template_file: str):
 
         async def assemble(file):
             async with aiofiles.open(file) as recovery_file:
@@ -122,7 +124,7 @@ class Report(object):
 
         log_file = "Nexa_Recovery", "nexaflow.log"
         if not (log_file_list := [os.path.join(os.path.dirname(merge), *log_file) for merge in merge_list]):
-            return logger.warning(f"没有可以合并的报告 ...")
+            return FramixReporterError(f"没有可以合并的报告 ...")
 
         merge_name = f"Union_Report_{(merge_time := time.strftime('%Y%m%d%H%M%S'))}", "Nexa_Collection"
         merge_path = os.path.join(os.path.dirname(os.path.dirname(merge_list[0])), *merge_name)
@@ -135,11 +137,11 @@ class Report(object):
         ignore = "NexaFlow.html", "nexaflow.log"
         for m in merge_list:
             if isinstance(m, Exception):
-                return logger.error(f"{m}")
+                return FramixReporterError(m)
             shutil.copytree(m, merge_path, ignore=shutil.ignore_patterns(*ignore), dirs_exist_ok=True)
 
         if not (total_list := [json.loads(i) for logs in merge_log_list for i in logs if i]):
-            return logger.warning(f"没有可以合并的报告 ...")
+            return FramixReporterError(f"没有可以合并的报告 ...")
 
         html = Template(template_file).render(
             report_time=merge_time, total_list=total_list
@@ -148,7 +150,8 @@ class Report(object):
         report_html = os.path.join(os.path.dirname(merge_path), "NexaFlow.html")
         async with aiofiles.open(report_html, "w", encoding=const.CHARSET) as f:
             await f.write(html)
-            logger.info(f"合并汇总报告: {report_html}")
+
+        return report_html
 
     @staticmethod
     async def ask_create_report(total: "Path", title: str, serial: str, parts_list: list, style_loc: str):
@@ -258,14 +261,14 @@ class Report(object):
             async with aiofiles.open(os.path.join(file_name, *log_file), "r", encoding=const.CHARSET) as f:
                 open_file = await f.read()
         except FileNotFoundError as e:
-            return e
+            return FramixReporterError(e)
 
         if match_quicker_list := re.findall(r"(?<=Quicker: ).*}", open_file):
             match_list = match_quicker_list
         elif match_restore_list := re.findall(r"(?<=Restore: ).*}", open_file):
             match_list = match_restore_list
         else:
-            return logger.warning(f"没有符合条件的数据 ...")
+            return FramixReporterError(f"没有符合条件的数据 ...")
 
         parts_list: list[dict] = [
             json.loads(file) for file in match_list if file
@@ -301,11 +304,15 @@ class Report(object):
         for detail in packed_dict.values():
             logger.debug(f"{detail}")
 
-        create_result = await asyncio.gather(
-            *(Report.ask_create_report(
-                Path(os.path.join(file_name, total)), title, sn, result_dict, style_loc)
-                for (total, title, sn), result_dict in packed_dict.items())
-        )
+        try:
+            create_result = await asyncio.gather(
+                *(Report.ask_create_report(
+                    Path(os.path.join(file_name, total)), title, sn, result_dict, style_loc)
+                    for (total, title, sn), result_dict in packed_dict.items())
+            )
+        except Exception as e:
+            return FramixReporterError(e)
+
         create_total_result = [create for create in create_result if create]
         merged_list = await format_merged()
 
@@ -315,7 +322,7 @@ class Report(object):
                 logger.debug(f"{j}")
 
         if len(total_list := [single for single in merged_list if single]) == 0:
-            return logger.warning(f"没有可以汇总的报告 ...")
+            return FramixReporterError(f"没有可以汇总的报告 ...")
 
         total_html_temp = Template(total_loc).render(
             report_time=time.strftime('%Y.%m.%d %H:%M:%S'), total_list=total_list
@@ -323,7 +330,8 @@ class Report(object):
         total_html = os.path.join(file_name, "NexaFlow.html")
         async with aiofiles.open(total_html, "w", encoding=const.CHARSET) as f:
             await f.write(total_html_temp)
-            logger.info(f"生成汇总报告: {os.path.relpath(total_html)}")
+
+        return total_html
 
     @staticmethod
     async def ask_draw(
@@ -445,7 +453,6 @@ class Report(object):
 
         async with aiofiles.open(report_path, "w", encoding=const.CHARSET) as f:
             await f.write(html_template)
-        logger.info(f"生成阶段报告: {os.path.basename(report_path)}")
 
         return report_path
 

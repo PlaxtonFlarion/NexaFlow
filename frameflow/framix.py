@@ -4,7 +4,6 @@ import os
 import sys
 import shutil
 from loguru import logger
-from engine.active import Active
 from frameflow.skills.show import Show
 from nexaflow import const
 
@@ -28,7 +27,7 @@ elif _software == f"{const.NAME}.py":
 else:
     logger.error(f"Software compatible with [bold red]{const.NAME}[/bold red] ...")
     Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
-    sys.exit(Show.abnormal_exit())
+    sys.exit(Show.fail())
 
 _turbo = os.path.join(_workable, "archivix", "tools")
 
@@ -45,7 +44,7 @@ elif _platform == "darwin":
 else:
     logger.error(f"{const.NAME} compatible with [bold red]Win & Mac[/bold red] ...")
     Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
-    sys.exit(Show.abnormal_exit())
+    sys.exit(Show.fail())
 
 for _tls in (_tools := [_adb, _fmp, _fpb, _scc]):
     os.environ["PATH"] = os.path.dirname(_tls) + _env_symbol + os.environ.get("PATH", "")
@@ -54,7 +53,7 @@ for _tls in _tools:
     if not shutil.which((_tls_name := os.path.basename(_tls))):
         logger.error(f"{const.NAME} missing files [bold red]{_tls_name}[/bold red] ...")
         Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
-        sys.exit(Show.abnormal_exit())
+        sys.exit(Show.fail())
 
 _atom_total_temp = os.path.join(_workable, "archivix", "pages", "template_atom_total.html")
 _main_share_temp = os.path.join(_workable, "archivix", "pages", "template_main_share.html")
@@ -67,7 +66,7 @@ for _tmp in (_temps := [_atom_total_temp, _main_share_temp, _main_total_temp, _v
         _tmp_name = os.path.basename(_tmp)
         logger.error(f"{const.NAME} missing files [bold red]{_tmp_name}[/bold red] ...")
         Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
-        sys.exit(Show.abnormal_exit())
+        sys.exit(Show.fail())
 
 _initial_source = os.path.join(_feasible, f"{const.NAME}.source")
 
@@ -76,7 +75,7 @@ _model_place = os.path.join(_workable, "archivix", "molds", "Keras_Gray_W256_H25
 
 if len(sys.argv) == 1:
     Show.help_document()
-    sys.exit(Show.normal_exit())
+    sys.exit(Show.done())
 
 _lines = sys.argv[1:]
 
@@ -93,19 +92,12 @@ try:
     import asyncio
     import aiofiles
     import datetime
-except KeyboardInterrupt:
-    sys.exit(Show.exit())
-except ImportError:
-    Active.console.print_exception()
-    sys.exit(Show.abnormal_exit())
-
-try:
     from pathlib import Path
     from rich.prompt import Prompt
     from engine.manage import Manage
     from engine.switch import Switch
     from engine.terminal import Terminal
-    from engine.active import Review
+    from engine.active import Active, Review, RichSink, FramixReporterError
     from frameflow.skills.config import Option
     from frameflow.skills.config import Deploy
     from frameflow.skills.config import Script
@@ -118,11 +110,9 @@ try:
     from nexaflow.hook import FrameSizeHook, FrameSaveHook
     from nexaflow.hook import PaintCropHook, PaintOmitHook
     from nexaflow.classifier.keras_classifier import KerasStruct
-except KeyboardInterrupt:
-    sys.exit(Show.exit())
-except ModuleNotFoundError:
-    Active.console.print_exception()
-    sys.exit(Show.abnormal_exit())
+except (ImportError, ModuleNotFoundError):
+    Show.console.print_exception()
+    sys.exit(Show.fail())
 
 
 class Missions(object):
@@ -245,7 +235,7 @@ class Missions(object):
             vision_close = Parser.parse_times(vision_close)
             vision_limit = Parser.parse_times(vision_limit)
             logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}]")
-            logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
+            logger.info(f"视频剪辑: start=[{vision_start}] close=[{vision_close}] limit=[{vision_limit}]")
 
             loop.run_until_complete(
                 Switch.ask_video_detach(
@@ -262,17 +252,24 @@ class Missions(object):
                 "frame": os.path.basename(reporter.frame_path),
                 "style": "quick"
             }
+            Show.console.print_json(data=result)
             logger.debug(f"Quicker: {json.dumps(result, ensure_ascii=False)}")
             loop.run_until_complete(reporter.load(result))
 
-            loop.run_until_complete(
-                reporter.ask_create_total_report(
-                    os.path.dirname(reporter.total_path),
-                    self.group,
-                    loop.run_until_complete(achieve(self.view_share_temp)),
-                    loop.run_until_complete(achieve(self.view_total_temp))
+            logger.info(f"正在生成汇总报告 ...")
+            try:
+                total_html = loop.run_until_complete(
+                    reporter.ask_create_total_report(
+                        os.path.dirname(reporter.total_path),
+                        self.group,
+                        loop.run_until_complete(achieve(self.view_share_temp)),
+                        loop.run_until_complete(achieve(self.view_total_temp))
+                    )
                 )
-            )
+            except FramixReporterError:
+                return Show.console.print_exception()
+
+            logger.info(f"成功生成汇总报告 {os.path.relpath(total_html)}")
             return reporter.total_path
 
         elif self.keras and not self.basic:
@@ -312,26 +309,33 @@ class Missions(object):
             original_inform = loop.run_until_complete(
                 reporter.ask_draw(struct, reporter.proto_path, tmp)
             )
-            logger.info(f"模版引擎渲染完毕 ...")
+            logger.info(f"模版引擎渲染完毕 {os.path.relpath(original_inform)}")
             result["extra"] = os.path.basename(reporter.extra_path)
             result["proto"] = os.path.basename(original_inform)
             result["style"] = "keras"
         else:
             result["style"] = "basic"
 
+        Show.console.print_json(data=result)
         logger.debug(f"Restore: {json.dumps(result, ensure_ascii=False)}")
         loop.run_until_complete(reporter.load(result))
 
         self.enforce(reporter, struct, start, end, cost)
 
-        loop.run_until_complete(
-            reporter.ask_create_total_report(
-                os.path.dirname(reporter.total_path),
-                self.group,
-                loop.run_until_complete(achieve(self.main_share_temp)),
-                loop.run_until_complete(achieve(self.main_total_temp))
+        logger.info(f"正在生成汇总报告 ...")
+        try:
+            total_html = loop.run_until_complete(
+                reporter.ask_create_total_report(
+                    os.path.dirname(reporter.total_path),
+                    self.group,
+                    loop.run_until_complete(achieve(self.main_share_temp)),
+                    loop.run_until_complete(achieve(self.main_total_temp))
+                )
             )
-        )
+        except FramixReporterError:
+            return Show.console.print_exception()
+
+        logger.info(f"成功生成汇总报告 {os.path.relpath(total_html)}")
         return reporter.total_path
 
     # """Child Process"""
@@ -384,7 +388,7 @@ class Missions(object):
                     vision_close = Parser.parse_times(vision_close)
                     vision_limit = Parser.parse_times(vision_limit)
                     logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}]")
-                    logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
+                    logger.info(f"视频剪辑: start=[{vision_start}] close=[{vision_close}] limit=[{vision_limit}]")
 
                     loop.run_until_complete(
                         Switch.ask_video_detach(
@@ -401,17 +405,24 @@ class Missions(object):
                         "frame": os.path.basename(reporter.frame_path),
                         "style": "quick"
                     }
+                    Show.console.print_json(data=result)
                     logger.debug(f"Quicker: {json.dumps(result, ensure_ascii=False)}")
                     loop.run_until_complete(reporter.load(result))
 
-            loop.run_until_complete(
-                reporter.ask_create_total_report(
-                    os.path.dirname(reporter.total_path),
-                    self.group,
-                    loop.run_until_complete(achieve(self.view_share_temp)),
-                    loop.run_until_complete(achieve(self.view_total_temp))
+            logger.info(f"正在生成汇总报告 ...")
+            try:
+                total_html = loop.run_until_complete(
+                    reporter.ask_create_total_report(
+                        os.path.dirname(reporter.total_path),
+                        self.group,
+                        loop.run_until_complete(achieve(self.view_share_temp)),
+                        loop.run_until_complete(achieve(self.view_total_temp))
+                    )
                 )
-            )
+            except FramixReporterError:
+                return Show.console.print_exception()
+
+            logger.info(f"成功生成汇总报告 {os.path.relpath(total_html)}")
             return reporter.total_path
 
         elif self.keras and not self.basic:
@@ -457,26 +468,33 @@ class Missions(object):
                     original_inform = loop.run_until_complete(
                         reporter.ask_draw(struct, reporter.proto_path, tmp)
                     )
-                    logger.info(f"模版引擎渲染完毕 ...")
+                    logger.info(f"模版引擎渲染完毕 {os.path.relpath(original_inform)}")
                     result["extra"] = os.path.basename(reporter.extra_path)
                     result["proto"] = os.path.basename(original_inform)
                     result["style"] = "keras"
                 else:
                     result["style"] = "basic"
 
+                Show.console.print_json(data=result)
                 logger.debug(f"Restore: {json.dumps(result, ensure_ascii=False)}")
                 loop.run_until_complete(reporter.load(result))
 
                 self.enforce(reporter, struct, start, end, cost)
 
-        loop.run_until_complete(
-            reporter.ask_create_total_report(
-                os.path.dirname(reporter.total_path),
-                self.group,
-                loop.run_until_complete(achieve(self.main_share_temp)),
-                loop.run_until_complete(achieve(self.main_total_temp))
+        logger.info(f"正在生成汇总报告 ...")
+        try:
+            total_html = loop.run_until_complete(
+                reporter.ask_create_total_report(
+                    os.path.dirname(reporter.total_path),
+                    self.group,
+                    loop.run_until_complete(achieve(self.main_share_temp)),
+                    loop.run_until_complete(achieve(self.main_total_temp))
+                )
             )
-        )
+        except FramixReporterError:
+            return Show.console.print_exception()
+
+        logger.info(f"成功生成汇总报告 {os.path.relpath(total_html)}")
         return reporter.total_path
 
     # """Child Process"""
@@ -516,7 +534,7 @@ class Missions(object):
         vision_close = Parser.parse_times(vision_close)
         vision_limit = Parser.parse_times(vision_limit)
         logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}]")
-        logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
+        logger.info(f"视频剪辑: start=[{vision_start}] close=[{vision_close}] limit=[{vision_limit}]")
 
         asyncio.run(
             Switch.ask_video_change(
@@ -631,24 +649,28 @@ class Missions(object):
             achieve(self.main_share_temp), achieve(self.main_total_temp),
             return_exceptions=True
         )
+        logger.info(f"正在生成汇总报告 ...")
         state_list = await asyncio.gather(
             *(Report.ask_create_total_report(m, self.group, major, total) for m in merge)
         )
         for state in state_list:
             if isinstance(state, Exception):
-                return logger.error(f"{state}")
+                logger.error(f"[bold #FFC0CB]{state}[/bold #FFC0CB]")
+            logger.info(f"成功生成汇总报告 {os.path.relpath(state)}")
 
     async def combines_view(self, merge: list):
         views, total = await asyncio.gather(
             achieve(self.view_share_temp), achieve(self.view_total_temp),
             return_exceptions=True
         )
+        logger.info(f"正在生成汇总报告 ...")
         state_list = await asyncio.gather(
             *(Report.ask_create_total_report(m, self.group, views, total) for m in merge)
         )
         for state in state_list:
             if isinstance(state, Exception):
-                logger.error(f"{state}")
+                logger.error(f"[bold #FFC0CB]{state}[/bold #FFC0CB]")
+            logger.info(f"成功生成汇总报告 {os.path.relpath(state)}")
 
     async def painting(self, *args, **__):
 
@@ -783,7 +805,7 @@ class Missions(object):
         while True:
             action = Prompt.ask(
                 f"[bold]保存图片([bold #5fd700]Y[/bold #5fd700]/[bold #ff87af]N[/bold #ff87af])?[/bold]",
-                console=Active.console, default="Y"
+                console=Show.console, default="Y"
             )
             if action.strip().upper() == "Y":
                 reporter = Report(self.total_place)
@@ -886,7 +908,7 @@ class Missions(object):
                         )
                     )
                     logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}]")
-                    logger.info(f"start=[{vision_start}] - close=[{vision_close}] - limit=[{vision_limit}]")
+                    logger.info(f"视频剪辑: start=[{vision_start}] close=[{vision_close}] limit=[{vision_limit}]")
 
                 await asyncio.gather(
                     *(Switch.ask_video_detach(
@@ -907,6 +929,7 @@ class Missions(object):
                         "frame": os.path.basename(reporter.frame_path),
                         "style": "quick"
                     }
+                    Show.console.print_json(data=result)
                     logger.debug(f"Quicker: {json.dumps(result, ensure_ascii=False)}")
                     await reporter.load(result)
 
@@ -950,13 +973,14 @@ class Missions(object):
                             return logger.error(f"[bold red]{tmp}[/bold red]")
                         logger.info(f"模版引擎正在渲染 ...")
                         original_inform = await reporter.ask_draw(struct, proto_path, tmp)
-                        logger.info(f"模版引擎渲染完毕 ...")
+                        logger.info(f"模版引擎渲染完毕 {os.path.relpath(original_inform)}")
                         result["extra"] = os.path.basename(extra_path)
                         result["proto"] = os.path.basename(original_inform)
                         result["style"] = "keras"
                     else:
                         result["style"] = "basic"
 
+                    Show.console.print_json(data=result)
                     logger.debug(f"Restore: {json.dumps(result, ensure_ascii=False)}")
                     await reporter.load(result)
 
@@ -1028,18 +1052,19 @@ class Missions(object):
             for idx, dst in enumerate(video_dst_list):
                 task_list[idx][0] = dst
 
-        async def combines_report():
+        async def combines():
             if len(reporter.range_list) == 0:
                 return None
-            combines = getattr(self, "combines_view" if self.quick else "combines_main")
-            return await combines([os.path.dirname(reporter.total_path)])
+            report = getattr(self, "combines_view" if self.quick else "combines_main")
+            return await report([os.path.dirname(reporter.total_path)])
 
-        async def load_commands(script):
+        async def load_commands(script: typing.Union[str, "os.PathLike"]):
             try:
                 async with aiofiles.open(script, "r", encoding=const.CHARSET) as f:
                     file_list = json.loads(await f.read())["command"]
                     exec_dict = {
                         file_key: {
+                            **({"parser": cmds["parser"]} if cmds.get("parser") else {}),
                             **({"header": cmds["header"]} if cmds.get("header") else {}),
                             **({"looper": cmds["looper"]} if cmds.get("looper") else {}),
                             **({"prefix": [c for c in cmds.get("prefix", []) if c["cmds"]]} if any(
@@ -1055,54 +1080,43 @@ class Missions(object):
                 return e
             return exec_dict
 
-        async def exec_commands():
-
-            async def is_function(func_name, *func_args):
-                for func_arg in func_args:
-                    if callable(is_func := getattr(func_arg, func_name, None)):
-                        return is_func
-                return None
-
+        async def loop_commands():
             for device_action in device_action_list:
-                if not (device_cmds := device_action["cmds"]):
-                    logger.error(f"No order found [bold red]{device_cmds}[/bold red] ...")
-                    continue
-
-                for device_func in (device_func_list := await asyncio.gather(
-                        *(is_function(device_cmds, device, player) for device in device_list)
-                )):
-                    if device_func is None:
-                        logger.error(f"There is no such command [bold red]{device_cmds}[/bold red] ...")
-                        break
-                    if device_func.__name__ == "audio_player":
-                        device_func_list = [device_func_list[0]]
-                        break
-
-                if not (method_args := device_action.get("args", None)):
-                    continue
-
-                yield [dynamically(device_func, method_args, None if len(device_func_list) == 1 else device.serial)
-                       for device_func, device in zip(device_func_list, device_list) if device_func]
+                if device_cmds := device_action.get("cmds", []):
+                    device_args = device_action.get("args", [])
+                    device_args += [[]] * (len(device_cmds) - len(device_args))
+                    yield list(zip(device_cmds, device_args))
 
         async def exec_function():
-            async for exec_func_list in exec_commands():
-                if len(exec_func_list) == 0:
-                    continue
-                for exec_func in await asyncio.gather(*exec_func_list, return_exceptions=True):
-                    if isinstance(exec_func, Exception):
-                        logger.error(f"{exec_func}")
+            async for cmd_arg_pairs in loop_commands():
+                exec_tasks = []
+                for device in device_list:
+                    for exec_func, exec_args in cmd_arg_pairs:
+                        if exec_func == "audio_player":
+                            await dynamically(exec_func, exec_args, player)
+                        else:
+                            exec_tasks.append(
+                                asyncio.create_task(dynamically(exec_func, exec_args, device))
+                            )
 
-        async def dynamically(function, arg_list, device_sn):
-            logger.info(
-                f"{device_sn or 'Device'} {function.__name__} {arg_list}"
-            )
+                exec_status_list = await asyncio.gather(*exec_tasks, return_exceptions=True)
+
+                for status in exec_status_list:
+                    if isinstance(status, Exception):
+                        logger.error(f"[bold #FFC0CB]{status}[/bold #FFC0CB]")
+
+        async def dynamically(exec_func: str, exec_args: list, bean: type[typing.Union["Device", "Player"]]):
+            if not (callable(function := getattr(bean, exec_func, None))):
+                return logger.error(f"No callable [bold #FFC0CB]{exec_func}[/bold #FFC0CB] ...")
+
+            logger.info(f"{getattr(bean, 'serial', bean.__class__.__name__)} {function.__name__} {exec_args}")
             try:
                 if inspect.iscoroutinefunction(function):
-                    await function(*arg_list)
+                    await function(*exec_args)
                 else:
-                    await asyncio.to_thread(function, *arg_list)
+                    await asyncio.to_thread(function, *exec_args)
             except Exception as e:
-                logger.error(f"{e}")
+                return e
 
         # Initialization ===============================================================================================
         cmd_lines, platform, deploy, level, power, loop, *_ = args
@@ -1124,6 +1138,7 @@ class Missions(object):
         alynex = Alynex(*attack_, *charge_)
         Show.load_animation(cmd_lines)
 
+        from engine.device import Device
         from engine.medias import Record, Player
         record = Record(self.scc, platform, alone=self.alone, whist=self.whist)
         player = Player()
@@ -1139,7 +1154,7 @@ class Missions(object):
                 try:
                     await device_mode_view()
                     start_tips_ = f"<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/bold #D7FF5F] 秒>>>"
-                    if action_ := Prompt.ask(prompt=f"[bold #5FD7FF]{start_tips_}[/bold #5FD7FF]", console=Active.console):
+                    if action_ := Prompt.ask(prompt=f"[bold #5FD7FF]{start_tips_}[/bold #5FD7FF]", console=Show.console):
                         if (select_ := action_.strip().lower()) == "serial":
                             device_list = await manage_.operate_device()
                             continue
@@ -1152,7 +1167,7 @@ class Missions(object):
                                     continue
                             raise ValueError
                         elif select_ in ["invent", "create"]:
-                            await combines_report()
+                            await combines()
                             break
                         elif select_ == "deploy":
                             logger.warning("修改 [bold yellow]deploy.json[/bold yellow] 文件后请完全退出编辑器进程再继续操作 ...")
@@ -1180,8 +1195,8 @@ class Missions(object):
                     await all_stop()
                     await all_over()
                     await analysis_tactics()
-                    check = await record.event_check()
-                    device_list = await manage_.operate_device() if check else device_list
+                    check_ = await record.event_check()
+                    device_list = await manage_.operate_device() if check_ else device_list
                 finally:
                     await record.clean_check()
         # Flick Loop ===================================================================================================
@@ -1193,11 +1208,11 @@ class Missions(object):
                 if isinstance(script_data_ := await load_commands(self.initial_script), Exception):
                     if isinstance(script_data_, FileNotFoundError):
                         Script.dump_script(self.initial_script)
-                    return Active.console.print_exception()
+                    return Show.console.print_exception()
                 try:
                     script_storage_ = [{carry_: script_data_[carry_] for carry_ in list(set(self.carry))}]
-                except KeyError:
-                    return Active.console.print_exception()
+                except KeyError as e_:
+                    return logger.error(f"[bold #FFC0CB]{e_}[/bold #FFC0CB]")
 
             else:
                 load_script_data_ = await asyncio.gather(
@@ -1207,7 +1222,7 @@ class Missions(object):
                     if isinstance(script_data_, Exception):
                         if isinstance(script_data_, FileNotFoundError):
                             Script.dump_script(self.initial_script)
-                        return Active.console.print_exception()
+                        return Show.console.print_exception()
                 script_storage_ = [script_data_ for script_data_ in load_script_data_]
 
             await device_mode_view()
@@ -1217,16 +1232,16 @@ class Missions(object):
 
                     try:
                         looper_ = int(looper_) if (looper_ := script_value_.get("looper", None)) else 1
-                    except ValueError:
-                        Active.console.print_exception()
+                    except ValueError as e_:
+                        logger.error(f"[bold #FFC0CB]{e_}[/bold #FFC0CB]")
                         logger.error(f"重置循环次数: {(looper_ := 1)}")
 
                     header_ = header_ if type(
                         header_ := script_value_.get("header", None)
                     ) is list else ([header_] if type(header_) is str else [time.strftime("%Y%m%d%H%M%S")])
 
-                    for h_ in header_:
-                        reporter.title = f"{script_key_.replace(' ', '').strip()}_{input_title_}_{h_}"
+                    for hd_ in header_:
+                        reporter.title = f"{script_key_.replace(' ', '').strip()}_{input_title_}_{hd_}"
                         for _ in range(looper_):
                             try:
 
@@ -1252,13 +1267,13 @@ class Missions(object):
                                 await all_over()
 
                                 await analysis_tactics()
-                                check = await record.event_check()
-                                device_list = await manage_.operate_device() if check else device_list
+                                check_ = await record.event_check()
+                                device_list = await manage_.operate_device() if check_ else device_list
                                 await suffix_task_ if suffix_task_ else None
                             finally:
                                 await record.clean_check()
 
-            return await combines_report()
+            return await combines()
         # Other Loop ===================================================================================================
 
         return None
@@ -1270,8 +1285,8 @@ class Alynex(object):
 
     def __init__(
             self,
-            total_place: typing.Optional[typing.Union[str, os.PathLike]],
-            model_place: typing.Optional[typing.Union[str, os.PathLike]],
+            total_place: typing.Optional[typing.Union[str, "os.PathLike"]],
+            model_place: typing.Optional[typing.Union[str, "os.PathLike"]],
             model_shape: typing.Optional[tuple],
             model_aisle: typing.Optional[int],
             *args,
@@ -1283,7 +1298,7 @@ class Alynex(object):
                 self.kc = KerasStruct(data_size=model_shape, aisle=model_aisle)
                 self.kc.load_model(model_place)
             except ValueError:
-                Active.console.print_exception()
+                Show.console.print_exception()
                 self.kc = None
 
         self.total_place = total_place
@@ -1307,7 +1322,7 @@ class Alynex(object):
         pass
 
     async def ask_analyzer(
-            self, vision: typing.Union[str, os.PathLike], deploy: "Deploy" = None, *args, **kwargs
+            self, vision: typing.Union[str, "os.PathLike"], deploy: "Deploy" = None, *args, **kwargs
     ) -> typing.Optional["Review"]:
 
         frame_path, extra_path, *_ = args
@@ -1364,30 +1379,20 @@ class Alynex(object):
             logger.info(f"阶段划分: {struct.get_ordered_stage_set()}")
             begin_stage_index, begin_frame_index = begin
             final_stage_index, final_frame_index = final
+
             try:
                 begin_frame = struct.get_not_stable_stage_range()[begin_stage_index][begin_frame_index]
                 final_frame = struct.get_not_stable_stage_range()[final_stage_index][final_frame_index]
-            except AssertionError as e:
+            except (AssertionError, IndexError) as e:
                 logger.error(f"[bold #FFC0CB]{e}[/bold #FFC0CB]")
+                logger.warning(f"[bold #FFFACD]Analyzer recalculate[/bold #FFFACD] ...")
                 begin_frame = struct.get_important_frame_list()[0]
                 final_frame = struct.get_important_frame_list()[-1]
-                logger.warning(f"[bold #FFFACD]Analyzer recalculate[/bold #FFFACD] ...")
-            except IndexError as e:
-                logger.error(f"[bold #FFC0CB]{e}[/bold #FFC0CB]")
-                for i, unstable_stage in enumerate(struct.get_specific_stage_range("-3")):
-                    logger.info(f"第 {i:02} 个非稳定阶段")
-                    logger.info(f"{'=' * 30}")
-                    for j, frame in enumerate(unstable_stage):
-                        logger.info(f"第 {j:05} 帧: {frame}")
-                    logger.info(f"{'=' * 30}\n")
-                begin_frame = struct.get_important_frame_list()[0]
-                final_frame = struct.get_important_frame_list()[-1]
-                logger.warning(f"[bold #FFFACD]Analyzer recalculate[/bold #FFFACD] ...")
 
             if final_frame.frame_id <= begin_frame.frame_id:
                 logger.warning(f"{final_frame} <= {begin_frame}")
-                begin_frame, end_frame = struct.data[0], struct.data[-1]
                 logger.warning(f"[bold #FFFACD]Analyzer recalculate[/bold #FFFACD] ...")
+                begin_frame, end_frame = struct.data[0], struct.data[-1]
 
             time_cost = final_frame.timestamp - begin_frame.timestamp
             logger.info(
@@ -1437,7 +1442,7 @@ class Alynex(object):
 
             return target_vision, target_shape, target_scale
 
-        async def frame_load():
+        async def color_load():
             video.hued_data = tuple(hued_future.result())
             logger.info(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
             hued_thread.shutdown()
@@ -1445,7 +1450,7 @@ class Alynex(object):
         async def frame_hold():
             if struct is None:
                 if color:
-                    await frame_load()
+                    await color_load()
                     return [i for i in video.hued_data]
                 return [i for i in video.grey_data]
 
@@ -1474,7 +1479,7 @@ class Alynex(object):
                 logger.info(f"获取全部帧: {len(frames_list)}")
 
             if color:
-                await frame_load()
+                await color_load()
                 return [video.hued_data[frame.frame_id - 1] for frame in frames_list]
             return [frame for frame in frames_list]
 
@@ -1484,25 +1489,37 @@ class Alynex(object):
 
             size_hook = FrameSizeHook(1.0, None, True)
             cutter.add_hook(size_hook)
-            logger.info(f"加载视频帧处理单元: {size_hook.__class__.__name__} {[size_hook.compress_rate, size_hook.target_size, size_hook.not_grey]}")
+            logger.info(
+                f"加载视频帧处理单元: {size_hook.__class__.__name__} "
+                f"{[size_hook.compress_rate, size_hook.target_size, size_hook.not_grey]}"
+            )
 
             if len(crop_list := crops) > 0 and sum([j for i in crop_list for j in i.values()]) > 0:
                 for crop in crop_list:
                     x, y, x_size, y_size = crop.values()
                     crop_hook = PaintCropHook((y_size, x_size), (y, x))
                     cutter.add_hook(crop_hook)
-                    logger.info(f"加载视频帧处理单元: {crop_hook.__class__.__name__} {x, y, x_size, y_size}")
+                    logger.info(
+                        f"加载视频帧处理单元: {crop_hook.__class__.__name__} "
+                        f"{x, y, x_size, y_size}"
+                    )
 
             if len(omit_list := omits) > 0 and sum([j for i in omit_list for j in i.values()]) > 0:
                 for omit in omit_list:
                     x, y, x_size, y_size = omit.values()
                     omit_hook = PaintOmitHook((y_size, x_size), (y, x))
                     cutter.add_hook(omit_hook)
-                    logger.info(f"加载视频帧处理单元: {omit_hook.__class__.__name__} {x, y, x_size, y_size}")
+                    logger.info(
+                        f"加载视频帧处理单元: {omit_hook.__class__.__name__} "
+                        f"{x, y, x_size, y_size}"
+                    )
 
             save_hook = FrameSaveHook(extra_path)
             cutter.add_hook(save_hook)
-            logger.info(f"加载视频帧处理单元: {save_hook.__class__.__name__} {[os.path.basename(extra_path)]}")
+            logger.info(
+                f"加载视频帧处理单元: {save_hook.__class__.__name__} "
+                f"{[os.path.basename(extra_path)]}"
+            )
 
             logger.info(f"压缩视频: {video.name}")
             logger.info(f"视频帧数: {video.frame_count} 片段数: {video.frame_count - 1} 分辨率: {video.frame_size}")
@@ -1639,7 +1656,12 @@ async def arithmetic(*args, **kwargs) -> None:
         template_total = await achieve(
             missions.view_total_temp if missions.quick else missions.main_total_temp
         )
-        await Report.ask_merge_report(results, template_total)
+        logger.info(f"正在合并汇总报告 ...")
+        try:
+            report_html = await Report.ask_merge_report(results, template_total)
+        except FramixReporterError:
+            return Show.console.print_exception()
+        logger.info(f"合并汇总报告完成 {os.path.relpath(report_html)}")
 
     missions, platform, cmd_lines, deploy, level, power, loop, *_ = args
     _ = kwargs["total_place"]
@@ -1658,7 +1680,7 @@ async def arithmetic(*args, **kwargs) -> None:
                 *(loop.run_in_executor(exe, missions.video_file_task, i, deploy) for i in video_list)
             )
         await multiple_merge(video_list)
-        sys.exit(Show.normal_exit())
+        sys.exit(Show.done())
 
     # --stack ==========================================================================================================
     elif stack_list := cmd_lines.stack:
@@ -1669,7 +1691,7 @@ async def arithmetic(*args, **kwargs) -> None:
                 *(loop.run_in_executor(exe, missions.video_data_task, i, deploy) for i in stack_list)
             )
         await multiple_merge(stack_list)
-        sys.exit(Show.normal_exit())
+        sys.exit(Show.done())
 
     # --train ==========================================================================================================
     elif train_list := cmd_lines.train:
@@ -1678,7 +1700,7 @@ async def arithmetic(*args, **kwargs) -> None:
             results = await asyncio.gather(
                 *(loop.run_in_executor(exe, missions.train_model, i, deploy) for i in train_list)
             )
-        sys.exit(Show.normal_exit())
+        sys.exit(Show.done())
 
     # --build ==========================================================================================================
     elif build_list := cmd_lines.build:
@@ -1687,7 +1709,7 @@ async def arithmetic(*args, **kwargs) -> None:
             results = await asyncio.gather(
                 *(loop.run_in_executor(exe, missions.build_model, i, deploy) for i in build_list)
             )
-        sys.exit(Show.normal_exit())
+        sys.exit(Show.done())
 
     return None
 
@@ -1826,12 +1848,10 @@ if __name__ == '__main__':
             )
         )
     except KeyboardInterrupt:
-        _main_loop.close()
         sys.exit(Show.exit())
-    except (ArithmeticError, AttributeError, BufferError, LookupError, MemoryError,
-            OSError, RuntimeError, SyntaxError, SystemError, TypeError, ValueError):
-        Active.console.print_exception()
-        sys.exit(Show.abnormal_exit())
+    except (OSError, RuntimeError, TypeError, ValueError, AttributeError):
+        Show.console.print_exception()
+        sys.exit(Show.fail())
     else:
-        sys.exit(Show.normal_exit())
+        sys.exit(Show.done())
     # Main Process =====================================================================================================
