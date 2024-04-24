@@ -12,7 +12,6 @@ from pathlib import Path
 from loguru import logger
 from jinja2 import Template
 from collections import defaultdict
-
 from engine.active import FramixReporterError
 from nexaflow import toolbox, const
 from nexaflow.classifier.base import ClassifierResult
@@ -124,7 +123,7 @@ class Report(object):
 
         log_file = "Nexa_Recovery", "nexaflow.log"
         if not (log_file_list := [os.path.join(os.path.dirname(merge), *log_file) for merge in merge_list]):
-            return FramixReporterError(f"没有可以合并的报告 ...")
+            raise FramixReporterError(f"没有可以合并的报告 ...")
 
         merge_name = f"Union_Report_{(merge_time := time.strftime('%Y%m%d%H%M%S'))}", "Nexa_Collection"
         merge_path = os.path.join(os.path.dirname(os.path.dirname(merge_list[0])), *merge_name)
@@ -137,11 +136,11 @@ class Report(object):
         ignore = "NexaFlow.html", "nexaflow.log"
         for m in merge_list:
             if isinstance(m, Exception):
-                return FramixReporterError(m)
+                raise FramixReporterError(m)
             shutil.copytree(m, merge_path, ignore=shutil.ignore_patterns(*ignore), dirs_exist_ok=True)
 
         if not (total_list := [json.loads(i) for logs in merge_log_list for i in logs if i]):
-            return FramixReporterError(f"没有可以合并的报告 ...")
+            raise FramixReporterError(f"没有可以合并的报告 ...")
 
         html = Template(template_file).render(
             report_time=merge_time, total_list=total_list
@@ -261,14 +260,14 @@ class Report(object):
             async with aiofiles.open(os.path.join(file_name, *log_file), "r", encoding=const.CHARSET) as f:
                 open_file = await f.read()
         except FileNotFoundError as e:
-            return FramixReporterError(e)
+            raise FramixReporterError(e)
 
         if match_quicker_list := re.findall(r"(?<=Quicker: ).*}", open_file):
             match_list = match_quicker_list
         elif match_restore_list := re.findall(r"(?<=Restore: ).*}", open_file):
             match_list = match_restore_list
         else:
-            return FramixReporterError(f"没有符合条件的数据 ...")
+            raise FramixReporterError(f"没有符合条件的数据 ...")
 
         parts_list: list[dict] = [
             json.loads(file) for file in match_list if file
@@ -311,7 +310,7 @@ class Report(object):
                     for (total, title, sn), result_dict in packed_dict.items())
             )
         except Exception as e:
-            return FramixReporterError(e)
+            raise FramixReporterError(e)
 
         create_total_result = [create for create in create_result if create]
         merged_list = await format_merged()
@@ -322,7 +321,7 @@ class Report(object):
                 logger.debug(f"{j}")
 
         if len(total_list := [single for single in merged_list if single]) == 0:
-            return FramixReporterError(f"没有可以汇总的报告 ...")
+            raise FramixReporterError(f"没有可以汇总的报告 ...")
 
         total_html_temp = Template(total_loc).render(
             report_time=time.strftime('%Y.%m.%d %H:%M:%S'), total_list=total_list
