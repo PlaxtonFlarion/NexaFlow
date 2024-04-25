@@ -1285,27 +1285,27 @@ class Alynex(object):
 
     def __init__(
             self,
-            total_place: typing.Optional[typing.Union[str, "os.PathLike"]],
-            model_place: typing.Optional[typing.Union[str, "os.PathLike"]],
-            model_shape: typing.Optional[tuple],
-            model_aisle: typing.Optional[int],
-            *args,
-            **__
+            total_place: typing.Optional[typing.Union[str, "os.PathLike"]] = None,
+            model_place: typing.Optional[typing.Union[str, "os.PathLike"]] = None,
+            model_shape: typing.Optional[tuple] = None,
+            model_aisle: typing.Optional[int] = None,
+            *args
     ):
 
-        if model_place and model_shape and model_aisle:
+        self.total_place = total_place
+        self.model_place = model_place
+        self.model_shape = model_shape
+        self.model_aisle = model_aisle
+
+        self.oss, self.fmp, self.fpb, *_ = args
+
+        if all((self.total_place, self.model_place, self.model_shape, self.model_aisle)):
             try:
                 self.kc = KerasStruct(data_size=model_shape, aisle=model_aisle)
                 self.kc.load_model(model_place)
             except ValueError:
                 Show.console.print_exception()
                 self.kc = None
-
-        self.total_place = total_place
-        self.model_place = model_place
-        self.model_shape = model_shape
-        self.model_aisle = model_aisle
-        self.oss, self.fmp, self.fpb, *_ = args
 
     @property
     def kc(self) -> typing.Optional["KerasStruct"]:
