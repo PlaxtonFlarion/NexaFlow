@@ -815,7 +815,7 @@ class Missions(object):
                         reporter.query_path, f"hook_{device.serial}_{random.randint(10000, 99999)}.png"
                     )
                     resize_img.save(img_save_path)
-                    logger.info(f"保存图片: {[img_save_path]}")
+                    logger.info(f"保存图片: {os.path.relpath(img_save_path)}")
                 break
             elif action.strip().upper() == "N":
                 break
@@ -922,11 +922,11 @@ class Missions(object):
 
                 for *_, total_path, title, query_path, query, frame_path, _, _ in task_list:
                     result = {
-                        "total": os.path.basename(reporter.total_path),
-                        "title": reporter.title,
-                        "query": reporter.query,
+                        "total": os.path.basename(total_path),
+                        "title": title,
+                        "query": query,
                         "stage": {"start": 0, "end": 0, "cost": 0},
-                        "frame": os.path.basename(reporter.frame_path),
+                        "frame": os.path.basename(frame_path),
                         "style": "quick"
                     }
                     Show.console.print_json(data=result)

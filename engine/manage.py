@@ -1,4 +1,5 @@
 import re
+import typing
 import asyncio
 from rich.prompt import Prompt
 from engine.device import Device
@@ -13,29 +14,39 @@ class Manage(object):
 
     async def current_device(self) -> dict[str, "Device"]:
 
-        async def device_info(serial):
-            cmd_initial = [self.adb, "-s", serial, "wait-for-usb-device", "shell"]
-            information_list = await asyncio.gather(
-                Terminal.cmd_line(*(cmd_initial + ["getprop", "ro.product.brand"])),
-                Terminal.cmd_line(*(cmd_initial + ["getprop", "ro.build.version.release"])),
-                Terminal.cmd_line(*(cmd_initial + ["wm", "size"])),
-                return_exceptions=True
+        async def _device_species(serial):
+            cmd = [self.adb, "-s", serial, "wait-for-usb-device", "shell", "getprop", "ro.product.brand"]
+            return await Terminal.cmd_line(*cmd)
+
+        async def _device_version(serial):
+            cmd = [self.adb, "-s", serial, "wait-for-usb-device", "shell", "getprop", "ro.build.version.release"]
+            return await Terminal.cmd_line(*cmd)
+
+        async def _device_display(serial):
+            cmd = [self.adb, "-s", serial, "wait-for-usb-device", "shell", "dumpsys", "display", "|", "grep", "mViewports="]
+            screen_dict = {}
+            if information_list := await Terminal.cmd_line(*cmd):
+                if display_list := re.findall(r"DisplayViewport\{.*?}", information_list):
+                    fit: typing.Any = lambda x: re.search(x, display)
+                    for display in display_list:
+                        if all((i := fit(r"(?<=displayId=)\d+"), w := fit(r"(?<=deviceWidth=)\d+"), h := fit(r"(?<=deviceHeight=)\d+"))):
+                            screen_dict.update({i.group(): (w.group(), h.group())})
+            return screen_dict
+
+        async def _device_information(serial):
+            information = await asyncio.gather(
+                _device_species(serial), _device_version(serial), _device_display(serial), return_exceptions=True
             )
-
-            for information in information_list:
-                if isinstance(information, Exception):
-                    return information
-            species, version, display = information_list
-
-            mate = re.search(r"(?<=Physical size:\s)(\d+)x(\d+)", display)
-            size = tuple(mate.group().split("x")) if mate else ()
-            return Device(self.adb, serial, species, version, size)
+            for info in information:
+                if isinstance(info, Exception):
+                    return info
+            return Device(self.adb, serial, *information)
 
         device_dict = {}
         devices = await Terminal.cmd_line(self.adb, "devices")
         if serial_list := [i.split()[0] for i in devices.split("\n")[1:]]:
             result_list = await asyncio.gather(
-                *(device_info(serial) for serial in serial_list), return_exceptions=True
+                *(_device_information(serial) for serial in serial_list), return_exceptions=True
             )
 
             for result in result_list:
@@ -49,7 +60,7 @@ class Manage(object):
         while True:
             device_list = []
             if len(device_dict := await self.current_device()) == 0:
-                Show.console.print(f"[bold yellow]设备未连接,等待设备连接 ...")
+                Show.console.print(f"[bold yellow]设备未连接,等待设备连接[/bold yellow] ...")
                 await asyncio.sleep(5)
                 continue
 
@@ -67,7 +78,7 @@ class Manage(object):
                     return device_list
                 return [device_dict[action]]
             except KeyError:
-                Show.console.print(f"[bold red]没有该序号,请重新选择 ...[/bold red]\n")
+                Show.console.print(f"[bold red]没有该序号,请重新选择[/bold red] ...\n")
                 await asyncio.sleep(1)
 
 

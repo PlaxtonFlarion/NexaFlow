@@ -326,7 +326,7 @@ class Report(object):
         total_html_temp = Template(total_loc).render(
             report_time=time.strftime('%Y.%m.%d %H:%M:%S'), total_list=total_list
         )
-        total_html = os.path.join(file_name, "NexaFlow.html")
+        total_html = os.path.join(file_name, "Nexa_Flow.html")
         async with aiofiles.open(total_html, "w", encoding=const.CHARSET) as f:
             await f.write(total_html_temp)
 
