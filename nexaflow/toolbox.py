@@ -1,6 +1,5 @@
 import os
 import cv2
-import sys
 import math
 import time
 import shutil
@@ -324,25 +323,53 @@ def match_template_with_path(
     return match_template_with_object(template_object, target, **kwargs)
 
 
-def show_progress(total: int, color: int) -> tqdm:
-    """https://www.ditig.com/256-colors-cheat-sheet"""
-    colors = {"start": f"\033[1m\033[38;5;{color}m", "end": "\033[0m"}
-    bar_format = "{l_bar}%{bar}%|{n_fmt:5}/{total_fmt:5}"
-    colored_bar_format = f"{colors['start']}{bar_format}{colors['end']}"
-    if sys.stdout.isatty():
-        try:
-            columns, _ = shutil.get_terminal_size()
-        except OSError:
-            columns = 150
-    else:
-        columns = 150
+def show_progress(items=None, total=None, color=245):
+    """Wrap an iterable with a progress bar or initialize a progress bar with a total count.
+
+    https://www.ditig.com/256-colors-cheat-sheet
+
+    Args:
+        items (iterable, optional): An iterable to be wrapped by a tqdm progress bar.
+        total (int, optional): The total number of iterations if not using an iterable.
+        color (int, optional): ANSI color code for the progress bar. Defaults to 245.
+
+    Returns:
+        tqdm: A tqdm progress bar object.
+    """
+
+    # Set up the color scheme for the progress bar
+    desc, color_begin, color_final = f"{const.DESC} : Analyzer ", f"\033[1m\033[38;5;{color}m", "\033[0m"
+    bar_format = f"{color_begin}{{l_bar}}%{{bar}}%|{{n_fmt:5}}/{{total_fmt:5}}{color_final}"
+
+    # Determine terminal size for progress bar width
+    try:
+        columns = shutil.get_terminal_size().columns
+    except OSError:
+        columns = 150  # Fallback value in case the terminal size cannot be obtained
+
     progress_bar_length = int(columns * 0.8)
-    progress_bar = tqdm(
-        total=total,
-        position=0, ncols=progress_bar_length, leave=True, bar_format=colored_bar_format,
-        desc=f"{const.DESC} : Analyzer "
-    )
-    return progress_bar
+
+    # Configure tqdm based on input arguments
+    if items:
+        tqdm_total = len(items) if hasattr(items, '__len__') else None
+        return tqdm(
+            items,
+            total=total if total else tqdm_total,
+            ncols=progress_bar_length,
+            leave=True,
+            bar_format=bar_format,
+            desc=desc
+        )
+    elif total:
+        return tqdm(
+            total=total,
+            ncols=progress_bar_length,
+            leave=True,
+            bar_format=bar_format,
+            desc=desc
+        )
+    else:
+        raise ValueError("Either 'items' or 'total' must be provided to show_progress.")
 
 
 def draw_line(image_path: str, save_path: str = None) -> None:

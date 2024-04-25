@@ -1456,7 +1456,7 @@ class Alynex(object):
 
             frames_list = []
             important_frames = struct.get_important_frame_list()
-            pbar = toolbox.show_progress(struct.get_length(), 50)
+            pbar = toolbox.show_progress(total=struct.get_length(), color=50)
             if boost:
                 frames_list.append(previous := important_frames[0])
                 pbar.update(1)

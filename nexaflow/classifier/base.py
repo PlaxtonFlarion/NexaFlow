@@ -417,7 +417,7 @@ class BaseClassifier(object):
         frame = operator.get_frame_by_id(1)
 
         prev_result: typing.Optional[str] = None
-        pbar = toolbox.show_progress(video.frame_count, 38)
+        pbar = toolbox.show_progress(total=video.frame_count, color=38)
         while frame is not None:
             frame = self._apply_hook(frame, *args, **kwargs)
             if valid_range and not any(

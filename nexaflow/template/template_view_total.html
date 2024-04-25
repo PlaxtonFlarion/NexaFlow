@@ -58,6 +58,12 @@
             box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.8);
         }
 
+        h1 {
+            font-size: 36px;
+            color: #EAECEF;
+            text-shadow: 1px 5px 2px rgba(0, 0, 0, 0.3);
+        }
+
         .info-box {
             border: 1px solid #ccc;
             padding: 10px 20px;
@@ -97,6 +103,25 @@
         .cost-div {
             display: flex;
             flex-wrap: wrap;
+        }
+
+        .cost-avg {
+            padding: 5px 10px;
+            border-radius: 10px;
+            font-weight: bold;
+            margin-right: 20px;
+            font-size: 24px;
+            background-color: rgb(212, 249, 24);
+        }
+
+        .copy {
+            margin-right: 20px;
+            padding: 5px 30px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 16px;
+            background: rgb(23, 212, 255);
         }
 
         .link {
@@ -155,7 +180,7 @@
     </div>
 
     <div class="header">
-        <h1>{{ title }}</h1>
+        <h1>{{ name }} Information</h1>
         <p>{{ report_time }}</p>
     </div>
 
@@ -167,6 +192,8 @@
                 {% for href, avg, cost in total.merge_list %}
                 <div class="device">
                     <div class="case-other">
+                        <p><span class="cost-avg">0.00000</span></p>
+                        <button class="copy">Copy</button>
                         <a class="link" href="{{ href }}" target="_blank">View More Details ...</a>
                     </div>
                     <hr class="line">
@@ -180,6 +207,8 @@
             {% else %}
                 <div class="device">
                     <div class="case-other">
+                        <p><span class="cost-avg">0.00000</span></p>
+                        <button class="copy">Copy</button>
                         <a class="link" href="{{ total.href }}" target="_blank">View More Details ...</a>
                     </div>
                     <hr class="line">

@@ -180,7 +180,7 @@ class VideoObject(object):
         vid = mpy.VideoFileClip(self.path)
 
         vid_count = vid.reader.nframes
-        pbar = toolbox.show_progress(vid_count, 153)
+        pbar = toolbox.show_progress(total=vid_count, color=153)
         for frame_id, (timestamp, _) in enumerate(vid.iter_frames(with_times=True)):
             if frame_id >= len(frame_data):
                 break
@@ -231,7 +231,7 @@ class VideoObject(object):
         """
 
         def load_stream(frames: type["VideoFrame"]):
-            pbar = toolbox.show_progress(self.frame_count, 180)
+            pbar = toolbox.show_progress(total=self.frame_count, color=180)
             frame_data_list: list["VideoFrame"] = []
             with toolbox.video_capture(self.path) as cap:
                 for success, frame in iter(lambda: cap.read(), (False, None)):

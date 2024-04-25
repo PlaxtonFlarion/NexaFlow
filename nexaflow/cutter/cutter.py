@@ -168,7 +168,7 @@ class VideoCutter(object):
             )
 
         range_list_part = []
-        pbar = toolbox.show_progress(window.frame_total, 174)
+        pbar = toolbox.show_progress(total=window.frame_total, color=174)
         while True:
             cutting()
             pbar.update(1)
