@@ -840,14 +840,11 @@ class Missions(object):
             fmt_dir = time.strftime("%Y%m%d%H%M%S") if any((self.quick, self.basic, self.keras)) else None
             for device in device_list:
                 await asyncio.sleep(0.2)
-                record.device_events[device.serial] = {
-                    "head_event": asyncio.Event(), "done_event": asyncio.Event(),
-                    "stop_event": asyncio.Event(), "fail_event": asyncio.Event()
-                }
+
                 if fmt_dir:
                     reporter.query = os.path.join(fmt_dir, device.serial)
                 video_temp, transports = await record.start_record(
-                    device.serial, reporter.video_path, record.device_events[device.serial]
+                    device, reporter.video_path
                 )
                 todo_list.append(
                     [video_temp, transports, reporter.total_path, reporter.title, reporter.query_path,
@@ -994,16 +991,20 @@ class Missions(object):
             for device in device_list:
                 logger.info(f"[bold #00FFAF]Connect:[/bold #00FFAF] {device}")
 
-        async def all_time():
-            await asyncio.gather(
-                *(record.timing_less(serial, events, timer_mode)
-                  for serial, events in record.device_events.items())
-            )
+        async def all_time(style):
+            if style == "less":
+                await asyncio.gather(
+                    *(record.timing_less(device, timer_mode) for device in device_list)
+                )
+            else:
+                await asyncio.gather(
+                    *(record.timing_many(device) for device in device_list)
+                )
 
         async def all_stop():
             effective_list = await asyncio.gather(
-                *(record.close_record(video_temp, transports, events)
-                  for (_, events), (video_temp, transports, *_) in zip(record.device_events.items(), task_list))
+                *(record.close_record(video_temp, transports, device)
+                  for (video_temp, transports, *_), device in zip(task_list, device_list))
             )
             for (idx, (effective, video_name)), _ in zip(enumerate(effective_list), task_list):
                 if effective.startswith("视频录制失败"):
@@ -1031,11 +1032,12 @@ class Missions(object):
                 return video_dst
 
             if len(task_list) == 0:
-                return logger.warning(f"没有有效任务 ...")
+                return logger.error(f"没有有效任务 ...")
 
             if self.alone:
-                return logger.warning(f"独立控制模式不会平衡视频录制时间 ...")
+                return logger.info(f"*-* 独立控制模式 *-*")
 
+            logger.info(f"*-* 全局控制模式 *-*")
             duration_list = await asyncio.gather(
                 *(Switch.ask_video_length(self.fpb, video_temp) for video_temp, *_ in task_list)
             )
@@ -1044,11 +1046,9 @@ class Missions(object):
                 return task_list.clear()
 
             logger.info(f"标准录制时间: {(standard := min(duration_list))}")
-            balance_task = [
-                balance(duration, video_src)
-                for duration, (video_src, *_) in zip(duration_list, task_list)
-            ]
-            video_dst_list = await asyncio.gather(*balance_task)
+            video_dst_list = await asyncio.gather(
+                *(balance(duration, video_src) for duration, (video_src, *_) in zip(duration_list, task_list))
+            )
             for idx, dst in enumerate(video_dst_list):
                 task_list[idx][0] = dst
 
@@ -1058,7 +1058,7 @@ class Missions(object):
             report = getattr(self, "combines_view" if self.quick else "combines_main")
             return await report([os.path.dirname(reporter.total_path)])
 
-        async def load_commands(script: typing.Union[str, "os.PathLike"]):
+        async def load_commands(script):
             try:
                 async with aiofiles.open(script, "r", encoding=const.CHARSET) as f:
                     file_list = json.loads(await f.read())["command"]
@@ -1080,32 +1080,7 @@ class Missions(object):
                 return e
             return exec_dict
 
-        async def loop_commands():
-            for device_action in device_action_list:
-                if device_cmds := device_action.get("cmds", []):
-                    device_args = device_action.get("args", [])
-                    device_args += [[]] * (len(device_cmds) - len(device_args))
-                    yield list(zip(device_cmds, device_args))
-
-        async def exec_function():
-            async for cmd_arg_pairs in loop_commands():
-                exec_tasks = []
-                for device in device_list:
-                    for exec_func, exec_args in cmd_arg_pairs:
-                        if exec_func == "audio_player":
-                            await dynamically(exec_func, exec_args, player)
-                        else:
-                            exec_tasks.append(
-                                asyncio.create_task(dynamically(exec_func, exec_args, device))
-                            )
-
-                exec_status_list = await asyncio.gather(*exec_tasks, return_exceptions=True)
-
-                for status in exec_status_list:
-                    if isinstance(status, Exception):
-                        logger.error(f"[bold #FFC0CB]{status}[/bold #FFC0CB]")
-
-        async def dynamically(exec_func: str, exec_args: list, bean: type[typing.Union["Device", "Player"]]):
+        async def call_commands(exec_func, exec_args, bean):
             if not (callable(function := getattr(bean, exec_func, None))):
                 return logger.error(f"No callable [bold #FFC0CB]{exec_func}[/bold #FFC0CB] ...")
 
@@ -1117,6 +1092,40 @@ class Missions(object):
                     await asyncio.to_thread(function, *exec_args)
             except Exception as e:
                 return e
+
+        async def loop_commands():
+            for device_action in device_action_list:
+                if device_cmds := device_action.get("cmds", []):
+                    device_args = device_action.get("args", [])
+                    device_args += [[]] * (len(device_cmds) - len(device_args))
+                    yield list(zip(device_cmds, device_args))
+
+        async def play_commands():
+            while True:
+                if player.event_check():
+                    if (play := player.player_events.get("audio", None)) is None:
+                        continue
+                    await call_commands(*play, player)
+                    await player.clean_check()
+                await asyncio.sleep(1)
+
+        async def exec_function(device):
+            async for cmd_arg_pairs in loop_commands():
+                exec_tasks = []
+                for exec_func, exec_args in cmd_arg_pairs:
+                    if exec_func == "audio_player":
+                        player.player_events[device.serial].set()
+                        player.player_events["audio"] = exec_func, exec_args
+                    else:
+                        exec_tasks.append(
+                            asyncio.create_task(call_commands(exec_func, exec_args, device), name="call_commands")
+                        )
+
+                exec_status_list = await asyncio.gather(*exec_tasks, return_exceptions=True)
+
+                for status in exec_status_list:
+                    if isinstance(status, Exception):
+                        logger.error(f"[bold #FFC0CB]{status}[/bold #FFC0CB]")
 
         # Initialization ===============================================================================================
         cmd_lines, platform, deploy, level, power, loop, *_ = args
@@ -1138,7 +1147,6 @@ class Missions(object):
         alynex = Alynex(*attack_, *charge_)
         Show.load_animation(cmd_lines)
 
-        from engine.device import Device
         from engine.medias import Record, Player
         record = Record(self.scc, platform, alone=self.alone, whist=self.whist)
         player = Player()
@@ -1191,7 +1199,7 @@ class Missions(object):
                     continue
                 else:
                     task_list = await commence()
-                    await all_time()
+                    await all_time("less")
                     await all_stop()
                     await all_over()
                     await analysis_tactics()
@@ -1247,29 +1255,47 @@ class Missions(object):
 
                                 # prefix
                                 if device_action_list := script_value_.get("prefix", None):
-                                    await exec_function()
+                                    prefix_task_ = []
+                                    for device_ in device_list:
+                                        player.player_events[device_.serial] = asyncio.Event()
+                                        prefix_task_.append(asyncio.create_task(exec_function(device_), name="prefix"))
+                                    audio_ = asyncio.create_task(play_commands(), name="player")
+                                    await asyncio.gather(*prefix_task_)
+                                    audio_.cancel()
 
+                                # start record
                                 task_start_time_, task_list = time.time(), await commence()
 
                                 # action
                                 if device_action_list := script_value_.get("action", None):
-                                    await exec_function()
+                                    action_task_ = []
+                                    for device_ in device_list:
+                                        player.player_events[device_.serial] = asyncio.Event()
+                                        action_task_.append(asyncio.create_task(exec_function(device_), name="action"))
+                                    audio_ = asyncio.create_task(play_commands(), name="audio")
+                                    timer_ = asyncio.create_task(all_time("many"), name="timer")
+                                    await asyncio.gather(*action_task_)
+                                    audio_.cancel()
+                                    timer_.cancel()
 
+                                # close record
                                 if task_time_ := time.time() - task_start_time_ < 5:
                                     await asyncio.sleep(5 - task_time_)
                                 await all_stop()
 
                                 # suffix
-                                suffix_task_ = None
+                                suffix_task_ = []
                                 if device_action_list := script_value_.get("suffix", None):
-                                    suffix_task_ = asyncio.create_task(exec_function(), name="suffix")
+                                    for device_ in device_list:
+                                        player.player_events[device_.serial] = asyncio.Event()
+                                        suffix_task_.append(asyncio.create_task(exec_function(device_), name="suffix"))
 
                                 await all_over()
 
                                 await analysis_tactics()
                                 check_ = await record.event_check()
                                 device_list = await manage_.operate_device() if check_ else device_list
-                                await suffix_task_ if suffix_task_ else None
+                                await asyncio.gather(*suffix_task_)
                             finally:
                                 await record.clean_check()
 
@@ -1849,7 +1875,7 @@ if __name__ == '__main__':
         )
     except KeyboardInterrupt:
         sys.exit(Show.exit())
-    except (OSError, RuntimeError, TypeError, ValueError, AttributeError):
+    except (OSError, RuntimeError, MemoryError, TypeError, ValueError, AttributeError):
         Show.console.print_exception()
         sys.exit(Show.fail())
     else:
