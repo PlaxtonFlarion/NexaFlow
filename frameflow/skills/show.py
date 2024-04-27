@@ -248,8 +248,8 @@ class Show(object):
                 time.sleep(0.5)
             return logger.info(close_view)
 
-        start_view = f"[bold #FFD700]Engine Initializing[/bold #FFD700] ..."
-        close_view = f"[bold #FFD700]Engine Loaded[/bold #FFD700] ..."
+        start_view = f"[bold #FFD700]Engine Initializing[/] ..."
+        close_view = f"[bold #FFD700]Engine Loaded[/] ..."
 
         if style.quick:
             animation(4, quick_engine)
