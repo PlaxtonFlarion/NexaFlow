@@ -10,28 +10,10 @@ from frameflow.skills.show import Show
 
 class Manage(object):
 
-    __device_list: list["Device"] = []
+    device_list: list["Device"] = []
 
     def __init__(self, adb: str):
         self.adb = adb
-
-    def __getstate__(self):
-        return self.__device_list
-
-    def __setstate__(self, state):
-        self.device_list = state
-
-    @property
-    def device_list(self) -> list["Device"]:
-        return self.__device_list
-
-    @device_list.setter
-    def device_list(self, value):
-        self.__device_list = value
-
-    @device_list.deleter
-    def device_list(self):
-        del self.__device_list
 
     async def current_device(self) -> dict[str, "Device"]:
 
@@ -92,7 +74,7 @@ class Manage(object):
                 return self.device_list
 
             for k, v in device_dict.items():
-                Show.console.print(f"[bold][bold #FFFACD]Connect:[/] [{k}] {v}")
+                Show.console.print(f"[bold][bold #FFFACD]Connect:[/] [{k}] {v}[/]")
 
             return self.device_list
 
@@ -111,11 +93,11 @@ class Manage(object):
                 return self.device_list
 
             for k, v in device_dict.items():
-                Show.console.print(f"[bold][bold #FFFACD]Connect:[/] [{k}] {v}")
+                Show.console.print(f"[bold][bold #FFFACD]Connect:[/] [{k}] {v}[/]")
 
             try:
                 if (action := Prompt.ask(
-                        "[bold #5FD7FF]请输入编号选择一台设备[/]", console=Show.console, default="all")) == "all":
+                        "[bold #FFEC8B]请输入编号选择一台设备[/]", console=Show.console, default="all")) == "all":
                     return self.device_list
                 return [device_dict[action]]
             except KeyError:

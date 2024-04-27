@@ -25,7 +25,7 @@ elif _software == f"{const.NAME}.py":
     _workable = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     _feasible = os.path.dirname(os.path.abspath(__file__))
 else:
-    logger.error(f"Software compatible with {const.ERR}{const.NAME}[/] ...")
+    logger.error(f"{const.ERR}Software compatible with {const.NAME}[/]")
     Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
     sys.exit(Show.fail())
 
@@ -42,7 +42,7 @@ elif _platform == "darwin":
     _fpb = os.path.join(_turbo, "mac", "ffmpeg", "bin", "ffprobe")
     _scc = os.path.join(_turbo, "mac", "scrcpy", "bin", "scrcpy")
 else:
-    logger.error(f"{const.NAME} compatible with {const.ERR}Win & Mac[/] ...")
+    logger.error(f"{const.ERR}{const.NAME} compatible with {const.ERR}Win & Mac[/]")
     Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
     sys.exit(Show.fail())
 
@@ -51,7 +51,7 @@ for _tls in (_tools := [_adb, _fmp, _fpb, _scc]):
 
 for _tls in _tools:
     if not shutil.which((_tls_name := os.path.basename(_tls))):
-        logger.error(f"{const.NAME} missing files {const.ERR}{_tls_name}[/] ...")
+        logger.error(f"{const.ERR}{const.NAME} missing files {_tls_name}[/]")
         Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
         sys.exit(Show.fail())
 
@@ -64,7 +64,7 @@ _view_total_temp = os.path.join(_workable, "archivix", "pages", "template_view_t
 for _tmp in (_temps := [_atom_total_temp, _main_share_temp, _main_total_temp, _view_share_temp, _view_total_temp]):
     if not os.path.isfile(_tmp):
         _tmp_name = os.path.basename(_tmp)
-        logger.error(f"{const.NAME} missing files {const.ERR}{_tmp_name}[/] ...")
+        logger.error(f"{const.ERR}{const.NAME} missing files {_tmp_name}[/]")
         Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
         sys.exit(Show.fail())
 
@@ -97,7 +97,9 @@ try:
     from engine.manage import Manage
     from engine.switch import Switch
     from engine.terminal import Terminal
-    from engine.active import Active, Review, RichSink, FramixReporterError
+    from engine.active import Active
+    from engine.active import Review
+    from engine.active import FramixReporterError
     from frameflow.skills.config import Option
     from frameflow.skills.config import Deploy
     from frameflow.skills.config import Script
@@ -199,7 +201,7 @@ class Missions(object):
         loop = asyncio.get_event_loop()
 
         if self.quick:
-            logger.info(f"★★★ 快速模式 ★★★")
+            logger.info(f"★ ★ ★ 快速模式 ★ ★ ★")
             const_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
             if deploy.shape:
                 original_shape = loop.run_until_complete(
@@ -280,7 +282,7 @@ class Missions(object):
         charge = _platform, self.fmp, self.fpb
 
         alynex = Alynex(*attack, *charge)
-        logger.info(f"★★★ {'智能模式' if alynex.kc else '基础模式'} ★★★")
+        logger.info(f"★ ★ ★ {'智能模式' if alynex.kc else '基础模式'} ★ ★ ★")
 
         futures = loop.run_until_complete(
             alynex.ask_analyzer(
@@ -345,7 +347,7 @@ class Missions(object):
         loop = asyncio.get_event_loop()
 
         if self.quick:
-            logger.info(f"★★★ 快速模式 ★★★")
+            logger.info(f"★ ★ ★ 快速模式 ★ ★ ★")
             for video in self.accelerate(video_data):
                 reporter.title = video.title
                 for path in video.sheet:
@@ -433,7 +435,7 @@ class Missions(object):
         charge = _platform, self.fmp, self.fpb
 
         alynex = Alynex(*attack, *charge)
-        logger.info(f"★★★ {'智能模式' if alynex.kc else '基础模式'} ★★★")
+        logger.info(f"★ ★ ★ {'智能模式' if alynex.kc else '基础模式'} ★ ★ ★")
 
         for video in self.accelerate(video_data):
             reporter.title = video.title
@@ -500,14 +502,14 @@ class Missions(object):
     # """Child Process"""
     def train_model(self, video_file: str, deploy: "Deploy"):
         if not os.path.isfile(video_file):
-            return logger.error(f"{const.ERR}{video_file} 视频文件未找到[/]")
+            return logger.error(f"{const.ERR}{video_file} 视频文件丢失[/]")
         logger.info(f"视频文件 {video_file}")
 
         screen = cv2.VideoCapture(video_file)
         if not screen.isOpened():
             return logger.error(f"{const.ERR}{video_file} 视频文件损坏[/]")
         screen.release()
-        logger.info(f"{video_file} 可正常播放")
+        logger.info(f"播放正常 {video_file}")
 
         reporter = Report(self.total_place)
         reporter.title = f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
@@ -820,7 +822,7 @@ class Missions(object):
             elif action.strip().upper() == "N":
                 break
             else:
-                logger.warning(f"{const.WRN}没有该选项,请重新输入[/] ...\n")
+                logger.warning(f"{const.WRN}没有该选项,请重新输入[/]\n")
 
     async def analysis(self, *args, **__):
 
@@ -863,7 +865,7 @@ class Missions(object):
                 return None
 
             if self.quick:
-                logger.info(f"★★★ 快速模式 ★★★")
+                logger.info(f"★ ★ ★ 快速模式 ★ ★ ★")
                 const_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
                 if deploy.shape:
                     original_shape_list = await asyncio.gather(
@@ -937,7 +939,7 @@ class Missions(object):
                     await reporter.load(result)
 
             elif self.basic or self.keras:
-                logger.info(f"★★★ {'智能模式' if alynex.kc else '基础模式'} ★★★")
+                logger.info(f"★ ★ ★ {'智能模式' if alynex.kc else '基础模式'} ★ ★ ★")
 
                 if len(task_list) == 1:
                     futures = await asyncio.gather(
@@ -990,7 +992,7 @@ class Missions(object):
                     self.enforce(reporter, struct, start, end, cost)
 
             else:
-                return logger.info(f"★★★ 录制模式 ★★★")
+                return logger.info(f"★ ★ ★ 录制模式 ★ ★ ★")
 
         async def anything_time():
             await asyncio.gather(
@@ -1005,7 +1007,7 @@ class Missions(object):
             for (idx, (effective, video_name)), _ in zip(enumerate(effective_list), task_list):
                 if effective.startswith("视频录制失败"):
                     task_list.pop(idx)
-                logger.info(f"{effective}: {video_name} ...")
+                logger.info(f"{effective}: {video_name}")
 
         async def anything_over():
 
@@ -1028,7 +1030,7 @@ class Missions(object):
                 return video_dst
 
             if len(task_list) == 0:
-                return logger.error(f"{const.ERR}没有有效任务[/] ...")
+                return logger.warning(f"{const.WRN}没有有效任务[/]")
 
             if self.alone:
                 return logger.info(f"*-* 独立控制模式 *-*")
@@ -1174,7 +1176,7 @@ class Missions(object):
                             if match_ := re.search(r"(?<=header\s).*", select_):
                                 if hd_ := match_.group().strip():
                                     src_hd_, a_, b_ = f"{input_title_}_{time.strftime('%Y%m%d_%H%M%S')}", 10000, 99999
-                                    logger.success("[bold green]新标题设置成功[/] ...")
+                                    logger.success(f"{const.SUC}New title set successfully[/]")
                                     reporter.title = f"{src_hd_}_{hd_}" if hd_ else f"{src_hd_}_{random.randint(a_, b_)}"
                                     continue
                             raise ValueError
@@ -1182,7 +1184,7 @@ class Missions(object):
                             await combines()
                             break
                         elif select_ == "deploy":
-                            logger.warning(f"修改 {const.WRN}deploy.json[/] 文件后请完全退出编辑器进程再继续操作")
+                            logger.warning(f"{const.WRN}请完全退出编辑器再继续操作[/]")
                             deploy.dump_deploy(self.initial_deploy)
                             first_ = ["Notepad"] if platform == "win32" else ["open", "-W", "-a", "TextEdit"]
                             first_.append(self.initial_deploy)
@@ -1246,7 +1248,7 @@ class Missions(object):
                         looper_ = int(looper_) if (looper_ := script_value_.get("looper", None)) else 1
                     except ValueError as e_:
                         logger.error(f"{const.ERR}{e_}[/]")
-                        logger.error(f"{const.ERR}重置循环次数:[/] {(looper_ := 1)}")
+                        logger.error(f"{const.ERR}重置循环次数[/] {(looper_ := 1)}")
 
                     header_ = header_ if type(
                         header_ := script_value_.get("header", [])
@@ -1406,13 +1408,13 @@ class Alynex(object):
                 final_frame = struct.get_not_stable_stage_range()[final_stage_index][final_frame_index]
             except (AssertionError, IndexError) as e:
                 logger.error(f"{const.ERR}{e}[/]")
-                logger.warning(f"{const.WRN}Analyzer recalculate[/]")
+                logger.warning(f"{const.WRN}Analyzer Neural Engine is recalculating ...[/]")
                 begin_frame = struct.get_important_frame_list()[0]
                 final_frame = struct.get_important_frame_list()[-1]
 
             if final_frame.frame_id <= begin_frame.frame_id:
                 logger.warning(f"{const.WRN}{final_frame} <= {begin_frame}[/]")
-                logger.warning(f"{const.WRN}Analyzer recalculate[/]")
+                logger.warning(f"{const.WRN}Analyzer Neural Engine is recalculating ...[/]")
                 begin_frame, end_frame = struct.data[0], struct.data[-1]
 
             time_cost = final_frame.timestamp - begin_frame.timestamp
@@ -1475,6 +1477,7 @@ class Alynex(object):
                     return [i for i in video.hued_data]
                 return [i for i in video.grey_data]
 
+            logger.info(f"{'*-* 获取关键帧 *-*' if boost else '*-* 获取全部帧 *-*'}")
             frames_list = []
             important_frames = struct.get_important_frame_list()
             pbar = toolbox.show_progress(total=struct.get_length(), color=50)
@@ -1491,13 +1494,11 @@ class Alynex(object):
                             pbar.update(1)
                     previous = current
                 pbar.close()
-                logger.info(f"获取关键帧: {len(frames_list)}")
             else:
                 for current in struct.data:
                     frames_list.append(current)
                     pbar.update(1)
                 pbar.close()
-                logger.info(f"获取全部帧: {len(frames_list)}")
 
             if color:
                 await color_load()
@@ -1822,8 +1823,8 @@ if __name__ == '__main__':
     _model_aisle = _option.model_aisle or const.MODEL_AISLE
     logger.debug(f"报告文件路径: {_total_place}")
     logger.debug(f"模型文件路径: {_model_place}")
-    logger.debug(f"模型文件尺寸: 宽 {_model_shape[0]} 高 {_model_shape[1]}")
-    logger.debug(f"模型文件色彩: {'灰度' if _model_aisle == 1 else '彩色'}模型")
+    logger.debug(f"模型文件尺寸: {_model_shape}")
+    logger.debug(f"模型文件色彩: {_model_aisle}")
 
     logger.debug(f"处理器核心数: {(_power := os.cpu_count())}")
 

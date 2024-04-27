@@ -97,24 +97,6 @@ class Report(object):
             self.range_list.append(inform)
 
     @staticmethod
-    async def ask_reset_report(file_name: str, template_file: str) -> None:
-        reset_path = os.path.join(file_name, "Nexa_Recovery", "nexaflow.log")
-        async with aiofiles.open(reset_path, "r", encoding=const.CHARSET) as f:
-            log_restore = re.findall(r"(?<=Recovery: ).*}", await f.read())
-
-        if not (total_list := [json.loads(file) for file in log_restore]):
-            return logger.warning(f"没有可以汇总的报告 ...")
-
-        html = Template(template_file).render(
-            report_time=time.strftime('%Y.%m.%d %H:%M:%S'),
-            total_list=total_list
-        )
-        report_html = os.path.join(file_name, "NexaFlow.html")
-        async with aiofiles.open(report_html, "w", encoding=const.CHARSET) as f:
-            await f.write(html)
-            logger.info(f"生成汇总报告: {report_html}")
-
-    @staticmethod
     async def ask_merge_report(merge_list: typing.Union[list, tuple], template_file: str):
 
         async def assemble(file):
