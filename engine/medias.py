@@ -96,7 +96,7 @@ class Record(object):
             logger.warning(f"Stop With Ctrl_C_Event ...")
         return await close()
 
-    async def timer_prove(self, device, amount):
+    async def check_timer(self, device, amount):
         bridle = self.device_events[device.serial]["stop"] if self.alone else self.melody_events
         events = self.device_events[device.serial]
 
@@ -115,7 +115,7 @@ class Record(object):
                 return logger.info(f"{device.species} {device.serial} 意外停止 ...")
             await asyncio.sleep(0.2)
 
-    async def event_prove(self, device, exec_tasks):
+    async def check_event(self, device, exec_tasks):
         if self.alone and (events := self.device_events.get(device.serial, None)):
             bridle = events["stop"], events["done"], events["fail"]
             while True:
@@ -129,7 +129,7 @@ class Record(object):
             task.cancel()
         return logger.info(f"[bold #CD853F]{device.serial} Cancel task[/]")
 
-    async def event_check(self):
+    async def flunk_event(self):
         return any(
             events["fail"].is_set() for events in self.device_events.values()
         )

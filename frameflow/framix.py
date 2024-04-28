@@ -997,7 +997,7 @@ class Missions(object):
 
         async def anything_time():
             await asyncio.gather(
-                *(record.timer_prove(device, timer_mode) for device in device_list)
+                *(record.check_timer(device, timer_mode) for device in device_list)
             )
 
         async def anything_stop():
@@ -1121,7 +1121,7 @@ class Missions(object):
 
             for device in device_list:
                 stop_tasks.append(
-                    asyncio.create_task(record.event_prove(device, exec_tasks), name="stop"))
+                    asyncio.create_task(record.check_event(device, exec_tasks), name="stop"))
 
             for exec_pairs in exec_pairs_list:
                 if len(live_devices) == 0:
@@ -1225,7 +1225,7 @@ class Missions(object):
                     await anything_stop()
                     await anything_over()
                     await analysis_tactics()
-                    check_ = await record.event_check()
+                    check_ = await record.flunk_event()
                     device_list = await manage_.operate_device() if check_ else device_list
                 finally:
                     await record.clean_event()
@@ -1295,7 +1295,7 @@ class Missions(object):
                             # close record
                             await anything_stop()
 
-                            check_ = await record.event_check()
+                            check_ = await record.flunk_event()
                             device_list = await manage_.operate_device() if check_ else device_list
                             await record.clean_event()
 
