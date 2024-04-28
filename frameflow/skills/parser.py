@@ -173,13 +173,12 @@ class Parser(object):
         group_means.add_argument("--basic", action="store_true", help="基础模式")
         group_means.add_argument("--keras", action="store_true", help="智能模式")
 
-        group_space_cmd = parser.add_argument_group(title="录制配置", description="参数互斥")
+        group_space_cmd = parser.add_argument_group(title="视频控制", description="参数互斥")
         group_space = group_space_cmd.add_mutually_exclusive_group()
         group_space.add_argument("--alone", action="store_true", help="独立控制")
         group_space.add_argument("--whist", action="store_true", help="静默录制")
 
-        group_array_cmd = parser.add_argument_group(title="报告配置", description="参数兼容")
-        group_array = group_array_cmd.add_mutually_exclusive_group()
+        group_array = parser.add_argument_group(title="报告配置", description="参数兼容")
         group_array.add_argument("--group", action="store_true", help="分组报告")
 
         group_extra = parser.add_argument_group(title="分析配置", description="参数兼容")

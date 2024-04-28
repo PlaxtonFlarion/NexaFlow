@@ -7,17 +7,17 @@ from engine.terminal import Terminal
 class Switch(object):
 
     @staticmethod
-    async def ask_audio_reform(ffmpeg, src: str, dst: str) -> None:
+    async def ask_audio_reform(ffmpeg, src: str, dst: str) -> str:
         cmd = [ffmpeg, "-i", src, "-ar", "44100", "-b:a", "128k", dst]
-        await Terminal.cmd_line(*cmd)
+        return await Terminal.cmd_line(*cmd)
 
     @staticmethod
-    async def ask_video_reform(ffmpeg, src: str, dst: str) -> None:
-        cmd = [ffmpeg, "-i", src, "-r", "60", dst]
-        await Terminal.cmd_line(*cmd)
+    async def ask_video_reform(ffmpeg, fps: int, src: str, dst: str) -> str:
+        cmd = [ffmpeg, "-i", src, "-r", f"{fps}", dst]
+        return await Terminal.cmd_line(*cmd)
 
     @staticmethod
-    async def ask_video_change(ffmpeg, fps: int, src: str, dst: str, **kwargs) -> None:
+    async def ask_video_change(ffmpeg, fps: int, src: str, dst: str, **kwargs) -> str:
         start = kwargs.get("start", None)
         close = kwargs.get("close", None)
         limit = kwargs.get("limit", None)
@@ -33,10 +33,10 @@ class Switch(object):
         cmd += ["-i", src]
         cmd += ["-vf", f"fps={fps}", "-c:v", "libx264", "-crf", "18", "-c:a", "copy", dst]
 
-        await Terminal.cmd_line(*cmd)
+        return await Terminal.cmd_line(*cmd)
 
     @staticmethod
-    async def ask_video_detach(ffmpeg, video_filter: list, src: str, dst: str, **kwargs) -> None:
+    async def ask_video_detach(ffmpeg, video_filter: list, src: str, dst: str, **kwargs) -> str:
         start = kwargs.get("start", None)
         close = kwargs.get("close", None)
         limit = kwargs.get("limit", None)
@@ -52,10 +52,10 @@ class Switch(object):
         cmd += ["-i", src]
         cmd += ["-vf", ",".join(video_filter), f"{os.path.join(dst, 'frame_%05d.png')}"]
 
-        await Terminal.cmd_line(*cmd)
+        return await Terminal.cmd_line(*cmd)
 
     @staticmethod
-    async def ask_video_tailor(ffmpeg, src: str, dst: str, **kwargs) -> None:
+    async def ask_video_tailor(ffmpeg, src: str, dst: str, **kwargs) -> str:
         start = kwargs.get("start", None)
         close = kwargs.get("close", None)
         limit = kwargs.get("limit", None)
@@ -71,7 +71,7 @@ class Switch(object):
         cmd += ["-i", src]
         cmd += ["-c", "copy", dst]
 
-        await Terminal.cmd_line(*cmd)
+        return await Terminal.cmd_line(*cmd)
 
     @staticmethod
     async def ask_video_length(ffprobe, src: str) -> float | Exception:

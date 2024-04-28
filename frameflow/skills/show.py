@@ -3,13 +3,34 @@ from loguru import logger
 from rich.text import Text
 from rich.table import Table
 from rich.console import Console
-from rich.progress import Progress
+from rich.progress import (
+    Progress,
+    BarColumn,
+    TextColumn,
+    TimeRemainingColumn,
+    SpinnerColumn,
+)
 from nexaflow import const
 
 
 class Show(object):
 
     console = Console()
+
+    @staticmethod
+    def show_progress():
+        return Progress(
+            TextColumn("[bold]Framix | {task.description} |", justify="right"),
+            SpinnerColumn(
+                style="bold #FFF68F", speed=1, finished_text="[bold #9AFF9A]Done"
+            ),
+            BarColumn(
+                int(Show.console.width * 0.4), "bold #FF6347", "bold #FFEC8B", "bold #98FB98"
+            ),
+            TimeRemainingColumn(),
+            "[progress.percentage][bold #E0FFFF]{task.completed:>5.0f}[/]/[bold #FFDAB9]{task.total}[/]",
+            expand=False
+        )
 
     @staticmethod
     def simulation_progress(desc: str, advance: int | float, interval: int | float):
@@ -241,24 +262,24 @@ class Show(object):
             ]
             return engine_stages[stage % len(engine_stages)]
 
-        def animation(step, function):
+        def animation(step, secs, function):
             logger.info(start_view)
             for i in range(step):
                 Show.console.print(function(i), justify="left")
-                time.sleep(0.5)
+                time.sleep(secs)
             return logger.info(close_view)
 
         start_view = f"[bold #C1FFC1]Engine Initializing[/] ..."
         close_view = f"[bold #C1FFC1]Engine Loaded[/] ..."
 
         if style.quick:
-            animation(4, quick_engine)
+            animation(4, 0.2, quick_engine)
         elif style.basic:
-            animation(8, basic_engine)
+            animation(8, 0.1, basic_engine)
         elif style.keras:
-            animation(4, keras_engine)
+            animation(4, 0.2, keras_engine)
         else:
-            animation(4, photo_engine)
+            animation(4, 0.2, photo_engine)
 
 
 if __name__ == '__main__':

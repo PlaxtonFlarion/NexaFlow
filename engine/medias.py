@@ -32,25 +32,25 @@ class Record(object):
             async for line in transports.stdout:
                 logger.info(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
                 if "Recording started" in stream:
-                    events["head_event"].set()
+                    events["head"].set()
                 elif "Recording complete" in stream:
                     bridle.set()
-                    events["done_event"].set()
+                    events["done"].set()
                     break
 
         async def error_stream():
             async for line in transports.stderr:
                 logger.info(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
                 if "Could not find" in stream or "connection failed" in stream or "Recorder error" in stream:
-                    events["fail_event"].set()
+                    events["fail"].set()
                     break
 
         self.device_events[device.serial] = {
-            "head_event": asyncio.Event(), "done_event": asyncio.Event(),
-            "stop_event": asyncio.Event(), "fail_event": asyncio.Event(),
+            "head": asyncio.Event(), "done": asyncio.Event(),
+            "stop": asyncio.Event(), "fail": asyncio.Event(),
         }
 
-        bridle = self.device_events[device.serial]["stop_event"] if self.alone else self.melody_events
+        bridle = self.device_events[device.serial]["stop"] if self.alone else self.melody_events
         events = self.device_events[device.serial]
 
         video_flag = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
@@ -71,9 +71,9 @@ class Record(object):
 
         async def close():
             for _ in range(10):
-                if events["done_event"].is_set():
+                if events["done"].is_set():
                     return f"{device.species} {device.serial} 视频录制成功", banner
-                elif events["fail_event"].is_set():
+                elif events["fail"].is_set():
                     return f"{device.species} {device.serial} 视频录制失败", banner
                 await asyncio.sleep(0.2)
             return f"{device.species} {device.serial} 视频录制失败", banner
@@ -97,27 +97,27 @@ class Record(object):
         return await close()
 
     async def timer_prove(self, device, amount):
-        bridle = self.device_events[device.serial]["stop_event"] if self.alone else self.melody_events
+        bridle = self.device_events[device.serial]["stop"] if self.alone else self.melody_events
         events = self.device_events[device.serial]
 
         while True:
-            if events["head_event"].is_set():
+            if events["head"].is_set():
                 for i in range(amount):
                     row = amount - i if amount - i <= 10 else 10
                     logger.info(f"{device.species} {device.serial} 剩余时间 -> {amount - i:02} 秒 {'----' * row} ...")
                     if bridle.is_set() and i != amount:
                         return logger.info(f"{device.species} {device.serial} 主动停止 ...")
-                    elif events["fail_event"].is_set():
+                    elif events["fail"].is_set():
                         return logger.info(f"{device.species} {device.serial} 意外停止 ...")
                     await asyncio.sleep(1)
                 return logger.info(f"{device.species} {device.serial} 剩余时间 -> 00 秒")
-            elif events["fail_event"].is_set():
+            elif events["fail"].is_set():
                 return logger.info(f"{device.species} {device.serial} 意外停止 ...")
             await asyncio.sleep(0.2)
 
     async def event_prove(self, device, exec_tasks):
         if self.alone and (events := self.device_events.get(device.serial, None)):
-            bridle = events["stop_event"], events["done_event"], events["fail_event"]
+            bridle = events["stop"], events["done"], events["fail"]
             while True:
                 if any(event.is_set() for event in bridle):
                     break
@@ -131,7 +131,7 @@ class Record(object):
 
     async def event_check(self):
         return any(
-            events["fail_event"].is_set() for events in self.device_events.values()
+            events["fail"].is_set() for events in self.device_events.values()
         )
 
     async def clean_event(self):

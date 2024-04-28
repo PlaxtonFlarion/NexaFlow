@@ -100,6 +100,7 @@ try:
     from engine.active import Active
     from engine.active import Review
     from engine.active import FramixReporterError
+    from engine.craft import Craft
     from frameflow.skills.config import Option
     from frameflow.skills.config import Deploy
     from frameflow.skills.config import Script
@@ -181,7 +182,7 @@ class Missions(object):
     # """Child Process"""
     def amazing(self, vision: typing.Union[str, os.PathLike], deploy: typing.Optional["Deploy"], *args, **kwargs):
         attack = self.total_place, self.model_place, self.model_shape, self.model_aisle
-        charge = _platform, self.fmp, self.fpb
+        charge = self.fmp, self.fpb
         alynex = Alynex(*attack, *charge)
         loop = asyncio.get_event_loop()
         loop_complete = loop.run_until_complete(
@@ -264,8 +265,8 @@ class Missions(object):
                     reporter.ask_create_total_report(
                         os.path.dirname(reporter.total_path),
                         self.group,
-                        loop.run_until_complete(achieve(self.view_share_temp)),
-                        loop.run_until_complete(achieve(self.view_total_temp))
+                        loop.run_until_complete(Craft.achieve(self.view_share_temp)),
+                        loop.run_until_complete(Craft.achieve(self.view_total_temp))
                     )
                 )
             except FramixReporterError:
@@ -279,7 +280,7 @@ class Missions(object):
         else:
             attack = self.total_place, None, None, None
 
-        charge = _platform, self.fmp, self.fpb
+        charge = self.fmp, self.fpb
 
         alynex = Alynex(*attack, *charge)
         logger.info(f"★ ★ ★ {'智能模式' if alynex.kc else '基础模式'} ★ ★ ★")
@@ -304,7 +305,7 @@ class Missions(object):
 
         if struct:
             if isinstance(
-                    tmp := loop.run_until_complete(achieve(self.atom_total_temp)), Exception
+                    tmp := loop.run_until_complete(Craft.achieve(self.atom_total_temp)), Exception
             ):
                 return logger.error(f"{const.ERR}{tmp}[/]")
             logger.info(f"模版引擎正在渲染 ...")
@@ -330,8 +331,8 @@ class Missions(object):
                 reporter.ask_create_total_report(
                     os.path.dirname(reporter.total_path),
                     self.group,
-                    loop.run_until_complete(achieve(self.main_share_temp)),
-                    loop.run_until_complete(achieve(self.main_total_temp))
+                    loop.run_until_complete(Craft.achieve(self.main_share_temp)),
+                    loop.run_until_complete(Craft.achieve(self.main_total_temp))
                 )
             )
         except FramixReporterError:
@@ -417,8 +418,8 @@ class Missions(object):
                     reporter.ask_create_total_report(
                         os.path.dirname(reporter.total_path),
                         self.group,
-                        loop.run_until_complete(achieve(self.view_share_temp)),
-                        loop.run_until_complete(achieve(self.view_total_temp))
+                        loop.run_until_complete(Craft.achieve(self.view_share_temp)),
+                        loop.run_until_complete(Craft.achieve(self.view_total_temp))
                     )
                 )
             except FramixReporterError:
@@ -432,7 +433,7 @@ class Missions(object):
         else:
             attack = self.total_place, None, None, None
 
-        charge = _platform, self.fmp, self.fpb
+        charge = self.fmp, self.fpb
 
         alynex = Alynex(*attack, *charge)
         logger.info(f"★ ★ ★ {'智能模式' if alynex.kc else '基础模式'} ★ ★ ★")
@@ -463,7 +464,7 @@ class Missions(object):
 
                 if struct:
                     if isinstance(
-                            tmp := loop.run_until_complete(achieve(self.atom_total_temp)), Exception
+                            tmp := loop.run_until_complete(Craft.achieve(self.atom_total_temp)), Exception
                     ):
                         return logger.error(f"{const.ERR}{tmp}[/]")
                     logger.info(f"模版引擎正在渲染 ...")
@@ -489,8 +490,8 @@ class Missions(object):
                 reporter.ask_create_total_report(
                     os.path.dirname(reporter.total_path),
                     self.group,
-                    loop.run_until_complete(achieve(self.main_share_temp)),
-                    loop.run_until_complete(achieve(self.main_total_temp))
+                    loop.run_until_complete(Craft.achieve(self.main_share_temp)),
+                    loop.run_until_complete(Craft.achieve(self.main_total_temp))
                 )
             )
         except FramixReporterError:
@@ -552,7 +553,7 @@ class Missions(object):
         video.load_frames(
             load_hued=False, none_gray=True
         )
-        logger.info(f"灰度帧已加载: {video.frame_details(video.grey_data)}")
+        logger.info(f"视频帧已加载: {video.frame_details(video.grey_data)}")
         logger.info(f"视频加载耗时: {time.time() - video_load_time:.2f} 秒")
 
         cutter = VideoCutter()
@@ -648,7 +649,7 @@ class Missions(object):
 
     async def combines_main(self, merge: list):
         major, total = await asyncio.gather(
-            achieve(self.main_share_temp), achieve(self.main_total_temp),
+            Craft.achieve(self.main_share_temp), Craft.achieve(self.main_total_temp),
             return_exceptions=True
         )
         logger.info(f"正在生成汇总报告 ...")
@@ -662,7 +663,7 @@ class Missions(object):
 
     async def combines_view(self, merge: list):
         views, total = await asyncio.gather(
-            achieve(self.view_share_temp), achieve(self.view_total_temp),
+            Craft.achieve(self.view_share_temp), Craft.achieve(self.view_total_temp),
             return_exceptions=True
         )
         logger.info(f"正在生成汇总报告 ...")
@@ -973,7 +974,7 @@ class Missions(object):
 
                     if struct:
                         if isinstance(
-                                tmp := await achieve(self.atom_total_temp), Exception
+                                tmp := await Craft.achieve(self.atom_total_temp), Exception
                         ):
                             return logger.error(f"{const.ERR}{tmp}[/]")
                         logger.info(f"模版引擎正在渲染 ...")
@@ -1163,7 +1164,7 @@ class Missions(object):
         else:
             attack_ = self.total_place, None, None, None
 
-        charge_ = platform, self.fmp, self.fpb
+        charge_ = self.fmp, self.fpb
 
         alynex = Alynex(*attack_, *charge_)
         Show.load_animation(cmd_lines)
@@ -1332,7 +1333,7 @@ class Alynex(object):
         self.model_shape = model_shape
         self.model_aisle = model_aisle
 
-        self.oss, self.fmp, self.fpb, *_ = args
+        self.fmp, self.fpb, *_ = args
 
         if all((self.total_place, self.model_place, self.model_shape, self.model_aisle)):
             try:
@@ -1399,16 +1400,6 @@ class Alynex(object):
                         target_screen = open_file
                     screen.release()
             return target_screen
-
-        async def frame_forge(frame):
-            try:
-                (_, codec), pic_path = cv2.imencode(".png", frame.data), os.path.join(
-                    frame_path, f"{frame.frame_id}_{format(round(frame.timestamp, 5), '.5f')}.png"
-                )
-                async with aiofiles.open(pic_path, "wb") as f:
-                    await f.write(codec.tobytes())
-            except Exception as e:
-                return e
 
         async def frame_flick():
             logger.info(f"阶段划分: {struct.get_ordered_stage_set()}")
@@ -1495,8 +1486,8 @@ class Alynex(object):
             logger.info(f"{'*-* 获取关键帧 *-*' if boost else '*-* 获取全部帧 *-*'}")
             frames_list = []
             important_frames = struct.get_important_frame_list()
-            pbar = toolbox.show_progress(total=struct.get_length(), color=50)
             if boost:
+                pbar = toolbox.show_progress(total=struct.get_length(), color=50)
                 frames_list.append(previous := important_frames[0])
                 pbar.update(1)
                 for current in important_frames[1:]:
@@ -1510,10 +1501,8 @@ class Alynex(object):
                     previous = current
                 pbar.close()
             else:
-                for current in struct.data:
+                for current in toolbox.show_progress(items=struct.data, color=50):
                     frames_list.append(current)
-                    pbar.update(1)
-                pbar.close()
 
             if color:
                 await color_load()
@@ -1584,7 +1573,7 @@ class Alynex(object):
                 if index not in retain_indices:
                     os.remove(os.path.join(extra_path, file))
 
-            for draw in os.listdir(extra_path):
+            for draw in toolbox.show_progress(items=os.listdir(extra_path), color=146):
                 toolbox.draw_line(os.path.join(extra_path, draw))
 
             struct_start_time = time.time()
@@ -1599,20 +1588,13 @@ class Alynex(object):
             return struct_data
 
         async def analytics_basic():
-            if self.oss == "win32":
-                forge_result = await asyncio.gather(
-                    *(frame_forge(frame) for frame in frames), return_exceptions=True
-                )
-            else:
-                forge_tasks = [
-                    [frame_forge(frame) for frame in chunk] for chunk in
-                    [frames[i:i + 100] for i in range(0, len(frames), 100)]
-                ]
-                forge_list = []
-                for ft in forge_tasks:
-                    ft_result = await asyncio.gather(*ft, return_exceptions=True)
-                    forge_list.extend(ft_result)
-                forge_result = tuple(forge_list)
+            forge_tasks = [
+                [Craft.frame_forge(frame, frame_path) for frame in chunk] for chunk in
+                [frames[i:i + 100] for i in range(0, len(frames), 100)]
+            ]
+            forge_result = await asyncio.gather(
+                *(asyncio.gather(*forge) for forge in forge_tasks)
+            )
 
             for result in forge_result:
                 if isinstance(result, Exception):
@@ -1623,22 +1605,13 @@ class Alynex(object):
             return begin_frame.frame_id, final_frame.frame_id, time_cost, None
 
         async def analytics_keras():
-            if self.oss == "win32":
-                flick_result, *forge_result = await asyncio.gather(
-                    frame_flick(), *(frame_forge(frame) for frame in frames), return_exceptions=True
-                )
-            else:
-                forge_tasks = [
-                    [frame_forge(frame) for frame in chunk] for chunk in
-                    [frames[i:i + 100] for i in range(0, len(frames), 100)]
-                ]
-                flick_task = asyncio.create_task(frame_flick())
-                forge_list = []
-                for ft in forge_tasks:
-                    ft_result = await asyncio.gather(*ft, return_exceptions=True)
-                    forge_list.extend(ft_result)
-                forge_result = tuple(forge_list)
-                flick_result = await flick_task
+            forge_tasks = [
+                [Craft.frame_forge(frame, frame_path) for frame in chunk] for chunk in
+                [frames[i:i + 100] for i in range(0, len(frames), 100)]
+            ]
+            flick_result, *forge_result = await asyncio.gather(
+                frame_flick(), *(asyncio.gather(*forge) for forge in forge_tasks)
+            )
 
             for result in forge_result:
                 if isinstance(result, Exception):
@@ -1660,7 +1633,7 @@ class Alynex(object):
         hued_thread, hued_future = video.load_frames(
             load_hued=color, none_gray=False, shape=shape, scale=scale
         )
-        logger.info(f"灰度帧已加载: {video.frame_details(video.grey_data)}")
+        logger.info(f"视频帧已加载: {video.frame_details(video.grey_data)}")
         logger.info(f"视频加载耗时: {time.time() - video_load_time:.2f} 秒")
 
         struct = await frame_flow() if self.kc else None
@@ -1669,15 +1642,6 @@ class Alynex(object):
         if struct:
             return Review(*(await analytics_keras()))
         return Review(*(await analytics_basic()))
-
-
-async def achieve(template: typing.Union[str, os.PathLike]) -> str | Exception:
-    try:
-        async with aiofiles.open(template, "r", encoding=const.CHARSET) as f:
-            template_file = await f.read()
-    except FileNotFoundError as e:
-        return e
-    return template_file
 
 
 async def arithmetic(*args, **kwargs) -> None:
@@ -1690,7 +1654,7 @@ async def arithmetic(*args, **kwargs) -> None:
     async def multiple_merge(transfer):
         if len(transfer) <= 1:
             return None
-        template_total = await achieve(
+        template_total = await Craft.achieve(
             missions.view_total_temp if missions.quick else missions.main_total_temp
         )
         logger.info(f"正在合并汇总报告 ...")
