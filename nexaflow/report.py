@@ -432,8 +432,11 @@ class Report(object):
         else:
             report_path = proto_path
 
+        template_chunk_size = 1024 * 1024
         async with aiofiles.open(report_path, "w", encoding=const.CHARSET) as f:
-            await f.write(html_template)
+            for template_start in range(0, len(html_template), template_chunk_size):
+                template_end = template_start + template_chunk_size
+                await f.write(html_template[template_start:template_end])
 
         return report_path
 

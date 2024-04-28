@@ -115,11 +115,19 @@ class Record(object):
                 return logger.info(f"{device.species} {device.serial} 意外停止 ...")
             await asyncio.sleep(0.2)
 
-    async def event_prove(self, device):
-        if events := self.device_events.get(device.serial, None):
-            if any([events["done_event"].is_set(), events["stop_event"].is_set(), events["fail_event"].is_set()]):
-                return False
-        return True
+    async def event_prove(self, device, exec_tasks):
+        if self.alone and (events := self.device_events.get(device.serial, None)):
+            bridle = events["stop_event"], events["done_event"], events["fail_event"]
+            while True:
+                if any(event.is_set() for event in bridle):
+                    break
+                await asyncio.sleep(1)
+        else:
+            await self.melody_events.wait()
+
+        if task := exec_tasks.get(device.serial, []):
+            task.cancel()
+        return logger.info(f"[bold #CD853F]{device.serial} Cancel task[/]")
 
     async def event_check(self):
         return any(

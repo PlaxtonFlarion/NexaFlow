@@ -1050,15 +1050,19 @@ class Missions(object):
             for idx, dst in enumerate(video_dst_list):
                 task_list[idx][0] = dst
 
-        async def call_commands(exec_func, exec_args, bean):
+        async def call_commands(exec_func, exec_args, bean, live_devices):
             if not (callable(function := getattr(bean, exec_func, None))):
                 return logger.error(f"{const.ERR}No callable {exec_func}[/]")
 
+            serial = getattr(bean, 'serial', bean.__class__.__name__)
             try:
-                logger.info(f"{getattr(bean, 'serial', bean.__class__.__name__)} {function.__name__} {exec_args}")
+                logger.info(f"{serial} {function.__name__} {exec_args}")
                 if inspect.iscoroutinefunction(function):
                     return await function(*exec_args)
                 return await asyncio.to_thread(function, *exec_args)
+            except asyncio.CancelledError:
+                live_devices.pop(serial)
+                logger.info(f"[bold #CD853F]{serial} Call Commands Exit[/]")
             except Exception as e:
                 return e
 
@@ -1109,29 +1113,40 @@ class Missions(object):
                     if isinstance(i, str) else (next(substitute, '*') if i == '*' else i) for i in exec_args
                 ]
 
-            active_devices = device_list.copy()
+            live_devices = {device.serial: device for device in device_list}.copy()
+
+            exec_tasks: dict[str, "asyncio.Task"] = {}
+            stop_tasks: list["asyncio.Task"] = []
+
+            for device in device_list:
+                stop_tasks.append(
+                    asyncio.create_task(record.event_prove(device, exec_tasks), name="stop"))
+
             for exec_pairs in exec_pairs_list:
-                exec_tasks = []
+                if len(live_devices) == 0:
+                    return logger.info(f"[bold #F0FFF0 on #000000]All tasks canceled[/]")
                 for exec_func, exec_args in exec_pairs:
                     exec_args = await substitute_star()
                     if exec_func == "audio_player":
-                        await call_commands(exec_func, exec_args, player)
+                        await call_commands(exec_func, exec_args, player, live_devices)
                     else:
-                        temp_devices = []
-                        for device in active_devices:
-                            if record.melody_events.is_set():
-                                return None
-                            if record.event_prove(device):
-                                exec_tasks.append(asyncio.create_task(
-                                    call_commands(exec_func, exec_args, device)))
-                                temp_devices.append(device)
-                        active_devices = temp_devices
+                        for device in live_devices.values():
+                            exec_tasks[device.serial] = asyncio.create_task(
+                                call_commands(exec_func, exec_args, device, live_devices))
 
-                exec_status_list = await asyncio.gather(*exec_tasks, return_exceptions=True)
+                try:
+                    exec_status_list = await asyncio.gather(*exec_tasks.values())
+                except asyncio.CancelledError:
+                    return logger.info(f"[bold #F0FFF0 on #000000]All tasks canceled[/]")
+                finally:
+                    exec_tasks.clear()
 
                 for status in exec_status_list:
                     if isinstance(status, Exception):
                         logger.error(f"{const.ERR}{status}[/]")
+
+            for stop in stop_tasks:
+                stop.cancel()
 
         # Initialization ===============================================================================================
         cmd_lines, platform, deploy, level, power, loop, *_ = args
