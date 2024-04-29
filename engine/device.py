@@ -8,9 +8,10 @@ class _Phone(object):
     def __init__(self, serial: str, *args):
         self.serial = serial
         self.species, self.version, self.cpu, self.ram, self.display, *_ = args
+        self.display_id = list(self.display.key())[0]
 
     def __str__(self):
-        return f"<Device {self.species} SN={self.serial} OS=[{self.version}] CPU=[{self.cpu}] RAM=[{self.ram}] DISPLAY={self.display}>"
+        return f"<Device {self.species} SN={self.serial} OS=[{self.version}] CPU=[{self.cpu}] RAM=[{self.ram}] ID=[{self.display_id}] DISPLAY={self.display}>"
 
     __repr__ = __str__
 

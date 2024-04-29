@@ -47,7 +47,7 @@ class Manage(object):
                     fit: typing.Any = lambda x: re.search(x, display)
                     for display in display_list:
                         if all((i := fit(r"(?<=displayId=)\d+"), w := fit(r"(?<=deviceWidth=)\d+"), h := fit(r"(?<=deviceHeight=)\d+"))):
-                            screen_dict.update({i.group(): (w.group(), h.group())})
+                            screen_dict.update({int(i.group()): (int(w.group()), int(h.group()))})
             return screen_dict
 
         async def _device_information(serial):
@@ -123,6 +123,42 @@ class Manage(object):
         logger.info(f"<Link> <{'单设备模式' if len(self.device_list) == 1 else '多设备模式'}>")
         for device in self.device_list:
             logger.info(f"[bold #00FFAF]Connect:[/] {device}")
+
+    async def display_select(self):
+        while True:
+            self.device_list = []
+            if len(device_dict := await self.current_device()) == 0:
+                Show.console.print(f"[bold #FFFACD]设备未连接,等待设备连接[/] ...")
+                await asyncio.sleep(5)
+                continue
+
+            for k, v in device_dict.items():
+                self.device_list.append(v)
+
+            select_dict = {
+                device.serial: device
+                for device in self.device_list if len(device.display) > 1
+            }
+
+            if len(select_dict) == 0:
+                for k, v in device_dict.items():
+                    Show.console.print(f"[bold][bold #FFFACD]Connect:[/] [{k}] {v}[/]")
+                return Show.console.print(f"[bold #FFC0CB]没有多屏幕的设备[/] ...")
+
+            for k, v in select_dict.items():
+                Show.console.print(f"{k} {v}")
+
+            choices = [
+                f"{sn};{idx}" for sn, device in select_dict.items()
+                for idx in device.display.keys()
+            ]
+            try:
+                if action := Prompt.ask("[bold #FFEC8B]Select[/]", console=Show.console, choices=choices):
+                    if len(select := re.split(r";", action, re.S)) == 2:
+                        select_dict[select[0]].id = int(select[1])
+            except KeyError:
+                Show.console.print(f"[bold #FFC0CB]没有该序号,请重新选择[/] ...\n")
+                await asyncio.sleep(1)
 
 
 if __name__ == '__main__':

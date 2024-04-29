@@ -16,7 +16,7 @@ from engine.terminal import Terminal
 
 class Record(object):
 
-    device_events: dict = {}
+    record_events: dict = {}
     melody_events: asyncio.Event = asyncio.Event()
 
     def __init__(self, scrcpy: str, system: str,  *_, **kwargs):
@@ -45,13 +45,13 @@ class Record(object):
                     events["fail"].set()
                     break
 
-        self.device_events[device.serial] = {
+        self.record_events[device.serial] = {
             "head": asyncio.Event(), "done": asyncio.Event(),
             "stop": asyncio.Event(), "fail": asyncio.Event(),
         }
 
-        bridle = self.device_events[device.serial]["stop"] if self.alone else self.melody_events
-        events = self.device_events[device.serial]
+        bridle = self.record_events[device.serial]["stop"] if self.alone else self.melody_events
+        events = self.record_events[device.serial]
 
         video_flag = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
 
@@ -78,11 +78,13 @@ class Record(object):
                 await asyncio.sleep(0.2)
             return f"{device.species} {device.serial} 视频录制失败", banner
 
-        events = self.device_events[device.serial]
+        events = self.record_events[device.serial]
         banner = os.path.basename(video_temp)
 
         # TODO Feasibility to be tested -> transports.send_signal(signal.SIGINT) ?
         if self.system != "win32":
+            # transports.send_signal(signal.SIGKILL)
+            # transports.send_signal(signal.SIGINT)
             transports.terminate()
             return await close()
 
@@ -97,8 +99,8 @@ class Record(object):
         return await close()
 
     async def check_timer(self, device, amount):
-        bridle = self.device_events[device.serial]["stop"] if self.alone else self.melody_events
-        events = self.device_events[device.serial]
+        bridle = self.record_events[device.serial]["stop"] if self.alone else self.melody_events
+        events = self.record_events[device.serial]
 
         while True:
             if events["head"].is_set():
@@ -116,7 +118,7 @@ class Record(object):
             await asyncio.sleep(0.2)
 
     async def check_event(self, device, exec_tasks):
-        if self.alone and (events := self.device_events.get(device.serial, None)):
+        if self.alone and (events := self.record_events.get(device.serial, None)):
             bridle = events["stop"], events["done"], events["fail"]
             while True:
                 if any(event.is_set() for event in bridle):
@@ -131,16 +133,16 @@ class Record(object):
 
     async def flunk_event(self):
         return any(
-            events["fail"].is_set() for events in self.device_events.values()
+            events["fail"].is_set() for events in self.record_events.values()
         )
 
     async def clean_event(self):
         self.melody_events.clear()
-        for event_dict in self.device_events.values():
+        for event_dict in self.record_events.values():
             for events in event_dict.values():
                 if isinstance(events, asyncio.Event):
                     events.clear()
-        self.device_events.clear()
+        self.record_events.clear()
 
 
 class Player(object):
