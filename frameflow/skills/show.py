@@ -190,11 +190,12 @@ class Show(object):
         table.add_column("说明", justify="center", width=44)
 
         information = [
-            ["[bold #FFAFAF]header", "[bold #AFD7FF]标题名", "[bold #DADADA]生成一个新标题文件夹"],
-            ["[bold #FFAFAF]serial", "[bold #8A8A8A]无参数", "[bold #DADADA]重新选择已连接的设备"],
-            ["[bold #FFAFAF]deploy", "[bold #8A8A8A]无参数", "[bold #DADADA]重新部署视频分析配置"],
-            ["[bold #FFAFAF]create", "[bold #8A8A8A]无参数", "[bold #DADADA]生成视频分析汇总报告"],
-            ["[bold #FFAFAF]invent", "[bold #8A8A8A]无参数", "[bold #DADADA]生成视频拆帧汇总报告"]
+            ["[bold #FFAFAF]header", "[bold #AFD7FF]标题名", "[bold #DADADA]生成新标题文件夹"],
+            ["[bold #FFAFAF]serial", "", "[bold #DADADA]选择已连接的设备"],
+            ["[bold #FFAFAF]deploy", "", "[bold #DADADA]部署视频分析配置"],
+            ["[bold #FFAFAF]create", "", "[bold #DADADA]生成汇总报告"],
+            ["[bold #FFAFAF]invent", "", "[bold #DADADA]生成汇总报告"],
+            ["[bold #FFAFAF]cancel", "", "[bold #DADADA]退出"],
         ]
         for info in information:
             table.add_row(*info)

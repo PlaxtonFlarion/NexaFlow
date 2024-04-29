@@ -17,9 +17,9 @@ UNSTABLE_FLAG = r"-1"
 UNKNOWN_STAGE_FLAG = r"-2"
 IGNORE_FLAG = r"-3"
 
-SUC = "[#FFFFFF on #32CD32]"
-WRN = "[#000000 on #FFFF00]"
-ERR = "[#FFFFFF on #FF6347]"
+SUC = "[bold #FFFFFF on #32CD32]"
+WRN = "[bold #000000 on #FFFF00]"
+ERR = "[bold #FFFFFF on #FF6347]"
 
 COMPRESS = 0.5
 

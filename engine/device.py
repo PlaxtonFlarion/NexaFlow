@@ -5,19 +5,20 @@ from engine.terminal import Terminal
 
 class _Phone(object):
 
-    def __init__(self, serial: str, species: str, version: str, display: dict):
-        self.serial, self.species, self.version, self.display = serial, species, version, display
+    def __init__(self, serial: str, *args):
+        self.serial = serial
+        self.species, self.version, self.cpu, self.ram, self.display, *_ = args
 
     def __str__(self):
-        return f"<Device {self.species} os={self.version} sn={self.serial} display={self.display}>"
+        return f"<Device {self.species} SN={self.serial} OS=[{self.version}] CPU=[{self.cpu}] RAM=[{self.ram}] DISPLAY={self.display}>"
 
     __repr__ = __str__
 
 
 class Device(_Phone):
 
-    def __init__(self, adb: str, serial: str, species: str, version: str, display: dict):
-        super().__init__(serial, species, version, display)
+    def __init__(self, adb: str, serial: str, *args):
+        super().__init__(serial, *args)
         self.initial = [adb, "-s", serial, "wait-for-usb-device"]
 
     @staticmethod

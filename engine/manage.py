@@ -1,4 +1,5 @@
 import re
+import math
 import typing
 import asyncio
 from loguru import logger
@@ -16,6 +17,19 @@ class Manage(object):
         self.adb = adb
 
     async def current_device(self) -> dict[str, "Device"]:
+
+        async def _device_cpu(serial):
+            cmd = [self.adb, "-s", serial, "wait-for-usb-device", "shell", "cat", "/proc/cpuinfo", "|", "grep", "processor"]
+            if cpu := await Terminal.cmd_line(*cmd):
+                return len(re.findall(r"processor", cpu, re.S))
+
+        async def _device_ram(serial):
+            cmd = ["adb", "-s", serial, "wait-for-usb-device", "shell", "free"]
+            if ram := await Terminal.cmd_line(*cmd):
+                for line in ram.splitlines()[1:2]:
+                    if match := re.search(r"\d+", line.split()[1]):
+                        total_ram = int(match.group()) / 1024 / 1024 / 1024
+                        return math.ceil(total_ram)
 
         async def _device_species(serial):
             cmd = [self.adb, "-s", serial, "wait-for-usb-device", "shell", "getprop", "ro.product.brand"]
@@ -38,7 +52,8 @@ class Manage(object):
 
         async def _device_information(serial):
             information = await asyncio.gather(
-                _device_species(serial), _device_version(serial), _device_display(serial), return_exceptions=True
+                _device_species(serial), _device_version(serial), _device_cpu(serial), _device_ram(serial), _device_display(serial),
+                return_exceptions=True
             )
             for info in information:
                 if isinstance(info, Exception):

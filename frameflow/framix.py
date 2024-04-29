@@ -100,6 +100,7 @@ try:
     from engine.active import Active
     from engine.active import Review
     from engine.active import FramixReporterError
+    from engine.active import FramixAnalysisError
     from engine.craft import Craft
     from frameflow.skills.config import Option
     from frameflow.skills.config import Deploy
@@ -829,19 +830,19 @@ class Missions(object):
 
         async def combines():
             if len(reporter.range_list) == 0:
-                return None
+                return logger.warning(f"{const.WRN}没有可以生成的报告[/]")
             report = getattr(self, "combines_view" if self.quick else "combines_main")
             return await report([os.path.dirname(reporter.total_path)])
 
         async def commence():
 
             # Wait Device Online
-            async def wait_for_device(serial):
-                logger.info(f"wait-for-device {serial} ...")
-                await Terminal.cmd_line(self.adb, "-s", serial, "wait-for-device")
+            async def wait_for_device(device):
+                logger.info(f"[bold #FAFAD2]Wait Device Online -> {device.species} {device.serial}[/]")
+                await Terminal.cmd_line(self.adb, "-s", device.serial, "wait-for-device")
 
             await asyncio.gather(
-                *(wait_for_device(device.serial) for device in device_list)
+                *(wait_for_device(device) for device in device_list)
             )
 
             todo_list = []
@@ -1067,9 +1068,21 @@ class Missions(object):
             except Exception as e:
                 return e
 
-        async def load_commands(script):
+        async def load_carry(carry):
+            if len(parts := re.split(r",|;|!|\s", carry, 1)) == 2:
+                loc, key = parts
+                if isinstance(exec_dict := await load_fully(loc), Exception):
+                    return exec_dict
+
+                try:
+                    if exec_dict.get(key, None):
+                        return exec_dict
+                except (FileNotFoundError, KeyError, json.JSONDecodeError) as e:
+                    return e
+
+        async def load_fully(fully):
             try:
-                async with aiofiles.open(script, "r", encoding=const.CHARSET) as f:
+                async with aiofiles.open(fully, "r", encoding=const.CHARSET) as f:
                     file_list = json.loads(await f.read())["command"]
                     exec_dict = {
                         file_key: {
@@ -1188,6 +1201,8 @@ class Missions(object):
                         if (select_ := action_.strip().lower()) == "serial":
                             device_list = await manage_.another_device()
                             continue
+                        elif select_ == "cancel":
+                            sys.exit(Show.exit())
                         elif "header" in select_:
                             if match_ := re.search(r"(?<=header\s).*", select_):
                                 if hd_ := match_.group().strip():
@@ -1195,7 +1210,7 @@ class Missions(object):
                                     logger.success(f"{const.SUC}New title set successfully[/]")
                                     reporter.title = f"{src_hd_}_{hd_}" if hd_ else f"{src_hd_}_{random.randint(a_, b_)}"
                                     continue
-                            raise ValueError
+                            raise FramixAnalysisError(f"Set Error")
                         elif select_ in ["invent", "create"]:
                             await combines()
                             break
@@ -1215,8 +1230,9 @@ class Missions(object):
                                 logger.info(f"[bold #FFFF87]{bound_tips_}[/]")
                             timer_mode = max(lower_bound_, min(upper_bound_, timer_value_))
                         else:
-                            raise ValueError
-                except ValueError:
+                            raise FramixAnalysisError(f"Set Error")
+                except FramixAnalysisError as e_:
+                    logger.error(f"{const.ERR}{e_}[/]")
                     Show.tips_document()
                     continue
                 else:
@@ -1235,25 +1251,20 @@ class Missions(object):
         elif self.carry or self.fully:
 
             if self.carry:
-                if isinstance(script_data_ := await load_commands(self.initial_script), Exception):
-                    if isinstance(script_data_, FileNotFoundError):
-                        Script.dump_script(self.initial_script)
-                    return Show.console.print_exception()
-                try:
-                    script_storage_ = [{carry_: script_data_[carry_] for carry_ in list(set(self.carry))}]
-                except KeyError as e_:
-                    return logger.error(f"{const.ERR}{e_}[/]")
-
-            else:
                 load_script_data_ = await asyncio.gather(
-                    *(load_commands(fully_) for fully_ in self.fully), return_exceptions=True
+                    *(load_carry(carry_) for carry_ in self.carry), return_exceptions=True
                 )
-                for script_data_ in load_script_data_:
-                    if isinstance(script_data_, Exception):
-                        if isinstance(script_data_, FileNotFoundError):
-                            Script.dump_script(self.initial_script)
-                        return Show.console.print_exception()
-                script_storage_ = [script_data_ for script_data_ in load_script_data_]
+            elif self.fully:
+                load_script_data_ = await asyncio.gather(
+                    *(load_fully(fully_) for fully_ in self.fully), return_exceptions=True
+                )
+            else:
+                return None
+
+            for script_data_ in load_script_data_:
+                if isinstance(script_data_, Exception):
+                    return logger.error(f"{const.ERR}{script_data_}[/]")
+            script_storage_ = [script_data_ for script_data_ in load_script_data_]
 
             await manage_.display_device()
             for script_dict_ in script_storage_:
@@ -1278,7 +1289,7 @@ class Missions(object):
                         suffix_list_ = await pack_commands(suffix_list_)
 
                     for hd_ in header_:
-                        reporter.title = f"{script_key_}_{input_title_}_{hd_}"
+                        reporter.title = f"{input_title_}_{script_key_}_{hd_}"
                         for _ in range(looper_):
 
                             # prefix
