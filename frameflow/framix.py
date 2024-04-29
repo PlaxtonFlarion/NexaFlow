@@ -799,7 +799,7 @@ class Missions(object):
             )
             return resized
 
-        cmd_lines, platform, deploy, level, power, loop, *_ = args
+        cmd_lines, platform, deploy, level, power, main_loop, *_ = args
 
         manage = Manage(self.adb)
         device_list = await manage.operate_device()
@@ -952,7 +952,7 @@ class Missions(object):
                 else:
                     with ProcessPoolExecutor(power, None, Active.active, ("ERROR",)) as exe:
                         task = [
-                            loop.run_in_executor(
+                            main_loop.run_in_executor(
                                 exe, self.amazing, video_temp, deploy, frame_path, extra_path
                             ) for video_temp, *_, frame_path, extra_path, _ in task_list
                         ]
@@ -1163,7 +1163,7 @@ class Missions(object):
                 stop.cancel()
 
         # Initialization ===============================================================================================
-        cmd_lines, platform, deploy, level, power, loop, *_ = args
+        cmd_lines, platform, deploy, level, power, main_loop, *_ = args
 
         manage_ = Manage(self.adb)
         device_list = await manage_.operate_device()
@@ -1675,7 +1675,7 @@ async def arithmetic(*args, **kwargs) -> None:
             return Show.console.print_exception()
         logger.info(f"合并汇总报告完成 {os.path.relpath(report_html)}")
 
-    missions, platform, cmd_lines, deploy, level, power, loop, *_ = args
+    missions, platform, cmd_lines, deploy, level, power, main_loop, *_ = args
     _ = kwargs["total_place"]
     _ = kwargs["model_place"]
     _ = kwargs["model_shape"]
@@ -1689,7 +1689,7 @@ async def arithmetic(*args, **kwargs) -> None:
         Show.load_animation(cmd_lines)
         with ProcessPoolExecutor(*(await initialization(video_list))) as exe:
             results = await asyncio.gather(
-                *(loop.run_in_executor(exe, missions.video_file_task, i, deploy) for i in video_list)
+                *(main_loop.run_in_executor(exe, missions.video_file_task, i, deploy) for i in video_list)
             )
         await multiple_merge(video_list)
         sys.exit(Show.done())
@@ -1700,7 +1700,7 @@ async def arithmetic(*args, **kwargs) -> None:
         Show.load_animation(cmd_lines)
         with ProcessPoolExecutor(*(await initialization(stack_list))) as exe:
             results = await asyncio.gather(
-                *(loop.run_in_executor(exe, missions.video_data_task, i, deploy) for i in stack_list)
+                *(main_loop.run_in_executor(exe, missions.video_data_task, i, deploy) for i in stack_list)
             )
         await multiple_merge(stack_list)
         sys.exit(Show.done())
@@ -1710,7 +1710,7 @@ async def arithmetic(*args, **kwargs) -> None:
         # Start Child Process
         with ProcessPoolExecutor(*(await initialization(train_list))) as exe:
             results = await asyncio.gather(
-                *(loop.run_in_executor(exe, missions.train_model, i, deploy) for i in train_list)
+                *(main_loop.run_in_executor(exe, missions.train_model, i, deploy) for i in train_list)
             )
         sys.exit(Show.done())
 
@@ -1719,7 +1719,7 @@ async def arithmetic(*args, **kwargs) -> None:
         # Start Child Process
         with ProcessPoolExecutor(*(await initialization(build_list))) as exe:
             results = await asyncio.gather(
-                *(loop.run_in_executor(exe, missions.build_model, i, deploy) for i in build_list)
+                *(main_loop.run_in_executor(exe, missions.build_model, i, deploy) for i in build_list)
             )
         sys.exit(Show.done())
 
@@ -1727,7 +1727,7 @@ async def arithmetic(*args, **kwargs) -> None:
 
 
 async def scheduling(*args, **kwargs) -> None:
-    missions, platform, cmd_lines, deploy, level, power, loop, *_ = args
+    missions, platform, cmd_lines, deploy, level, power, main_loop, *_ = args
     _ = kwargs["total_place"]
     _ = kwargs["model_place"]
     _ = kwargs["model_shape"]
@@ -1737,10 +1737,10 @@ async def scheduling(*args, **kwargs) -> None:
 
     # --flick --carry --fully ==========================================================================================
     if cmd_lines.flick or cmd_lines.carry or cmd_lines.fully:
-        await missions.analysis(cmd_lines, platform, deploy, level, power, loop)
+        await missions.analysis(cmd_lines, platform, deploy, level, power, main_loop)
     # --paint ==========================================================================================================
     elif cmd_lines.paint:
-        await missions.painting(cmd_lines, platform, deploy, level, power, loop)
+        await missions.painting(cmd_lines, platform, deploy, level, power, main_loop)
     # --union ==========================================================================================================
     elif cmd_lines.union:
         await missions.combines_view(cmd_lines.union)
