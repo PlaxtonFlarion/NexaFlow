@@ -683,23 +683,23 @@ class Missions(object):
         import PIL.ImageDraw
         import PIL.ImageFont
 
-        async def paint_lines(serial):
+        async def paint_lines(sn):
             image_folder = "/sdcard/Pictures/Shots"
             image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_" + "Shot.png"
             await Terminal.cmd_line(
-                self.adb, "-s", serial, "wait-for-device"
+                self.adb, "-s", sn, "wait-for-device"
             )
             await Terminal.cmd_line(
-                self.adb, "-s", serial, "shell", "mkdir", "-p", image_folder
+                self.adb, "-s", sn, "shell", "mkdir", "-p", image_folder
             )
             await Terminal.cmd_line(
-                self.adb, "-s", serial, "shell", "screencap", "-p", f"{image_folder}/{image}"
+                self.adb, "-s", sn, "shell", "screencap", "-p", f"{image_folder}/{image}"
             )
 
             with tempfile.TemporaryDirectory() as temp_dir:
                 image_save_path = os.path.join(temp_dir, image)
                 await Terminal.cmd_line(
-                    self.adb, "-s", serial, "pull", f"{image_folder}/{image}", image_save_path
+                    self.adb, "-s", sn, "pull", f"{image_folder}/{image}", image_save_path
                 )
 
                 if deploy.color:
@@ -795,7 +795,7 @@ class Missions(object):
                 resized.show()
 
             await Terminal.cmd_line(
-                self.adb, "-s", serial, "shell", "rm", f"{image_folder}/{image}"
+                self.adb, "-s", sn, "shell", "rm", f"{image_folder}/{image}"
             )
             return resized
 
@@ -803,7 +803,7 @@ class Missions(object):
 
         manage = Manage(self.adb)
         device_list = await manage.operate_device()
-        tasks = [paint_lines(device.serial) for device in device_list]
+        tasks = [paint_lines(device.sn) for device in device_list]
         resized_result = await asyncio.gather(*tasks)
 
         while True:
@@ -816,7 +816,7 @@ class Missions(object):
                 reporter.title = f"Hooks_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
                 for device, resize_img in zip(device_list, resized_result):
                     img_save_path = os.path.join(
-                        reporter.query_path, f"hook_{device.serial}_{random.randint(10000, 99999)}.png"
+                        reporter.query_path, f"hook_{device.sn}_{random.randint(10000, 99999)}.png"
                     )
                     resize_img.save(img_save_path)
                     logger.info(f"保存图片: {os.path.relpath(img_save_path)}")
@@ -838,8 +838,8 @@ class Missions(object):
 
             # Wait Device Online
             async def wait_for_device(device):
-                logger.info(f"[bold #FAFAD2]Wait Device Online -> {device.species} {device.serial}[/]")
-                await Terminal.cmd_line(self.adb, "-s", device.serial, "wait-for-device")
+                logger.info(f"[bold #FAFAD2]Wait Device Online -> {device.tag} {device.sn}[/]")
+                await Terminal.cmd_line(self.adb, "-s", device.sn, "wait-for-device")
 
             await asyncio.gather(
                 *(wait_for_device(device) for device in device_list)
@@ -852,7 +852,7 @@ class Missions(object):
                 await asyncio.sleep(0.2)
 
                 if fmt_dir:
-                    reporter.query = os.path.join(fmt_dir, device.serial)
+                    reporter.query = os.path.join(fmt_dir, device.sn)
                 video_temp, transports = await record.start_record(
                     device, reporter.video_path
                 )
@@ -1056,15 +1056,15 @@ class Missions(object):
             if not (callable(function := getattr(bean, exec_func, None))):
                 return logger.error(f"{const.ERR}No callable {exec_func}[/]")
 
-            serial = getattr(bean, 'serial', bean.__class__.__name__)
+            sn = getattr(bean, 'sn', bean.__class__.__name__)
             try:
-                logger.info(f"{serial} {function.__name__} {exec_args}")
+                logger.info(f"{sn} {function.__name__} {exec_args}")
                 if inspect.iscoroutinefunction(function):
                     return await function(*exec_args)
                 return await asyncio.to_thread(function, *exec_args)
             except asyncio.CancelledError:
-                live_devices.pop(serial)
-                logger.info(f"[bold #CD853F]{serial} Call Commands Exit[/]")
+                live_devices.pop(sn)
+                logger.info(f"[bold #CD853F]{sn} Call Commands Exit[/]")
             except Exception as e:
                 return e
 
@@ -1127,7 +1127,7 @@ class Missions(object):
                     if isinstance(i, str) else (next(substitute, '*') if i == '*' else i) for i in exec_args
                 ]
 
-            live_devices = {device.serial: device for device in device_list}.copy()
+            live_devices = {device.sn: device for device in device_list}.copy()
 
             exec_tasks: dict[str, "asyncio.Task"] = {}
             stop_tasks: list["asyncio.Task"] = []
@@ -1145,7 +1145,7 @@ class Missions(object):
                         await call_commands(exec_func, exec_args, player, live_devices)
                     else:
                         for device in live_devices.values():
-                            exec_tasks[device.serial] = asyncio.create_task(
+                            exec_tasks[device.sn] = asyncio.create_task(
                                 call_commands(exec_func, exec_args, device, live_devices))
 
                 try:
@@ -1198,7 +1198,7 @@ class Missions(object):
                     await manage_.display_device()
                     start_tips_ = f"<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/] 秒>>>"
                     if action_ := Prompt.ask(prompt=f"[bold #5FD7FF]{start_tips_}[/]", console=Show.console):
-                        if (select_ := action_.strip().lower()) == "serial":
+                        if (select_ := action_.strip().lower()) == "device":
                             device_list = await manage_.another_device()
                             continue
                         elif select_ == "cancel":

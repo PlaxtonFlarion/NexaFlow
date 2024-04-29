@@ -45,17 +45,17 @@ class Record(object):
                     events["fail"].set()
                     break
 
-        self.record_events[device.serial] = {
+        self.record_events[device.sn] = {
             "head": asyncio.Event(), "done": asyncio.Event(),
             "stop": asyncio.Event(), "fail": asyncio.Event(),
         }
 
-        bridle = self.record_events[device.serial]["stop"] if self.alone else self.melody_events
-        events = self.record_events[device.serial]
+        bridle = self.record_events[device.sn]["stop"] if self.alone else self.melody_events
+        events = self.record_events[device.sn]
 
         video_flag = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
 
-        cmd = [self.scrcpy, "-s", device.serial]
+        cmd = [self.scrcpy, "-s", device.sn]
         cmd += ["--no-audio", "--video-bit-rate", "8M", "--max-fps", "60"]
         cmd += ["-Nr" if self.whist else "--record", video_temp := f"{os.path.join(dst, 'screen')}_{video_flag}"]
 
@@ -72,13 +72,13 @@ class Record(object):
         async def close():
             for _ in range(10):
                 if events["done"].is_set():
-                    return f"{device.species} {device.serial} 视频录制成功", banner
+                    return f"{device.tag} {device.sn} 视频录制成功", banner
                 elif events["fail"].is_set():
-                    return f"{device.species} {device.serial} 视频录制失败", banner
+                    return f"{device.tag} {device.sn} 视频录制失败", banner
                 await asyncio.sleep(0.2)
-            return f"{device.species} {device.serial} 视频录制失败", banner
+            return f"{device.tag} {device.sn} 视频录制失败", banner
 
-        events = self.record_events[device.serial]
+        events = self.record_events[device.sn]
         banner = os.path.basename(video_temp)
 
         # TODO Feasibility to be tested -> transports.send_signal(signal.SIGINT) ?
@@ -99,26 +99,26 @@ class Record(object):
         return await close()
 
     async def check_timer(self, device, amount):
-        bridle = self.record_events[device.serial]["stop"] if self.alone else self.melody_events
-        events = self.record_events[device.serial]
+        bridle = self.record_events[device.sn]["stop"] if self.alone else self.melody_events
+        events = self.record_events[device.sn]
 
         while True:
             if events["head"].is_set():
                 for i in range(amount):
                     row = amount - i if amount - i <= 10 else 10
-                    logger.info(f"{device.species} {device.serial} 剩余时间 -> {amount - i:02} 秒 {'----' * row} ...")
+                    logger.info(f"{device.tag} {device.sn} 剩余时间 -> {amount - i:02} 秒 {'----' * row} ...")
                     if bridle.is_set() and i != amount:
-                        return logger.info(f"{device.species} {device.serial} 主动停止 ...")
+                        return logger.info(f"{device.tag} {device.sn} 主动停止 ...")
                     elif events["fail"].is_set():
-                        return logger.info(f"{device.species} {device.serial} 意外停止 ...")
+                        return logger.info(f"{device.tag} {device.sn} 意外停止 ...")
                     await asyncio.sleep(1)
-                return logger.info(f"{device.species} {device.serial} 剩余时间 -> 00 秒")
+                return logger.info(f"{device.tag} {device.sn} 剩余时间 -> 00 秒")
             elif events["fail"].is_set():
-                return logger.info(f"{device.species} {device.serial} 意外停止 ...")
+                return logger.info(f"{device.tag} {device.sn} 意外停止 ...")
             await asyncio.sleep(0.2)
 
     async def check_event(self, device, exec_tasks):
-        if self.alone and (events := self.record_events.get(device.serial, None)):
+        if self.alone and (events := self.record_events.get(device.sn, None)):
             bridle = events["stop"], events["done"], events["fail"]
             while True:
                 if any(event.is_set() for event in bridle):
@@ -127,9 +127,9 @@ class Record(object):
         else:
             await self.melody_events.wait()
 
-        if task := exec_tasks.get(device.serial, []):
+        if task := exec_tasks.get(device.sn, []):
             task.cancel()
-        return logger.info(f"[bold #CD853F]{device.serial} Cancel task[/]")
+        return logger.info(f"[bold #CD853F]{device.sn} Cancel task[/]")
 
     async def flunk_event(self):
         return any(

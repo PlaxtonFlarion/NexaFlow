@@ -20,7 +20,7 @@ class Show(object):
     @staticmethod
     def show_progress():
         return Progress(
-            TextColumn("[bold]Framix | {task.description} |", justify="right"),
+            TextColumn(f"[bold]{const.DESC} | {{task.description}} |", justify="right"),
             SpinnerColumn(
                 style="bold #FFF68F", speed=1, finished_text="[bold #9AFF9A]Done"
             ),
@@ -34,8 +34,19 @@ class Show(object):
 
     @staticmethod
     def simulation_progress(desc: str, advance: int | float, interval: int | float):
-        with Progress() as progress:
-            task = progress.add_task(f"[bold #FFFFD7]{desc}", total=100)
+        with Progress(
+            TextColumn("[bold #FFFFD7]{task.description}", justify="right"),
+            SpinnerColumn(
+                style="bold #FFF68F", speed=1, finished_text="[bold #9AFF9A]Done"
+            ),
+            BarColumn(
+                int(Show.console.width * 0.4), "bold #FF6347", "bold #FFEC8B", "bold #98FB98"
+            ),
+            TimeRemainingColumn(),
+            "[progress.percentage][bold #E0FFFF]{task.percentage:>5.0f}%[/]",
+            expand=False
+        ) as progress:
+            task = progress.add_task(desc, total=100)
             while not progress.finished:
                 progress.update(task, advance=advance)
                 time.sleep(interval)
@@ -191,7 +202,7 @@ class Show(object):
 
         information = [
             ["[bold #FFAFAF]header", "[bold #AFD7FF]标题名", "[bold #DADADA]生成新标题文件夹"],
-            ["[bold #FFAFAF]serial", "", "[bold #DADADA]选择已连接的设备"],
+            ["[bold #FFAFAF]device", "", "[bold #DADADA]选择已连接的设备"],
             ["[bold #FFAFAF]deploy", "", "[bold #DADADA]部署视频分析配置"],
             ["[bold #FFAFAF]create", "", "[bold #DADADA]生成汇总报告"],
             ["[bold #FFAFAF]invent", "", "[bold #DADADA]生成汇总报告"],
