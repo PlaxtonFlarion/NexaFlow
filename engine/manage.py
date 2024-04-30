@@ -3,9 +3,8 @@ import math
 import typing
 import asyncio
 from loguru import logger
-from rich.prompt import Prompt
 from rich.table import Table
-
+from rich.prompt import Prompt
 from engine.device import Device
 from engine.terminal import Terminal
 from frameflow.skills.show import Show
@@ -22,7 +21,10 @@ class Manage(object):
     async def current_device(self) -> dict[str, "Device"]:
 
         async def _device_cpu(sn):
-            cmd = [self.adb, "-s", sn, "wait-for-usb-device", "shell", "cat", "/proc/cpuinfo", "|", "grep", "processor"]
+            cmd = [
+                self.adb, "-s", sn, "wait-for-usb-device", "shell",
+                "cat", "/proc/cpuinfo", "|", "grep", "processor"
+            ]
             if cpu := await Terminal.cmd_line(*cmd):
                 return len(re.findall(r"processor", cpu, re.S))
 
@@ -35,58 +37,63 @@ class Manage(object):
                         return math.ceil(total_ram)
 
         async def _device_tag(sn):
-            cmd = [self.adb, "-s", sn, "wait-for-usb-device", "shell", "getprop", "ro.product.brand"]
+            cmd = [
+                self.adb, "-s", sn, "wait-for-usb-device", "shell",
+                "getprop", "ro.product.brand"
+            ]
             return await Terminal.cmd_line(*cmd)
 
         async def _device_ver(sn):
-            cmd = [self.adb, "-s", sn, "wait-for-usb-device", "shell", "getprop", "ro.build.version.release"]
+            cmd = [
+                self.adb, "-s", sn, "wait-for-usb-device", "shell",
+                "getprop", "ro.build.version.release"
+            ]
             return await Terminal.cmd_line(*cmd)
 
         async def _device_display(sn):
-            cmd = [self.adb, "-s", sn, "wait-for-usb-device", "shell", "dumpsys", "display", "|", "grep", "mViewports="]
+            cmd = [
+                self.adb, "-s", sn, "wait-for-usb-device", "shell",
+                "dumpsys", "display", "|", "grep", "mViewports="
+            ]
             screen_dict = {}
             if information_list := await Terminal.cmd_line(*cmd):
                 if display_list := re.findall(r"DisplayViewport\{.*?}", information_list):
                     fit: typing.Any = lambda x: re.search(x, display)
                     for display in display_list:
-                        if all((i := fit(r"(?<=displayId=)\d+"), w := fit(r"(?<=deviceWidth=)\d+"), h := fit(r"(?<=deviceHeight=)\d+"))):
+                        if all((
+                                i := fit(r"(?<=displayId=)\d+"),
+                                w := fit(r"(?<=deviceWidth=)\d+"),
+                                h := fit(r"(?<=deviceHeight=)\d+"))):
                             screen_dict.update({int(i.group()): (int(w.group()), int(h.group()))})
             return screen_dict
 
         async def _device_information(sn):
-            information = await asyncio.gather(
-                _device_tag(sn),
-                _device_ver(sn),
-                _device_cpu(sn),
-                _device_ram(sn),
-                _device_display(sn),
-                return_exceptions=True
+            information_list = await asyncio.gather(
+                _device_tag(sn), _device_ver(sn), _device_cpu(sn), _device_ram(sn),
+                _device_display(sn), return_exceptions=True
             )
-            for info in information:
-                if isinstance(info, Exception):
-                    return info
-            return Device(self.adb, sn, *information)
+            for device_info in information_list:
+                if isinstance(device_info, Exception):
+                    return device_info
+            return Device(self.adb, sn, *information_list)
 
         device_dict = {}
-        devices = await Terminal.cmd_line(self.adb, "devices")
-        if sn_list := [line.split()[0] for line in devices.split("\n")[1:]]:
-            result_list = await asyncio.gather(
+        device_list = await Terminal.cmd_line(self.adb, "devices")
+        if sn_list := [line.split()[0] for line in device_list.split("\n")[1:]]:
+            device_instance_list = await asyncio.gather(
                 *(_device_information(sn) for sn in sn_list), return_exceptions=True
             )
-
-            for result in result_list:
-                if isinstance(result, Exception):
+            for device_instance in device_instance_list:
+                if isinstance(device_instance, Exception):
                     return device_dict
-
-            device_dict = {str(i + 1): device for i, device in enumerate(result_list)}
+            device_dict = {str(index + 1): device for index, device in enumerate(device_instance_list)}
         return device_dict
 
     async def operate_device(self) -> list["Device"]:
         while True:
             self.device_list = []
             if len(device_dict := await self.current_device()) == 0:
-                Show.console.print(f"[bold #FFFACD]Wait for device to connect[/] ...")
-                Show.simulation_progress(f"Waiting for retry ...", 1, 0.05)
+                Show.simulation_progress(f"Wait for device to connect ...", 1, 0.05)
                 continue
 
             for index, device in device_dict.items():
@@ -104,8 +111,7 @@ class Manage(object):
         while True:
             self.device_list = []
             if len(device_dict := await self.current_device()) == 0:
-                Show.console.print(f"[bold #FFFACD]Wait for device to connect[/] ...")
-                Show.simulation_progress(f"Waiting for retry ...", 1, 0.05)
+                Show.simulation_progress(f"Wait for device to connect ...", 1, 0.05)
                 continue
 
             for index, device in device_dict.items():
@@ -136,8 +142,7 @@ class Manage(object):
         while True:
             self.device_list = []
             if len(device_dict := await self.current_device()) == 0:
-                Show.console.print(f"[bold #FFFACD]Wait for device to connect[/] ...")
-                Show.simulation_progress(f"Waiting for retry ...", 1, 0.05)
+                Show.simulation_progress(f"Wait for device to connect ...", 1, 0.05)
                 continue
 
             for index, device in device_dict.items():
@@ -159,31 +164,28 @@ class Manage(object):
                 show_header=True,
                 show_lines=True
             )
-            table.add_column("序列号", justify="center", width=22)
-            table.add_column("显示器", justify="center", width=10)
-            table.add_column("分辨率", justify="center", width=12)
-            table.add_column("选择项", justify="center", width=24)
+            table.add_column("序列号", justify="left", width=22)
+            table.add_column("显示器", justify="left", width=8)
+            table.add_column("分辨率", justify="left", width=14)
+            table.add_column("选择项", justify="left", width=24)
 
-            for device in self.device_list:
+            choices = []
+            for device in select_dict.values():
                 for index, display in device.display.items():
+                    choices.append(device.sn + ";" + index)
                     info = [
-                        [
-                            f"[bold #FFAFAF]{device.sn}[/]",
-                            f"[bold #AFD7FF]{device.id}[/]",
-                            f"[bold #AFD7FF]{list(display)}[/]",
-                            f"[bold #FFF68F]{device.sn}[bold #FF3030];[/]{index}[/]"]
+                        f"[bold #FFAFAF]{device.sn}[/]",
+                        f"[bold #AFD7FF]{device.id}[/]",
+                        f"[bold #AFD7FF]{list(display)}[/]",
+                        f"[bold #FFF68F]{device.sn}[bold #FF3030];[/]{index}[/]"
                     ]
                     table.add_row(*info)
             Show.console.print(table)
 
-            choices = [
-                f"{sn};{idx}" for sn, device in select_dict.items() for idx in device.display.keys()
-            ]
-
-            action = Prompt.ask("[bold #FFEC8B]Select[/]", console=Show.console, choices=choices)
+            action = Prompt.ask("[bold #FFEC8B]Select Display[/]", console=Show.console, choices=choices)
             if len(select := re.split(r";", action, re.S)) == 2:
                 sn, display_id = select
-                select_dict[sn].id, screen = int(display_id), select_dict[sn].display[display_id]
+                select_dict[sn].id, screen = int(display_id), select_dict[sn].display[int(display_id)]
                 return logger.success(f"{const.SUC} {sn} -> ID=[{display_id}] DISPLAY={list(screen)}")
 
             await asyncio.sleep(1)

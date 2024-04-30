@@ -181,11 +181,9 @@ class Show(object):
 
         Show.major_logo()
         Show.console.print(table_major)
-        Show.simulation_progress(f"{const.DESC} Terminal Command.", 1, 0.05)
 
         Show.minor_logo()
         Show.console.print(table_minor)
-        Show.simulation_progress(f"{const.DESC} Terminal Command.", 1, 0.05)
 
     @staticmethod
     def tips_document():
@@ -210,9 +208,7 @@ class Show(object):
         ]
         for info in information:
             table.add_row(*info)
-
         Show.console.print(table)
-        Show.simulation_progress(f"{const.DESC} Terminal Command.", 1, 0.05)
 
     @staticmethod
     def load_animation(style):

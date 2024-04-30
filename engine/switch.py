@@ -1,6 +1,6 @@
 import os
-import re
-from typing import Optional
+import json
+import typing
 from engine.terminal import Terminal
 
 
@@ -74,40 +74,35 @@ class Switch(object):
         return await Terminal.cmd_line(*cmd)
 
     @staticmethod
-    async def ask_video_length(ffprobe, src: str) -> float | Exception:
+    async def ask_video_stream(ffprobe, src: str) -> dict | Exception:
         cmd = [
-            ffprobe, "-v", "error", "-show_entries", "format=duration",
-            "-of", "default=noprint_wrappers=1:nokey=1", "-i", src
+            ffprobe, "-v", "error", "-select_streams", "v:0",
+            "-show_entries", "stream=codec_name,codec_type,width,height,r_frame_rate,avg_frame_rate,duration,bit_rate",
+            "-of", "json", "-count_frames", src
         ]
         result = await Terminal.cmd_line(*cmd)
         try:
-            fmt_result = float(result.strip())
-        except ValueError as e:
+            result_dict = json.loads(result)["streams"][0]
+            video_streams = {
+                "codec_name": result_dict["codec_name"],
+                "codec_type": result_dict["codec_type"],
+                "original": (int(result_dict["width"]), int(result_dict["height"])),
+                "real_frame_rate": result_dict["r_frame_rate"],
+                "avg_frame_rate": result_dict["avg_frame_rate"],
+                "duration": float(result_dict["duration"]),
+                "bit_rate": int(result_dict["bit_rate"]) / 1000000,
+            }
+        except (AttributeError, KeyError, ValueError, json.JSONDecodeError) as e:
             return e
-        return fmt_result
-
-    @staticmethod
-    async def ask_video_larger(ffprobe, src: str) -> tuple[int, int] | Exception:
-        cmd = [
-            ffprobe, "-v", "error", "-select_streams", "v:0", "-show_entries",
-            "stream=width,height", "-of", "default=noprint_wrappers=1", src
-        ]
-        result = await Terminal.cmd_line(*cmd)
-        match_w = re.search(r"(?<=width=)\d+", result)
-        match_h = re.search(r"(?<=height=)\d+", result)
-        try:
-            w, h = int(match_w.group()), int(match_h.group())
-        except (AttributeError, ValueError) as e:
-            return e
-        return w, h
+        return video_streams
 
     @staticmethod
     async def ask_magic_point(
-            start: Optional[int | float],
-            close: Optional[int | float],
-            limit: Optional[int | float],
-            duration: Optional[int | float]
-    ) -> tuple[Optional[int | float], Optional[int | float], Optional[int | float]]:
+            start: typing.Optional[int | float],
+            close: typing.Optional[int | float],
+            limit: typing.Optional[int | float],
+            duration: typing.Optional[int | float]
+    ) -> tuple[typing.Optional[int | float], typing.Optional[int | float], typing.Optional[int | float]]:
 
         start_point = close_point = limit_point = None
 
