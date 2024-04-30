@@ -835,7 +835,6 @@ class Missions(object):
 
         async def commence():
 
-            # Wait Device Online
             async def wait_for_device(device):
                 logger.info(f"[bold #FAFAD2]Wait Device Online -> {device.tag} {device.sn}[/]")
                 await Terminal.cmd_line(self.adb, "-s", device.sn, "wait-for-device")
@@ -845,20 +844,26 @@ class Missions(object):
             )
 
             todo_list = []
-
             fmt_dir = time.strftime("%Y%m%d%H%M%S") if any((self.quick, self.basic, self.keras)) else None
+
+            margin_x, window_x, window_y = 50, 50, 75
             for device in device_list:
+                device_x, device_y = device.display[device.id]
+                device_x, device_y = int(device_x * 0.25), int(device_y * 0.25)
+                location = window_x, window_y, device_x, device_y
+
                 await asyncio.sleep(0.5)
 
                 if fmt_dir:
                     reporter.query = os.path.join(fmt_dir, device.sn)
                 video_temp, transports = await record.start_record(
-                    device, reporter.video_path
+                    device, reporter.video_path, location=location
                 )
                 todo_list.append(
                     [video_temp, transports, reporter.total_path, reporter.title, reporter.query_path,
                      reporter.query, reporter.frame_path, reporter.extra_path, reporter.proto_path]
                 )
+                window_x += device_x + margin_x
             return todo_list
 
         async def analysis_tactics():
@@ -878,7 +883,7 @@ class Missions(object):
                     self.fmp, video_src, video_dst, start=start_time_str, limit=end_time_str
                 )
                 os.remove(video_src)
-                logger.info(f"移除旧的视频 {Path(video_src).name}")
+                logger.info(f"移除旧的视频 {os.path.basename(video_src)}")
                 return video_dst
 
             if len(task_list) == 0:
@@ -958,8 +963,7 @@ class Missions(object):
                     *(Switch.ask_video_detach(
                         self.fmp, video_filter, video_temp, frame_path,
                         start=vision_start, close=vision_close, limit=vision_limit
-                    ) for (
-                        video_temp, *_, frame_path, _, _), video_filter, (
+                    ) for (video_temp, *_, frame_path, _, _), video_filter, (
                         vision_start, vision_close, vision_limit
                     ) in zip(task_list, video_filter_list, duration_result_list))
                 )
@@ -1453,7 +1457,7 @@ class Alynex(object):
             vision_close = Parser.parse_times(vision_close)
             vision_limit = Parser.parse_times(vision_limit)
             logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}]")
-            logger.info(f"实际帧率: [{real_frame_rate}] 平均帧率: [{avg_frame_rate}] 应用帧率: [{frate}]")
+            logger.info(f"实际帧率: [{real_frame_rate}] 平均帧率: [{avg_frame_rate}] 转换帧率: [{frate}]")
             logger.info(f"视频剪辑: start=[{vision_start}] close=[{vision_close}] limit=[{vision_limit}]")
 
             await Switch.ask_video_change(
@@ -1523,7 +1527,7 @@ class Alynex(object):
             size_hook = FrameSizeHook(1.0, None, True)
             cutter.add_hook(size_hook)
             logger.info(
-                f"加载视频帧处理单元: {size_hook.__class__.__name__} "
+                f"视频帧处理: {size_hook.__class__.__name__} "
                 f"{[size_hook.compress_rate, size_hook.target_size, size_hook.not_grey]}"
             )
 
@@ -1533,7 +1537,7 @@ class Alynex(object):
                     crop_hook = PaintCropHook((y_size, x_size), (y, x))
                     cutter.add_hook(crop_hook)
                     logger.info(
-                        f"加载视频帧处理单元: {crop_hook.__class__.__name__} "
+                        f"视频帧处理: {crop_hook.__class__.__name__} "
                         f"{x, y, x_size, y_size}"
                     )
 
@@ -1543,14 +1547,14 @@ class Alynex(object):
                     omit_hook = PaintOmitHook((y_size, x_size), (y, x))
                     cutter.add_hook(omit_hook)
                     logger.info(
-                        f"加载视频帧处理单元: {omit_hook.__class__.__name__} "
+                        f"视频帧处理: {omit_hook.__class__.__name__} "
                         f"{x, y, x_size, y_size}"
                     )
 
             save_hook = FrameSaveHook(extra_path)
             cutter.add_hook(save_hook)
             logger.info(
-                f"加载视频帧处理单元: {save_hook.__class__.__name__} "
+                f"视频帧处理: {save_hook.__class__.__name__} "
                 f"{[os.path.basename(extra_path)]}"
             )
 
@@ -1818,7 +1822,7 @@ if __name__ == '__main__':
     for _attr, _attribute in _deploy.deploys.items():
         if any(_line.startswith(f"--{_attr}") for _line in _lines):
             setattr(_deploy, _attr, getattr(_cmd_lines, _attr))
-            logger.info(f"Set <{_attr}> = {_attribute} -> {getattr(_deploy, _attr)}")
+            logger.debug(f"Set <{_attr}> = {_attribute} -> {getattr(_deploy, _attr)}")
 
     _missions = Missions(
         _flick, _carry, _fully, _quick, _basic, _keras, _alone, _whist, _group,

@@ -26,7 +26,7 @@ class Record(object):
         if self.alone and self.whist:
             self.whist = False
 
-    async def start_record(self, device, dst):
+    async def start_record(self, device, dst, **kwargs):
 
         async def input_stream():
             async for line in transports.stdout:
@@ -55,8 +55,14 @@ class Record(object):
 
         video_flag = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
 
+        loc_name = ["--window-x", "--window-y", "--window-width", "--window-height"]
+        location = [f"{k}={v}" for k, v in zip(loc_name, loc)] if (loc := kwargs.get("location", ())) else []
+
         cmd = [self.scrcpy, "-s", device.sn]
-        cmd += ["--no-audio", "--video-bit-rate", "8M", "--max-fps", "60"]
+        cmd += [f"--display-id={device.id}"] if device.id != 0 else []
+        cmd += location if location else []
+        cmd += ["--no-audio"]
+        cmd += ["--video-bit-rate", "8M", "--max-fps", "60"]
         cmd += ["-Nr" if self.whist else "--record", video_temp := f"{os.path.join(dst, 'screen')}_{video_flag}"]
 
         transports = await Terminal.cmd_link(*cmd)
