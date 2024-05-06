@@ -316,12 +316,11 @@ class Report(object):
 
     @staticmethod
     async def ask_draw(
-        classifier_result: "ClassifierResult",
-        proto_path: str,
-        template_file: str,
-        boost: bool = False,
-        shape: typing.Optional[tuple[int, int]] = None,
-        scale: typing.Optional[float] = None,
+            scores: dict,
+            struct_result: "ClassifierResult",
+            proto_path: str,
+            template_file: str,
+            boost: bool,
     ) -> str:
 
         label_stable = "稳定阶段"
@@ -332,22 +331,21 @@ class Report(object):
         extra_dict = {}
 
         try:
-            stage_range = classifier_result.get_stage_range()
+            stage_range = struct_result.get_stage_range()
         except AssertionError:
-            stage_range = [classifier_result.data]
+            stage_range = [struct_result.data]
 
-        image_list = []
         if boost:
             for cur_index, _ in enumerate(stage_range):
                 each_range = stage_range[cur_index]
                 middle = each_range[len(each_range) // 2]
+
+                image_list = []
                 if middle.is_stable():
                     label = label_stable
-                    image = toolbox.compress_frame(
-                        middle.get_data(), compress_rate=scale, target_size=shape
-                    )
+                    image = "data:image/png;base64," + toolbox.np2b64str(middle.get_data())
                     frame = {
-                        "frame_id": middle.frame_id, "timestamp": f"{middle.timestamp:.5f}", "image": toolbox.np2b64str(image)
+                        "frame_id": middle.frame_id, "timestamp": f"{middle.timestamp:.5f}", "image": image
                     }
                     image_list.append(frame)
                 else:
@@ -362,11 +360,8 @@ class Report(object):
                         new_each = each_range
 
                     for i in new_each:
-                        image = toolbox.compress_frame(
-                            i.get_data(), compress_rate=scale, target_size=shape
-                        )
                         frame = {
-                            "frame_id": i.frame_id, "timestamp": f"{i.timestamp:.5f}", "image": toolbox.np2b64str(image)
+                            "frame_id": i.frame_id, "timestamp": f"{i.timestamp:.5f}", "image": scores[i.frame_id]
                         }
                         image_list.append(frame)
 
@@ -382,6 +377,7 @@ class Report(object):
                 each_range = stage_range[cur_index]
                 middle = each_range[len(each_range) // 2]
 
+                image_list = []
                 if middle.is_stable():
                     label = label_stable
                 elif middle.stage == const.UNKNOWN_STAGE_FLAG:
@@ -395,11 +391,8 @@ class Report(object):
                     new_each = each_range
 
                 for i in new_each:
-                    image = toolbox.compress_frame(
-                        i.get_data(), compress_rate=scale, target_size=shape
-                    )
                     frame = {
-                        "frame_id": i.frame_id, "timestamp": f"{i.timestamp:.5f}", "image": toolbox.np2b64str(image)
+                        "frame_id": i.frame_id, "timestamp": f"{i.timestamp:.5f}", "image": scores[i.frame_id]
                     }
                     image_list.append(frame)
 
@@ -410,12 +403,12 @@ class Report(object):
                          f"分类: {first.stage}")
                 thumbnail_list.append({title: image_list})
 
-        cost_dict = classifier_result.calc_changing_cost()
+        cost_dict = struct_result.calc_changing_cost()
         timestamp = toolbox.get_timestamp_str()
 
-        extra_dict["视频路径"] = classifier_result.video_path
-        extra_dict["总计帧数"] = str(classifier_result.get_length())
-        extra_dict["每帧间隔"] = str(classifier_result.get_offset())
+        extra_dict["视频路径"] = struct_result.video_path
+        extra_dict["总计帧数"] = str(struct_result.get_length())
+        extra_dict["每帧间隔"] = str(struct_result.get_offset())
 
         html_template = Template(template_file).render(
             thumbnail_list=thumbnail_list,
@@ -432,11 +425,8 @@ class Report(object):
         else:
             report_path = proto_path
 
-        template_chunk_size = 1024 * 1024
         async with aiofiles.open(report_path, "w", encoding=const.CHARSET) as f:
-            for template_start in range(0, len(html_template), template_chunk_size):
-                template_end = template_start + template_chunk_size
-                await f.write(html_template[template_start:template_end])
+            await f.write(html_template)
 
         return report_path
 

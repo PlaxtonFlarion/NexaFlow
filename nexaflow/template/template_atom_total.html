@@ -321,7 +321,8 @@
                         <div class="thumbnails">
                             <p class="frame">{{ info.frame_id }}</p>
                             <p class="timestamp">{{ info.timestamp }}</p>
-                            <img class="thumbnail" src="data:image/png;base64,{{ info.image }}" />
+<!--                            <img class="thumbnail" src="data:image/png;base64,{{ info.image }}"/>-->
+                            <img class="thumbnail" src="{{ info.image }}"/>
                         </div>
                         {% endfor %}
                     </div>

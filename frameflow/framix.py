@@ -294,7 +294,7 @@ class Missions(object):
 
         if futures is None:
             return None
-        start, end, cost, struct = futures.material
+        start, end, cost, scores, struct = futures.material
 
         result = {
             "total": os.path.basename(reporter.total_path),
@@ -311,7 +311,9 @@ class Missions(object):
                 return logger.error(f"{const.ERR}{tmp}[/]")
             logger.info(f"模版引擎正在渲染 ...")
             original_inform = loop.run_until_complete(
-                reporter.ask_draw(struct, reporter.proto_path, tmp)
+                reporter.ask_draw(
+                    scores, struct, reporter.proto_path, tmp, deploy.boost
+                )
             )
             logger.info(f"模版引擎渲染完毕 {os.path.relpath(original_inform)}")
             result["extra"] = os.path.basename(reporter.extra_path)
@@ -452,7 +454,7 @@ class Missions(object):
                 )
                 if futures is None:
                     continue
-                start, end, cost, struct = futures.material
+                start, end, cost, scores, struct = futures.material
 
                 result = {
                     "total": os.path.basename(reporter.total_path),
@@ -469,7 +471,9 @@ class Missions(object):
                         return logger.error(f"{const.ERR}{tmp}[/]")
                     logger.info(f"模版引擎正在渲染 ...")
                     original_inform = loop.run_until_complete(
-                        reporter.ask_draw(struct, reporter.proto_path, tmp)
+                        reporter.ask_draw(
+                            scores, struct, reporter.proto_path, tmp, deploy.boost
+                        )
                     )
                     logger.info(f"模版引擎渲染完毕 {os.path.relpath(original_inform)}")
                     result["extra"] = os.path.basename(reporter.extra_path)
@@ -844,7 +848,7 @@ class Missions(object):
             )
 
             todo_list = []
-            fmt_dir = time.strftime("%Y%m%d%H%M%S") if any((self.quick, self.basic, self.keras)) else None
+            fmt_dir = time.strftime("%Y%m%d%H%M%S")
 
             margin_x, window_x, window_y = 50, 50, 75
             for device in device_list:
@@ -854,8 +858,7 @@ class Missions(object):
 
                 await asyncio.sleep(0.5)
 
-                if fmt_dir:
-                    reporter.query = os.path.join(fmt_dir, device.sn)
+                reporter.query = os.path.join(fmt_dir, device.sn)
                 video_temp, transports = await record.start_record(
                     device, reporter.video_path, location=location
                 )
@@ -1003,7 +1006,7 @@ class Missions(object):
                     if future is None:
                         continue
 
-                    start, end, cost, struct = future.material
+                    start, end, cost, scores, struct = future.material
                     *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo
 
                     result = {
@@ -1020,7 +1023,9 @@ class Missions(object):
                         ):
                             return logger.error(f"{const.ERR}{tmp}[/]")
                         logger.info(f"模版引擎正在渲染 ...")
-                        original_inform = await reporter.ask_draw(struct, proto_path, tmp)
+                        original_inform = await reporter.ask_draw(
+                            scores, struct, proto_path, tmp, deploy.boost
+                        )
                         logger.info(f"模版引擎渲染完毕 {os.path.relpath(original_inform)}")
                         result["extra"] = os.path.basename(extra_path)
                         result["proto"] = os.path.basename(original_inform)
@@ -1444,7 +1449,7 @@ class Alynex(object):
             original, duration = video_streams["original"], video_streams["duration"]
 
             target_vision = os.path.join(
-                os.path.dirname(vision), f"screen_fps{frate}_{random.randint(100, 999)}.mp4"
+                os.path.dirname(vision), f"vision_fps{frate}_{random.randint(100, 999)}.mp4"
             )
 
             vision_start, vision_close, vision_limit = await Switch.ask_magic_point(
@@ -1607,13 +1612,17 @@ class Alynex(object):
                 *(asyncio.gather(*forge) for forge in forge_tasks)
             )
 
+            scores = {}
             for result in forge_result:
-                if isinstance(result, Exception):
-                    logger.error(f"{const.ERR}{result}[/]")
+                for r in result:
+                    if isinstance(result, Exception):
+                        logger.error(f"{const.ERR}{result}[/]")
+                    else:
+                        scores[r["id"]] = r["picture"]
 
             begin_frame, final_frame = frames[0], frames[-1]
             time_cost = final_frame.timestamp - begin_frame.timestamp
-            return begin_frame.frame_id, final_frame.frame_id, time_cost, None
+            return begin_frame.frame_id, final_frame.frame_id, time_cost, scores, None
 
         async def analytics_keras():
             forge_tasks = [
@@ -1624,12 +1633,16 @@ class Alynex(object):
                 frame_flick(), *(asyncio.gather(*forge) for forge in forge_tasks)
             )
 
+            scores = {}
             for result in forge_result:
-                if isinstance(result, Exception):
-                    logger.error(f"{const.ERR}{result}[/]")
+                for r in result:
+                    if isinstance(result, Exception):
+                        logger.error(f"{const.ERR}{result}[/]")
+                    else:
+                        scores[r["id"]] = r["picture"]
 
             begin_frame_id, final_frame_id, time_cost = flick_result
-            return begin_frame_id, final_frame_id, time_cost, struct
+            return begin_frame_id, final_frame_id, time_cost, scores, struct
 
         # Start
         if (target_record := await frame_check()) is None:

@@ -27,8 +27,8 @@ class Review(object):
 
     __material: tuple = tuple()
 
-    def __init__(self, start: int, end: int, cost: float, struct=None):
-        self.material = start, end, cost, struct
+    def __init__(self, *args):
+        self.material = args
 
     @property
     def material(self):
@@ -39,9 +39,8 @@ class Review(object):
         self.__material = value
 
     def __str__(self):
-        start, end, cost, struct = self.material
-        kc = f"KC" if struct else f"None"
-        return f"<Review start={start} end={end} cost={cost} struct={kc}>"
+        start, end, cost, *_ = self.material
+        return f"<Review start={start} end={end} cost={cost}>"
 
     __repr__ = __str__
 

@@ -23,17 +23,16 @@ class Craft(object):
     @staticmethod
     async def frame_forge(
             frame: "SingleClassifierResult", frame_path: typing.Union[str, "os.PathLike"]
-    ) -> typing.Union[str, "os.PathLike", "Exception"]:
+    ) -> typing.Union[dict, "Exception"]:
 
         try:
-            (_, codec), pic_path = cv2.imencode(".png", frame.data), os.path.join(
-                frame_path, f"{frame.frame_id}_{format(round(frame.timestamp, 5), '.5f')}.png"
-            )
-            async with aiofiles.open(pic_path, "wb") as f:
+            picture = f"{frame.frame_id}_{format(round(frame.timestamp, 5), '.5f')}.png"
+            _, codec = cv2.imencode(".png", frame.data)
+            async with aiofiles.open(os.path.join(frame_path, picture), "wb") as f:
                 await f.write(codec.tobytes())
         except Exception as e:
             return e
-        return pic_path
+        return {"id": frame.frame_id, "picture": os.path.join(os.path.basename(frame_path), picture)}
 
 
 if __name__ == '__main__':
