@@ -1,9 +1,10 @@
+import asyncio
 import os
-import cv2
 import typing
 import aiofiles
+from rich.prompt import Prompt
+from frameflow.skills.show import Show
 from nexaflow import const
-from nexaflow.classifier.base import SingleClassifierResult
 
 
 class Craft(object):
@@ -21,18 +22,10 @@ class Craft(object):
         return template_file
 
     @staticmethod
-    async def frame_forge(
-            frame: "SingleClassifierResult", frame_path: typing.Union[str, "os.PathLike"]
-    ) -> typing.Union[dict, "Exception"]:
-
-        try:
-            picture = f"{frame.frame_id}_{format(round(frame.timestamp, 5), '.5f')}.png"
-            _, codec = cv2.imencode(".png", frame.data)
-            async with aiofiles.open(os.path.join(frame_path, picture), "wb") as f:
-                await f.write(codec.tobytes())
-        except Exception as e:
-            return e
-        return {"id": frame.frame_id, "picture": os.path.join(os.path.basename(frame_path), picture)}
+    async def ask_input(tips):
+        return await asyncio.get_running_loop().run_in_executor(
+            None, Prompt.ask, f"[bold #5FD7FF]{tips}[/]", Show.console
+        )
 
 
 if __name__ == '__main__':

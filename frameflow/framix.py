@@ -1423,6 +1423,16 @@ class Alynex(object):
                     screen.release()
             return target_screen
 
+        async def frame_forge(frame):
+            try:
+                picture = f"{frame.frame_id}_{format(round(frame.timestamp, 5), '.5f')}.png"
+                _, codec = cv2.imencode(".png", frame.data)
+                async with aiofiles.open(os.path.join(frame_path, picture), "wb") as f:
+                    await f.write(codec.tobytes())
+            except Exception as e:
+                return e
+            return {"id": frame.frame_id, "picture": os.path.join(os.path.basename(frame_path), picture)}
+
         async def frame_flick():
             logger.info(f"阶段划分: {struct.get_ordered_stage_set()}")
             begin_stage_index, begin_frame_index = begin
@@ -1614,7 +1624,7 @@ class Alynex(object):
 
         async def analytics_basic():
             forge_tasks = [
-                [Craft.frame_forge(frame, frame_path) for frame in chunk] for chunk in
+                [frame_forge(frame) for frame in chunk] for chunk in
                 [frames[i:i + 100] for i in range(0, len(frames), 100)]
             ]
             forge_result = await asyncio.gather(
@@ -1635,7 +1645,7 @@ class Alynex(object):
 
         async def analytics_keras():
             forge_tasks = [
-                [Craft.frame_forge(frame, frame_path) for frame in chunk] for chunk in
+                [frame_forge(frame) for frame in chunk] for chunk in
                 [frames[i:i + 100] for i in range(0, len(frames), 100)]
             ]
             flick_result, *forge_result = await asyncio.gather(
