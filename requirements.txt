@@ -89,3 +89,5 @@ wrapt==1.14.1
 win32-setctime==1.1.0; sys_platform == 'win32'
 zstandard==0.22.0
 setuptools~=68.2.0
+psutil~=5.9.8
+screeninfo~=0.8.1

@@ -150,7 +150,7 @@ class Show(object):
         ]
 
         minor_information = [
-            ["[bold #FFDC00]--quick", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]快速模式"],
+            ["[bold #FFDC00]--speed", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]快速模式"],
             ["[bold #FFDC00]--basic", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]基础模式"],
             ["[bold #FFDC00]--keras", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]智能模式"],
             ["[bold #FFDC00]--alone", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]独立控制"],
@@ -217,7 +217,7 @@ class Show(object):
             1: "bold #D7AFAF", 2: "bold #5FD75F", 3: "bold #5FD7FF", 4: "bold #D7AF5F",
         }
 
-        def quick_engine(stage):
+        def speed_engine(stage):
             engine_stages = [
                 Text("\n●", style=c[1]),
                 Text("●——●", style=c[2]),
@@ -280,8 +280,8 @@ class Show(object):
         start_view = f"[bold #C1FFC1]Engine Initializing[/] ..."
         close_view = f"[bold #C1FFC1]Engine Loaded[/] ..."
 
-        if style.quick:
-            animation(4, 0.2, quick_engine)
+        if style.speed:
+            animation(4, 0.2, speed_engine)
         elif style.basic:
             animation(8, 0.1, basic_engine)
         elif style.keras:

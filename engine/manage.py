@@ -1,14 +1,68 @@
 import re
 import math
+import psutil
 import typing
 import asyncio
 from loguru import logger
 from rich.table import Table
 from rich.prompt import Prompt
+from screeninfo import get_monitors
 from engine.device import Device
 from engine.terminal import Terminal
 from frameflow.skills.show import Show
 from nexaflow import const
+
+
+class ScreenMonitor(object):
+
+    @staticmethod
+    def screen_monitor():
+        screen_list = [m for m in get_monitors()]
+        screen = screen_list[0]
+        Show.console.print(screen.width, screen.height)
+
+
+class SourceMonitor(object):
+
+    history = []
+
+    def __init__(self, cpu_threshold: int = 50, mem_threshold: int = 50):
+        self.cpu_threshold = cpu_threshold
+        self.mem_threshold = mem_threshold
+
+    async def monitor(self):
+        while True:
+            current_cpu_usage = psutil.cpu_percent(interval=1)
+            memory_info = psutil.virtual_memory()
+            current_mem_usage = memory_info.percent
+            current_mem_spare = memory_info.available / (1024 ** 3)  # Convert to GB
+
+            print(f"CPU Usage: {current_cpu_usage}%")
+            print(f"MEM Usage: {current_mem_usage}%")
+            print(f"MEM Spare: {current_mem_spare:.2f} GB")
+
+            self.history.append((current_cpu_usage, current_mem_usage, current_mem_spare))
+
+            if len(self.history) >= 5:
+                await self.evaluate_resources()
+
+            await asyncio.sleep(2)
+
+    async def evaluate_resources(self):
+        avg_cpu_usage = sum(i[0] for i in self.history) / len(self.history)
+        avg_mem_usage = sum(i[1] for i in self.history) / len(self.history)
+        avg_mem_spare = sum(i[2] for i in self.history) / len(self.history)
+
+        print(f"Average CPU Usage over last 5 checks: {avg_cpu_usage:.2f}%")
+        print(f"Average MEM Usage over last 5 checks: {avg_mem_usage:.2f}%")
+        print(f"Average MEM Spare over last 5 checks: {avg_mem_spare:.2f} GB")
+
+        # Alert logic based on complex conditions
+        if avg_cpu_usage > self.cpu_threshold and avg_mem_spare < 1:  # Example threshold for available memory
+            print("Warning: High CPU usage and low available memory detected. Potential system stress or memory leak.")
+
+        # Reset the history
+        self.history = []
 
 
 class Manage(object):

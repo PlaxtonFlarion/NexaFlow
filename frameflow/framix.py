@@ -122,7 +122,7 @@ except (ImportError, ModuleNotFoundError):
 class Missions(object):
 
     def __init__(self, *args, **kwargs):
-        self.flick, self.carry, self.fully, self.quick, self.basic, self.keras, self.alone, self.whist, self.group, *_ = args
+        self.flick, self.carry, self.fully, self.speed, self.basic, self.keras, self.alone, self.whist, self.group, *_ = args
         self.atom_total_temp = kwargs["atom_total_temp"]
         self.main_share_temp = kwargs["main_share_temp"]
         self.main_total_temp = kwargs["main_total_temp"]
@@ -202,7 +202,7 @@ class Missions(object):
 
         loop = asyncio.get_event_loop()
 
-        if self.quick:
+        if self.speed:
             logger.info(f"★ ★ ★ 快速模式 ★ ★ ★")
 
             video_streams = loop.run_until_complete(
@@ -255,10 +255,10 @@ class Missions(object):
                 "query": reporter.query,
                 "stage": {"start": 0, "end": 0, "cost": 0},
                 "frame": os.path.basename(reporter.frame_path),
-                "style": "quick"
+                "style": "speed"
             }
             Show.console.print_json(data=result)
-            logger.debug(f"Quicker: {json.dumps(result, ensure_ascii=False)}")
+            logger.debug(f"Speeder: {json.dumps(result, ensure_ascii=False)}")
             loop.run_until_complete(reporter.load(result))
 
             logger.info(f"正在生成汇总报告 ...")
@@ -351,7 +351,7 @@ class Missions(object):
 
         loop = asyncio.get_event_loop()
 
-        if self.quick:
+        if self.speed:
             logger.info(f"★ ★ ★ 快速模式 ★ ★ ★")
             for video in self.accelerate(video_data):
                 reporter.title = video.title
@@ -410,10 +410,10 @@ class Missions(object):
                         "query": reporter.query,
                         "stage": {"start": 0, "end": 0, "cost": 0},
                         "frame": os.path.basename(reporter.frame_path),
-                        "style": "quick"
+                        "style": "speed"
                     }
                     Show.console.print_json(data=result)
-                    logger.debug(f"Quicker: {json.dumps(result, ensure_ascii=False)}")
+                    logger.debug(f"Speeder: {json.dumps(result, ensure_ascii=False)}")
                     loop.run_until_complete(reporter.load(result))
 
             logger.info(f"正在生成汇总报告 ...")
@@ -837,7 +837,7 @@ class Missions(object):
         async def combines():
             if len(reporter.range_list) == 0:
                 return logger.warning(f"{const.WRN}没有可以生成的报告[/]")
-            report = getattr(self, "combines_view" if self.quick else "combines_main")
+            report = getattr(self, "combines_view" if self.speed else "combines_main")
             return await report([os.path.dirname(reporter.total_path)])
 
         async def commence():
@@ -927,7 +927,7 @@ class Missions(object):
                 for idx, dst in enumerate(video_dst_list):
                     task_list[idx][0] = dst
 
-            if self.quick:
+            if self.speed:
                 logger.info(f"★ ★ ★ 快速模式 ★ ★ ★")
 
                 const_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
@@ -984,10 +984,10 @@ class Missions(object):
                         "query": query,
                         "stage": {"start": 0, "end": 0, "cost": 0},
                         "frame": os.path.basename(frame_path),
-                        "style": "quick"
+                        "style": "speed"
                     }
                     Show.console.print_json(data=result)
-                    logger.debug(f"Quicker: {json.dumps(result, ensure_ascii=False)}")
+                    logger.debug(f"Speeder: {json.dumps(result, ensure_ascii=False)}")
                     await reporter.load(result)
 
             elif self.basic or self.keras:
@@ -1179,11 +1179,11 @@ class Missions(object):
         manage_ = Manage(self.adb)
         device_list = await manage_.operate_device()
 
-        titles_ = {"quick": "Quick", "basic": "Basic", "keras": "Keras"}
+        titles_ = {"speed": "Speed", "basic": "Basic", "keras": "Keras"}
         input_title_ = next((title for key, title in titles_.items() if getattr(self, key)), "Video")
         reporter = Report(self.total_place)
 
-        if self.keras and not self.quick and not self.basic:
+        if self.keras and not self.speed and not self.basic:
             attack_ = self.total_place, self.model_place, self.model_shape, self.model_aisle
         else:
             attack_ = self.total_place, None, None, None
@@ -1688,7 +1688,7 @@ async def arithmetic(*args, **kwargs) -> None:
         if len(transfer) <= 1:
             return None
         template_total = await Craft.achieve(
-            missions.view_total_temp if missions.quick else missions.main_total_temp
+            missions.view_total_temp if missions.speed else missions.main_total_temp
         )
         logger.info(f"正在合并汇总报告 ...")
         try:
@@ -1812,7 +1812,7 @@ if __name__ == '__main__':
     _carry = _cmd_lines.carry
     _fully = _cmd_lines.fully
 
-    _quick = _cmd_lines.quick
+    _speed = _cmd_lines.speed
     _basic = _cmd_lines.basic
     _keras = _cmd_lines.keras
 
@@ -1847,7 +1847,7 @@ if __name__ == '__main__':
             logger.debug(f"Set <{_attr}> = {_attribute} -> {getattr(_deploy, _attr)}")
 
     _missions = Missions(
-        _flick, _carry, _fully, _quick, _basic, _keras, _alone, _whist, _group,
+        _flick, _carry, _fully, _speed, _basic, _keras, _alone, _whist, _group,
         atom_total_temp=_atom_total_temp,
         main_share_temp=_main_share_temp,
         main_total_temp=_main_total_temp,

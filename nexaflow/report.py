@@ -191,7 +191,7 @@ class Report(object):
             proto = inform_part.get("proto", "")
             inform_dict: dict[str | int | list | bytes] = {"query": query, "stage": stage}
 
-            if style == "quick":
+            if style == "speed":
                 inform_dict["image_list"] = await views_frame(query, frame)
             elif style == "basic":
                 inform_dict["image_list"] = await major_frame(query, frame)
@@ -244,8 +244,8 @@ class Report(object):
         except FileNotFoundError as e:
             raise FramixReporterError(e)
 
-        if match_quicker_list := re.findall(r"(?<=Quicker: ).*}", open_file):
-            match_list = match_quicker_list
+        if match_speeder_list := re.findall(r"(?<=Speeder: ).*}", open_file):
+            match_list = match_speeder_list
         elif match_restore_list := re.findall(r"(?<=Restore: ).*}", open_file):
             match_list = match_restore_list
         else:

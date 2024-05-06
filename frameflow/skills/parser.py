@@ -169,7 +169,7 @@ class Parser(object):
 
         group_means_cmd = parser.add_argument_group(title="附加命令", description="参数互斥")
         group_means = group_means_cmd.add_mutually_exclusive_group()
-        group_means.add_argument("--quick", action="store_true", help="快速模式")
+        group_means.add_argument("--speed", action="store_true", help="快速模式")
         group_means.add_argument("--basic", action="store_true", help="基础模式")
         group_means.add_argument("--keras", action="store_true", help="智能模式")
 
