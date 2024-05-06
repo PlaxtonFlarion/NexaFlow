@@ -160,23 +160,23 @@ class Missions(object):
         with Insert(os.path.join(r.reset_path, f"{const.NAME}_data.db")) as database:
             if c:
                 column_list = [
-                    'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path', 'extra_path', 'proto_path'
+                    "total_path", "title", "query_path", "query", "stage", "frame_path", "extra_path", "proto_path"
                 ]
-                database.create('stocks', *column_list)
-                stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
+                database.create("stocks", *column_list)
+                stage = {"stage": {"start": start, "end": end, "cost": cost}}
                 database.insert(
-                    'stocks', column_list,
+                    "stocks", column_list,
                     (r.total_path, r.title, r.query_path, r.query,
                      json.dumps(stage), r.frame_path, r.extra_path, r.proto_path)
                 )
             else:
                 column_list = [
-                    'total_path', 'title', 'query_path', 'query', 'stage', 'frame_path'
+                    "total_path", "title", "query_path", "query", "stage", "frame_path"
                 ]
                 database.create('stocks', *column_list)
-                stage = {'stage': {'start': start, 'end': end, 'cost': cost}}
+                stage = {"stage": {"start": start, "end": end, "cost": cost}}
                 database.insert(
-                    'stocks', column_list,
+                    "stocks", column_list,
                     (r.total_path, r.title, r.query_path, r.query, json.dumps(stage), r.frame_path)
                 )
 
@@ -208,6 +208,7 @@ class Missions(object):
             video_streams = loop.run_until_complete(
                 Switch.ask_video_stream(self.fpb, new_video_path)
             )
+            Show.console.print_json(data=video_streams)
             original, duration = video_streams["original"], video_streams["duration"]
 
             const_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
@@ -216,7 +217,7 @@ class Missions(object):
                     Switch.ask_magic_frame(original, deploy.shape)
                 )
                 video_filter_list = const_filter + [f"scale={w}:{h}"]
-                logger.debug(f"Image Shape: [W:{w} H{h} Ratio:{ratio}]")
+                logger.debug(f"Image Shape: W={w} H={h} Ratio={ratio}")
             elif deploy.scale:
                 scale = max(0.1, min(1.0, deploy.scale))
                 video_filter_list = const_filter + [f"scale=iw*{scale}:ih*{scale}"]
@@ -243,7 +244,7 @@ class Missions(object):
 
             loop.run_until_complete(
                 Switch.ask_video_detach(
-                    self.fmp, video_filter_list, new_video_path, reporter.frame_path,
+                    self.fmp, video_filter_list, new_video_path, os.path.join(reporter.frame_path, "frame_%05d.png"),
                     start=vision_start, close=vision_close, limit=vision_limit
                 )
             )
@@ -362,6 +363,7 @@ class Missions(object):
                     video_streams = loop.run_until_complete(
                         Switch.ask_video_stream(self.fpb, new_video_path)
                     )
+                    Show.console.print_json(data=video_streams)
                     original, duration = video_streams["original"], video_streams["duration"]
 
                     const_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
@@ -370,7 +372,7 @@ class Missions(object):
                             Switch.ask_magic_frame(original, deploy.shape)
                         )
                         video_filter_list = const_filter + [f"scale={w}:{h}"]
-                        logger.debug(f"Image Shape: [W:{w} H{h} Ratio:{ratio}]")
+                        logger.debug(f"Image Shape: W={w} H={h} Ratio={ratio}")
                     elif deploy.scale:
                         scale = max(0.1, min(1.0, deploy.scale))
                         video_filter_list = const_filter + [f"scale=iw*{scale}:ih*{scale}"]
@@ -397,7 +399,7 @@ class Missions(object):
 
                     loop.run_until_complete(
                         Switch.ask_video_detach(
-                            self.fmp, video_filter_list, new_video_path, reporter.frame_path,
+                            self.fmp, video_filter_list, new_video_path, os.path.join(reporter.frame_path, "frame_%05d.png"),
                             start=deploy.start, close=deploy.close, limit=deploy.limit
                         )
                     )
@@ -530,6 +532,7 @@ class Missions(object):
         video_streams = loop.run_until_complete(
             Switch.ask_video_stream(self.fpb, video_file)
         )
+        Show.console.print_json(data=video_streams)
         original, duration = video_streams["original"], video_streams["duration"]
 
         vision_start, vision_close, vision_limit = loop.run_until_complete(
@@ -651,20 +654,6 @@ class Missions(object):
         kc = KerasStruct(color=image_color, aisle=image_aisle, data_size=image_shape)
         kc.build(final_path, new_model_path, new_model_name)
 
-    async def combines_main(self, merge: list):
-        major, total = await asyncio.gather(
-            Craft.achieve(self.main_share_temp), Craft.achieve(self.main_total_temp),
-            return_exceptions=True
-        )
-        logger.info(f"正在生成汇总报告 ...")
-        state_list = await asyncio.gather(
-            *(Report.ask_create_total_report(m, self.group, major, total) for m in merge)
-        )
-        for state in state_list:
-            if isinstance(state, Exception):
-                logger.error(f"{const.ERR}{state}[/]")
-            logger.info(f"成功生成汇总报告 {os.path.relpath(state)}")
-
     async def combines_view(self, merge: list):
         views, total = await asyncio.gather(
             Craft.achieve(self.view_share_temp), Craft.achieve(self.view_total_temp),
@@ -673,6 +662,20 @@ class Missions(object):
         logger.info(f"正在生成汇总报告 ...")
         state_list = await asyncio.gather(
             *(Report.ask_create_total_report(m, self.group, views, total) for m in merge)
+        )
+        for state in state_list:
+            if isinstance(state, Exception):
+                logger.error(f"{const.ERR}{state}[/]")
+            logger.info(f"成功生成汇总报告 {os.path.relpath(state)}")
+
+    async def combines_main(self, merge: list):
+        major, total = await asyncio.gather(
+            Craft.achieve(self.main_share_temp), Craft.achieve(self.main_total_temp),
+            return_exceptions=True
+        )
+        logger.info(f"正在生成汇总报告 ...")
+        state_list = await asyncio.gather(
+            *(Report.ask_create_total_report(m, self.group, major, total) for m in merge)
         )
         for state in state_list:
             if isinstance(state, Exception):
@@ -896,6 +899,9 @@ class Missions(object):
             video_streams_list = await asyncio.gather(
                 *(Switch.ask_video_stream(self.fpb, video_temp) for video_temp, *_ in task_list)
             )
+            for video_streams in video_streams_list:
+                Show.console.print_json(data=video_streams)
+
             original_list = [
                 original for video_streams in video_streams_list
                 if not isinstance(original := video_streams["original"], Exception)
@@ -964,7 +970,7 @@ class Missions(object):
 
                 await asyncio.gather(
                     *(Switch.ask_video_detach(
-                        self.fmp, video_filter, video_temp, frame_path,
+                        self.fmp, video_filter, video_temp, os.path.join(frame_path, "frame_%05d.png"),
                         start=vision_start, close=vision_close, limit=vision_limit
                     ) for (video_temp, *_, frame_path, _, _), video_filter, (
                         vision_start, vision_close, vision_limit
@@ -1188,7 +1194,9 @@ class Missions(object):
         Show.load_animation(cmd_lines)
 
         from engine.medias import Record, Player
-        record = Record(self.scc, platform, alone=self.alone, whist=self.whist)
+        record = Record(
+            self.scc, platform, alone=self.alone, whist=self.whist, frate=deploy.frate
+        )
         player = Player()
 
         # Initialization ===============================================================================================
@@ -1445,6 +1453,7 @@ class Alynex(object):
 
         async def frame_flip():
             video_streams = await Switch.ask_video_stream(self.fpb, vision)
+            Show.console.print_json(data=video_streams)
             real_frame_rate, avg_frame_rate = video_streams["real_frame_rate"], video_streams["avg_frame_rate"]
             original, duration = video_streams["original"], video_streams["duration"]
 

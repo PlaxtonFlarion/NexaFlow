@@ -25,6 +25,7 @@ class Record(object):
         self.whist = kwargs.get("whist", False)
         if self.alone and self.whist:
             self.whist = False
+        self.frate = kwargs.get("frate", 60)
 
     async def start_record(self, device, dst, **kwargs):
 
@@ -62,7 +63,7 @@ class Record(object):
         cmd += [f"--display-id={device.id}"] if device.id != 0 else []
         cmd += location if location else []
         cmd += ["--no-audio"]
-        cmd += ["--video-bit-rate", "8M", "--max-fps", "60"]
+        cmd += ["--video-bit-rate", "8M", "--max-fps", f"{self.frate}"]
         cmd += ["-Nr" if self.whist else "--record", video_temp := f"{os.path.join(dst, 'screen')}_{video_flag}"]
 
         transports = await Terminal.cmd_link(*cmd)

@@ -1,4 +1,3 @@
-import os
 import json
 import typing
 from engine.terminal import Terminal
@@ -50,7 +49,7 @@ class Switch(object):
         elif limit:
             cmd += ["-t", limit]
         cmd += ["-i", src]
-        cmd += ["-vf", ",".join(video_filter), f"{os.path.join(dst, 'frame_%05d.png')}"]
+        cmd += ["-vf", ",".join(video_filter), dst]
 
         return await Terminal.cmd_line(*cmd)
 
@@ -77,20 +76,31 @@ class Switch(object):
     async def ask_video_stream(ffprobe, src: str) -> dict | Exception:
         cmd = [
             ffprobe, "-v", "error", "-select_streams", "v:0",
-            "-show_entries", "stream=codec_name,codec_type,width,height,r_frame_rate,avg_frame_rate,duration,bit_rate",
+            "-show_entries", "stream=codec_name,codec_type,width,height,r_frame_rate,avg_frame_rate,nb_frames",
+            "-show_entries", "format=duration,size,bit_rate",
+            "-show_entries", "frame=key_frame,pts_time,pict_type",
             "-of", "json", "-count_frames", src
         ]
         result = await Terminal.cmd_line(*cmd)
         try:
-            result_dict = json.loads(result)["streams"][0]
+            json_file = json.loads(result)
+            stream_dict = json_file["streams"][0]
+            format_dict = json_file["format"]
+            frames_list = json_file["frames"]
             video_streams = {
-                "codec_name": result_dict["codec_name"],
-                "codec_type": result_dict["codec_type"],
-                "original": (int(result_dict["width"]), int(result_dict["height"])),
-                "real_frame_rate": result_dict["r_frame_rate"],
-                "avg_frame_rate": result_dict["avg_frame_rate"],
-                "duration": float(result_dict["duration"]),
-                "bit_rate": int(result_dict["bit_rate"]) / 1000000,
+                "key_frames": [
+                    {"type": frame["pict_type"], "idx": f"{idx + 1}", "time": frame["pts_time"]}
+                    for idx, frame in enumerate(frames_list) if frame["pict_type"] == "I"
+                ],
+                "codec_name": stream_dict["codec_name"],
+                "codec_type": stream_dict["codec_type"],
+                "original": (int(stream_dict["width"]), int(stream_dict["height"])),
+                "real_frame_rate": stream_dict["r_frame_rate"],
+                "avg_frame_rate": stream_dict["avg_frame_rate"],
+                "nb_frames": int(stream_dict["nb_frames"]),
+                "duration": float(format_dict["duration"]),
+                "size": round(int(format_dict["size"]) / 1048576, 2),
+                "bit_rate": int(format_dict["bit_rate"]) / 1000000,
             }
         except (AttributeError, KeyError, ValueError, json.JSONDecodeError) as e:
             return e
@@ -164,5 +174,12 @@ class Switch(object):
         return int(adjusted_w), int(adjusted_h), original_ratio
 
 
+async def main():
+    await Switch.ask_video_stream("ffprobe", "/Users/acekeppel/PycharmProjects/NexaFlow/data/i_01.mp4")
+
+
 if __name__ == '__main__':
+    import asyncio
+
+    asyncio.run(main())
     pass
