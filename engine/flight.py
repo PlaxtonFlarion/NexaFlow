@@ -1,3 +1,6 @@
+import os
+import typing
+import aiofiles
 from loguru import logger
 from rich.console import Console
 from rich.logging import RichHandler
@@ -12,6 +15,21 @@ class RichSink(RichHandler):
     def emit(self, record):
         log_message = self.format(record)
         self.console.print(log_message)
+
+
+class Craft(object):
+
+    @staticmethod
+    async def achieve(
+            template: typing.Union[str, "os.PathLike"]
+    ) -> typing.Union[str, "Exception"]:
+
+        try:
+            async with aiofiles.open(template, "r", encoding=const.CHARSET) as f:
+                template_file = await f.read()
+        except FileNotFoundError as e:
+            return e
+        return template_file
 
 
 class Active(object):
@@ -51,19 +69,19 @@ class FramixError(Exception):
 
 class FramixAnalysisError(FramixError):
 
-    def __init__(self, msg):
+    def __init__(self, msg: typing.Any):
         self.msg = msg
 
 
 class FramixAnalyzerError(FramixError):
 
-    def __init__(self, msg):
+    def __init__(self, msg: typing.Any):
         self.msg = msg
 
 
 class FramixReporterError(FramixError):
 
-    def __init__(self, msg):
+    def __init__(self, msg: typing.Any):
         self.msg = msg
 
 

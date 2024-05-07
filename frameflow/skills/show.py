@@ -1,4 +1,5 @@
 import time
+import random
 from loguru import logger
 from rich.text import Text
 from rich.table import Table
@@ -211,7 +212,7 @@ class Show(object):
         Show.console.print(table)
 
     @staticmethod
-    def load_animation(style):
+    def load_animation():
 
         c = {
             1: "bold #D7AFAF", 2: "bold #5FD75F", 3: "bold #5FD7FF", 4: "bold #D7AF5F",
@@ -261,7 +262,7 @@ class Show(object):
             ]
             return engine_stages[stage % len(engine_stages)]
 
-        def photo_engine(stage):
+        def other_engine(stage):
             engine_stages = [
                 Text("\n○   ○", style=c[1]),
                 Text("○──┐○──┐", style=c[2]),
@@ -271,23 +272,19 @@ class Show(object):
             return engine_stages[stage % len(engine_stages)]
 
         def animation(step, secs, function):
-            logger.info(start_view)
+            logger.info(f"[bold #C1FFC1]Engine Initializing[/] ...")
             for i in range(step):
                 Show.console.print(function(i), justify="left")
                 time.sleep(secs)
-            return logger.info(close_view)
+            return logger.info(f"[bold #C1FFC1]Engine Loaded[/] ...")
 
-        start_view = f"[bold #C1FFC1]Engine Initializing[/] ..."
-        close_view = f"[bold #C1FFC1]Engine Loaded[/] ..."
-
-        if style.speed:
-            animation(4, 0.2, speed_engine)
-        elif style.basic:
-            animation(8, 0.1, basic_engine)
-        elif style.keras:
-            animation(4, 0.2, keras_engine)
-        else:
-            animation(4, 0.2, photo_engine)
+        stochastic = [
+            lambda: animation(4, 0.2, speed_engine),
+            lambda: animation(8, 0.1, basic_engine),
+            lambda: animation(4, 0.2, keras_engine),
+            lambda: animation(4, 0.2, other_engine),
+        ]
+        random.choice(stochastic)()
 
 
 if __name__ == '__main__':

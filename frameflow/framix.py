@@ -97,11 +97,11 @@ try:
     from engine.manage import Manage
     from engine.switch import Switch
     from engine.terminal import Terminal
-    from engine.active import Active
-    from engine.active import Review
-    from engine.active import FramixReporterError
-    from engine.active import FramixAnalysisError
-    from engine.craft import Craft
+    from engine.flight import Craft
+    from engine.flight import Active
+    from engine.flight import Review
+    from engine.flight import FramixReporterError
+    from engine.flight import FramixAnalysisError
     from frameflow.skills.config import Option
     from frameflow.skills.config import Deploy
     from frameflow.skills.config import Script
@@ -208,7 +208,6 @@ class Missions(object):
             video_streams = loop.run_until_complete(
                 Switch.ask_video_stream(self.fpb, new_video_path)
             )
-            Show.console.print_json(data=video_streams)
             original, duration = video_streams["original"], video_streams["duration"]
 
             const_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
@@ -363,7 +362,6 @@ class Missions(object):
                     video_streams = loop.run_until_complete(
                         Switch.ask_video_stream(self.fpb, new_video_path)
                     )
-                    Show.console.print_json(data=video_streams)
                     original, duration = video_streams["original"], video_streams["duration"]
 
                     const_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
@@ -532,7 +530,6 @@ class Missions(object):
         video_streams = loop.run_until_complete(
             Switch.ask_video_stream(self.fpb, video_file)
         )
-        Show.console.print_json(data=video_streams)
         original, duration = video_streams["original"], video_streams["duration"]
 
         vision_start, vision_close, vision_limit = loop.run_until_complete(
@@ -850,18 +847,34 @@ class Missions(object):
                 *(wait_for_device(device) for device in device_list)
             )
 
-            todo_list = []
-            fmt_dir = time.strftime("%Y%m%d%H%M%S")
+            await source_monitor.monitor()
 
-            margin_x, window_x, window_y = 50, 50, 75
+            media_screen_w, media_screen_h = ScreenMonitor.screen_size()
+            logger.info(f"Media Screen W={media_screen_w} H={media_screen_h}")
+
+            todo_list = []
+            format_folder = time.strftime("%Y%m%d%H%M%S")
+
+            margin_x, margin_y = 50, 75
+            window_x, window_y = 50, 75
+            max_window_y_list = []
             for device in device_list:
                 device_x, device_y = device.display[device.id]
                 device_x, device_y = int(device_x * 0.25), int(device_y * 0.25)
+
+                if window_x + device_x + margin_x > media_screen_w:
+                    window_x = 50
+                    window_y += max(max_window_y_list)
+
+                if window_y + max(max_window_y_list) > media_screen_h:
+                    window_y += margin_y
+
                 location = window_x, window_y, device_x, device_y
 
                 await asyncio.sleep(0.5)
 
-                reporter.query = os.path.join(fmt_dir, device.sn)
+                reporter.query = os.path.join(format_folder, device.sn)
+
                 video_temp, transports = await record.start_record(
                     device, reporter.video_path, location=location
                 )
@@ -869,7 +882,10 @@ class Missions(object):
                     [video_temp, transports, reporter.total_path, reporter.title, reporter.query_path,
                      reporter.query, reporter.frame_path, reporter.extra_path, reporter.proto_path]
                 )
+
                 window_x += device_x + margin_x
+                max_window_y_list.append(device_y)
+
             return todo_list
 
         async def analysis_tactics():
@@ -888,8 +904,11 @@ class Missions(object):
                 await Switch.ask_video_tailor(
                     self.fmp, video_src, video_dst, start=start_time_str, limit=end_time_str
                 )
-                os.remove(video_src)
-                logger.info(f"移除旧的视频 {os.path.basename(video_src)}")
+                try:
+                    os.remove(video_src)
+                except FileNotFoundError as e:
+                    return e
+                logger.info(f"Balance complete {os.path.basename(video_src)}")
                 return video_dst
 
             if len(task_list) == 0:
@@ -899,16 +918,14 @@ class Missions(object):
             video_streams_list = await asyncio.gather(
                 *(Switch.ask_video_stream(self.fpb, video_temp) for video_temp, *_ in task_list)
             )
-            for video_streams in video_streams_list:
-                Show.console.print_json(data=video_streams)
 
             original_list = [
-                original for video_streams in video_streams_list
-                if not isinstance(original := video_streams["original"], Exception)
+                video_streams["original"] for video_streams in video_streams_list
+                if not isinstance(video_streams, Exception)
             ]
             duration_list = [
-                duration for video_streams in video_streams_list
-                if not isinstance(duration := video_streams["duration"], Exception)
+                video_streams["duration"] for video_streams in video_streams_list
+                if not isinstance(video_streams, Exception)
             ]
 
             if len(original_list) == 0 or len(duration_list) == 0:
@@ -925,6 +942,8 @@ class Missions(object):
                     *(balance(duration, video_src) for duration, (video_src, *_) in zip(duration_list, task_list))
                 )
                 for idx, dst in enumerate(video_dst_list):
+                    if isinstance(dst, Exception):
+                        continue
                     task_list[idx][0] = dst
 
             if self.speed:
@@ -1191,13 +1210,12 @@ class Missions(object):
         charge_ = self.fmp, self.fpb
 
         alynex = Alynex(*attack_, *charge_)
-        Show.load_animation(cmd_lines)
 
-        from engine.medias import Record, Player
         record = Record(
             self.scc, platform, alone=self.alone, whist=self.whist, frate=deploy.frate
         )
         player = Player()
+        source_monitor = SourceMonitor()
 
         # Initialization ===============================================================================================
 
@@ -1634,8 +1652,8 @@ class Alynex(object):
             scores = {}
             for result in forge_result:
                 for r in result:
-                    if isinstance(result, Exception):
-                        logger.error(f"{const.ERR}{result}[/]")
+                    if isinstance(r, Exception):
+                        logger.error(f"{const.ERR}{r}[/]")
                     else:
                         scores[r["id"]] = r["picture"]
 
@@ -1655,8 +1673,8 @@ class Alynex(object):
             scores = {}
             for result in forge_result:
                 for r in result:
-                    if isinstance(result, Exception):
-                        logger.error(f"{const.ERR}{result}[/]")
+                    if isinstance(r, Exception):
+                        logger.error(f"{const.ERR}{r}[/]")
                     else:
                         scores[r["id"]] = r["picture"]
 
@@ -1687,18 +1705,11 @@ class Alynex(object):
         return Review(*(await analytics_basic()))
 
 
-async def arithmetic(*args, **kwargs) -> None:
+async def arithmetic(function: typing.Callable, parameters: list, follow: bool = False) -> None:
 
-    async def initialization(transfer):
-        proc = members if (members := len(transfer)) <= power else power
-        rank = "ERROR" if members > 1 else level
-        return proc, None, Active.active, (rank,)
-
-    async def multiple_merge(transfer):
-        if len(transfer) <= 1:
-            return None
+    async def summary():
         template_total = await Craft.achieve(
-            missions.view_total_temp if missions.speed else missions.main_total_temp
+            _missions.view_total_temp if _missions.speed else _missions.main_total_temp
         )
         logger.info(f"正在合并汇总报告 ...")
         try:
@@ -1707,85 +1718,32 @@ async def arithmetic(*args, **kwargs) -> None:
             return Show.console.print_exception()
         logger.info(f"合并汇总报告完成 {os.path.relpath(report_html)}")
 
-    missions, platform, cmd_lines, deploy, level, power, main_loop, *_ = args
-    _ = kwargs["total_place"]
-    _ = kwargs["model_place"]
-    _ = kwargs["model_shape"]
-    _ = kwargs["model_aisle"]
-    _ = kwargs["fmp"]
-    _ = kwargs["fpb"]
+    proc = members if (members := len(parameters)) <= _power else _power
+    rank = "ERROR" if members > 1 else _level
 
-    # --video ==========================================================================================================
-    if video_list := cmd_lines.video:
-        # Start Child Process
-        Show.load_animation(cmd_lines)
-        with ProcessPoolExecutor(*(await initialization(video_list))) as exe:
-            results = await asyncio.gather(
-                *(main_loop.run_in_executor(exe, missions.video_file_task, i, deploy) for i in video_list)
-            )
-        await multiple_merge(video_list)
-        sys.exit(Show.done())
+    with Pool(proc, Active.active, (rank,)) as pool:
+        results = pool.starmap(function, [(param, _deploy) for param in parameters])
 
-    # --stack ==========================================================================================================
-    elif stack_list := cmd_lines.stack:
-        # Start Child Process
-        Show.load_animation(cmd_lines)
-        with ProcessPoolExecutor(*(await initialization(stack_list))) as exe:
-            results = await asyncio.gather(
-                *(main_loop.run_in_executor(exe, missions.video_data_task, i, deploy) for i in stack_list)
-            )
-        await multiple_merge(stack_list)
-        sys.exit(Show.done())
-
-    # --train ==========================================================================================================
-    elif train_list := cmd_lines.train:
-        # Start Child Process
-        with ProcessPoolExecutor(*(await initialization(train_list))) as exe:
-            results = await asyncio.gather(
-                *(main_loop.run_in_executor(exe, missions.train_model, i, deploy) for i in train_list)
-            )
-        sys.exit(Show.done())
-
-    # --build ==========================================================================================================
-    elif build_list := cmd_lines.build:
-        # Start Child Process
-        with ProcessPoolExecutor(*(await initialization(build_list))) as exe:
-            results = await asyncio.gather(
-                *(main_loop.run_in_executor(exe, missions.build_model, i, deploy) for i in build_list)
-            )
-        sys.exit(Show.done())
-
-    return None
+    if follow:
+        await summary()
+    sys.exit(Show.done())
 
 
-async def scheduling(*args, **kwargs) -> None:
-    missions, platform, cmd_lines, deploy, level, power, main_loop, *_ = args
-    _ = kwargs["total_place"]
-    _ = kwargs["model_place"]
-    _ = kwargs["model_shape"]
-    _ = kwargs["model_aisle"]
-    _ = kwargs["fmp"]
-    _ = kwargs["fpb"]
-
-    # --flick --carry --fully ==========================================================================================
-    if cmd_lines.flick or cmd_lines.carry or cmd_lines.fully:
-        await missions.analysis(cmd_lines, platform, deploy, level, power, main_loop)
-    # --paint ==========================================================================================================
-    elif cmd_lines.paint:
-        await missions.painting(cmd_lines, platform, deploy, level, power, main_loop)
-    # --union ==========================================================================================================
-    elif cmd_lines.union:
-        await missions.combines_view(cmd_lines.union)
-    # --merge ==========================================================================================================
-    elif cmd_lines.merge:
-        await missions.combines_main(cmd_lines.merge)
+async def scheduling() -> None:
+    # --flick --carry --fully
+    if _cmd_lines.flick or _cmd_lines.carry or _cmd_lines.fully:
+        await _missions.analysis(_cmd_lines, _platform, _deploy, _level, _power, _main_loop)
+    # --paint
+    elif _cmd_lines.paint:
+        await _missions.painting(_cmd_lines, _platform, _deploy, _level, _power, _main_loop)
+    # --union
+    elif _cmd_lines.union:
+        await _missions.combines_view(_cmd_lines.union)
+    # --merge
+    elif _cmd_lines.merge:
+        await _missions.combines_main(_cmd_lines.merge)
     else:
         Show.help_document()
-
-
-async def main(*args, **kwargs):
-    await arithmetic(*args, **kwargs)
-    await scheduling(*args, **kwargs)
 
 
 if __name__ == '__main__':
@@ -1876,21 +1834,41 @@ if __name__ == '__main__':
         scc=_scc,
     )
 
-    from concurrent.futures import ProcessPoolExecutor
+    from multiprocessing import Pool
+
+    Show.load_animation()
 
     # Main Process =====================================================================================================
     try:
-        _main_loop.run_until_complete(
-            main(
-                _missions, _platform, _cmd_lines, _deploy, _level, _power, _main_loop,
-                total_place=_total_place,
-                model_place=_model_place,
-                model_shape=_model_shape,
-                model_aisle=_model_aisle,
-                fmp=_fmp,
-                fpb=_fpb
+        # --video
+        if _video_list := _cmd_lines.video:
+            _main_loop.run_until_complete(
+                arithmetic(_missions.video_file_task, _video_list, True)
             )
-        )
+        # --stack
+        elif _stack_list := _cmd_lines.stack:
+            _main_loop.run_until_complete(
+                arithmetic(_missions.video_data_task, _stack_list, True)
+            )
+        # --train
+        elif _train_list := _cmd_lines.train:
+            _main_loop.run_until_complete(
+                arithmetic(_missions.train_model, _train_list, False)
+            )
+        # --build
+        elif _build_list := _cmd_lines.build:
+            _main_loop.run_until_complete(
+                arithmetic(_missions.build_model, _build_list, False)
+            )
+        else:
+            from concurrent.futures import ProcessPoolExecutor
+            from engine.manage import ScreenMonitor
+            from engine.manage import SourceMonitor
+            from engine.medias import Record
+            from engine.medias import Player
+
+            _main_loop.run_until_complete(scheduling())
+
     except KeyboardInterrupt:
         sys.exit(Show.exit())
     except (OSError, RuntimeError, MemoryError, TypeError, ValueError, AttributeError):

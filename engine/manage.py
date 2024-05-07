@@ -16,53 +16,72 @@ from nexaflow import const
 class ScreenMonitor(object):
 
     @staticmethod
-    def screen_monitor():
-        screen_list = [m for m in get_monitors()]
-        screen = screen_list[0]
-        Show.console.print(screen.width, screen.height)
+    def screen_size():
+        screen = get_monitors()[0]
+        return screen.width, screen.height
 
 
 class SourceMonitor(object):
 
     history = []
 
-    def __init__(self, cpu_threshold: int = 50, mem_threshold: int = 50):
-        self.cpu_threshold = cpu_threshold
-        self.mem_threshold = mem_threshold
+    def __init__(self):
+        # 初始阈值可以根据具体需要进行调整
+        base_cpu_threshold = 50
+        base_mem_threshold = 50
+
+        # 获取系统硬件信息
+        self.cpu_cores = psutil.cpu_count()
+        self.mem_total = psutil.virtual_memory().total / (1024 ** 3)  # 转换为GB
+
+        # 动态调整阈值
+        self.cpu_threshold = base_cpu_threshold + min(20, int(self.cpu_cores * 0.5))
+        self.mem_threshold = max(20, base_mem_threshold - self.mem_total / 5)
 
     async def monitor(self):
+        first_examine = True
         while True:
-            current_cpu_usage = psutil.cpu_percent(interval=1)
+            current_cpu_usage = psutil.cpu_percent(1)
             memory_info = psutil.virtual_memory()
             current_mem_usage = memory_info.percent
-            current_mem_spare = memory_info.available / (1024 ** 3)  # Convert to GB
+            current_mem_spare = memory_info.available / (1024 ** 3)
 
-            print(f"CPU Usage: {current_cpu_usage}%")
-            print(f"MEM Usage: {current_mem_usage}%")
-            print(f"MEM Spare: {current_mem_spare:.2f} GB")
+            Show.console.print(f"CPU Threshold={self.cpu_threshold:.2f}% Usage={current_cpu_usage:.2f}%")
+            Show.console.print(f"MEM Threshold={self.mem_threshold:.2f}% Usage={current_mem_usage:.2f}%")
+            Show.console.print(f"MEM Spare={current_mem_spare:.2f} GB")
 
             self.history.append((current_cpu_usage, current_mem_usage, current_mem_spare))
 
-            if len(self.history) >= 5:
-                await self.evaluate_resources()
+            if first_examine:
+                if await self.evaluate_resources(True):
+                    return
+                first_examine = False
+            elif len(self.history) >= 5:
+                if await self.evaluate_resources(False):
+                    return
 
             await asyncio.sleep(2)
 
-    async def evaluate_resources(self):
+    async def evaluate_resources(self, first_examine: bool):
         avg_cpu_usage = sum(i[0] for i in self.history) / len(self.history)
         avg_mem_usage = sum(i[1] for i in self.history) / len(self.history)
         avg_mem_spare = sum(i[2] for i in self.history) / len(self.history)
 
-        print(f"Average CPU Usage over last 5 checks: {avg_cpu_usage:.2f}%")
-        print(f"Average MEM Usage over last 5 checks: {avg_mem_usage:.2f}%")
-        print(f"Average MEM Spare over last 5 checks: {avg_mem_spare:.2f} GB")
+        Show.console.print(f"Average CPU Usage={avg_cpu_usage:.2f}%")
+        Show.console.print(f"Average MEM Usage={avg_mem_usage:.2f}%")
+        Show.console.print(f"Average MEM Spare={avg_mem_spare:.2f}GB")
 
-        # Alert logic based on complex conditions
-        if avg_cpu_usage > self.cpu_threshold and avg_mem_spare < 1:  # Example threshold for available memory
-            print("Warning: High CPU usage and low available memory detected. Potential system stress or memory leak.")
-
-        # Reset the history
-        self.history = []
+        if avg_cpu_usage <= self.cpu_threshold and avg_mem_usage <= self.mem_threshold:
+            Show.console.print("System performance is stable ...")
+            self.history.clear()
+            return True
+        else:
+            if first_examine:
+                Show.console.print("Initial check failed. Continuing detailed monitoring ...")
+            else:
+                Show.console.print("System performance is not stable, continue monitoring ...")
+                self.history.clear()
+            return False
 
 
 class Manage(object):

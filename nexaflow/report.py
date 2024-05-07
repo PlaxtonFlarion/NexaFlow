@@ -12,7 +12,7 @@ from pathlib import Path
 from loguru import logger
 from jinja2 import Template
 from collections import defaultdict
-from engine.active import FramixReporterError
+from engine.flight import FramixReporterError
 from nexaflow import toolbox, const
 from nexaflow.classifier.base import ClassifierResult
 

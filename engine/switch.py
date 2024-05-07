@@ -76,7 +76,7 @@ class Switch(object):
     async def ask_video_stream(ffprobe, src: str) -> dict | Exception:
         cmd = [
             ffprobe, "-v", "error", "-select_streams", "v:0",
-            "-show_entries", "stream=codec_name,codec_type,width,height,r_frame_rate,avg_frame_rate,nb_frames",
+            "-show_entries", "stream=codec_name,codec_type,width,height,r_frame_rate,avg_frame_rate,nb_read_frames",
             "-show_entries", "format=duration,size,bit_rate",
             "-show_entries", "frame=key_frame,pts_time,pict_type",
             "-of", "json", "-count_frames", src
@@ -97,7 +97,7 @@ class Switch(object):
                 "original": (int(stream_dict["width"]), int(stream_dict["height"])),
                 "real_frame_rate": stream_dict["r_frame_rate"],
                 "avg_frame_rate": stream_dict["avg_frame_rate"],
-                "nb_frames": int(stream_dict["nb_frames"]),
+                "nb_read_frames": int(stream_dict["nb_read_frames"]),
                 "duration": float(format_dict["duration"]),
                 "size": round(int(format_dict["size"]) / 1048576, 2),
                 "bit_rate": int(format_dict["bit_rate"]) / 1000000,
