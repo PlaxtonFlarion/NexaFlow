@@ -179,6 +179,9 @@ class Missions(object):
 
     # """Child Process"""
     def video_file_task(self, video_file: str, deploy: "Deploy"):
+        if not os.path.isfile(video_file):
+            return logger.error(f"{const.ERR}视频文件丢失 {video_file}[/]")
+
         reporter = Report(self.total_place)
         reporter.title = f"{const.DESC}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
         reporter.query = time.strftime("%Y%m%d%H%M%S")
@@ -495,12 +498,12 @@ class Missions(object):
     # """Child Process"""
     def train_model(self, video_file: str, deploy: "Deploy"):
         if not os.path.isfile(video_file):
-            return logger.error(f"{const.ERR}{video_file} 视频文件丢失[/]")
+            return logger.error(f"{const.ERR}视频文件丢失 {video_file}[/]")
         logger.info(f"视频文件 {video_file}")
 
         screen = cv2.VideoCapture(video_file)
         if not screen.isOpened():
-            return logger.error(f"{const.ERR}{video_file} 视频文件损坏[/]")
+            return logger.error(f"{const.ERR}视频文件损坏 {video_file}[/]")
         screen.release()
         logger.info(f"播放正常 {video_file}")
 
@@ -1707,7 +1710,8 @@ async def arithmetic(function: typing.Callable, parameters: list, follow: bool =
     rank = "ERROR" if members > 1 else _level
 
     with Pool(proc, Active.active, (rank,)) as pool:
-        results = pool.starmap(function, [(param, _deploy) for param in parameters])
+        async_task = pool.starmap_async(function, [(param, _deploy) for param in parameters])
+        results = async_task.get()
 
     if follow:
         await summary()
