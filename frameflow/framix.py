@@ -848,24 +848,26 @@ class Missions(object):
 
             margin_x, margin_y = 50, 75
             window_x, window_y = 50, 75
-            window_y_list = []
+            max_y_height = 0
             for device in device_list:
                 device_x, device_y = device.display[device.id]
                 device_x, device_y = int(device_x * 0.25), int(device_y * 0.25)
 
+                # 检查是否需要换行
                 if window_x + device_x + margin_x > media_screen_w:
-                    window_x = 50
-                    window_y += max(window_y_list, default=device_y)
-                    window_y_list = []
+                    window_x = 50  # 重置当前行的开始位置
+                    if (new_y_height := window_y + max_y_height) + device_y > media_screen_h:
+                        window_y += margin_y  # 如果新行加设备高度超出屏幕底部，则只增加一个 margin_y
+                    else:
+                        window_y = new_y_height  # 否则按计划设置新行的起始位置
+                    max_y_height = 0  # 重置当前行的最大高度
+                max_y_height = max(max_y_height, device_y)  # 更新当前行的最大高度
 
-                if window_y > media_screen_h:
-                    window_y += margin_y
+                location = window_x, window_y, device_x, device_y  # 位置确认
 
-                location = window_x, window_y, device_x, device_y
-                window_x += device_x + margin_x
-                window_y_list.append(device_y)
+                window_x += device_x + margin_x  # 移动到下一个设备的起始位置
 
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(0.5)  # 延时投屏，避免性能瓶颈
 
                 reporter.query = os.path.join(format_folder, device.sn)
 
@@ -1143,7 +1145,7 @@ class Missions(object):
                 substitute = iter(extra)
                 return [
                     "".join(next(substitute, "*") if c == "*" else c for c in i)
-                    if isinstance(i, str) else (next(substitute, '*') if i == '*' else i) for i in exec_args
+                    if isinstance(i, str) else (next(substitute, "*") if i == "*" else i) for i in exec_args
                 ]
 
             live_devices = {device.sn: device for device in device_list}.copy()
