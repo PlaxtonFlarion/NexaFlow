@@ -97,6 +97,7 @@ try:
     from engine.manage import Manage
     from engine.switch import Switch
     from engine.terminal import Terminal
+    from engine.flight import Find
     from engine.flight import Craft
     from engine.flight import Active
     from engine.flight import Review
@@ -141,21 +142,6 @@ class Missions(object):
         self.scc = kwargs["scc"]
 
     @staticmethod
-    def accelerate(folder: str):
-
-        class Entry(object):
-
-            def __init__(self, title: str, place: str, sheet: list):
-                self.title, self.place, self.sheet = title, place, sheet
-
-        entry_list = [
-            Entry(os.path.basename(root), root, [
-                os.path.join(root, i) for i in sorted(file) if os.path.basename(i) != "nexaflow.log"
-            ]) for root, _, file in os.walk(folder) if file
-        ]
-        return entry_list
-
-    @staticmethod
     def enforce(r: "Report", c: "KerasStruct", start: int, end: int, cost: float):
         with Insert(os.path.join(r.reset_path, f"{const.NAME}_data.db")) as database:
             if c:
@@ -195,7 +181,7 @@ class Missions(object):
     def video_file_task(self, video_file: str, deploy: "Deploy"):
         reporter = Report(self.total_place)
         reporter.title = f"{const.DESC}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
-        reporter.query = time.strftime('%Y%m%d%H%M%S')
+        reporter.query = time.strftime("%Y%m%d%H%M%S")
         new_video_path = os.path.join(reporter.video_path, os.path.basename(video_file))
 
         shutil.copy(video_file, new_video_path)
@@ -256,7 +242,6 @@ class Missions(object):
                 "frame": os.path.basename(reporter.frame_path),
                 "style": "speed"
             }
-            Show.console.print_json(data=result)
             logger.debug(f"Speeder: {json.dumps(result, ensure_ascii=False)}")
             loop.run_until_complete(reporter.load(result))
 
@@ -322,7 +307,6 @@ class Missions(object):
         else:
             result["style"] = "basic"
 
-        Show.console.print_json(data=result)
         logger.debug(f"Restore: {json.dumps(result, ensure_ascii=False)}")
         loop.run_until_complete(reporter.load(result))
 
@@ -346,17 +330,23 @@ class Missions(object):
 
     # """Child Process"""
     def video_data_task(self, video_data: str, deploy: "Deploy"):
+        find_result = Find().accelerate(video_data)
+        if isinstance(find_result, Exception):
+            return logger.error(f"{const.ERR}{find_result}[/]")
+        root_tree, collection_list = find_result
+        entries = collection_list[0]
+
         reporter = Report(self.total_place)
 
         loop = asyncio.get_event_loop()
 
         if self.speed:
             logger.info(f"★ ★ ★ 快速模式 ★ ★ ★")
-            for video in self.accelerate(video_data):
-                reporter.title = video.title
-                for path in video.sheet:
-                    reporter.query = os.path.basename(path).split(".")[0]
-                    shutil.copy(path, reporter.video_path)
+            for entry in entries:
+                reporter.title = entry.title
+                for video in entry.sheet:
+                    reporter.query = video["query"]
+                    shutil.copy(path := video["video"], reporter.video_path)
                     new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
 
                     video_streams = loop.run_until_complete(
@@ -410,7 +400,6 @@ class Missions(object):
                         "frame": os.path.basename(reporter.frame_path),
                         "style": "speed"
                     }
-                    Show.console.print_json(data=result)
                     logger.debug(f"Speeder: {json.dumps(result, ensure_ascii=False)}")
                     loop.run_until_complete(reporter.load(result))
 
@@ -440,11 +429,11 @@ class Missions(object):
         alynex = Alynex(*attack, *charge)
         logger.info(f"★ ★ ★ {'智能模式' if alynex.kc else '基础模式'} ★ ★ ★")
 
-        for video in self.accelerate(video_data):
-            reporter.title = video.title
-            for path in video.sheet:
-                reporter.query = os.path.basename(path).split(".")[0]
-                shutil.copy(path, reporter.video_path)
+        for entry in entries:
+            reporter.title = entry.title
+            for video in entry.sheet:
+                reporter.query = video["query"]
+                shutil.copy(path := video["video"], reporter.video_path)
                 new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
 
                 futures = loop.run_until_complete(
@@ -482,7 +471,6 @@ class Missions(object):
                 else:
                     result["style"] = "basic"
 
-                Show.console.print_json(data=result)
                 logger.debug(f"Restore: {json.dumps(result, ensure_ascii=False)}")
                 loop.run_until_complete(reporter.load(result))
 
@@ -843,11 +831,11 @@ class Missions(object):
                 logger.info(f"[bold #FAFAD2]Wait Device Online -> {device.tag} {device.sn}[/]")
                 await Terminal.cmd_line(self.adb, "-s", device.sn, "wait-for-device")
 
+            await source_monitor.monitor()
+
             await asyncio.gather(
                 *(wait_for_device(device) for device in device_list)
             )
-
-            await source_monitor.monitor()
 
             media_screen_w, media_screen_h = ScreenMonitor.screen_size()
             logger.info(f"Media Screen W={media_screen_w} H={media_screen_h}")
@@ -857,19 +845,22 @@ class Missions(object):
 
             margin_x, margin_y = 50, 75
             window_x, window_y = 50, 75
-            max_window_y_list = []
+            window_y_list = []
             for device in device_list:
                 device_x, device_y = device.display[device.id]
                 device_x, device_y = int(device_x * 0.25), int(device_y * 0.25)
 
                 if window_x + device_x + margin_x > media_screen_w:
                     window_x = 50
-                    window_y += max(max_window_y_list)
+                    window_y += max(window_y_list, default=device_y)
+                    window_y_list = []
 
-                if window_y + max(max_window_y_list) > media_screen_h:
+                if window_y > media_screen_h:
                     window_y += margin_y
 
                 location = window_x, window_y, device_x, device_y
+                window_x += device_x + margin_x
+                window_y_list.append(device_y)
 
                 await asyncio.sleep(0.5)
 
@@ -882,9 +873,6 @@ class Missions(object):
                     [video_temp, transports, reporter.total_path, reporter.title, reporter.query_path,
                      reporter.query, reporter.frame_path, reporter.extra_path, reporter.proto_path]
                 )
-
-                window_x += device_x + margin_x
-                max_window_y_list.append(device_y)
 
             return todo_list
 
@@ -1005,7 +993,6 @@ class Missions(object):
                         "frame": os.path.basename(frame_path),
                         "style": "speed"
                     }
-                    Show.console.print_json(data=result)
                     logger.debug(f"Speeder: {json.dumps(result, ensure_ascii=False)}")
                     await reporter.load(result)
 
@@ -1058,7 +1045,6 @@ class Missions(object):
                     else:
                         result["style"] = "basic"
 
-                    Show.console.print_json(data=result)
                     logger.debug(f"Restore: {json.dumps(result, ensure_ascii=False)}")
                     await reporter.load(result)
 
@@ -1481,7 +1467,6 @@ class Alynex(object):
 
         async def frame_flip():
             video_streams = await Switch.ask_video_stream(self.fpb, vision)
-            Show.console.print_json(data=video_streams)
             real_frame_rate, avg_frame_rate = video_streams["real_frame_rate"], video_streams["avg_frame_rate"]
             original, duration = video_streams["original"], video_streams["duration"]
 

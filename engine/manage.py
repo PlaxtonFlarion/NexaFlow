@@ -4,6 +4,8 @@ import psutil
 import typing
 import asyncio
 from loguru import logger
+from rich.text import Text
+from rich.panel import Panel
 from rich.table import Table
 from rich.prompt import Prompt
 from screeninfo import get_monitors
@@ -26,62 +28,106 @@ class SourceMonitor(object):
     history = []
 
     def __init__(self):
-        # 初始阈值可以根据具体需要进行调整
-        base_cpu_threshold = 50
-        base_mem_threshold = 50
+        base_cpu_usage_threshold = 50
+        base_mem_usage_threshold = 70
 
-        # 获取系统硬件信息
         self.cpu_cores = psutil.cpu_count()
-        self.mem_total = psutil.virtual_memory().total / (1024 ** 3)  # 转换为GB
+        self.mem_total = psutil.virtual_memory().total / (1024 ** 3)
 
-        # 动态调整阈值
-        self.cpu_threshold = base_cpu_threshold + min(20, int(self.cpu_cores * 0.5))
-        self.mem_threshold = max(20, base_mem_threshold - self.mem_total / 5)
+        self.cpu_usage_threshold = base_cpu_usage_threshold + min(85, int(self.cpu_cores * 0.5))
+        self.mem_usage_threshold = max(50, base_mem_usage_threshold - self.mem_total / 10)
+        self.mem_spare_threshold = max(1, self.mem_total * 0.2)
 
     async def monitor(self):
         first_examine = True
+        progress = Show.show_progress()
+        task = progress.add_task(description=f"Analyzer", total=5)
+        progress.start()
+
         while True:
             current_cpu_usage = psutil.cpu_percent(1)
             memory_info = psutil.virtual_memory()
             current_mem_usage = memory_info.percent
             current_mem_spare = memory_info.available / (1024 ** 3)
 
-            Show.console.print(f"CPU Threshold={self.cpu_threshold:.2f}% Usage={current_cpu_usage:.2f}%")
-            Show.console.print(f"MEM Threshold={self.mem_threshold:.2f}% Usage={current_mem_usage:.2f}%")
-            Show.console.print(f"MEM Spare={current_mem_spare:.2f} GB")
-
             self.history.append((current_cpu_usage, current_mem_usage, current_mem_spare))
+            progress.update(task, advance=1)
 
             if first_examine:
-                if await self.evaluate_resources(True):
-                    return
+                table, panel, explain = await self.evaluate_resources(True)
+                if explain == "stable":
+                    progress.update(task, completed=5)
+                    progress.stop()
+                    return Show.console.print(table, panel)
                 first_examine = False
+
             elif len(self.history) >= 5:
-                if await self.evaluate_resources(False):
-                    return
+                table, panel, explain = await self.evaluate_resources(False)
+                if explain == "stable":
+                    progress.update(task)
+                    progress.stop()
+                    return Show.console.print(table, panel)
+
+                progress.stop()
+                Show.console.print(table, panel)
+                progress = Show.show_progress()
+                task = progress.add_task(description=f"Analyzer", total=5)
+                progress.start()
 
             await asyncio.sleep(2)
 
     async def evaluate_resources(self, first_examine: bool):
+
+        async def create_panel(title, message, background_color):
+            return Panel(
+                Text(
+                    message.replace('[', '[[').replace(']', ']]'),
+                    style=f"bold #696969 on {background_color}", justify="center"
+                ),
+                title=f"[bold {background_color}]{title}[/]", border_style=f"bold {background_color}",
+                width=int(Show.console.width * 0.28), padding=(1, 1)
+            )
+
         avg_cpu_usage = sum(i[0] for i in self.history) / len(self.history)
         avg_mem_usage = sum(i[1] for i in self.history) / len(self.history)
         avg_mem_spare = sum(i[2] for i in self.history) / len(self.history)
 
-        Show.console.print(f"Average CPU Usage={avg_cpu_usage:.2f}%")
-        Show.console.print(f"Average MEM Usage={avg_mem_usage:.2f}%")
-        Show.console.print(f"Average MEM Spare={avg_mem_spare:.2f}GB")
+        table = Table(
+            title=f"[bold #FF851B]{const.ITEM} {const.DESC} Performance",
+            header_style="bold #D7FF00", title_justify="center",
+            show_header=True, show_lines=True
+        )
+        table.add_column("[bold #B0C4DE]CPU Usage", justify="left", width=12)
+        table.add_column("[bold #B0C4DE]MEM Usage", justify="left", width=12)
+        table.add_column("[bold #B0C4DE]MEM Spare", justify="left", width=12)
+        information = [
+            f"[bold #D2B48C]{avg_cpu_usage:.2f} %",
+            f"[bold #D2B48C]{avg_mem_usage:.2f} %",
+            f"[bold #D2B48C]{avg_mem_spare:.2f} G"
+        ]
+        table.add_row(*information)
 
-        if avg_cpu_usage <= self.cpu_threshold and avg_mem_usage <= self.mem_threshold:
-            Show.console.print("System performance is stable ...")
+        collect_list = [
+            avg_cpu_usage <= self.cpu_usage_threshold,
+            avg_mem_usage <= self.mem_usage_threshold,
+            avg_mem_spare >= self.mem_spare_threshold,
+        ]
+
+        if all(collect_list):
             self.history.clear()
-            return True
-        else:
-            if first_examine:
-                Show.console.print("Initial check failed. Continuing detailed monitoring ...")
-            else:
-                Show.console.print("System performance is not stable, continue monitoring ...")
-                self.history.clear()
-            return False
+            return table, await create_panel(
+                "〇 SUCCESS 〇",
+                "System Performance Stable",
+                "#54FF9F"
+            ), "stable"
+
+        if not first_examine:
+            self.history.clear()
+        return table, await create_panel(
+            "⚠ WARNING ⚠",
+            "System Performance Unstable",
+            "#FFEC8B"
+        ), "unstable"
 
 
 class Manage(object):
@@ -265,5 +311,11 @@ class Manage(object):
             continue
 
 
+async def main():
+    monitor = SourceMonitor()
+    await monitor.monitor()
+
+
 if __name__ == '__main__':
+    asyncio.run(main())
     pass
