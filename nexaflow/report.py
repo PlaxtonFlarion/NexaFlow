@@ -100,7 +100,7 @@ class Report(object):
     async def ask_merge_report(merge_list: typing.Union[list, tuple], template_file: str):
 
         async def assemble(file):
-            async with aiofiles.open(file) as recovery_file:
+            async with aiofiles.open(file, mode="r", encoding=const.CHARSET) as recovery_file:
                 return re.findall(r"(?<=Recovery: ).*}", await recovery_file.read())
 
         log_file = "Nexa_Recovery", "nexaflow.log"

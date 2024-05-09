@@ -205,7 +205,7 @@ class Manage(object):
             for device_instance in device_instance_list:
                 if isinstance(device_instance, Exception):
                     return device_dict
-            device_dict = {str(index + 1): device for index, device in enumerate(device_instance_list)}
+            device_dict = {device.sn: device for device in device_instance_list}
         return device_dict
 
     async def operate_device(self) -> list["Device"]:
@@ -233,22 +233,22 @@ class Manage(object):
                 Show.simulation_progress(f"Wait for device to connect ...", 1, 0.05)
                 continue
 
-            for index, device in device_dict.items():
+            for device in device_dict.values():
                 self.device_list.append(device)
 
             if len(self.device_list) == 1:
                 return self.device_list
 
-            for index, device in device_dict.items():
-                Show.console.print(f"[bold][bold #FFFACD]Connect:[/] [{index}] {device}[/]")
+            for index, device in enumerate(device_dict.values()):
+                Show.console.print(f"[bold][bold #FFFACD]Connect:[/] [{index + 1:02}] {device}[/]")
 
             try:
                 if (action := Prompt.ask(
-                        "[bold #FFEC8B]请输入编号选择一台设备[/]", console=Show.console, default="all")) == "all":
+                        "[bold #FFEC8B]请输入序列号选择一台设备[/]", console=Show.console, default="00")) == "00":
                     return self.device_list
                 return [device_dict[action]]
             except KeyError:
-                Show.console.print(f"[bold #FFC0CB]没有该序号,请重新选择[/] ...\n")
+                Show.console.print(f"[bold #FFC0CB]没有该序列号,请重新选择[/] ...\n")
                 await asyncio.sleep(1)
                 continue
 
@@ -264,7 +264,7 @@ class Manage(object):
                 Show.simulation_progress(f"Wait for device to connect ...", 1, 0.05)
                 continue
 
-            for index, device in device_dict.items():
+            for device in device_dict.values():
                 self.device_list.append(device)
 
             select_dict = {
@@ -272,8 +272,8 @@ class Manage(object):
             }
 
             if len(select_dict) == 0:
-                for index, device in device_dict.items():
-                    Show.console.print(f"[bold][bold #FFFACD]Connect:[/] [{index}] {device}[/]")
+                for index, device in enumerate(device_dict.values()):
+                    Show.console.print(f"[bold][bold #FFFACD]Connect:[/] [{index + 1:02}] {device}[/]")
                 return Show.console.print(f"[bold #FFC0CB]没有多屏幕的设备[/] ...")
 
             table = Table(

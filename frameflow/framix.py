@@ -1102,6 +1102,7 @@ class Missions(object):
                     return e
 
         async def load_fully(fully):
+            fully = await Craft.revise_path(fully)
             try:
                 async with aiofiles.open(fully, "r", encoding=const.CHARSET) as f:
                     file_list = json.loads(await f.read())["command"]
@@ -1128,7 +1129,7 @@ class Missions(object):
             for resolve in resolve_list:
                 device_cmds_list = resolve.get("cmds", [])
                 if all(isinstance(device_cmds, str) and device_cmds != "" for device_cmds in device_cmds_list):
-                    device_cmds_list = list(set(device_cmds_list))
+                    device_cmds_list = list(dict.fromkeys(device_cmds_list))
                     device_args_list = resolve.get("args", [])
                     device_args_list = [
                         device_args if isinstance(device_args, list) else ([] if device_args == "" else [device_args])
@@ -1290,7 +1291,7 @@ class Missions(object):
             await manage_.display_device()
             for script_dict_ in script_storage_:
                 for script_key_, script_value_ in script_dict_.items():
-                    logger.info(f"Exec: {script_key_}")
+                    logger.info(f"Batch Exec: {script_key_}")
 
                     try:
                         looper_ = int(looper_) if (looper_ := script_value_.get("looper", None)) else 1
@@ -1301,6 +1302,11 @@ class Missions(object):
                     header_ = header_ if type(
                         header_ := script_value_.get("header", [])
                     ) is list else ([header_] if type(header_) is str else [time.strftime("%Y%m%d%H%M%S")])
+
+                    if (parser_ := script_value_.get("parser", {})) and type(parser_) is dict:
+                        for parser_key_, parser_value_ in parser_.items():
+                            setattr(deploy, parser_key_, parser_value_)
+                            logger.debug(f"Parser Set <{parser_key_}> {parser_value_} -> {getattr(deploy, parser_key_)}")
 
                     if prefix_list_ := script_value_.get("prefix", []):
                         prefix_list_ = await pack_commands(prefix_list_)
@@ -1711,8 +1717,10 @@ async def arithmetic(function: typing.Callable, parameters: list, follow: bool =
     proc = members if (members := len(parameters)) <= _power else _power
     rank = "ERROR" if members > 1 else _level
 
+    parameters = [(await Craft.revise_path(param), _deploy) for param in parameters]
+
     with Pool(proc, Active.active, (rank,)) as pool:
-        async_task = pool.starmap_async(function, [(param, _deploy) for param in parameters])
+        async_task = pool.starmap_async(function, parameters)
         results = async_task.get()
 
     if follow:
@@ -1803,7 +1811,7 @@ if __name__ == '__main__':
     for _attr, _attribute in _deploy.deploys.items():
         if any(_line.startswith(f"--{_attr}") for _line in _lines):
             setattr(_deploy, _attr, getattr(_cmd_lines, _attr))
-            logger.debug(f"Set <{_attr}> = {_attribute} -> {getattr(_deploy, _attr)}")
+            logger.debug(f"Initialize Set <{_attr}> {_attribute} -> {getattr(_deploy, _attr)}")
 
     _missions = Missions(
         _flick, _carry, _fully, _speed, _basic, _keras, _alone, _whist, _group,

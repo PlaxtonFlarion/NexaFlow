@@ -28,6 +28,11 @@ class Device(_Phone):
     async def sleep(delay: float) -> None:
         await asyncio.sleep(delay)
 
+    async def deep_link(self, url: str, service: str):
+        compose = f"{url}?{service}"
+        cmd = self.initial + ["shell", "am", "start", "-W", "-a", "android.intent.action.VIEW", "-d", compose]
+        await Terminal.cmd_line(*cmd)
+
     async def tap(self, x: int, y: int) -> None:
         cmd = self.initial + ["shell", "input", "tap", f"{x}", f"{y}"]
         await Terminal.cmd_line(*cmd)
