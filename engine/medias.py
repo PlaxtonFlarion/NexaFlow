@@ -3,6 +3,7 @@ import time
 import signal
 import random
 import asyncio
+import threading
 
 try:
     os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
@@ -16,7 +17,7 @@ from engine.terminal import Terminal
 
 class Record(object):
 
-    record_events: dict = {}
+    record_events = {}
     melody_events: asyncio.Event = asyncio.Event()
 
     def __init__(self, scrcpy: str, system: str,  *_, **kwargs):
@@ -26,6 +27,85 @@ class Record(object):
         if self.alone and self.whist:
             self.whist = False
         self.frate = kwargs.get("frate", 60)
+
+    def start_record(self, device, dst, **kwargs):
+
+        def input_stream():
+            for line in iter(transports.stdout.readline, ""):
+                logger.info(stream := " ".join(line.strip().split()))
+                if "Recording started" in stream:
+                    events["head"].set()
+                elif "Recording complete" in stream:
+                    bridle.set()
+                    events["done"].set()
+                    break
+
+        def error_stream():
+            for line in iter(transports.stderr.readline, ""):
+                logger.info(stream := " ".join(line.strip().split()))
+                if "Could not find" in stream or "connection failed" in stream or "Recorder error" in stream:
+                    events["fail"].set()
+                    break
+
+        self.record_events[device.sn] = {
+            "head": threading.Event(), "done": threading.Event(),
+            "stop": threading.Event(), "fail": threading.Event(),
+        }
+        self.melody_events = threading.Event()
+
+        bridle = self.record_events[device.sn]["stop"] if self.alone else self.melody_events
+        events = self.record_events[device.sn]
+
+        video_flag = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
+
+        loc_name = ["--window-x", "--window-y", "--window-width", "--window-height"]
+        location = [f"{k}={v}" for k, v in zip(loc_name, loc)] if (loc := kwargs.get("location", ())) else []
+
+        cmd = [self.scrcpy, "-s", device.sn]
+        cmd += [f"--display-id={device.id}"] if device.id != 0 else []
+        cmd += location if location else []
+        cmd += ["--no-audio"]
+        cmd += ["--video-bit-rate", "8M", "--max-fps", f"{self.frate}"]
+        cmd += ["-Nr" if self.whist else "--record", video_temp := f"{os.path.join(dst, 'screen')}_{video_flag}"]
+
+        transports = Terminal.cmd_connect(cmd)
+
+        threading.Thread(target=input_stream).start()
+        threading.Thread(target=error_stream).start()
+        time.sleep(1)
+
+        return video_temp, transports
+
+    def close_record(self, video_temp, transports, device):
+
+        def complete():
+            for _ in range(10):
+                if events["done"].is_set():
+                    return f"{device.tag} {device.sn} 视频录制成功", banner
+                elif events["fail"].is_set():
+                    return f"{device.tag} {device.sn} 视频录制失败", banner
+                time.sleep(0.2)
+            return f"{device.tag} {device.sn} 视频录制失败", banner
+
+        events = self.record_events[device.sn]
+        banner = os.path.basename(video_temp)
+
+        # TODO Feasibility to be tested -> transports.send_signal(signal.SIGINT) ?
+        if self.system != "win32":
+            # transports.send_signal(signal.SIGKILL)
+            # transports.send_signal(signal.SIGINT)
+            transports.terminate()
+            return complete()
+
+        if self.whist:
+            logger.info(f"PID: {transports.pid}")
+            transports.send_signal(signal.CTRL_C_EVENT)
+
+        try:
+            Terminal.cmd_oneshot(["taskkill", "/im", "scrcpy.exe"])
+        except KeyboardInterrupt:
+            logger.info("Stop with Ctrl_C_Event ...")
+        return complete()
 
     async def ask_start_record(self, device, dst, **kwargs):
 
@@ -129,7 +209,7 @@ class Record(object):
                 return logger.info(f"{device.tag} {device.sn} 意外停止 ...")
             await asyncio.sleep(0.2)
 
-    async def check_event(self, device, exec_tasks):
+    async def check_event(self, device, exec_tasks, async_style: bool = False):
         if self.alone and (events := self.record_events.get(device.sn, None)):
             bridle = events["stop"], events["done"], events["fail"]
             while True:
@@ -137,7 +217,12 @@ class Record(object):
                     break
                 await asyncio.sleep(1)
         else:
-            await self.melody_events.wait()
+            if async_style:
+                await self.melody_events.wait()
+            else:
+                await asyncio.get_running_loop().run_in_executor(
+                    None, self.melody_events.wait
+                )
 
         if task := exec_tasks.get(device.sn, []):
             task.cancel()

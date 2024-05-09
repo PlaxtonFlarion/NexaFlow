@@ -90,6 +90,7 @@ try:
     import signal
     import inspect
     import asyncio
+    import tempfile
     import aiofiles
     import datetime
     from pathlib import Path
@@ -167,7 +168,7 @@ class Missions(object):
                 )
 
     # """Child Process"""
-    def amazing(self, vision: typing.Union[str, os.PathLike], deploy: typing.Optional["Deploy"], *args, **kwargs):
+    def amazing(self, vision: typing.Union[str, "os.PathLike"], deploy: typing.Optional["Deploy"], *args, **kwargs):
         attack = self.total_place, self.model_place, self.model_shape, self.model_aisle
         charge = self.fmp, self.fpb
         alynex = Alynex(*attack, *charge)
@@ -294,8 +295,7 @@ class Missions(object):
 
         if struct:
             if isinstance(
-                    tmp := loop.run_until_complete(Craft.achieve(self.atom_total_temp)), Exception
-            ):
+                    tmp := loop.run_until_complete(Craft.achieve(self.atom_total_temp)), Exception):
                 return logger.error(f"{const.ERR}{tmp}[/]")
             logger.info(f"模版引擎正在渲染 ...")
             original_inform = loop.run_until_complete(
@@ -458,8 +458,7 @@ class Missions(object):
 
                 if struct:
                     if isinstance(
-                            tmp := loop.run_until_complete(Craft.achieve(self.atom_total_temp)), Exception
-                    ):
+                            tmp := loop.run_until_complete(Craft.achieve(self.atom_total_temp)), Exception):
                         return logger.error(f"{const.ERR}{tmp}[/]")
                     logger.info(f"模版引擎正在渲染 ...")
                     original_inform = loop.run_until_complete(
@@ -672,7 +671,6 @@ class Missions(object):
 
     async def painting(self, *args, **__):
 
-        import tempfile
         import PIL.Image
         import PIL.ImageDraw
         import PIL.ImageFont
@@ -871,7 +869,13 @@ class Missions(object):
 
                 reporter.query = os.path.join(format_folder, device.sn)
 
-                video_temp, transports = await record.ask_start_record(device, reporter.video_path, location=location)
+                # TODO
+                # video_temp, transports = await record.ask_start_record(
+                #     device, reporter.video_path, location=location
+                # )
+                video_temp, transports = await main_loop.run_in_executor(
+                    None, record.start_record, device, reporter.video_path, location
+                )
                 todo_list.append(
                     [video_temp, transports, reporter.total_path, reporter.title, reporter.query_path,
                      reporter.query, reporter.frame_path, reporter.extra_path, reporter.proto_path]
@@ -1034,8 +1038,7 @@ class Missions(object):
 
                     if struct:
                         if isinstance(
-                                tmp := await Craft.achieve(self.atom_total_temp), Exception
-                        ):
+                                tmp := await Craft.achieve(self.atom_total_temp), Exception):
                             return logger.error(f"{const.ERR}{tmp}[/]")
                         logger.info(f"模版引擎正在渲染 ...")
                         original_inform = await reporter.ask_draw(
@@ -1062,10 +1065,15 @@ class Missions(object):
             )
 
         async def anything_over():
+            # TODO
             effective_list = await asyncio.gather(
-                *(record.ask_close_record(video_temp, transports, device)
+                *(main_loop.run_in_executor(None, record.close_record, video_temp, transports, device)
                   for (video_temp, transports, *_), device in zip(task_list, device_list))
             )
+            # effective_list = await asyncio.gather(
+            #     *(record.ask_close_record(video_temp, transports, device)
+            #       for (video_temp, transports, *_), device in zip(task_list, device_list))
+            # )
             for (idx, (effective, video_name)), _ in zip(enumerate(effective_list), task_list):
                 if effective.startswith("视频录制失败"):
                     task_list.pop(idx)
@@ -1705,7 +1713,7 @@ class Alynex(object):
         return Review(*(await analytics_basic()))
 
 
-async def arithmetic(function: typing.Callable, parameters: list, follow: bool = False) -> None:
+async def arithmetic(function: "typing.Callable", parameters: list, follow: bool = False) -> None:
 
     async def summary():
         template_total = await Craft.achieve(
@@ -1777,7 +1785,7 @@ if __name__ == '__main__':
         logger.debug(f"Html-Template: {_tmp}")
     logger.debug(f"* 模版 * {'=' * 30}\n")
 
-    _main_loop = asyncio.get_event_loop()
+    _main_loop: "asyncio.AbstractEventLoop" = asyncio.get_event_loop()
 
     _flick = _cmd_lines.flick
     _carry = _cmd_lines.carry
