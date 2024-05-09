@@ -871,9 +871,7 @@ class Missions(object):
 
                 reporter.query = os.path.join(format_folder, device.sn)
 
-                video_temp, transports = await record.start_record(
-                    device, reporter.video_path, location=location
-                )
+                video_temp, transports = await record.ask_start_record(device, reporter.video_path, location=location)
                 todo_list.append(
                     [video_temp, transports, reporter.total_path, reporter.title, reporter.query_path,
                      reporter.query, reporter.frame_path, reporter.extra_path, reporter.proto_path]
@@ -1065,7 +1063,7 @@ class Missions(object):
 
         async def anything_over():
             effective_list = await asyncio.gather(
-                *(record.close_record(video_temp, transports, device)
+                *(record.ask_close_record(video_temp, transports, device)
                   for (video_temp, transports, *_), device in zip(task_list, device_list))
             )
             for (idx, (effective, video_name)), _ in zip(enumerate(effective_list), task_list):
