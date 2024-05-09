@@ -1108,6 +1108,7 @@ class Missions(object):
                         file_key: {
                             **({"parser": cmds["parser"]} if cmds.get("parser") else {}),
                             **({"header": cmds["header"]} if cmds.get("header") else {}),
+                            **({"change": cmds["change"]} if cmds.get("change") else {}),
                             **({"looper": cmds["looper"]} if cmds.get("looper") else {}),
                             **({"prefix": [c for c in cmds.get("prefix", []) if c["cmds"]]} if any(
                                 c["cmds"] for c in cmds.get("prefix", [])) else {}),
@@ -1138,10 +1139,10 @@ class Missions(object):
 
             return exec_pairs_list
 
-        async def exec_commands(exec_pairs_list, *extra):
+        async def exec_commands(exec_pairs_list, *change):
 
             async def substitute_star():
-                substitute = iter(extra)
+                substitute = iter(change)
                 return [
                     "".join(next(substitute, "*") if c == "*" else c for c in i)
                     if isinstance(i, str) else (next(substitute, "*") if i == "*" else i) for i in exec_args
@@ -1291,20 +1292,24 @@ class Missions(object):
                 for script_key_, script_value_ in script_dict_.items():
                     logger.info(f"Batch Exec: {script_key_}")
 
-                    try:
-                        looper_ = int(looper_) if (looper_ := script_value_.get("looper", None)) else 1
-                    except ValueError as e_:
-                        logger.error(f"{const.ERR}{e_}[/]")
-                        logger.error(f"{const.ERR}重置循环次数[/] {(looper_ := 1)}")
+                    if (parser_ := script_value_.get("parser", {})) and type(parser_) is dict:
+                        for parser_key_, parser_value_ in parser_.items():
+                            setattr(deploy, parser_key_, parser_value_)
+                            logger.debug(f"Parser Set <{parser_key_}> {parser_value_} -> {getattr(deploy, parser_key_)}")
 
                     header_ = header_ if type(
                         header_ := script_value_.get("header", [])
                     ) is list else ([header_] if type(header_) is str else [time.strftime("%Y%m%d%H%M%S")])
 
-                    if (parser_ := script_value_.get("parser", {})) and type(parser_) is dict:
-                        for parser_key_, parser_value_ in parser_.items():
-                            setattr(deploy, parser_key_, parser_value_)
-                            logger.debug(f"Parser Set <{parser_key_}> {parser_value_} -> {getattr(deploy, parser_key_)}")
+                    if change_ := script_value_.get("change", []):
+                        change_ = change_ if type(change_) is list else (
+                            [change_] if type(change_) is str else [str(change_)])
+
+                    try:
+                        looper_ = int(looper_) if (looper_ := script_value_.get("looper", None)) else 1
+                    except ValueError as e_:
+                        logger.error(f"{const.ERR}{e_}[/]")
+                        logger.error(f"{const.ERR}重置循环次数[/] {(looper_ := 1)}")
 
                     if prefix_list_ := script_value_.get("prefix", []):
                         prefix_list_ = await pack_commands(prefix_list_)
@@ -1326,7 +1331,8 @@ class Missions(object):
 
                             # action
                             if action_list_:
-                                await exec_commands(action_list_, f"{hd_}.mp3")
+                                change_list_ = [hd_ + c_ for c_ in change_] if change_ else [hd_]
+                                await exec_commands(action_list_, *change_list_)
 
                             # close record
                             await anything_over()

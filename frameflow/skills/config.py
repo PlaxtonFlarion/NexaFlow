@@ -387,8 +387,9 @@ class Script(object):
             "command": [
                 {
                     "ID-X": {
-                        "parser": {},
+                        "parser": {"boost": True},
                         "header": ["script"],
+                        "change": [],
                         "looper": 1,
                         "prefix": [
                             {"cmds": [], "args": []}, {"cmds": [], "args": []}
