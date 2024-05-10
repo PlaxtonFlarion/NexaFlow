@@ -924,12 +924,13 @@ class Missions(object):
                 task_list.clear()
                 return logger.warning(f"{const.WRN}没有有效任务[/]")
 
+            logger.info(f"标准视频时间: {(standard := min(duration_list))}")
+
             if self.alone:
                 logger.info(f"*-* 独立控制模式 *-*")
-                logger.info(f"标准视频时间: {(standard := min(duration_list))}")
             else:
                 logger.info(f"*-* 全局控制模式 *-*")
-                logger.info(f"标准视频时间: {(standard := min(duration_list))}")
+
                 video_dst_list = await asyncio.gather(
                     *(balance(duration, video_src) for duration, (video_src, *_) in zip(duration_list, task_list))
                 )
