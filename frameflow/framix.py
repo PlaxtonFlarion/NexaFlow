@@ -1842,6 +1842,7 @@ if __name__ == '__main__':
     )
 
     from multiprocessing import Pool
+    from concurrent.futures import ProcessPoolExecutor
 
     Show.load_animation()
 
@@ -1868,7 +1869,6 @@ if __name__ == '__main__':
                 arithmetic(_missions.build_model, _build_list, False)
             )
         else:
-            from concurrent.futures import ProcessPoolExecutor
             from engine.manage import ScreenMonitor
             from engine.manage import SourceMonitor
             from engine.medias import Record
