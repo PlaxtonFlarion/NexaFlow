@@ -102,8 +102,9 @@ try:
     from engine.flight import Craft
     from engine.flight import Active
     from engine.flight import Review
-    from engine.flight import FramixReporterError
     from engine.flight import FramixAnalysisError
+    from engine.flight import FramixAnalyzerError
+    from engine.flight import FramixReporterError
     from frameflow.skills.config import Option
     from frameflow.skills.config import Deploy
     from frameflow.skills.config import Script
@@ -669,7 +670,7 @@ class Missions(object):
                 logger.error(f"{const.ERR}{state}[/]")
             logger.info(f"成功生成汇总报告 {os.path.relpath(state)}")
 
-    async def painting(self, *args, **__):
+    async def painting(self, *args):
 
         import PIL.Image
         import PIL.ImageDraw
@@ -818,7 +819,7 @@ class Missions(object):
             else:
                 logger.warning(f"{const.WRN}没有该选项,请重新输入[/]\n")
 
-    async def analysis(self, *args, **__):
+    async def analysis(self, *args):
 
         async def combines():
             if len(reporter.range_list) == 0:
@@ -869,12 +870,8 @@ class Missions(object):
 
                 reporter.query = os.path.join(format_folder, device.sn)
 
-                # TODO
-                # video_temp, transports = await record.ask_start_record(
-                #     device, reporter.video_path, location=location
-                # )
-                video_temp, transports = await main_loop.run_in_executor(
-                    None, record.start_record, device, reporter.video_path, location
+                video_temp, transports = await record.ask_start_record(
+                    device, reporter.video_path, location=location
                 )
                 todo_list.append(
                     [video_temp, transports, reporter.total_path, reporter.title, reporter.query_path,
@@ -1065,15 +1062,10 @@ class Missions(object):
             )
 
         async def anything_over():
-            # TODO
             effective_list = await asyncio.gather(
-                *(main_loop.run_in_executor(None, record.close_record, video_temp, transports, device)
+                *(record.ask_close_record(video_temp, transports, device)
                   for (video_temp, transports, *_), device in zip(task_list, device_list))
             )
-            # effective_list = await asyncio.gather(
-            #     *(record.ask_close_record(video_temp, transports, device)
-            #       for (video_temp, transports, *_), device in zip(task_list, device_list))
-            # )
             for (idx, (effective, video_name)), _ in zip(enumerate(effective_list), task_list):
                 if effective.startswith("视频录制失败"):
                     task_list.pop(idx)
@@ -1292,7 +1284,7 @@ class Missions(object):
 
             for script_data_ in load_script_data_:
                 if isinstance(script_data_, Exception):
-                    return logger.error(f"{const.ERR}{script_data_}[/]")
+                    raise FramixAnalysisError(script_data_)
             script_storage_ = [script_data_ for script_data_ in load_script_data_]
 
             await manage_.display_device()
@@ -1741,20 +1733,24 @@ async def arithmetic(function: "typing.Callable", parameters: list, follow: bool
 
 
 async def scheduling() -> None:
-    # --flick --carry --fully
-    if _cmd_lines.flick or _cmd_lines.carry or _cmd_lines.fully:
-        await _missions.analysis(_cmd_lines, _platform, _deploy, _level, _power, _main_loop)
-    # --paint
-    elif _cmd_lines.paint:
-        await _missions.painting(_cmd_lines, _platform, _deploy, _level, _power, _main_loop)
-    # --union
-    elif _cmd_lines.union:
-        await _missions.combines_view(_cmd_lines.union)
-    # --merge
-    elif _cmd_lines.merge:
-        await _missions.combines_main(_cmd_lines.merge)
-    else:
-        Show.help_document()
+    try:
+        # --flick --carry --fully
+        if _cmd_lines.flick or _cmd_lines.carry or _cmd_lines.fully:
+            await _missions.analysis(_cmd_lines, _platform, _deploy, _level, _power, _main_loop)
+        # --paint
+        elif _cmd_lines.paint:
+            await _missions.painting(_cmd_lines, _platform, _deploy, _level, _power, _main_loop)
+        # --union
+        elif _cmd_lines.union:
+            await _missions.combines_view(_cmd_lines.union)
+        # --merge
+        elif _cmd_lines.merge:
+            await _missions.combines_main(_cmd_lines.merge)
+        else:
+            Show.help_document()
+    except (FramixAnalysisError, FramixAnalyzerError, FramixReporterError):
+        Show.console.print_exception()
+        sys.exit(Show.fail())
 
 
 if __name__ == '__main__':
@@ -1784,8 +1780,6 @@ if __name__ == '__main__':
     for _tmp in _temps:
         logger.debug(f"Html-Template: {_tmp}")
     logger.debug(f"* 模版 * {'=' * 30}\n")
-
-    _main_loop: "asyncio.AbstractEventLoop" = asyncio.get_event_loop()
 
     _flick = _cmd_lines.flick
     _carry = _cmd_lines.carry
@@ -1818,6 +1812,8 @@ if __name__ == '__main__':
     logger.debug(f"模型文件色彩: {_model_aisle}")
 
     logger.debug(f"处理器核心数: {(_power := os.cpu_count())}")
+
+    _main_loop: "asyncio.AbstractEventLoop" = asyncio.get_event_loop()
 
     _deploy = Deploy(_initial_deploy)
     for _attr, _attribute in _deploy.deploys.items():

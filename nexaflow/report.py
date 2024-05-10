@@ -115,7 +115,7 @@ class Report(object):
             *(assemble(log) for log in log_file_list), return_exceptions=True
         )
 
-        ignore = "NexaFlow.html", "nexaflow.log"
+        ignore = "Nexa_Flow.html", "nexaflow.log"
         for m in merge_list:
             if isinstance(m, Exception):
                 raise FramixReporterError(m)
@@ -128,7 +128,7 @@ class Report(object):
             report_time=merge_time, total_list=total_list
         )
 
-        report_html = os.path.join(os.path.dirname(merge_path), "NexaFlow.html")
+        report_html = os.path.join(os.path.dirname(merge_path), "Nexa_Flow.html")
         async with aiofiles.open(report_html, "w", encoding=const.CHARSET) as f:
             await f.write(html)
 

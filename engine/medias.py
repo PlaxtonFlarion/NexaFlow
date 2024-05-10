@@ -3,7 +3,6 @@ import time
 import signal
 import random
 import asyncio
-import threading
 
 try:
     os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
@@ -13,6 +12,7 @@ except ImportError as e:
 
 from loguru import logger
 from engine.terminal import Terminal
+from nexaflow import const
 
 
 class Record(object):
@@ -27,85 +27,6 @@ class Record(object):
         if self.alone and self.whist:
             self.whist = False
         self.frate = kwargs.get("frate", 60)
-
-    def start_record(self, device, dst, **kwargs):
-
-        def input_stream():
-            for line in iter(transports.stdout.readline, ""):
-                logger.info(stream := " ".join(line.strip().split()))
-                if "Recording started" in stream:
-                    events["head"].set()
-                elif "Recording complete" in stream:
-                    bridle.set()
-                    events["done"].set()
-                    break
-
-        def error_stream():
-            for line in iter(transports.stderr.readline, ""):
-                logger.info(stream := " ".join(line.strip().split()))
-                if "Could not find" in stream or "connection failed" in stream or "Recorder error" in stream:
-                    events["fail"].set()
-                    break
-
-        self.record_events[device.sn] = {
-            "head": threading.Event(), "done": threading.Event(),
-            "stop": threading.Event(), "fail": threading.Event(),
-        }
-        self.melody_events = threading.Event()
-
-        bridle = self.record_events[device.sn]["stop"] if self.alone else self.melody_events
-        events = self.record_events[device.sn]
-
-        video_flag = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
-
-        loc_name = ["--window-x", "--window-y", "--window-width", "--window-height"]
-        location = [f"{k}={v}" for k, v in zip(loc_name, loc)] if (loc := kwargs.get("location", ())) else []
-
-        cmd = [self.scrcpy, "-s", device.sn]
-        cmd += [f"--display-id={device.id}"] if device.id != 0 else []
-        cmd += location if location else []
-        cmd += ["--no-audio"]
-        cmd += ["--video-bit-rate", "8M", "--max-fps", f"{self.frate}"]
-        cmd += ["-Nr" if self.whist else "--record", video_temp := f"{os.path.join(dst, 'screen')}_{video_flag}"]
-
-        transports = Terminal.cmd_connect(cmd)
-
-        threading.Thread(target=input_stream).start()
-        threading.Thread(target=error_stream).start()
-        time.sleep(1)
-
-        return video_temp, transports
-
-    def close_record(self, video_temp, transports, device):
-
-        def complete():
-            for _ in range(10):
-                if events["done"].is_set():
-                    return f"{device.tag} {device.sn} 视频录制成功", banner
-                elif events["fail"].is_set():
-                    return f"{device.tag} {device.sn} 视频录制失败", banner
-                time.sleep(0.2)
-            return f"{device.tag} {device.sn} 视频录制失败", banner
-
-        events = self.record_events[device.sn]
-        banner = os.path.basename(video_temp)
-
-        # TODO Feasibility to be tested -> transports.send_signal(signal.SIGINT) ?
-        if self.system != "win32":
-            # transports.send_signal(signal.SIGKILL)
-            # transports.send_signal(signal.SIGINT)
-            transports.terminate()
-            return complete()
-
-        if self.whist:
-            logger.info(f"PID: {transports.pid}")
-            transports.send_signal(signal.CTRL_C_EVENT)
-
-        try:
-            Terminal.cmd_oneshot(["taskkill", "/im", "scrcpy.exe"])
-        except KeyboardInterrupt:
-            logger.info("Stop with Ctrl_C_Event ...")
-        return complete()
 
     async def ask_start_record(self, device, dst, **kwargs):
 
@@ -168,25 +89,17 @@ class Record(object):
         events = self.record_events[device.sn]
         banner = os.path.basename(video_temp)
 
-        # TODO Feasibility to be tested -> transports.send_signal(signal.SIGINT) ?
-        if self.system != "win32":
-            # transports.send_signal(signal.SIGKILL)
-            # transports.send_signal(signal.SIGINT)
-            transports.terminate()
-            return await complete()
+        logger.info(f"PID: {transports.pid}")
+        cancel = signal.CTRL_C_EVENT if self.system == "win32" else signal.SIGINT
+        try:
+            transports.send_signal(cancel)
+        except ProcessLookupError:
+            logger.warning(f"{const.WRN}Transports Stop With Signal[/] ...")
 
-        if self.whist:
-            logger.info(f"PID: {transports.pid}")
-            loop = asyncio.get_running_loop()
-            cancel = loop.run_in_executor(None, transports.send_signal, signal.CTRL_C_EVENT)
-            try:
-                await asyncio.gather(
-                    cancel, Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
-                )
-            except KeyboardInterrupt:
-                logger.warning(f"Stop With Ctrl_C_Event ...")
-        else:
-            await Terminal.cmd_line("taskkill", "/im", "scrcpy.exe")
+        try:
+            Terminal.cmd_oneshot(["echo", "Cancel"])
+        except KeyboardInterrupt:
+            logger.warning(f"{const.WRN}Transports Stop With {cancel.name} Code={cancel.value}[/] ...")
 
         return await complete()
 
