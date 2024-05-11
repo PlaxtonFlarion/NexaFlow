@@ -1067,10 +1067,12 @@ class Missions(object):
                 *(record.ask_close_record(video_temp, transports, device)
                   for (video_temp, transports, *_), device in zip(task_list, device_list))
             )
-            for (idx, (effective, video_name)), _ in zip(enumerate(effective_list), task_list):
-                if effective.startswith("视频录制失败"):
-                    task_list.pop(idx)
-                logger.info(f"{effective}: {video_name}")
+            for idx, (effective, video_name) in enumerate(effective_list):
+                if "视频录制失败" in effective:
+                    task = task_list.pop(idx)
+                    logger.warning(f"{const.WRN}{effective}: {video_name} 移除: {os.path.basename(task[0])}")
+                else:
+                    logger.success(f"{const.SUC}{effective}: {video_name}")
 
         async def call_commands(exec_func, exec_args, bean, live_devices):
             if not (callable(function := getattr(bean, exec_func, None))):
@@ -1483,8 +1485,10 @@ class Alynex(object):
 
         async def frame_flip():
             video_streams = await Switch.ask_video_stream(self.fpb, vision)
-            real_frame_rate, avg_frame_rate = video_streams["real_frame_rate"], video_streams["avg_frame_rate"]
-            original, duration = video_streams["original"], video_streams["duration"]
+            rlt_frame_rate = video_streams["rlt_frame_rate"]
+            avg_frame_rate = video_streams["avg_frame_rate"]
+            duration = video_streams["duration"]
+            original = video_streams["original"]
 
             target_vision = os.path.join(
                 os.path.dirname(vision), f"vision_fps{frate}_{random.randint(100, 999)}.mp4"
@@ -1500,7 +1504,7 @@ class Alynex(object):
             vision_close = Parser.parse_times(vision_close)
             vision_limit = Parser.parse_times(vision_limit)
             logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}]")
-            logger.info(f"实际帧率: [{real_frame_rate}] 平均帧率: [{avg_frame_rate}] 转换帧率: [{frate}]")
+            logger.info(f"实际帧率: [{rlt_frame_rate}] 平均帧率: [{avg_frame_rate}] 转换帧率: [{frate}]")
             logger.info(f"视频剪辑: start=[{vision_start}] close=[{vision_close}] limit=[{vision_limit}]")
 
             await Switch.ask_video_change(

@@ -193,14 +193,14 @@ class Manage(object):
                 Show.simulation_progress(f"Wait for device to connect ...", 1, 0.05)
                 continue
 
-            for index, device in device_dict.items():
+            for device in device_dict.values():
                 self.device_list.append(device)
 
             if len(self.device_list) == 1:
                 return self.device_list
 
-            for index, device in device_dict.items():
-                Show.console.print(f"[bold][bold #FFFACD]Connect:[/] [{index}] {device}[/]")
+            for index, device in enumerate(device_dict.values()):
+                Show.console.print(f"[bold][bold #FFFACD]Connect:[/] [{index + 1:02}] {device}[/]")
 
             return self.device_list
 

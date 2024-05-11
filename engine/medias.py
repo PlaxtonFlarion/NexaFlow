@@ -89,17 +89,17 @@ class Record(object):
         events = self.record_events[device.sn]
         banner = os.path.basename(video_temp)
 
-        logger.info(f"PID: {transports.pid}")
+        logger.info(f"{device.tag} {device.sn} Record PID={transports.pid}")
         cancel = signal.CTRL_C_EVENT if self.system == "win32" else signal.SIGINT
         try:
             transports.send_signal(cancel)
         except ProcessLookupError:
-            logger.warning(f"{const.WRN}Transports Stop With Signal[/] ...")
+            logger.warning(f"{const.WRN}{device.tag} {device.sn} Stop With Signal[/]")
 
         try:
             Terminal.cmd_oneshot(["echo", "Cancel"])
         except KeyboardInterrupt:
-            logger.warning(f"{const.WRN}Transports Stop With {cancel.name} Code={cancel.value}[/] ...")
+            logger.warning(f"{const.WRN}{device.tag} {device.sn} Stop With {cancel.name} Code={cancel.value}[/]")
 
         return await complete()
 

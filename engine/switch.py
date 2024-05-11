@@ -95,7 +95,7 @@ class Switch(object):
                 "codec_name": stream_dict["codec_name"],
                 "codec_type": stream_dict["codec_type"],
                 "original": (int(stream_dict["width"]), int(stream_dict["height"])),
-                "real_frame_rate": stream_dict["r_frame_rate"],
+                "rlt_frame_rate": stream_dict["r_frame_rate"],
                 "avg_frame_rate": stream_dict["avg_frame_rate"],
                 "nb_read_frames": int(stream_dict["nb_read_frames"]),
                 "duration": float(format_dict["duration"]),
@@ -174,12 +174,5 @@ class Switch(object):
         return int(adjusted_w), int(adjusted_h), original_ratio
 
 
-async def main():
-    await Switch.ask_video_stream("ffprobe", "/Users/acekeppel/PycharmProjects/NexaFlow/data/i_01.mp4")
-
-
 if __name__ == '__main__':
-    import asyncio
-
-    asyncio.run(main())
     pass
