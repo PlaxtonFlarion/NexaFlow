@@ -1,3 +1,4 @@
+import os
 import json
 import typing
 from engine.terminal import Terminal
@@ -49,7 +50,7 @@ class Switch(object):
         elif limit:
             cmd += ["-t", limit]
         cmd += ["-i", src]
-        cmd += ["-vf", ",".join(video_filter), dst]
+        cmd += ["-vf", ",".join(video_filter), os.path.join(dst, "frame_%05d.png")]
 
         return await Terminal.cmd_line(*cmd)
 

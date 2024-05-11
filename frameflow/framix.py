@@ -234,7 +234,7 @@ class Missions(object):
 
             loop.run_until_complete(
                 Switch.ask_video_detach(
-                    self.fmp, video_filter_list, new_video_path, os.path.join(reporter.frame_path, "frame_%05d.png"),
+                    self.fmp, video_filter_list, new_video_path, reporter.frame_path,
                     start=vision_start, close=vision_close, limit=vision_limit
                 )
             )
@@ -391,7 +391,7 @@ class Missions(object):
 
                     loop.run_until_complete(
                         Switch.ask_video_detach(
-                            self.fmp, video_filter_list, new_video_path, os.path.join(reporter.frame_path, "frame_%05d.png"),
+                            self.fmp, video_filter_list, new_video_path, reporter.frame_path,
                             start=deploy.start, close=deploy.close, limit=deploy.limit
                         )
                     )
@@ -882,7 +882,7 @@ class Missions(object):
 
         async def analysis_tactics():
 
-            async def balance(video_duration, video_src):
+            async def balance(video_duration, video_index, video_src):
                 start_time_point = video_duration - standard
                 end_time_point = video_duration
                 start_time_str = str(datetime.timedelta(seconds=start_time_point))
@@ -898,10 +898,10 @@ class Missions(object):
                 )
                 try:
                     os.remove(video_src)
-                except FileNotFoundError as e:
-                    return e
+                except FileNotFoundError:
+                    pass
                 logger.info(f"Balance complete {os.path.basename(video_src)}")
-                return video_dst
+                task_list[video_index][0] = video_dst
 
             if len(task_list) == 0:
                 task_list.clear()
@@ -941,13 +941,10 @@ class Missions(object):
             else:
                 logger.info(f"*-* 全局控制模式 *-*")
 
-                video_dst_list = await asyncio.gather(
-                    *(balance(duration, video_src) for duration, (video_src, *_) in zip(duration_list, task_list))
+                await asyncio.gather(
+                    *(balance(duration, index, video_src)
+                      for duration, (index, (video_src, *_)) in zip(duration_list, enumerate(task_list)))
                 )
-                for idx, dst in enumerate(video_dst_list):
-                    if isinstance(dst, Exception):
-                        continue
-                    task_list[idx][0] = dst
 
             if self.speed:
                 logger.info(f"★ ★ ★ 快速模式 ★ ★ ★")
@@ -976,7 +973,7 @@ class Missions(object):
 
                 await asyncio.gather(
                     *(Switch.ask_video_detach(
-                        self.fmp, video_filter, video_temp, os.path.join(frame_path, "frame_%05d.png"),
+                        self.fmp, video_filter, video_temp, frame_path,
                         start=vision_start, close=vision_close, limit=vision_limit
                     ) for (video_temp, *_, frame_path, _, _), video_filter, (
                         vision_start, vision_close, vision_limit
@@ -1000,18 +997,17 @@ class Missions(object):
 
                 if len(task_list) == 1:
                     futures = await asyncio.gather(
-                        *(alynex.ask_analyzer(
-                            video_temp, deploy, frame_path, extra_path
-                        ) for video_temp, *_, frame_path, extra_path, _ in task_list)
+                        *(alynex.ask_analyzer(video_temp, deploy, frame_path, extra_path)
+                          for video_temp, *_, frame_path, extra_path, _ in task_list)
                     )
+
                 else:
                     with ProcessPoolExecutor(power, None, Active.active, ("ERROR",)) as exe:
-                        task = [
-                            main_loop.run_in_executor(
-                                exe, self.amazing, video_temp, deploy, frame_path, extra_path
-                            ) for video_temp, *_, frame_path, extra_path, _ in task_list
+                        multi_process_task = [
+                            main_loop.run_in_executor(exe, self.amazing, video_temp, deploy, frame_path, extra_path)
+                            for video_temp, *_, frame_path, extra_path, _ in task_list
                         ]
-                        futures = await asyncio.gather(*task)
+                        futures = await asyncio.gather(*multi_process_task)
 
                 for future, todo in zip(futures, task_list):
                     if future is None:
@@ -1204,7 +1200,6 @@ class Missions(object):
         )
         player = Player()
         source_monitor = SourceMonitor()
-
         # Initialization ===============================================================================================
 
         # Flick Loop ===================================================================================================
