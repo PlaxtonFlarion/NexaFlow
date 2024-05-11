@@ -953,27 +953,26 @@ class Missions(object):
                 elif deploy.scale:
                     scale = max(0.1, min(1.0, deploy.scale))
                     video_filter_list = [
-                        const_filter + [f"scale=iw*{scale}:ih*{scale}"] for video_temp, *_ in task_list
+                        const_filter + [f"scale=iw*{scale}:ih*{scale}"] for _ in task_list
                     ]
                 else:
                     scale = const.COMPRESS
                     video_filter_list = [
-                        const_filter + [f"scale=iw*{scale}:ih*{scale}"] for video_temp, *_ in task_list
+                        const_filter + [f"scale=iw*{scale}:ih*{scale}"] for _ in task_list
                     ]
 
                 for flt in video_filter_list:
                     logger.info(f"视频过滤: {flt}")
 
-                duration_result_list = await asyncio.gather(
-                    *(Switch.ask_magic_point(
-                        Parser.parse_mills(deploy.start),
-                        Parser.parse_mills(deploy.close),
-                        Parser.parse_mills(deploy.limit),
-                        duration
-                    ) for duration in duration_list)
+                start_ms = Parser.parse_mills(deploy.start)
+                close_ms = Parser.parse_mills(deploy.close)
+                limit_ms = Parser.parse_mills(deploy.limit)
+                final_point_list = await asyncio.gather(
+                    *(Switch.ask_magic_point(start_ms, close_ms, limit_ms, duration)
+                      for duration in duration_list)
                 )
 
-                for (vision_start, vision_close, vision_limit), duration in zip(duration_result_list, duration_list):
+                for (vision_start, vision_close, vision_limit), duration in zip(final_point_list, duration_list):
                     vision_start = Parser.parse_times(vision_start)
                     vision_close = Parser.parse_times(vision_close)
                     vision_limit = Parser.parse_times(vision_limit)
@@ -986,7 +985,7 @@ class Missions(object):
                         start=vision_start, close=vision_close, limit=vision_limit
                     ) for (video_temp, *_, frame_path, _, _), video_filter, (
                         vision_start, vision_close, vision_limit
-                    ) in zip(task_list, video_filter_list, duration_result_list))
+                    ) in zip(task_list, video_filter_list, final_point_list))
                 )
 
                 for *_, total_path, title, query_path, query, frame_path, _, _ in task_list:
