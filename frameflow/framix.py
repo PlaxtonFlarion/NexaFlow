@@ -549,9 +549,9 @@ class Missions(object):
         logger.info(f"加载到内存: {video.name}")
         video_load_time = time.time()
         video.load_frames(
-            load_hued=False, none_gray=True
+            scale=None, shape=None, color=True
         )
-        logger.info(f"视频帧已加载: {video.frame_details(video.grey_data)}")
+        logger.info(f"视频帧已加载: {video.frame_details(video.frames_data)}")
         logger.info(f"视频加载耗时: {time.time() - video_load_time:.2f} 秒")
 
         cutter = VideoCutter()
@@ -1529,17 +1529,9 @@ class Alynex(object):
 
             return target_vision, target_shape, target_scale
 
-        async def color_load():
-            video.hued_data = tuple(hued_future.result())
-            logger.info(f"彩色帧已加载: {video.frame_details(video.hued_data)}")
-            hued_thread.shutdown()
-
         async def frame_hold():
             if struct is None:
-                if color:
-                    await color_load()
-                    return [i for i in video.hued_data]
-                return [i for i in video.grey_data]
+                return [i for i in video.frames_data]
 
             logger.info(f"{'*-* 获取关键帧 *-*' if boost else '*-* 获取全部帧 *-*'}")
             frames_list = []
@@ -1562,10 +1554,7 @@ class Alynex(object):
                 for current in toolbox.show_progress(items=struct.data, color=50):
                     frames_list.append(current)
 
-            if color:
-                await color_load()
-                return [video.hued_data[frame.frame_id - 1] for frame in frames_list]
-            return [frame for frame in frames_list]
+            return frames_list
 
         async def frame_flow():
 
@@ -1696,10 +1685,10 @@ class Alynex(object):
         video = VideoObject(movie)
         logger.info(f"视频帧长度: {video.frame_count} 分辨率: {video.frame_size}")
         logger.info(f"加载到内存: {video.name}")
-        hued_thread, hued_future = video.load_frames(
-            load_hued=color, none_gray=False, shape=shape, scale=scale
+        video.load_frames(
+            scale=scale, shape=shape, color=color
         )
-        logger.info(f"视频帧已加载: {video.frame_details(video.grey_data)}")
+        logger.info(f"视频帧已加载: {video.frame_details(video.frames_data)}")
         logger.info(f"视频加载耗时: {time.time() - video_load_time:.2f} 秒")
 
         struct = await frame_flow() if self.kc else None

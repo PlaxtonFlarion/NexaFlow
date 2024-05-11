@@ -80,26 +80,28 @@ class Record(object):
         async def complete():
             for _ in range(10):
                 if events["done"].is_set():
-                    return f"{device.tag} {device.sn} 视频录制成功", banner
+                    return f"{desc} 视频录制成功", banner
                 elif events["fail"].is_set():
-                    return f"{device.tag} {device.sn} 视频录制失败", banner
+                    return f"{desc} 视频录制失败", banner
                 await asyncio.sleep(0.2)
-            return f"{device.tag} {device.sn} 视频录制失败", banner
+            return f"{desc} 视频录制失败", banner
+
+        desc = f"{device.tag} {device.sn}"
+        info = f"PID={transports.pid}"
 
         events = self.record_events[device.sn]
         banner = os.path.basename(video_temp)
 
-        logger.info(f"{device.tag} {device.sn} Record PID={transports.pid}")
         cancel = signal.CTRL_C_EVENT if self.system == "win32" else signal.SIGINT
         try:
             transports.send_signal(cancel)
         except ProcessLookupError:
-            logger.warning(f"{const.WRN}{device.tag} {device.sn} Stop With Signal[/]")
+            logger.warning(f"{const.WRN}{desc} Stop Record {info} With Signal[/]")
 
         try:
             Terminal.cmd_oneshot(["echo", "Cancel"])
         except KeyboardInterrupt:
-            logger.warning(f"{const.WRN}{device.tag} {device.sn} Stop With {cancel.name} Code={cancel.value}[/]")
+            logger.warning(f"{const.WRN}{desc} Stop Record {info} With {cancel.name} Code={cancel.value}[/]")
 
         return await complete()
 
@@ -107,19 +109,21 @@ class Record(object):
         bridle = self.record_events[device.sn]["stop"] if self.alone else self.melody_events
         events = self.record_events[device.sn]
 
+        desc = f"{device.tag} {device.sn}"
+
         while True:
             if events["head"].is_set():
                 for i in range(amount):
                     row = amount - i if amount - i <= 10 else 10
-                    logger.info(f"{device.tag} {device.sn} 剩余时间 -> {amount - i:02} 秒 {'----' * row} ...")
+                    logger.info(f"{desc} 剩余时间 -> {amount - i:02} 秒 {'----' * row} ...")
                     if bridle.is_set() and i != amount:
-                        return logger.info(f"{device.tag} {device.sn} 主动停止 ...")
+                        return logger.info(f"{desc} 主动停止 ...")
                     elif events["fail"].is_set():
-                        return logger.info(f"{device.tag} {device.sn} 意外停止 ...")
+                        return logger.info(f"{desc} 意外停止 ...")
                     await asyncio.sleep(1)
-                return logger.info(f"{device.tag} {device.sn} 剩余时间 -> 00 秒")
+                return logger.info(f"{desc} 剩余时间 -> 00 秒")
             elif events["fail"].is_set():
-                return logger.info(f"{device.tag} {device.sn} 意外停止 ...")
+                return logger.info(f"{desc} 意外停止 ...")
             await asyncio.sleep(0.2)
 
     async def check_event(self, device, exec_tasks, async_style: bool = False):

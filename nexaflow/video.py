@@ -6,69 +6,31 @@ import numpy as np
 import imageio_ffmpeg
 import moviepy.editor as mpy
 from loguru import logger
-from concurrent.futures import ThreadPoolExecutor
 from nexaflow import toolbox
 
 
-class Frame(object):
+class VideoFrame(object):
 
     def __init__(self, frame_id: int, timestamp: float, data: np.ndarray):
         self.frame_id: int = frame_id
         self.timestamp: float = timestamp
         self.data: np.ndarray = data
 
-    @staticmethod
-    def initial(
-            cap: cv2.VideoCapture, frame: np.ndarray,
-            not_grey: bool = None, shape: tuple = None, scale: int | float = None
-    ) -> "Frame":
-
-        raise NotImplementedError
-
-    def copy(self) -> "Frame":
-        raise NotImplementedError
-
-
-class ColorFrame(Frame):
-
-    def __init__(self, frame_id: int, timestamp: float, data: np.ndarray):
-        super().__init__(frame_id, timestamp, data)
-
-    def __str__(self):
-        return f"<ColorFrame id={self.frame_id} timestamp={self.timestamp}>"
-
-    @staticmethod
-    def initial(
-            cap: cv2.VideoCapture, frame: np.ndarray,
-            not_grey: bool = None, shape: tuple = None, scale: int | float = None
-    ) -> "ColorFrame":
-
-        frame_id = toolbox.get_current_frame_id(cap)
-        timestamp = toolbox.get_current_frame_time(cap)
-        new_frame = toolbox.compress_frame(frame, scale, shape, not_grey)
-        return ColorFrame(frame_id, timestamp, new_frame)
-
-    def copy(self) -> "ColorFrame":
-        return ColorFrame(self.frame_id, self.timestamp, self.data[:])
-
-
-class VideoFrame(Frame):
-
-    def __init__(self, frame_id: int, timestamp: float, data: np.ndarray):
-        super().__init__(frame_id, timestamp, data)
-
     def __str__(self):
         return f"<VideoFrame id={self.frame_id} timestamp={self.timestamp}>"
 
     @staticmethod
     def initial(
-            cap: cv2.VideoCapture, frame: np.ndarray,
-            not_grey: bool = None, shape: tuple = None, scale: int | float = None
+            cap: cv2.VideoCapture,
+            frame: np.ndarray,
+            scale: int | float = None,
+            shape: tuple = None,
+            color: bool = None,
     ) -> "VideoFrame":
 
         frame_id = toolbox.get_current_frame_id(cap)
         timestamp = toolbox.get_current_frame_time(cap)
-        new_frame = toolbox.compress_frame(frame, scale, shape, not_grey)
+        new_frame = toolbox.compress_frame(frame, scale, shape, color)
         return VideoFrame(frame_id, timestamp, new_frame)
 
     def copy(self) -> "VideoFrame":
@@ -123,7 +85,7 @@ class MemFrameOperator(_BaseFrameOperator):
             return None
 
         frame_id = frame_id - 1
-        return self.video.grey_data[frame_id].copy()
+        return self.video.frames_data[frame_id].copy()
 
 
 class FileFrameOperator(_BaseFrameOperator):
@@ -154,8 +116,7 @@ class VideoObject(object):
         assert os.path.isfile(path), f"video {path} not existed"
         self.name: str = str(os.path.basename(path))
         self.path: str = str(path)
-        self.grey_data: typing.Optional[typing.Tuple["VideoFrame"]] = tuple()  # 灰度帧
-        self.hued_data: typing.Optional[typing.Tuple["ColorFrame"]] = tuple()  # 彩色帧
+        self.frames_data: typing.Optional[typing.Tuple["VideoFrame"]] = tuple()
 
         if fps:
             video_path = os.path.join(tempfile.mkdtemp(), f"tmp_{fps}.mp4")
@@ -180,7 +141,7 @@ class VideoObject(object):
         vid = mpy.VideoFileClip(self.path)
 
         vid_count = vid.reader.nframes
-        pbar = toolbox.show_progress(total=vid_count, color=153)
+        progress_bar = toolbox.show_progress(total=vid_count, color=153)
         for frame_id, (timestamp, _) in enumerate(vid.iter_frames(with_times=True)):
             if frame_id >= len(frame_data):
                 break
@@ -188,84 +149,45 @@ class VideoObject(object):
             if not frame_data[frame_id].timestamp:
                 # logger.debug(f"fix frame {frame_id_real}'s timestamp: {timestamp}")
                 frame_data[frame_id].timestamp = timestamp
-            pbar.update(1)
-        pbar.close()
-
-    def sync_backstage(self, frame_data: tuple["ColorFrame"]) -> None:
-        assert frame_data, "load_frames() first"
-        vid = mpy.VideoFileClip(self.path)
-
-        for frame_id, (timestamp, _) in enumerate(vid.iter_frames(with_times=True)):
-            if frame_id >= len(frame_data):
-                break
-            # frame_id_real = frame_id + 1
-            if not frame_data[frame_id].timestamp:
-                # logger.debug(f"fix frame {frame_id_real}'s timestamp: {timestamp}")
-                frame_data[frame_id].timestamp = timestamp
+            progress_bar.update(1)
+        progress_bar.close()
 
     def clean_frames(self):
         """
         清除所有帧数据
         """
-        self.grey_data = tuple()
-        self.hued_data = tuple()
+        self.frames_data = tuple()
 
     @staticmethod
-    def frame_details(frame_type):
-        frame = frame_type[0]
-        each_cost = frame.data.nbytes / (1024 ** 2)
-        total_cost = each_cost * len(frame_type)
+    def frame_details(frame_data: tuple["VideoFrame"]):
+        frame = frame_data[0]
+        every_cost = frame.data.nbytes / (1024 ** 2)
+        total_cost = every_cost * len(frame_data)
         frame_size = frame.data.shape[::-1]
-        return f"{frame.__class__.__name__} [{each_cost:.2f} MB] [{total_cost:.2f} MB] {frame_size}"
+        frame_name = frame.__class__.__name__
+        frame_info = f"[{every_cost:.2f} MB] [{total_cost:.2f} MB]"
+        return f"{frame_name} {frame_info} {frame_size}"
 
     def load_frames(
-            self,
-            load_hued: bool = False,
-            none_gray: bool = False,
-            shape: tuple = None,
-            scale: int | float = None
+            self, scale: int | float = None, shape: tuple = None, color: bool = False
     ):
-
         """
         从文件中加载所有帧到内存
         """
 
-        def load_stream(frames: type["VideoFrame"]):
-            pbar = toolbox.show_progress(total=self.frame_count, color=180)
-            frame_data_list: list["VideoFrame"] = []
-            with toolbox.video_capture(self.path) as cap:
-                for success, frame in iter(lambda: cap.read(), (False, None)):
-                    if success:
-                        frame_data_list.append(frames.initial(cap, frame, none_gray, shape, scale))
-                        pbar.update(1)
-            pbar.close()
-            return frame_data_list
+        progress_bar = toolbox.show_progress(total=self.frame_count, color=180)
+        frame_data_list: list["VideoFrame"] = []
+        with toolbox.video_capture(self.path) as cap:
+            for success, frame in iter(lambda: cap.read(), (False, None)):
+                if success:
+                    frame_data_list.append(
+                        VideoFrame.initial(cap, frame, scale, shape, color)
+                    )
+                    progress_bar.update(1)
+        progress_bar.close()
 
-        def back_ground(frames: type["ColorFrame"]):
-            frame_data_list: list["ColorFrame"] = []
-            with toolbox.video_capture(self.path) as cap:
-                for success, frame in iter(lambda: cap.read(), (False, None)):
-                    if success:
-                        frame_data_list.append(frames.initial(cap, frame, load_hued, shape, scale))
-            return frame_data_list
-
-        def load_stream_sync(brand):
-            self.sync_timestamp(tuple(frame_data := load_stream(brand)))
-            return frame_data
-
-        def back_ground_sync(brand):
-            self.sync_backstage(tuple(frame_data := back_ground(brand)))
-            return frame_data
-
-        hued_thread, hued_future = None, None
-        if load_hued:
-            hued_thread = ThreadPoolExecutor()
-            hued_future = hued_thread.submit(back_ground_sync, ColorFrame)
-
-        grey_frame_data = load_stream_sync(VideoFrame)
-        self.grey_data = tuple(grey_frame_data)
-
-        return hued_thread, hued_future
+        self.frames_data = tuple(frame_data_list)
+        self.sync_timestamp(self.frames_data)
 
     def _read_from_file(self) -> typing.Generator["VideoFrame", None, None]:
         """
@@ -281,14 +203,14 @@ class VideoObject(object):
         """
         从内存中读取帧
         """
-        for each_frame in self.grey_data:
+        for each_frame in self.frames_data:
             yield each_frame
 
     def _read(self) -> typing.Generator["VideoFrame", None, None]:
         """
         选择从文件还是从内存中读取帧
         """
-        if self.grey_data:
+        if self.frames_data:
             yield from self._read_from_mem()
         else:
             yield from self._read_from_file()
@@ -303,7 +225,7 @@ class VideoObject(object):
         """
         根据是否已经加载帧，返回相应的FrameOperator（`MemFrameOperator`或`FileFrameOperator`）
         """
-        if self.grey_data:
+        if self.frames_data:
             return MemFrameOperator(self)
         return FileFrameOperator(self)
 
