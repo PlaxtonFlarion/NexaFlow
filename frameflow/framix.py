@@ -1448,13 +1448,17 @@ class Alynex(object):
             logger.info(f"阶段划分: {struct.get_ordered_stage_set()}")
             begin_stage_index, begin_frame_index = begin
             final_stage_index, final_frame_index = final
+            logger.info(
+                f"Extract frames begin={list(begin)} final={list(final)}"
+            )
 
             try:
+                unstable_stage_range = struct.get_not_stable_stage_range()
                 logger.info(
-                    f"Extract frames begin={list(begin)} final={list(final)}"
+                    f"Unstable stage range {unstable_stage_range}"
                 )
-                begin_frame = struct.get_not_stable_stage_range()[begin_stage_index][begin_frame_index]
-                final_frame = struct.get_not_stable_stage_range()[final_stage_index][final_frame_index]
+                begin_frame = unstable_stage_range[begin_stage_index][begin_frame_index]
+                final_frame = unstable_stage_range[final_stage_index][final_frame_index]
             except (AssertionError, IndexError) as e:
                 logger.error(f"{const.ERR}{e}[/]")
                 logger.warning(f"{const.WRN}Analyzer Neural Engine is recalculating ...[/]")
@@ -1688,7 +1692,7 @@ class Alynex(object):
         return Review(*(await analytics_basic()))
 
 
-async def arithmetic(function: "typing.Callable", parameters: list, follow: bool = False) -> None:
+async def arithmetic(function: "typing.Callable", parameters: list[str], follow: bool = False) -> None:
 
     async def summary():
         template_total = await Craft.achieve(
@@ -1715,14 +1719,29 @@ async def arithmetic(function: "typing.Callable", parameters: list, follow: bool
     sys.exit(Show.done())
 
 
+async def ask_arithmetic(function: "typing.Callable", parameters: list[str]) -> None:
+    try:
+        await function(
+            [(await Craft.revise_path(param)) for param in parameters],
+            _cmd_lines, _platform, _deploy, _level, _power, _main_loop
+        )
+    except (FramixAnalysisError, FramixAnalyzerError, FramixReporterError):
+        Show.console.print_exception()
+        sys.exit(Show.fail())
+
+
 async def scheduling() -> None:
     try:
         # --flick --carry --fully
         if _cmd_lines.flick or _cmd_lines.carry or _cmd_lines.fully:
-            await _missions.analysis(_cmd_lines, _platform, _deploy, _level, _power, _main_loop)
+            await _missions.analysis(
+                _cmd_lines, _platform, _deploy, _level, _power, _main_loop
+            )
         # --paint
         elif _cmd_lines.paint:
-            await _missions.painting(_cmd_lines, _platform, _deploy, _level, _power, _main_loop)
+            await _missions.painting(
+                _cmd_lines, _platform, _deploy, _level, _power, _main_loop
+            )
         # --union
         elif _cmd_lines.union:
             await _missions.combines_view(_cmd_lines.union)

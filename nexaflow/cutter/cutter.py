@@ -1,56 +1,10 @@
 import numpy
 import typing
-from loguru import logger
-from concurrent.futures import ThreadPoolExecutor
 from nexaflow import toolbox
 from nexaflow.hook import BaseHook
 from nexaflow.video import VideoObject, VideoFrame
 from nexaflow.cutter.cut_range import VideoCutRange
 from nexaflow.cutter.cut_result import VideoCutResult
-
-
-class Window(object):
-
-    def __init__(self, video: "VideoObject", *args):
-        self.video = video
-        self.step, self.block, self.window_size, self.window_coefficient, *_ = args
-        *_, self.start, self.video_length, self.frame_total = args
-        self.end = self.start + self.window_size * self.step
-
-    def load_data(self) -> list["VideoFrame"]:
-        current = self.start
-        result = []
-        video_operator = self.video.get_operator()
-        while current <= self.end:
-            frame = video_operator.get_frame_by_id(current)
-            result.append(frame)
-            current += self.step
-
-        if len(result) < 2:
-            last = video_operator.get_frame_by_id(self.end)
-            result.append(last)
-        return result
-
-    def shift(self) -> bool:
-        self.start += self.step
-        self.end += self.step
-        if self.start >= self.video_length:
-            return False
-
-        if self.end >= self.video_length:
-            self.end = self.video_length
-        return True
-
-    def float_merge(self, float_list: list[float]) -> float:
-        length = len(float_list)
-        result = 0.0
-        denominator = 0.0
-        for i, each in enumerate(float_list):
-            weight = pow(length - i, self.window_coefficient)
-            denominator += weight
-            result += each * weight
-        final = result / denominator
-        return final
 
 
 class VideoCutter(object):
@@ -80,6 +34,9 @@ class VideoCutter(object):
 
     @staticmethod
     def pic_split(origin: numpy.ndarray, block: int) -> list[numpy.ndarray]:
+        """
+        实际上，当 block == 3 时，块的数量将为 3 * 3 = 9
+        """
         result: list[numpy.ndarray] = list()
         for each_block in numpy.array_split(origin, block, axis=0):
             sub_block = numpy.array_split(each_block, block, axis=1)
@@ -93,16 +50,19 @@ class VideoCutter(object):
 
     @staticmethod
     def compare_frame_list(src: list[numpy.ndarray], target: list[numpy.ndarray]) -> list[float]:
-
-        ssim = 1.0
-        mse = 0.0
-        psnr = 0.0
+        """
+        关于如何比较两个 ndarray 列表并获取它们的 ssim/mse/psnr 的核心方法
+        你可以重写这个方法来实现你自己的算法
+        """
+        # 找到最小 ssim 和最大 mse / psnr
+        ssim, mse, psnr = 1.0, 0.0, 0.0
 
         for part_index, (each_start, each_end) in enumerate(zip(src, target)):
             part_ssim = toolbox.compare_ssim(each_start, each_end)
             if part_ssim < ssim:
                 ssim = part_ssim
 
+            # mse 非常敏感
             part_mse = toolbox.calc_mse(each_start, each_end)
             if part_mse > mse:
                 mse = part_mse
@@ -134,103 +94,134 @@ class VideoCutter(object):
 
         return result
 
-    def window_slice(self, window: "Window") -> list["VideoCutRange"]:
-
-        def cutting():
-            frame_list = window.load_data()
-            frame_list = [self._apply_hook(each) for each in frame_list]
-
-            ssim_list, mse_list, psnr_list = [], [], []
-
-            cur_frame = frame_list[0]
-            first_target_frame = frame_list[1]
-            cur_frame_list = self.pic_split(cur_frame.data, window.block)
-            for each in frame_list[1:]:
-                each_frame_list = self.pic_split(each.data, window.block)
-                ssim, mse, psnr = self.compare_frame_list(
-                    cur_frame_list, each_frame_list
-                )
-                ssim_list.append(ssim)
-                mse_list.append(mse)
-                psnr_list.append(psnr)
-
-            ssim = window.float_merge(ssim_list)
-            mse = window.float_merge(mse_list)
-            psnr = window.float_merge(psnr_list)
-
-            range_list_part.append(
-                VideoCutRange(
-                    window.video,
-                    start=cur_frame.frame_id, end=first_target_frame.frame_id,
-                    ssim=[ssim], mse=[mse], psnr=[psnr],
-                    start_time=cur_frame.timestamp, end_time=first_target_frame.timestamp,
-                )
-            )
-
-        range_list_part = []
-        pbar = toolbox.show_progress(total=window.frame_total, color=174)
-        while True:
-            cutting()
-            pbar.update(1)
-
-            continue_flag = window.shift()
-            if not continue_flag:
-                pbar.close()
-                break
-
-        return range_list_part
-
     def magic_frame_range(
-        self, video: "VideoObject", block: int, window_size: int, window_coefficient: int
-    ) -> list["Window"]:
+        self,
+        video: "VideoObject",
+        block: int,
+        window_size: int,
+        window_coefficient: int
+    ) -> list["VideoCutRange"]:
+
+        def slice_frame():
+            range_list: typing.List["VideoCutRange"] = list()
+            progress_bar = toolbox.show_progress(total=video_length, color=174)
+            while True:
+                frame_list = window.load_data()
+                frame_list = [self._apply_hook(each) for each in frame_list]
+
+                ssim_list, mse_list, psnr_list = [], [], []
+
+                cur_frame = frame_list[0]
+                first_target_frame = frame_list[1]
+                cur_frame_list = self.pic_split(cur_frame.data, block)
+                for each in frame_list[1:]:
+                    each_frame_list = self.pic_split(each.data, block)
+                    ssim, mse, psnr = self.compare_frame_list(
+                        cur_frame_list, each_frame_list
+                    )
+                    ssim_list.append(ssim)
+                    mse_list.append(mse)
+                    psnr_list.append(psnr)
+
+                ssim = float_merge(ssim_list)
+                mse = float_merge(mse_list)
+                psnr = float_merge(psnr_list)
+
+                range_list.append(
+                    VideoCutRange(
+                        video,
+                        start=cur_frame.frame_id, end=first_target_frame.frame_id,
+                        ssim=[ssim], mse=[mse], psnr=[psnr],
+                        start_time=cur_frame.timestamp, end_time=first_target_frame.timestamp,
+                    )
+                )
+                progress_bar.update(1)
+
+                continue_flag = window.shift()
+                if not continue_flag:
+                    progress_bar.close()
+                    break
+
+            return range_list
+
+        def float_merge(float_list: list[float]) -> float:
+            # 第一个，最大的
+            length = len(float_list)
+            result = 0.0
+            denominator = 0.0
+            for i, each in enumerate(float_list):
+                weight = pow(length - i, window_coefficient)
+                denominator += weight
+                result += each * weight
+                # logger.debug(f"calc: {each} x {weight}")
+            final = result / denominator
+            # logger.debug(f"calc final: {final} from {result} / {denominator}")
+            return final
+
+        class Window(object):
+
+            def __init__(self):
+                self.start = 1
+                self.size = window_size
+                self.end = self.start + window_size * step
+
+            def load_data(self) -> typing.List[VideoFrame]:
+                cur = self.start
+                result = []
+                video_operator = video.get_operator()
+                while cur <= self.end:
+                    frame = video_operator.get_frame_by_id(cur)
+                    result.append(frame)
+                    cur += step
+                # 至少2个
+                if len(result) < 2:
+                    last = video_operator.get_frame_by_id(self.end)
+                    result.append(last)
+                return result
+
+            def shift(self) -> bool:
+                # logger.debug(f"window before: {self.start}, {self.end}")
+                self.start += step
+                self.end += step
+                if self.start >= video_length:
+                    # 超出范围
+                    return False
+                # 窗端
+                if self.end >= video_length:
+                    self.end = video_length
+                # logger.debug(f"window after: {self.start}, {self.end}")
+                return True
 
         video_length = video.frame_count
+        step = self.step
 
-        window_list = []
-        for index, parts in enumerate(self.split_range(video_length, 1 if video_length < 500 else 2)):
-            part_begin, part_final, part_score = parts
-            logger.debug(
-                f"帧片段: {index + 1:02} Start: {part_begin:03} End: {part_final:03} Length: {part_score:03}"
-            )
-            window = Window(
-                video, self.step, block, window_size, window_coefficient, *parts
-            )
-            window_list.append(window)
+        window = Window()
 
-        return window_list
+        return slice_frame()
 
     def cut(
         self,
         video: typing.Union[str, "VideoObject"],
-        block: int = None, window_size: int = None, window_coefficient: int = None,
+        block: int = None,
+        window_size: int = None,
+        window_coefficient: int = None,
         *_,
         **kwargs,
     ) -> "VideoCutResult":
+
+        video = VideoObject(video) if isinstance(video, str) else video
 
         block = block or 3
         window_size = window_size or 1
         window_coefficient = window_coefficient or 2
 
-        video = VideoObject(video) if isinstance(video, str) else video
-
         # 如果视频包含 100 帧
         # 从1开始，列表长度是99，而不是100
         # [范围(1-2)、范围(2-3)、范围(3-4) ... 范围(99-100)]
-        window_list = self.magic_frame_range(
+        range_list = self.magic_frame_range(
             video, block, window_size, window_coefficient
         )
 
-        if len(window_list) == 1:
-            range_list = self.window_slice(window_list[0])
-            return VideoCutResult(video, range_list, cut_kwargs=kwargs)
-
-        with ThreadPoolExecutor() as exe:
-            futures = [
-                exe.submit(self.window_slice, window) for window in window_list
-            ]
-            range_list = [
-                part for future in futures for part in future.result()
-            ]
         return VideoCutResult(video, range_list, cut_kwargs=kwargs)
 
 

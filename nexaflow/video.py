@@ -88,7 +88,7 @@ class MemFrameOperator(_BaseFrameOperator):
         return self.video.frames_data[frame_id].copy()
 
 
-class FileFrameOperator(_BaseFrameOperator):
+class DocFrameOperator(_BaseFrameOperator):
 
     def get_frame_by_id(self, frame_id: int) -> typing.Optional["VideoFrame"]:
         """
@@ -144,13 +144,13 @@ class VideoObject(object):
         progress_bar = toolbox.show_progress(total=vid_count, color=153)
         for frame_id, (timestamp, _) in enumerate(vid.iter_frames(with_times=True)):
             if frame_id >= len(frame_data):
+                progress_bar.close()
                 break
             # frame_id_real = frame_id + 1
             if not frame_data[frame_id].timestamp:
                 # logger.debug(f"fix frame {frame_id_real}'s timestamp: {timestamp}")
                 frame_data[frame_id].timestamp = timestamp
             progress_bar.update(1)
-        progress_bar.close()
 
     def clean_frames(self):
         """
@@ -189,7 +189,7 @@ class VideoObject(object):
         self.frames_data = tuple(frame_data_list)
         self.sync_timestamp(self.frames_data)
 
-    def _read_from_file(self) -> typing.Generator["VideoFrame", None, None]:
+    def _read_from_doc(self) -> typing.Generator["VideoFrame", None, None]:
         """
         从文件中读取帧
         """
@@ -213,7 +213,7 @@ class VideoObject(object):
         if self.frames_data:
             yield from self._read_from_mem()
         else:
-            yield from self._read_from_file()
+            yield from self._read_from_doc()
 
     def get_iterator(self) -> typing.Generator["VideoFrame", None, None]:
         """
@@ -223,11 +223,11 @@ class VideoObject(object):
 
     def get_operator(self) -> _BaseFrameOperator:
         """
-        根据是否已经加载帧，返回相应的FrameOperator（`MemFrameOperator`或`FileFrameOperator`）
+        根据是否已经加载帧，返回相应的FrameOperator（`MemFrameOperator`或`DocFrameOperator`）
         """
         if self.frames_data:
             return MemFrameOperator(self)
-        return FileFrameOperator(self)
+        return DocFrameOperator(self)
 
     def __iter__(self):
         """

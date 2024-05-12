@@ -29,7 +29,7 @@ class SingleClassifierResult(object):
         self.stage: str = stage
         self.data: np.ndarray = data
 
-    def to_video_frame(self, *args, **kwargs) -> VideoFrame:
+    def to_video_frame(self, *args, **kwargs) -> "VideoFrame":
         if self.data is not None:
             return VideoFrame(self.frame_id, self.timestamp, self.data)
 
@@ -50,12 +50,12 @@ class SingleClassifierResult(object):
 
     def contain_image(
         self, *, image_path: str = None, image_object: np.ndarray = None, **kwargs
-    ) -> typing.Dict[str, typing.Any]:
+    ) -> dict[str, typing.Any]:
         return self.to_video_frame().contain_image(
             image_path=image_path, image_object=image_object, **kwargs
         )
 
-    def to_dict(self) -> typing.Dict:
+    def to_dict(self) -> dict:
         return self.__dict__
 
     def __str__(self):
@@ -92,14 +92,14 @@ class ClassifierResult(object):
     LABEL_DATA: str = "data"
     LABEL_VIDEO_PATH: str = "video_path"
 
-    def __init__(self, data: typing.List[SingleClassifierResult]):
+    def __init__(self, data: list["SingleClassifierResult"]):
         self.video_path: str = data[0].video_path
-        self.data: typing.List[SingleClassifierResult] = data
+        self.data: list["SingleClassifierResult"] = data
 
-    def get_timestamp_list(self) -> typing.List[float]:
+    def get_timestamp_list(self) -> list[float]:
         return [each.timestamp for each in self.data]
 
-    def get_stage_list(self) -> typing.List[str]:
+    def get_stage_list(self) -> list[str]:
         return [each.stage for each in self.data]
 
     def get_length(self) -> int:
@@ -108,7 +108,7 @@ class ClassifierResult(object):
     def get_offset(self) -> float:
         return self.data[1].timestamp - self.data[0].timestamp
 
-    def get_ordered_stage_set(self) -> typing.List[str]:
+    def get_ordered_stage_set(self) -> list[str]:
         ret = list()
         for each in self.get_stage_list():
             if not ret:
@@ -124,7 +124,8 @@ class ClassifierResult(object):
 
     def to_dict(
         self,
-    ) -> typing.Dict[str, typing.List[typing.List["SingleClassifierResult"]]]:
+    ) -> dict[str, list[list["SingleClassifierResult"]]]:
+
         stage_list = list(self.get_stage_set())
         try:
             int(stage_list[0])
@@ -141,22 +142,27 @@ class ClassifierResult(object):
     def contain(self, stage_name: str) -> bool:
         return stage_name in self.get_stage_set()
 
-    def first(self, stage_name: str) -> SingleClassifierResult:
+    def first(self, stage_name: str) -> "SingleClassifierResult":
         for each in self.data:
             if each.stage == stage_name:
                 # logger.debug(f"first frame of {stage_name}: {each}")
                 return each
         logger.warning(f"no stage named {stage_name} found")
 
-    def last(self, stage_name: str) -> SingleClassifierResult:
+    def last(self, stage_name: str) -> "SingleClassifierResult":
         for each in self.data[::-1]:
             if each.stage == stage_name:
                 # logger.debug(f"last frame of {stage_name}: {each}")
                 return each
         logger.warning(f"no stage named {stage_name} found")
 
-    def get_stage_range(self) -> typing.List[typing.List[SingleClassifierResult]]:
-        result: typing.List[typing.List[SingleClassifierResult]] = []
+    def get_stage_range(self) -> list[list["SingleClassifierResult"]]:
+        """
+        返回范围列表
+        如果您的视频有 30 帧，分 3 个阶段，则此列表可以是:
+        [(0, 1, ... 11), (12, 13 ... 20), (21, 22 ... 30)]
+        """
+        result: list[list["SingleClassifierResult"]] = []
 
         cur = self.data[0]
         cur_index = cur.frame_id - 1
@@ -186,7 +192,10 @@ class ClassifierResult(object):
 
     def get_specific_stage_range(
         self, stage_name: str
-    ) -> typing.List[typing.List[SingleClassifierResult]]:
+    ) -> list[list["SingleClassifierResult"]]:
+        """
+        通过阶段名称获取特定阶段范围（可能包含一些分区
+        """
         ret = list()
         for each_range in self.get_stage_range():
             cur = each_range[0]
@@ -196,7 +205,7 @@ class ClassifierResult(object):
 
     def get_not_stable_stage_range(
         self,
-    ) -> typing.List[typing.List[SingleClassifierResult]]:
+    ) -> list[list["SingleClassifierResult"]]:
         unstable = self.get_specific_stage_range(const.UNSTABLE_FLAG)
         ignore = self.get_specific_stage_range(const.IGNORE_FLAG)
         return sorted(unstable + ignore, key=lambda x: x[0].stage)
@@ -215,7 +224,7 @@ class ClassifierResult(object):
     def time_cost_between(self, start_stage: str, end_stage: str) -> float:
         return self.first(end_stage).timestamp - self.last(start_stage).timestamp
 
-    def get_important_frame_list(self) -> typing.List[SingleClassifierResult]:
+    def get_important_frame_list(self) -> list["SingleClassifierResult"]:
         result = [self.data[0]]
 
         prev = self.data[0]
@@ -231,7 +240,7 @@ class ClassifierResult(object):
 
     def calc_changing_cost(
         self,
-    ) -> typing.Dict[str, typing.Tuple[SingleClassifierResult, SingleClassifierResult]]:
+    ) -> dict[str, tuple["SingleClassifierResult", "SingleClassifierResult"]]:
 
         cost_dict: typing.Dict[str, typing.Tuple[SingleClassifierResult, SingleClassifierResult]] = {}
         i = 0
@@ -279,7 +288,7 @@ class ClassifierResult(object):
     def diff(self, another: "ClassifierResult") -> DiffResult:
         return DiffResult(self, another)
 
-    def is_order_correct(self, should_be: typing.List[str]) -> bool:
+    def is_order_correct(self, should_be: list[str]) -> bool:
         cur = self.get_ordered_stage_set()
         len_cur, len_should_be = len(cur), len(should_be)
         if len_cur == len_should_be:
@@ -304,7 +313,7 @@ class BaseClassifier(object):
     def __init__(
         self,
         compress_rate: float = None,
-        target_size: typing.Tuple[int, int] = None,
+        target_size: tuple[int, int] = None,
         *args,
         **kwargs,
     ):
@@ -320,9 +329,9 @@ class BaseClassifier(object):
         # logger.debug(f"compress rate: {self.compress_rate}")
         # logger.debug(f"target size: {self.target_size}")
 
-        self._data: typing.Dict[str, typing.Union[typing.List[pathlib.Path]]] = dict()
+        self._data: dict[str, typing.Union[list[pathlib.Path]]] = dict()
 
-        self._hook_list: typing.List[BaseHook] = list()
+        self._hook_list: list["BaseHook"] = list()
         # compress_hook = FrameSizeHook(
         #     overwrite=True, compress_rate=compress_rate, target_size=target_size
         # )
@@ -330,12 +339,12 @@ class BaseClassifier(object):
         # self.add_hook(compress_hook)
         # self.add_hook(grey_hook)
 
-    def add_hook(self, new_hook: BaseHook):
+    def add_hook(self, new_hook: "BaseHook"):
         self._hook_list.append(new_hook)
         # logger.debug(f"add hook: {new_hook.__class__.__name__}")
 
     def load(
-        self, data: typing.Union[str, typing.List[VideoCutRange], None], *args, **kwargs
+        self, data: typing.Union[str, list["VideoCutRange"], None], *args, **kwargs
     ):
 
         if isinstance(data, str):
@@ -345,7 +354,7 @@ class BaseClassifier(object):
         raise TypeError(f"data type error, should be str or typing.List[VideoCutRange]")
 
     def load_from_list(
-        self, data: typing.List[VideoCutRange], frame_count: int = None, *_, **__
+        self, data: list["VideoCutRange"], frame_count: int = None, *_, **__
     ):
         for stage_name, stage_data in enumerate(data):
             target_frame_list = stage_data.pick(frame_count)
@@ -374,18 +383,18 @@ class BaseClassifier(object):
                 )
 
     @staticmethod
-    def read_from_path(data: typing.List[pathlib.Path], *_, **__):
+    def read_from_path(data: list[pathlib.Path], *_, **__):
         return (toolbox.imread(each.as_posix()) for each in data)
 
     def read_from_list(
-        self, data: typing.List[int], video_cap: cv2.VideoCapture = None, *_, **__
+        self, data: list[int], video_cap: cv2.VideoCapture = None, *_, **__
     ):
         raise DeprecationWarning("this function already deprecated")
 
-    def _classify_frame(self, frame: VideoFrame, *args, **kwargs) -> str:
+    def _classify_frame(self, frame: "VideoFrame", *args, **kwargs) -> str:
         raise NotImplementedError
 
-    def _apply_hook(self, frame: VideoFrame, *args, **kwargs) -> VideoFrame:
+    def _apply_hook(self, frame: "VideoFrame", *args, **kwargs) -> "VideoFrame":
         for each_hook in self._hook_list:
             frame = each_hook.do(frame, *args, **kwargs)
         return frame
@@ -393,7 +402,7 @@ class BaseClassifier(object):
     def classify(
         self,
         video: typing.Union[str, "VideoObject"],
-        valid_range: typing.List["VideoCutRange"] = None,
+        valid_range: list["VideoCutRange"] = None,
         step: int = None,
         keep_data: bool = None,
         boost_mode: bool = None,
@@ -417,7 +426,7 @@ class BaseClassifier(object):
         frame = operator.get_frame_by_id(1)
 
         prev_result: typing.Optional[str] = None
-        pbar = toolbox.show_progress(total=video.frame_count, color=38)
+        progress_bar = toolbox.show_progress(total=video.frame_count, color=38)
         while frame is not None:
             frame = self._apply_hook(frame, *args, **kwargs)
             if valid_range and not any(
@@ -447,8 +456,8 @@ class BaseClassifier(object):
                 )
             )
             frame = operator.get_frame_by_id(frame.frame_id + step)
-            pbar.update(1)
-        pbar.close()
+            progress_bar.update(1)
+        progress_bar.close()
 
         return ClassifierResult(final_result)
 
@@ -474,7 +483,7 @@ class BaseModelClassifier(BaseClassifier):
         raise NotImplementedError
 
     def read_from_list(
-        self, data: typing.List[int], video_cap: cv2.VideoCapture = None, *_, **__
+        self, data: list[int], video_cap: cv2.VideoCapture = None, *_, **__
     ):
         raise ValueError("model-like classifier only support loading data from files")
 
