@@ -17,7 +17,7 @@ class Switch(object):
         return await Terminal.cmd_line(*cmd)
 
     @staticmethod
-    async def ask_video_change(ffmpeg, fps: int, src: str, dst: str, **kwargs) -> str:
+    async def ask_video_change(ffmpeg, video_filter: list, src: str, dst: str, **kwargs) -> str:
         start = kwargs.get("start", None)
         close = kwargs.get("close", None)
         limit = kwargs.get("limit", None)
@@ -31,7 +31,7 @@ class Switch(object):
         elif limit:
             cmd += ["-t", limit]
         cmd += ["-i", src]
-        cmd += ["-vf", f"fps={fps}", "-c:v", "libx264", "-crf", "18", "-c:a", "copy", dst]
+        cmd += ["-vf", ",".join(video_filter), "-c:v", "libx264", "-crf", "18", "-c:a", "copy", dst]
 
         return await Terminal.cmd_line(*cmd)
 

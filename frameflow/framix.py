@@ -141,27 +141,6 @@ class Missions(object):
         self.fpb = kwargs["fpb"]
         self.scc = kwargs["scc"]
 
-    async def clipix(self, video_temp, start, close, limit, frate):
-        video_streams = await Switch.ask_video_stream(self.fpb, video_temp)
-
-        rlt_frame_rate = video_streams["rlt_frame_rate"]
-        avg_frame_rate = video_streams["avg_frame_rate"]
-        duration = video_streams["duration"]
-        original = video_streams["original"]
-        logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}] {list(original)}")
-        logger.info(f"实际帧率: [{rlt_frame_rate}] 平均帧率: [{avg_frame_rate}] 转换帧率: [{frate}]")
-
-        vision_start, vision_close, vision_limit = await Switch.ask_magic_point(
-            Parser.parse_mills(start),
-            Parser.parse_mills(close),
-            Parser.parse_mills(limit),
-            duration
-        )
-        vision_start = Parser.parse_times(vision_start)
-        vision_close = Parser.parse_times(vision_close)
-        vision_limit = Parser.parse_times(vision_limit)
-        logger.info(f"视频剪辑: start=[{vision_start}] close=[{vision_close}] limit=[{vision_limit}]")
-
     @staticmethod
     def enforce(r: "Report", c: "KerasStruct", start: int, end: int, cost: float):
         with Insert(os.path.join(r.reset_path, f"{const.NAME}_data.db")) as database:
@@ -600,7 +579,7 @@ class Missions(object):
 
         asyncio.run(
             Switch.ask_video_change(
-                self.fmp, deploy.frate, video_file, video_temp_file,
+                self.fmp, [f"fps={deploy.frate}"], video_file, video_temp_file,
                 start=vision_start, close=vision_close, limit=vision_limit
             )
         )
@@ -946,8 +925,8 @@ class Missions(object):
 
         async def analysis_tactics():
 
-            async def balance(video_duration, video_index, video_src):
-                start_time_point = video_duration - standard
+            async def balance(video_duration, video_standard, video_idx, video_src):
+                start_time_point = video_duration - video_standard
                 end_time_point = video_duration
                 start_time_str = str(datetime.timedelta(seconds=start_time_point))
                 end_time_str = str(datetime.timedelta(seconds=end_time_point))
@@ -965,7 +944,7 @@ class Missions(object):
                 except FileNotFoundError:
                     pass
                 logger.info(f"Balance complete {os.path.basename(video_src)}")
-                task_list[video_index][0] = video_dst
+                task_list[video_idx][0] = video_dst
 
             if len(task_list) == 0:
                 task_list.clear()
@@ -1006,8 +985,8 @@ class Missions(object):
                 logger.info(f"△ △ △ 全局控制模式 △ △ △")
 
                 await asyncio.gather(
-                    *(balance(duration, index, video_src)
-                      for duration, (index, (video_src, *_)) in zip(duration_list, enumerate(task_list)))
+                    *(balance(duration, standard, video_idx, video_src)
+                      for duration, (video_idx, (video_src, *_)) in zip(duration_list, enumerate(task_list)))
                 )
 
             if self.speed:
@@ -1422,6 +1401,122 @@ class Missions(object):
         return None
 
 
+class Clipix(object):
+
+    def __init__(self, fmp: str, fpb: str):
+        self.fmp = fmp
+        self.fpb = fpb
+
+    async def vision_content(
+            self,
+            video_temp: str,
+            start: typing.Optional[str],
+            close: typing.Optional[str],
+            limit: typing.Optional[str],
+            frate: int
+    ) -> tuple[float, tuple[int, int], tuple[typing.Optional[str], typing.Optional[str], typing.Optional[str]]]:
+
+        video_streams = await Switch.ask_video_stream(self.fpb, video_temp)
+
+        rlt_frame_rate = video_streams["rlt_frame_rate"]
+        avg_frame_rate = video_streams["avg_frame_rate"]
+        duration = video_streams["duration"]
+        original = video_streams["original"]
+        logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}] {list(original)}")
+        logger.info(f"实际帧率: [{rlt_frame_rate}] 平均帧率: [{avg_frame_rate}] 转换帧率: [{frate}]")
+
+        vision_start, vision_close, vision_limit = await Switch.ask_magic_point(
+            Parser.parse_mills(start),
+            Parser.parse_mills(close),
+            Parser.parse_mills(limit),
+            duration
+        )
+        vision_start: str = Parser.parse_times(vision_start)
+        vision_close: str = Parser.parse_times(vision_close)
+        vision_limit: str = Parser.parse_times(vision_limit)
+        logger.info(f"视频剪辑: start=[{vision_start}] close=[{vision_close}] limit=[{vision_limit}]")
+
+        return duration, original, (vision_start, vision_close, vision_limit)
+
+    async def vision_balance(
+            self,
+            video_duration: float,
+            video_standard: float,
+            video_idx: int,
+            video_src: str,
+            task_list: list[list],
+            frate: int
+    ) -> None:
+
+        start_time_point = video_duration - video_standard
+        end_time_point = video_duration
+        start_time_str = str(datetime.timedelta(seconds=start_time_point))
+        end_time_str = str(datetime.timedelta(seconds=end_time_point))
+
+        logger.info(f"{os.path.basename(video_src)} {video_duration} [{start_time_str} - {end_time_str}]")
+        video_dst = os.path.join(
+            os.path.dirname(video_src), f"tailor_fps{frate}_{random.randint(100, 999)}.mp4"
+        )
+
+        await Switch.ask_video_tailor(
+            self.fmp, video_src, video_dst, start=start_time_str, limit=end_time_str
+        )
+        try:
+            os.remove(video_src)
+        except FileNotFoundError:
+            pass
+        logger.info(f"Balance complete {os.path.basename(video_src)}")
+        task_list[video_idx][0] = video_dst
+
+    @staticmethod
+    async def vision_improve(
+            original: tuple[int, int],
+            color: bool,
+            shape: tuple,
+            scale: float,
+            frate: int,
+            wizard: bool
+    ) -> typing.Union[list[str], tuple[tuple, float]]:
+
+        if wizard:
+            if shape:
+                w, h, ratio = await Switch.ask_magic_frame(original, shape)
+                shape = w, h
+                logger.info(f"调整宽高比: {w} x {h}")
+            elif scale:
+                scale = max(0.1, min(1.0, scale))
+            else:
+                scale = const.COMPRESS
+            return shape, scale
+
+        const_filter = [f"fps={frate}"] if color else [f"fps={frate}", "format=gray"]
+        if shape:
+            w, h, ratio = await Switch.ask_magic_frame(original, shape)
+            video_filter_list = const_filter + [f"scale={w}:{h}"]
+            logger.debug(f"Image Shape: W={w} H={h} Ratio={ratio}")
+        elif scale:
+            scale = max(0.1, min(1.0, scale))
+            video_filter_list = const_filter + [f"scale=iw*{scale}:ih*{scale}"]
+            logger.debug(f"Image Scale: {scale}")
+        else:
+            scale = const.COMPRESS
+            video_filter_list = const_filter + [f"scale=iw*{scale}:ih*{scale}"]
+        return video_filter_list
+
+    async def pixel_wizard(self, video_filter: list, src: str, dst: str, wizard: bool, *args) -> None:
+        vision_start, vision_close, vision_limit, *_ = args
+
+        if wizard:
+            await Switch.ask_video_change(
+                self.fmp, video_filter, src, dst, start=vision_start, close=vision_close, limit=vision_limit
+            )
+
+        else:
+            await Switch.ask_video_detach(
+                self.fmp, video_filter, src, dst, start=vision_start, close=vision_close, limit=vision_limit
+            )
+
+
 class Alynex(object):
 
     __kc: typing.Optional["KerasStruct"] = None
@@ -1569,7 +1664,7 @@ class Alynex(object):
             )
 
             await Switch.ask_video_change(
-                self.fmp, frate, vision, target_vision,
+                self.fmp, [f"fps={deploy.frate}"], vision, target_vision,
                 start=vision_start, close=vision_close, limit=vision_limit
             )
             logger.info(f"视频转换完成: {os.path.basename(target_vision)}")
@@ -1787,6 +1882,7 @@ async def arithmetic(function: "typing.Callable", parameters: list[str], follow:
     sys.exit(Show.done())
 
 
+# TODO
 async def ask_arithmetic(function: "typing.Callable", parameters: list[str]) -> None:
     try:
         await function(
