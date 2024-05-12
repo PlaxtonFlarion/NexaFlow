@@ -1438,36 +1438,6 @@ class Clipix(object):
 
         return duration, original, (vision_start, vision_close, vision_limit)
 
-    async def vision_balance(
-            self,
-            video_duration: float,
-            video_standard: float,
-            video_idx: int,
-            video_src: str,
-            task_list: list[list],
-            frate: int
-    ) -> None:
-
-        start_time_point = video_duration - video_standard
-        end_time_point = video_duration
-        start_time_str = str(datetime.timedelta(seconds=start_time_point))
-        end_time_str = str(datetime.timedelta(seconds=end_time_point))
-
-        logger.info(f"{os.path.basename(video_src)} {video_duration} [{start_time_str} - {end_time_str}]")
-        video_dst = os.path.join(
-            os.path.dirname(video_src), f"tailor_fps{frate}_{random.randint(100, 999)}.mp4"
-        )
-
-        await Switch.ask_video_tailor(
-            self.fmp, video_src, video_dst, start=start_time_str, limit=end_time_str
-        )
-        try:
-            os.remove(video_src)
-        except FileNotFoundError:
-            pass
-        logger.info(f"Balance complete {os.path.basename(video_src)}")
-        task_list[video_idx][0] = video_dst
-
     @staticmethod
     async def vision_improve(
             original: tuple[int, int],
@@ -1502,6 +1472,36 @@ class Clipix(object):
             scale = const.COMPRESS
             video_filter_list = const_filter + [f"scale=iw*{scale}:ih*{scale}"]
         return video_filter_list
+
+    async def vision_balance(
+            self,
+            video_duration: float,
+            video_standard: float,
+            video_idx: int,
+            video_src: str,
+            task_list: list[list],
+            frate: int
+    ) -> None:
+
+        start_time_point = video_duration - video_standard
+        end_time_point = video_duration
+        start_time_str = str(datetime.timedelta(seconds=start_time_point))
+        end_time_str = str(datetime.timedelta(seconds=end_time_point))
+
+        logger.info(f"{os.path.basename(video_src)} {video_duration} [{start_time_str} - {end_time_str}]")
+        video_dst = os.path.join(
+            os.path.dirname(video_src), f"tailor_fps{frate}_{random.randint(100, 999)}.mp4"
+        )
+
+        await Switch.ask_video_tailor(
+            self.fmp, video_src, video_dst, start=start_time_str, limit=end_time_str
+        )
+        try:
+            os.remove(video_src)
+        except FileNotFoundError:
+            pass
+        logger.info(f"Balance complete {os.path.basename(video_src)}")
+        task_list[video_idx][0] = video_dst
 
     async def pixel_wizard(self, video_filter: list, src: str, dst: str, wizard: bool, *args) -> None:
         vision_start, vision_close, vision_limit, *_ = args
