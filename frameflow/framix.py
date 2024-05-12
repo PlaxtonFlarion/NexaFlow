@@ -141,6 +141,27 @@ class Missions(object):
         self.fpb = kwargs["fpb"]
         self.scc = kwargs["scc"]
 
+    async def clipix(self, video_temp, start, close, limit, frate):
+        video_streams = await Switch.ask_video_stream(self.fpb, video_temp)
+
+        rlt_frame_rate = video_streams["rlt_frame_rate"]
+        avg_frame_rate = video_streams["avg_frame_rate"]
+        duration = video_streams["duration"]
+        original = video_streams["original"]
+        logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}] {list(original)}")
+        logger.info(f"实际帧率: [{rlt_frame_rate}] 平均帧率: [{avg_frame_rate}] 转换帧率: [{frate}]")
+
+        vision_start, vision_close, vision_limit = await Switch.ask_magic_point(
+            Parser.parse_mills(start),
+            Parser.parse_mills(close),
+            Parser.parse_mills(limit),
+            duration
+        )
+        vision_start = Parser.parse_times(vision_start)
+        vision_close = Parser.parse_times(vision_close)
+        vision_limit = Parser.parse_times(vision_limit)
+        logger.info(f"视频剪辑: start=[{vision_start}] close=[{vision_close}] limit=[{vision_limit}]")
+
     @staticmethod
     def enforce(r: "Report", c: "KerasStruct", start: int, end: int, cost: float):
         with Insert(os.path.join(r.reset_path, f"{const.NAME}_data.db")) as database:
@@ -208,7 +229,26 @@ class Missions(object):
             video_streams = loop.run_until_complete(
                 Switch.ask_video_stream(self.fpb, new_video_path)
             )
-            original, duration = video_streams["original"], video_streams["duration"]
+
+            rlt_frame_rate = video_streams["rlt_frame_rate"]
+            avg_frame_rate = video_streams["avg_frame_rate"]
+            duration = video_streams["duration"]
+            original = video_streams["original"]
+            logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}] {list(original)}")
+            logger.info(f"实际帧率: [{rlt_frame_rate}] 平均帧率: [{avg_frame_rate}] 转换帧率: [{deploy.frate}]")
+
+            vision_start, vision_close, vision_limit = loop.run_until_complete(
+                Switch.ask_magic_point(
+                    Parser.parse_mills(deploy.start),
+                    Parser.parse_mills(deploy.close),
+                    Parser.parse_mills(deploy.limit),
+                    duration
+                )
+            )
+            vision_start = Parser.parse_times(vision_start)
+            vision_close = Parser.parse_times(vision_close)
+            vision_limit = Parser.parse_times(vision_limit)
+            logger.info(f"视频剪辑: start=[{vision_start}] close=[{vision_close}] limit=[{vision_limit}]")
 
             const_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
             if deploy.shape:
@@ -226,20 +266,6 @@ class Missions(object):
                 video_filter_list = const_filter + [f"scale=iw*{scale}:ih*{scale}"]
 
             logger.info(f"视频过滤: {video_filter_list}")
-
-            vision_start, vision_close, vision_limit = loop.run_until_complete(
-                Switch.ask_magic_point(
-                    Parser.parse_mills(deploy.start),
-                    Parser.parse_mills(deploy.close),
-                    Parser.parse_mills(deploy.limit),
-                    duration
-                )
-            )
-            vision_start = Parser.parse_times(vision_start)
-            vision_close = Parser.parse_times(vision_close)
-            vision_limit = Parser.parse_times(vision_limit)
-            logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}]")
-            logger.info(f"视频剪辑: start=[{vision_start}] close=[{vision_close}] limit=[{vision_limit}]")
 
             loop.run_until_complete(
                 Switch.ask_video_detach(
@@ -376,7 +402,25 @@ class Missions(object):
                     video_streams = loop.run_until_complete(
                         Switch.ask_video_stream(self.fpb, new_video_path)
                     )
-                    original, duration = video_streams["original"], video_streams["duration"]
+                    rlt_frame_rate = video_streams["rlt_frame_rate"]
+                    avg_frame_rate = video_streams["avg_frame_rate"]
+                    duration = video_streams["duration"]
+                    original = video_streams["original"]
+                    logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}] {list(original)}")
+                    logger.info(f"实际帧率: [{rlt_frame_rate}] 平均帧率: [{avg_frame_rate}] 转换帧率: [{deploy.frate}]")
+
+                    vision_start, vision_close, vision_limit = loop.run_until_complete(
+                        Switch.ask_magic_point(
+                            Parser.parse_mills(deploy.start),
+                            Parser.parse_mills(deploy.close),
+                            Parser.parse_mills(deploy.limit),
+                            duration
+                        )
+                    )
+                    vision_start = Parser.parse_times(vision_start)
+                    vision_close = Parser.parse_times(vision_close)
+                    vision_limit = Parser.parse_times(vision_limit)
+                    logger.info(f"视频剪辑: start=[{vision_start}] close=[{vision_close}] limit=[{vision_limit}]")
 
                     const_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
                     if deploy.shape:
@@ -394,20 +438,6 @@ class Missions(object):
                         video_filter_list = const_filter + [f"scale=iw*{scale}:ih*{scale}"]
 
                     logger.info(f"视频过滤: {video_filter_list}")
-
-                    vision_start, vision_close, vision_limit = loop.run_until_complete(
-                        Switch.ask_magic_point(
-                            Parser.parse_mills(deploy.start),
-                            Parser.parse_mills(deploy.close),
-                            Parser.parse_mills(deploy.limit),
-                            duration
-                        )
-                    )
-                    vision_start = Parser.parse_times(vision_start)
-                    vision_close = Parser.parse_times(vision_close)
-                    vision_limit = Parser.parse_times(vision_limit)
-                    logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}]")
-                    logger.info(f"视频剪辑: start=[{vision_start}] close=[{vision_close}] limit=[{vision_limit}]")
 
                     loop.run_until_complete(
                         Switch.ask_video_detach(
@@ -951,7 +981,7 @@ class Missions(object):
                 avg_frame_rate = video_streams["avg_frame_rate"]
                 duration = video_streams["duration"]
                 original = video_streams["original"]
-                logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}]")
+                logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}] {list(original)}")
                 logger.info(f"实际帧率: [{rlt_frame_rate}] 平均帧率: [{avg_frame_rate}] 转换帧率: [{deploy.frate}]")
                 duration_list.append(duration)
                 original_list.append(original)
@@ -1520,10 +1550,8 @@ class Alynex(object):
             avg_frame_rate = video_streams["avg_frame_rate"]
             duration = video_streams["duration"]
             original = video_streams["original"]
-
-            target_vision = os.path.join(
-                os.path.dirname(vision), f"vision_fps{frate}_{random.randint(100, 999)}.mp4"
-            )
+            logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}] {list(original)}")
+            logger.info(f"实际帧率: [{rlt_frame_rate}] 平均帧率: [{avg_frame_rate}] 转换帧率: [{frate}]")
 
             vision_start, vision_close, vision_limit = await Switch.ask_magic_point(
                 Parser.parse_mills(start),
@@ -1534,9 +1562,11 @@ class Alynex(object):
             vision_start = Parser.parse_times(vision_start)
             vision_close = Parser.parse_times(vision_close)
             vision_limit = Parser.parse_times(vision_limit)
-            logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}]")
-            logger.info(f"实际帧率: [{rlt_frame_rate}] 平均帧率: [{avg_frame_rate}] 转换帧率: [{frate}]")
             logger.info(f"视频剪辑: start=[{vision_start}] close=[{vision_close}] limit=[{vision_limit}]")
+
+            target_vision = os.path.join(
+                os.path.dirname(vision), f"vision_fps{frate}_{random.randint(100, 999)}.mp4"
+            )
 
             await Switch.ask_video_change(
                 self.fmp, frate, vision, target_vision,
