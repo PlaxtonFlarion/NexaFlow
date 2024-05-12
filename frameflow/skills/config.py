@@ -195,7 +195,7 @@ class Deploy(object):
         except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
             logger.debug(f"Use default parameters because {e}")
         except Exception as e:
-            logger.error(f"An unknown error occurred {e}")
+            logger.error(f"{const.ERR}An unknown error occurred {e}")
 
     def view_deploy(self) -> None:
         c = {0: "#AF5FD7", 1: "#D75F87", 2: "#87AFD7", 3: "#00AF5F"}
@@ -312,10 +312,7 @@ class Deploy(object):
 class Option(object):
 
     options = {
-        "total_place": "",
-        "model_place": "",
-        "model_shape": const.MODEL_SHAPE,
-        "model_aisle": const.MODEL_AISLE
+        "total_place": "", "model_place": ""
     }
 
     def __init__(self, option_file: str):
@@ -335,33 +332,15 @@ class Option(object):
     def model_place(self):
         return self.options["model_place"]
 
-    @property
-    def model_shape(self):
-        return self.options["model_shape"]
-
-    @property
-    def model_aisle(self):
-        return self.options["model_aisle"]
-
     @total_place.setter
     def total_place(self, value):
         if type(value) is str and os.path.isdir(value):
-            self.total_place = value
+            self.options["total_place"] = value
 
     @model_place.setter
     def model_place(self, value):
-        if type(value) is str and os.path.isfile(value):
-            self.model_place = value
-
-    @model_shape.setter
-    def model_shape(self, value):
-        if effective := Parser.parse_shape(value):
-            self.options["model_shape"] = effective
-
-    @model_aisle.setter
-    def model_aisle(self, value):
-        if effective := Parser.parse_aisle(value):
-            self.options["model_aisle"] = effective
+        if type(value) is str and os.path.isdir(value):
+            self.options["model_place"] = value
 
     def load_option(self, option_file: str) -> None:
         try:
@@ -373,7 +352,7 @@ class Option(object):
             logger.debug(f"Use default parameters because {e}")
             self.dump_option(option_file)
         except Exception as e:
-            logger.error(f"An unknown error occurred {e}")
+            logger.error(f"{const.ERR}An unknown error occurred {e}")
 
     def dump_option(self, option_file: str) -> None:
         dump_parameters(option_file, self.options)

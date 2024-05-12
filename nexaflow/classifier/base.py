@@ -473,7 +473,7 @@ class BaseModelClassifier(BaseClassifier):
     def clean_model(self):
         raise NotImplementedError
 
-    def train(self, data_path: str = None, *_, **__):
+    def train(self, data_path: str = None, *args, **kwargs):
         raise NotImplementedError
 
     def predict(self, pic_path: str, *_, **__) -> str:

@@ -26,20 +26,14 @@ class KerasStruct(BaseModelClassifier):
 
         # Model
         self.__model: typing.Optional[keras.Sequential] = None
-        # 配置
-        self.color: str = kwargs.get("color", "grayscale")
-        self.aisle: int = kwargs.get("aisle", 1)
-        self.data_size: typing.Sequence[int] = kwargs.get("data_size", (256, 256))
+        # Model Config
         self.score_threshold: float = kwargs.get("score_threshold", 0.0)
         self.nb_train_samples: int = kwargs.get("nb_train_samples", 64)
         self.nb_validation_samples: int = kwargs.get("nb_validation_samples", 64)
         self.epochs: int = kwargs.get("epochs", 20)
         self.batch_size: int = kwargs.get("batch_size", 4)
 
-        # logger.debug(f"color: {self.color}")
-        # logger.debug(f"aisle: {self.aisle}")
         # logger.debug(f"score threshold: {self.score_threshold}")
-        # logger.debug(f"data size: {self.data_size}")
         # logger.debug(f"nb train samples: {self.nb_train_samples}")
         # logger.debug(f"nb validation samples: {self.nb_validation_samples}")
         # logger.debug(f"epochs: {self.epochs}")
@@ -58,45 +52,24 @@ class KerasStruct(BaseModelClassifier):
         self.__model = None
 
     @property
-    def follow_tf_size(self):
-        return self.data_size[1], self.data_size[0]
-
-    @property
     def follow_cv_size(self):
-        return self.data_size[0], self.data_size[1]
-
-    def save_model(self, model_path: str, overwrite: bool = None):
-        logger.debug(f"Save model to {model_path}")
-
-        if os.path.isfile(model_path) and not overwrite:
-            raise FileExistsError(
-                f"model file {model_path} already existed, you can set `overwrite` True to cover it"
-            )
-
-        assert self.model, "model is empty"
-        self.model.save_weights(model_path)
+        return self.model.input_shape[1], self.model.input_shape[2]
 
     def load_model(self, model_path: str, overwrite: bool = None):
-        logger.debug(f"Load model from {model_path}")
+        logger.debug(f"Keras sequence model load from {model_path}")
 
-        assert os.path.isfile(model_path), f"model file {model_path} not existed"
+        assert os.path.isdir(model_path), f"model file {model_path} not existed"
 
-        if self.model and not overwrite:
-            raise RuntimeError(
-                f"model is not empty, you can set `overwrite` True to cover it"
-            )
+        self.model = keras.models.load_model(model_path)
+        logger.debug(f"Keras sequence model load data {self.model.input_shape}")
 
-        self.model = self.create_model()
-        logger.info(f"Keras sequence model load weights")
-        self.model.load_weights(model_path)
-
-    def create_model(self) -> keras.Sequential:
+    def create_model(self, follow_tf_size: tuple, model_aisle: int) -> keras.Sequential:
         logger.info(f"Keras sequence model is being created")
 
         if keras.backend.image_data_format() == "channels_first":
-            input_shape = (self.aisle, *self.follow_tf_size)
+            input_shape = (model_aisle, *follow_tf_size)
         else:
-            input_shape = (*self.follow_tf_size, self.aisle)
+            input_shape = (*follow_tf_size, model_aisle)
 
         model = keras.Sequential()
 
@@ -122,7 +95,7 @@ class KerasStruct(BaseModelClassifier):
         logger.info("Keras sequence model is created")
         return model
 
-    def train(self, data_path: str = None, *_, **__):
+    def train(self, data_path: str = None, *args, **kwargs):
 
         def check(p: str):
             p = pathlib.Path(p)
@@ -139,8 +112,10 @@ class KerasStruct(BaseModelClassifier):
 
         check(data_path)
 
+        model_color, follow_tf_size, model_aisle, *_ = args
+
         if not self.model:
-            self.model = self.create_model()
+            self.model = self.create_model(follow_tf_size, model_aisle)
 
         datagen = keras.preprocessing.image.ImageDataGenerator(
             rescale=1.0 / 16,
@@ -152,18 +127,18 @@ class KerasStruct(BaseModelClassifier):
 
         train_generator = datagen.flow_from_directory(
             data_path,
-            target_size=self.follow_tf_size,
+            target_size=follow_tf_size,
             batch_size=self.batch_size,
-            color_mode=self.color,
+            color_mode=model_color,
             class_mode="sparse",
             subset="training",
         )
 
         validation_generator = datagen.flow_from_directory(
             data_path,
-            target_size=self.follow_tf_size,
+            target_size=follow_tf_size,
             batch_size=self.batch_size,
-            color_mode=self.color,
+            color_mode=model_color,
             class_mode="sparse",
             subset="validation",
         )
@@ -176,17 +151,24 @@ class KerasStruct(BaseModelClassifier):
 
         logger.info("Model train finished")
 
-    def build(self, *args):
-        src, new_model_path, new_model_name = args
+    def build(self, model_color: str, model_shape: tuple, model_aisle: int, *args):
+        src_model_path, new_model_path, new_model_name = args
+
+        follow_tf_size = model_shape[1], model_shape[0]
 
         try:
-            self.train(src)
+            self.train(
+                src_model_path, model_color, follow_tf_size, model_aisle
+            )
         except AssertionError as e:
             return logger.error(f"{e}")
 
-        final_model = os.path.join(new_model_path, new_model_name)
+        final_model: str = os.path.join(new_model_path, new_model_name)
         os.makedirs(new_model_path, exist_ok=True)
-        self.model.save_weights(final_model, save_format="h5")
+
+        # self.model.save_weights(final_model, save_format="h5")
+        self.model.save(final_model, save_format="tf")
+
         self.model.summary()
         logger.info(f"Model saved successfully {final_model}")
 
@@ -210,7 +192,7 @@ class KerasStruct(BaseModelClassifier):
             return const.UNKNOWN_STAGE_FLAG
         return frame_tag
 
-    def _classify_frame(self, frame: VideoFrame, *_, **__) -> str:
+    def _classify_frame(self, frame: "VideoFrame", *_, **__) -> str:
         return self.predict_with_object(frame.data)
 
 

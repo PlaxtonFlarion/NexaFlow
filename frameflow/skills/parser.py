@@ -7,13 +7,6 @@ from nexaflow import const
 class Parser(object):
 
     @staticmethod
-    def parse_aisle(dim_str):
-        try:
-            return value if (value := int(dim_str)) in [1, 3] else None
-        except (ValueError, TypeError):
-            return None
-
-    @staticmethod
     def parse_shape(dim_str):
         if type(dim_str) is list and len(dim_str) >= 2:
             if all(type(i) is int for i in dim_str):

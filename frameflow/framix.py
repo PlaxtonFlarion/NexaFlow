@@ -71,7 +71,7 @@ for _tmp in (_temps := [_atom_total_temp, _main_share_temp, _main_total_temp, _v
 _initial_source = os.path.join(_feasible, f"{const.NAME}.source")
 
 _total_place = os.path.join(_feasible, f"{const.NAME}.report")
-_model_place = os.path.join(_workable, "archivix", "molds", "Keras_Gray_W256_H256_00000.h5")
+_model_place = os.path.join(_workable, "archivix", "molds", "Keras_Gray_W256_H256_00000")
 
 if len(sys.argv) == 1:
     Show.help_document()
@@ -136,8 +136,6 @@ class Missions(object):
         self.initial_script = kwargs["initial_script"]
         self.total_place = kwargs["total_place"]
         self.model_place = kwargs["model_place"]
-        self.model_shape = kwargs["model_shape"]
-        self.model_aisle = kwargs["model_aisle"]
         self.adb = kwargs["adb"]
         self.fmp = kwargs["fmp"]
         self.fpb = kwargs["fpb"]
@@ -169,10 +167,21 @@ class Missions(object):
                 )
 
     # """Child Process"""
-    def amazing(self, vision: str, deploy: "Deploy" = None, *args, **kwargs):
-        attack = self.total_place, self.model_place, self.model_shape, self.model_aisle
+    def amazing(self, vision: str, deploy: typing.Optional["Deploy"] = None, *args, **kwargs):
+        attack = self.total_place, self.model_place
         charge = self.fmp, self.fpb
         alynex = Alynex(*attack, *charge)
+        try:
+            if alynex.kc:
+                channel = alynex.kc.model.input_shape[-1]
+                if deploy.color:
+                    assert channel == 3, f"彩色模式需要匹配彩色模型 Model Color Channel={channel}"
+                else:
+                    assert channel == 1, f"灰度模式需要匹配灰度模型 Model Color Channel={channel}"
+        except AssertionError as e:
+            logger.error(f"{const.ERR}{e}[/]")
+            alynex.kc = None
+
         loop = asyncio.get_event_loop()
         loop_complete = loop.run_until_complete(
             alynex.ask_analyzer(vision, deploy, *args, **kwargs)
@@ -194,7 +203,7 @@ class Missions(object):
         loop = asyncio.get_event_loop()
 
         if self.speed:
-            logger.info(f"★ ★ ★ 快速模式 ★ ★ ★")
+            logger.info(f"△ △ △ 快速模式 △ △ △")
 
             video_streams = loop.run_until_complete(
                 Switch.ask_video_stream(self.fpb, new_video_path)
@@ -267,14 +276,25 @@ class Missions(object):
             return reporter.total_path
 
         elif self.keras and not self.basic:
-            attack = self.total_place, self.model_place, self.model_shape, self.model_aisle
+            attack = self.total_place, self.model_place
         else:
-            attack = self.total_place, None, None, None
+            attack = self.total_place, None
 
         charge = self.fmp, self.fpb
 
         alynex = Alynex(*attack, *charge)
-        logger.info(f"★ ★ ★ {'智能模式' if alynex.kc else '基础模式'} ★ ★ ★")
+        try:
+            if alynex.kc:
+                channel = alynex.kc.model.input_shape[-1]
+                if deploy.color:
+                    assert channel == 3, f"彩色模式需要匹配彩色模型 Model Color Channel={channel}"
+                else:
+                    assert channel == 1, f"灰度模式需要匹配灰度模型 Model Color Channel={channel}"
+        except AssertionError as e:
+            logger.error(f"{const.ERR}{e}[/]")
+            alynex.kc = None
+
+        logger.info(f"△ △ △ {'智能模式' if alynex.kc else '基础模式'} △ △ △")
 
         futures = loop.run_until_complete(
             alynex.ask_analyzer(
@@ -345,7 +365,7 @@ class Missions(object):
         loop = asyncio.get_event_loop()
 
         if self.speed:
-            logger.info(f"★ ★ ★ 快速模式 ★ ★ ★")
+            logger.info(f"△ △ △ 快速模式 △ △ △")
             for entry in entries:
                 reporter.title = entry.title
                 for video in entry.sheet:
@@ -424,14 +444,25 @@ class Missions(object):
             return reporter.total_path
 
         elif self.keras and not self.basic:
-            attack = self.total_place, self.model_place, self.model_shape, self.model_aisle
+            attack = self.total_place, self.model_place
         else:
-            attack = self.total_place, None, None, None
+            attack = self.total_place, None
 
         charge = self.fmp, self.fpb
 
         alynex = Alynex(*attack, *charge)
-        logger.info(f"★ ★ ★ {'智能模式' if alynex.kc else '基础模式'} ★ ★ ★")
+        try:
+            if alynex.kc:
+                channel = alynex.kc.model.input_shape[-1]
+                if deploy.color:
+                    assert channel == 3, f"彩色模式需要匹配彩色模型 Model Color Channel={channel}"
+                else:
+                    assert channel == 1, f"灰度模式需要匹配灰度模型 Model Color Channel={channel}"
+        except AssertionError as e:
+            logger.error(f"{const.ERR}{e}[/]")
+            alynex.kc = None
+
+        logger.info(f"△ △ △ {'智能模式' if alynex.kc else '基础模式'} △ △ △")
 
         for entry in entries:
             reporter.title = entry.title
@@ -594,7 +625,8 @@ class Missions(object):
         os.remove(video_temp_file)
 
     # """Child Process"""
-    def build_model(self, video_data: str, deploy: "Deploy"):
+    @staticmethod
+    def build_model(video_data: str, deploy: "Deploy"):
         if not os.path.isdir(video_data):
             return logger.error(f"{const.ERR}编译模型需要一个已经分类的文件夹[/]")
 
@@ -621,26 +653,28 @@ class Missions(object):
             logger.info(f"图像分辨率: {image.shape}")
             if image.ndim == 3:
                 if numpy.array_equal(image[:, :, 0], image[:, :, 1]) and numpy.array_equal(image[:, :, 1], image[:, :, 2]):
-                    logger.info(f"The image is grayscale image, stored in RGB format ...")
+                    logger.info(f"The image is grayscale image, stored in RGB format")
                 else:
-                    logger.info(f"The image is color image ...")
+                    logger.info(f"The image is color image")
                     image_color, image_aisle = "rgb", image.ndim
             else:
-                logger.info(f"The image is grayscale image ...")
+                logger.info(f"The image is grayscale image")
             break
 
-        final_path = os.path.dirname(real_path)
+        src_model_path = os.path.dirname(real_path)
         new_model_path = os.path.join(
-            final_path, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}", f"{random.randint(100, 999)}"
+            src_model_path, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}", f"{random.randint(100, 999)}"
         )
 
-        image_shape = deploy.shape if deploy.shape else (image.shape if image.shape else self.model_shape)
-        w, h, *_ = image_shape if image_shape else const.MODEL_SHAPE
-        name = f"Gray" if image_aisle == 1 else f"Hued"
-        new_model_name = f"Keras_{name}_W{w}_H{h}_{random.randint(10000, 99999)}.h5"
+        image_shape = deploy.shape if deploy.shape else image.shape
+        w, h, *_ = image_shape
 
-        kc = KerasStruct(color=image_color, aisle=image_aisle, data_size=image_shape)
-        kc.build(final_path, new_model_path, new_model_name)
+        name = f"Gray" if image_aisle == 1 else f"Hued"
+        # new_model_name = f"Keras_{name}_W{w}_H{h}_{random.randint(10000, 99999)}.h5"
+        new_model_name = f"Keras_{name}_W{w}_H{h}_{random.randint(10000, 99999)}"
+
+        kc = KerasStruct()
+        kc.build(image_color, image_shape, image_aisle, src_model_path, new_model_path, new_model_name)
 
     async def combines_view(self, merge: list):
         views, total = await asyncio.gather(
@@ -937,9 +971,9 @@ class Missions(object):
             logger.info(f"标准视频时间: [{(standard := min(duration_list))}] [{Parser.parse_times(standard)}]")
 
             if self.alone:
-                logger.info(f"*-* 独立控制模式 *-*")
+                logger.info(f"△ △ △ 独立控制模式 △ △ △")
             else:
-                logger.info(f"*-* 全局控制模式 *-*")
+                logger.info(f"△ △ △ 全局控制模式 △ △ △")
 
                 await asyncio.gather(
                     *(balance(duration, index, video_src)
@@ -947,7 +981,7 @@ class Missions(object):
                 )
 
             if self.speed:
-                logger.info(f"★ ★ ★ 快速模式 ★ ★ ★")
+                logger.info(f"△ △ △ 快速模式 △ △ △")
 
                 const_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
                 if deploy.shape:
@@ -993,7 +1027,7 @@ class Missions(object):
                     await reporter.load(result)
 
             elif self.basic or self.keras:
-                logger.info(f"★ ★ ★ {'智能模式' if alynex.kc else '基础模式'} ★ ★ ★")
+                logger.info(f"△ △ △ {'智能模式' if alynex.kc else '基础模式'} △ △ △")
 
                 if len(task_list) == 1:
                     futures = await asyncio.gather(
@@ -1045,7 +1079,7 @@ class Missions(object):
                     self.enforce(reporter, struct, start, end, cost)
 
             else:
-                return logger.info(f"★ ★ ★ 录制模式 ★ ★ ★")
+                return logger.info(f"△ △ △ 录制模式 △ △ △")
 
         async def anything_time():
             await asyncio.gather(
@@ -1187,13 +1221,23 @@ class Missions(object):
         reporter = Report(self.total_place)
 
         if self.keras and not self.speed and not self.basic:
-            attack_ = self.total_place, self.model_place, self.model_shape, self.model_aisle
+            attack_ = self.total_place, self.model_place
         else:
-            attack_ = self.total_place, None, None, None
+            attack_ = self.total_place, None
 
         charge_ = self.fmp, self.fpb
 
         alynex = Alynex(*attack_, *charge_)
+        try:
+            if alynex.kc:
+                channel_ = alynex.kc.model.input_shape[-1]
+                if deploy.color:
+                    assert channel_ == 3, f"彩色模式需要匹配彩色模型[/] Model Color Channel={channel_}"
+                else:
+                    assert channel_ == 1, f"灰度模式需要匹配灰度模型[/] Model Color Channel={channel_}"
+        except AssertionError as e_:
+            logger.error(f"{const.ERR}{e_}")
+            alynex.kc = None
 
         record = Record(
             self.scc, platform, alone=self.alone, whist=self.whist, frate=deploy.frate
@@ -1356,24 +1400,21 @@ class Alynex(object):
             self,
             total_place: typing.Optional[str] = None,
             model_place: typing.Optional[str] = None,
-            model_shape: typing.Any = None,
-            model_aisle: typing.Any = None,
             *args
     ):
 
         self.total_place = total_place
         self.model_place = model_place
-        self.model_shape = model_shape
-        self.model_aisle = model_aisle
 
         self.fmp, self.fpb, *_ = args
 
-        if all((self.total_place, self.model_place, self.model_shape, self.model_aisle)):
+        if self.total_place and self.model_place:
             try:
-                self.kc = KerasStruct(data_size=model_shape, aisle=model_aisle)
+                self.kc = KerasStruct()
                 self.kc.load_model(model_place)
-            except ValueError:
-                Show.console.print_exception()
+            except Exception as e:
+                logger.error(f"{const.ERR}Keras sequence model load fail[/]")
+                logger.error(f"{e}")
                 self.kc = None
 
     @property
@@ -1391,7 +1432,7 @@ class Alynex(object):
         pass
 
     async def ask_analyzer(
-            self, vision: str, deploy: "Deploy" = None, *args, **kwargs
+            self, vision: str, deploy: typing.Optional["Deploy"] = None, *args, **kwargs
     ) -> typing.Optional["Review"]:
 
         frame_path, extra_path, *_ = args
@@ -1445,7 +1486,6 @@ class Alynex(object):
             return {"id": frame.frame_id, "picture": os.path.join(os.path.basename(frame_path), picture)}
 
         async def frame_flick():
-            logger.info(f"阶段划分: {struct.get_ordered_stage_set()}")
             begin_stage_index, begin_frame_index = begin
             final_stage_index, final_frame_index = final
             logger.info(
@@ -1453,10 +1493,8 @@ class Alynex(object):
             )
 
             try:
+                logger.info(f"阶段划分: {struct.get_ordered_stage_set()}")
                 unstable_stage_range = struct.get_not_stable_stage_range()
-                logger.info(
-                    f"Unstable stage range {unstable_stage_range}"
-                )
                 begin_frame = unstable_stage_range[begin_stage_index][begin_frame_index]
                 final_frame = unstable_stage_range[final_stage_index][final_frame_index]
             except (AssertionError, IndexError) as e:
@@ -1622,7 +1660,7 @@ class Alynex(object):
                     video=video, valid_range=stable, keep_data=True
                 )
             except AssertionError as e:
-                return logger.warning(f"{const.WRN}{e}[/]")
+                return logger.error(f"{const.ERR}{e}[/]")
 
             logger.info(f"分类耗时: {time.time() - struct_start_time:.2f} 秒")
             return struct_data
@@ -1806,12 +1844,8 @@ if __name__ == '__main__':
     _option = Option(_initial_option)
     _total_place = _option.total_place or _total_place
     _model_place = _option.model_place or _model_place
-    _model_shape = _option.model_shape or const.MODEL_SHAPE
-    _model_aisle = _option.model_aisle or const.MODEL_AISLE
     logger.debug(f"报告文件路径: {_total_place}")
     logger.debug(f"模型文件路径: {_model_place}")
-    logger.debug(f"模型文件尺寸: {_model_shape}")
-    logger.debug(f"模型文件色彩: {_model_aisle}")
 
     logger.debug(f"处理器核心数: {(_power := os.cpu_count())}")
 
@@ -1835,8 +1869,6 @@ if __name__ == '__main__':
         initial_script=_initial_script,
         total_place=_total_place,
         model_place=_model_place,
-        model_shape=_model_shape,
-        model_aisle=_model_aisle,
         adb=_adb,
         fmp=_fmp,
         fpb=_fpb,
