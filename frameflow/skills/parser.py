@@ -171,6 +171,9 @@ class Parser(object):
         group_space.add_argument("--alone", action="store_true", help="独立控制")
         group_space.add_argument("--whist", action="store_true", help="静默录制")
 
+        group_media = parser.add_argument_group(title="视频配置", description="参数兼容")
+        group_media.add_argument("--alike", action="store_true", help="视频均衡")
+
         group_array = parser.add_argument_group(title="报告配置", description="参数兼容")
         group_array.add_argument("--group", action="store_true", help="分组报告")
 
