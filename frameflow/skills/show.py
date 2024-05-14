@@ -1,8 +1,11 @@
+import os
 import time
 import random
+import typing
 from loguru import logger
 from rich.text import Text
 from rich.table import Table
+from rich.panel import Panel
 from rich.console import Console
 from rich.progress import (
     Progress,
@@ -19,14 +22,34 @@ class Show(object):
     console = Console()
 
     @staticmethod
+    def show_panel(title: typing.Any, write: typing.Any, tc: typing.Any, bc: typing.Any, jf: typing.Any) -> None:
+        """
+        展示控制板
+        @param title: 标题
+        @param write: 文本
+        @param tc: 文本颜色
+        @param bc: 边框颜色
+        @param jf: 对齐方式
+        @return:
+        """
+        panel = Panel(
+            Text(write, style=f"bold {tc}", justify=jf),
+            title=f"{title}",
+            border_style=f"bold {bc}",
+            width=int(Show.console.width * 0.7)
+        )
+        Show.console.print(panel)
+
+    @staticmethod
     def show_progress():
         return Progress(
-            TextColumn(f"[bold]{const.DESC} | {{task.description}} |", justify="right"),
+            TextColumn(text_format=f"[bold]{const.DESC} | {{task.description}} |", justify="right"),
             SpinnerColumn(
                 style="bold #FFF68F", speed=1, finished_text="[bold #9AFF9A]Done"
             ),
             BarColumn(
-                int(Show.console.width * 0.4), "bold #FF6347", "bold #FFEC8B", "bold #98FB98"
+                bar_width=int(Show.console.width * 0.4),
+                style="bold #FF6347", complete_style="bold #FFEC8B", finished_style="bold #98FB98"
             ),
             TimeRemainingColumn(),
             "[progress.percentage][bold #E0FFFF]{task.completed:>5.0f}[/]/[bold #FFDAB9]{task.total}[/]",
@@ -36,12 +59,13 @@ class Show(object):
     @staticmethod
     def simulation_progress(desc: str, advance: int | float, interval: int | float):
         with Progress(
-            TextColumn("[bold #FFFFD7]{task.description}", justify="right"),
+            TextColumn(text_format="[bold #FFFFD7]{task.description}", justify="right"),
             SpinnerColumn(
                 style="bold #FFF68F", speed=1, finished_text="[bold #9AFF9A]Done"
             ),
             BarColumn(
-                int(Show.console.width * 0.4), "bold #FF6347", "bold #FFEC8B", "bold #98FB98"
+                bar_width=int(Show.console.width * 0.4),
+                style="bold #FF6347", complete_style="bold #FFEC8B", finished_style="bold #98FB98"
             ),
             TimeRemainingColumn(),
             "[progress.percentage][bold #E0FFFF]{task.percentage:>5.0f}%[/]",
@@ -156,7 +180,7 @@ class Show(object):
             ["[bold #FFDC00]--keras", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]智能模式"],
             ["[bold #FFDC00]--alone", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]独立控制"],
             ["[bold #FFDC00]--whist", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]静默录制"],
-            ["[bold #FFDC00]--alike", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]视频均衡"],
+            ["[bold #FFDC00]--alike", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]平衡时间"],
             ["[bold #FFDC00]--group", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]分组报告"],
             ["[bold #FFDC00]--boost", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]跳帧模式"],
             ["[bold #FFDC00]--color", "[bold #7FDBFF]布尔", "[bold #8A8A8A]一次", "[bold #AFAFD7]关闭", "[bold #39CCCC]彩色模式"],
@@ -286,6 +310,50 @@ class Show(object):
             lambda: animation(4, 0.2, other_engine),
         ]
         random.choice(stochastic)()
+
+    @staticmethod
+    def content_pose(rlt, avg, dur, org, pnt, video_temp, frate):
+        start, close, limit = pnt
+        table_info = Table(
+            title=f"[bold #F5F5DC]Video Info {os.path.basename(video_temp)}",
+            header_style="bold #F5F5DC",
+            title_justify="center",
+            show_header=True,
+            show_lines=True
+        )
+        table_info.add_column("视频尺寸", justify="left", width=14)
+        table_info.add_column("实际帧率", justify="left", width=22)
+        table_info.add_column("平均帧率", justify="left", width=22)
+        table_info.add_column("转换帧率", justify="left", width=22)
+
+        table_info.add_row(
+            f"[bold #87CEEB]{org}",
+            f"[bold #87CEEB]{rlt}",
+            f"[bold #87CEEB]{avg}",
+            f"[bold #87CEEB]{frate}"
+        )
+
+        table_clip = Table(
+            title=f"[bold #D8BFD8]Video Clip {os.path.basename(video_temp)}",
+            header_style="bold #7FFFD4",
+            title_justify="center",
+            show_header=True,
+            show_lines=True
+        )
+        table_clip.add_column("视频时长", justify="left", width=14)
+        table_clip.add_column("开始时间", justify="left", width=22)
+        table_clip.add_column("结束时间", justify="left", width=22)
+        table_clip.add_column("持续时间", justify="left", width=22)
+
+        table_clip.add_row(
+            f"[bold #87CEEB]{dur}",
+            f"[bold][bold #FFA500]start[/]=[[bold #EE82EE]{start}[/]][/]",
+            f"[bold][bold #FFA500]close[/]=[[bold #EE82EE]{close}[/]][/]",
+            f"[bold][bold #FFA500]limit[/]=[[bold #EE82EE]{limit}[/]][/]"
+        )
+
+        Show.console.print(table_info)
+        Show.console.print(table_clip)
 
 
 if __name__ == '__main__':
