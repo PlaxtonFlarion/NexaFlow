@@ -177,7 +177,7 @@ class Missions(object):
             attack = self.total_place, None
 
         # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Initial Alynex ================================================================
-        alynex = Alynex(*attack)
+        alynex = Alynex(*attack, **kwargs)
         if alynex.kc:
             try:
                 channel = alynex.kc.model.input_shape[-1]
@@ -190,7 +190,7 @@ class Missions(object):
 
         loop = asyncio.get_event_loop()
         loop_complete = loop.run_until_complete(
-            alynex.ask_analyzer(vision, *args, **kwargs)
+            alynex.ask_analyzer(vision, *args)
         )
         return loop_complete
 
@@ -199,6 +199,34 @@ class Missions(object):
             return logger.warning(f"{const.WRN}没有可以生成的报告[/]")
         function = getattr(self, "combines_view" if self.speed else "combines_main")
         return await function([os.path.dirname(reporter.total_path)])
+
+    async def combines_view(self, merge: list):
+        views, total = await asyncio.gather(
+            Craft.achieve(self.view_share_temp), Craft.achieve(self.view_total_temp),
+            return_exceptions=True
+        )
+        logger.info(f"正在生成汇总报告 ...")
+        state_list = await asyncio.gather(
+            *(Report.ask_create_total_report(m, self.group, views, total) for m in merge)
+        )
+        for state in state_list:
+            if isinstance(state, Exception):
+                logger.error(f"{const.ERR}{state}[/]")
+            logger.info(f"成功生成汇总报告 {os.path.relpath(state)}")
+
+    async def combines_main(self, merge: list):
+        major, total = await asyncio.gather(
+            Craft.achieve(self.main_share_temp), Craft.achieve(self.main_total_temp),
+            return_exceptions=True
+        )
+        logger.info(f"正在生成汇总报告 ...")
+        state_list = await asyncio.gather(
+            *(Report.ask_create_total_report(m, self.group, major, total) for m in merge)
+        )
+        for state in state_list:
+            if isinstance(state, Exception):
+                logger.error(f"{const.ERR}{state}[/]")
+            logger.info(f"成功生成汇总报告 {os.path.relpath(state)}")
 
     async def video_file_task(self, video_file_list: list, *args):
         video_file_list = [
@@ -361,7 +389,7 @@ class Missions(object):
             attack = self.total_place, None
 
         # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Initial Alynex ================================================================
-        alynex = Alynex(*attack)
+        alynex = Alynex(*attack, **deploy.deploys)
         if alynex.kc:
             try:
                 channel = alynex.kc.model.input_shape[-1]
@@ -430,7 +458,7 @@ class Missions(object):
         # Ask_Analyzer
         if len(task_list) == 1:
             task = [
-                alynex.ask_analyzer(target, frame_path, extra_path, original, **deploy.deploys)
+                alynex.ask_analyzer(target, frame_path, extra_path, original)
                 for (target, _), (*_, frame_path, extra_path, _), original
                 in zip(video_target_list, task_list, original_list)
             ]
@@ -656,7 +684,7 @@ class Missions(object):
                 attack = self.total_place, None
 
             # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Initial Alynex ============================================================
-            alynex = Alynex(*attack)
+            alynex = Alynex(*attack, **deploy.deploys)
             if alynex.kc:
                 try:
                     channel = alynex.kc.model.input_shape[-1]
@@ -784,7 +812,7 @@ class Missions(object):
                 # Ask_Analyzer
                 if len(task_list) == 1:
                     task = [
-                        alynex.ask_analyzer(target, frame_path, extra_path, original, **deploy.deploys)
+                        alynex.ask_analyzer(target, frame_path, extra_path, original)
                         for (target, _), (*_, frame_path, extra_path, _), original
                         in zip(video_target_list, task_list, original_list)
                     ]
@@ -994,34 +1022,6 @@ class Missions(object):
 
         kc = KerasStruct()
         kc.build(image_color, image_shape, image_aisle, src_model_path, new_model_path, new_model_name)
-
-    async def combines_view(self, merge: list):
-        views, total = await asyncio.gather(
-            Craft.achieve(self.view_share_temp), Craft.achieve(self.view_total_temp),
-            return_exceptions=True
-        )
-        logger.info(f"正在生成汇总报告 ...")
-        state_list = await asyncio.gather(
-            *(Report.ask_create_total_report(m, self.group, views, total) for m in merge)
-        )
-        for state in state_list:
-            if isinstance(state, Exception):
-                logger.error(f"{const.ERR}{state}[/]")
-            logger.info(f"成功生成汇总报告 {os.path.relpath(state)}")
-
-    async def combines_main(self, merge: list):
-        major, total = await asyncio.gather(
-            Craft.achieve(self.main_share_temp), Craft.achieve(self.main_total_temp),
-            return_exceptions=True
-        )
-        logger.info(f"正在生成汇总报告 ...")
-        state_list = await asyncio.gather(
-            *(Report.ask_create_total_report(m, self.group, major, total) for m in merge)
-        )
-        for state in state_list:
-            if isinstance(state, Exception):
-                logger.error(f"{const.ERR}{state}[/]")
-            logger.info(f"成功生成汇总报告 {os.path.relpath(state)}")
 
     async def painting(self, *args):
         """
@@ -1430,7 +1430,7 @@ class Missions(object):
                 # Ask_Analyzer
                 if len(task_list) == 1:
                     task = [
-                        alynex.ask_analyzer(target, frame_path, extra_path, original, **deploy.deploys)
+                        alynex.ask_analyzer(target, frame_path, extra_path, original)
                         for (target, _), (*_, frame_path, extra_path, _), original
                         in zip(video_target_list, task_list, original_list)
                     ]
@@ -1633,7 +1633,7 @@ class Missions(object):
             attack_ = self.total_place, None
 
         # Initial Alynex
-        alynex = Alynex(*attack_)
+        alynex = Alynex(*attack_, **deploy.deploys)
         if alynex.kc:
             try:
                 channel_ = alynex.kc.model.input_shape[-1]
@@ -1877,7 +1877,28 @@ class Alynex(object):
             self,
             total_place: typing.Optional[str] = None,
             model_place: typing.Optional[str] = None,
+            **kwargs
     ):
+
+        self.boost = kwargs.get("boost", const.BOOST)
+        self.color = kwargs.get("color", const.COLOR)
+
+        self.shape = kwargs.get("shape", const.SHAPE)
+        self.scale = kwargs.get("scale", const.SCALE)
+        _ = kwargs.get("start", const.START)
+        _ = kwargs.get("close", const.CLOSE)
+        _ = kwargs.get("limit", const.LIMIT)
+
+        self.begin = kwargs.get("begin", const.BEGIN)
+        self.final = kwargs.get("final", const.FINAL)
+
+        self.crops = kwargs.get("crops", const.CROPS)
+        self.omits = kwargs.get("omits", const.OMITS)
+
+        _ = kwargs.get("frate", const.FRATE)
+        self.thres = kwargs.get("thres", const.THRES)
+        self.shift = kwargs.get("shift", const.SHIFT)
+        self.block = kwargs.get("block", const.BLOCK)
 
         self.total_place = total_place
         self.model_place = model_place
@@ -1905,47 +1926,87 @@ class Alynex(object):
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         pass
 
-    async def ask_analyzer(self, vision: str, *args, **kwargs) -> typing.Optional["Review"]:
-
-        frame_path, extra_path, original, *_ = args
-
-        boost = kwargs.get("boost", const.BOOST)
-        color = kwargs.get("color", const.COLOR)
-
-        shape = kwargs.get("shape", const.SHAPE)
-        scale = kwargs.get("scale", const.SCALE)
-        _ = kwargs.get("start", const.START)
-        _ = kwargs.get("close", const.CLOSE)
-        _ = kwargs.get("limit", const.LIMIT)
-
-        begin = kwargs.get("begin", const.BEGIN)
-        final = kwargs.get("final", const.FINAL)
-
-        crops = kwargs.get("crops", const.CROPS)
-        omits = kwargs.get("omits", const.OMITS)
-
-        _ = kwargs.get("frate", const.FRATE)
-        thres = kwargs.get("thres", const.THRES)
-        shift = kwargs.get("shift", const.SHIFT)
-        block = kwargs.get("block", const.BLOCK)
-
-        async def frame_check():
-            target_screen = None
-            if os.path.isfile(vision):
-                screen = cv2.VideoCapture(vision)
+    @staticmethod
+    async def ask_frame_check(vision: str):
+        target_screen = None
+        if os.path.isfile(vision):
+            screen = cv2.VideoCapture(vision)
+            if screen.isOpened():
+                target_screen = vision
+            screen.release()
+        elif os.path.isdir(vision):
+            file_list = [
+                file for file in os.listdir(vision) if os.path.isfile(os.path.join(vision, file))
+            ]
+            if len(file_list) >= 1:
+                screen = cv2.VideoCapture(open_file := os.path.join(vision, file_list[0]))
                 if screen.isOpened():
-                    target_screen = vision
+                    target_screen = open_file
                 screen.release()
-            elif os.path.isdir(vision):
-                file_list = [
-                    file for file in os.listdir(vision) if os.path.isfile(os.path.join(vision, file))
-                ]
-                if len(file_list) >= 1:
-                    screen = cv2.VideoCapture(open_file := os.path.join(vision, file_list[0]))
-                    if screen.isOpened():
-                        target_screen = open_file
-                    screen.release()
-            return target_screen
+        return target_screen
+
+    @staticmethod
+    async def ask_frame_load(
+            target_vision: str, scale: float = None, shape: tuple = None, color: bool = None
+    ) -> "VideoObject":
+
+        video_load_time = time.time()
+        video = VideoObject(target_vision)
+        logger.info(f"视频帧长度: {video.frame_count} 分辨率: {video.frame_size}")
+        logger.info(f"加载视频帧: {video.name}")
+        video.load_frames(
+            scale=scale, shape=shape, color=color
+        )
+        logger.info(f"视频帧已加载: {video.frame_details(video.frames_data)}")
+        logger.info(f"视频加载耗时: {time.time() - video_load_time:.2f} 秒")
+        return video
+
+    @staticmethod
+    async def ask_frame_flip(shape: tuple, scale: float, original: tuple):
+        if shape:
+            w, h, ratio = await Switch.ask_magic_frame(original, shape)
+            shape = w, h
+            logger.info(f"调整宽高比: {w} x {h}")
+        elif scale:
+            scale = max(0.1, min(1.0, scale))
+        else:
+            scale = 0.4
+
+        return shape, scale
+
+    async def ask_classify(self, vision: str, *args):
+        if (target_vision := await self.ask_frame_check(vision)) is None:
+            return logger.warning(f"{const.WRN}视频文件损坏: {os.path.basename(vision)}[/]")
+
+        query_path, original, *_ = args
+
+        shape, scale = await self.ask_frame_flip(self.shape, self.scale, original)
+        video = await self.ask_frame_load(target_vision, scale, shape, self.color)
+
+        cutter = VideoCutter()
+
+        logger.info(f"视频帧长度: {video.frame_count} 分辨率: {video.frame_size} 片段数: {video.frame_count - 1}")
+        logger.info(f"压缩视频帧: {video.name}")
+        cut_start_time = time.time()
+        cut_range = cutter.cut(video=video, block=self.block)
+        logger.info(f"压缩完成: {video.name}")
+        logger.info(f"压缩耗时: {time.time() - cut_start_time:.2f} 秒")
+
+        stable, unstable = cut_range.get_range(
+            threshold=self.thres, offset=self.shift
+        )
+
+        cut_range.pick_and_save(
+            range_list=stable,
+            frame_count=20,
+            to_dir=query_path,
+            meaningful_name=True,
+            compress_rate=None,
+            target_size=None,
+            not_grey=True
+        )
+
+    async def ask_analyzer(self, vision: str, *args) -> typing.Optional["Review"]:
 
         async def frame_forge(frame):
             try:
@@ -1958,10 +2019,10 @@ class Alynex(object):
             return {"id": frame.frame_id, "picture": os.path.join(os.path.basename(frame_path), picture)}
 
         async def frame_flick():
-            begin_stage_index, begin_frame_index = begin
-            final_stage_index, final_frame_index = final
+            begin_stage_index, begin_frame_index = self.begin
+            final_stage_index, final_frame_index = self.final
             logger.info(
-                f"取关键帧: begin={list(begin)} final={list(final)}"
+                f"取关键帧: begin={list(self.begin)} final={list(self.final)}"
             )
 
             try:
@@ -1986,29 +2047,14 @@ class Alynex(object):
             )
             return begin_frame.frame_id, final_frame.frame_id, time_cost
 
-        async def frame_flip():
-            if shape:
-                w, h, ratio = await Switch.ask_magic_frame(original, shape)
-                target_shape = w, h
-                target_scale = scale
-                logger.info(f"调整宽高比: {w} x {h}")
-            elif scale:
-                target_shape = shape
-                target_scale = max(0.1, min(1.0, scale))
-            else:
-                target_shape = shape
-                target_scale = 0.4
-
-            return target_shape, target_scale
-
         async def frame_hold():
             if struct is None:
                 return [i for i in video.frames_data]
 
-            logger.info(f"{'△ △ △ 获取关键帧 △ △ △' if boost else '△ △ △ 获取全部帧 △ △ △'}")
+            logger.info(f"{'△ △ △ 获取关键帧 △ △ △' if self.boost else '△ △ △ 获取全部帧 △ △ △'}")
             frames_list = []
             important_frames = struct.get_important_frame_list()
-            if boost:
+            if self.boost:
                 pbar = toolbox.show_progress(total=struct.get_length(), color=50)
                 frames_list.append(previous := important_frames[0])
                 pbar.update(1)
@@ -2038,7 +2084,7 @@ class Alynex(object):
                 f"视频帧处理: {size_hook.__class__.__name__} {[1.0, None, True]}"
             )
 
-            if len(crop_list := crops) > 0 and sum([j for i in crop_list for j in i.values()]) > 0:
+            if len(crop_list := self.crops) > 0 and sum([j for i in crop_list for j in i.values()]) > 0:
                 for crop in crop_list:
                     x, y, x_size, y_size = crop.values()
                     crop_hook = PaintCropHook((y_size, x_size), (y, x))
@@ -2047,7 +2093,7 @@ class Alynex(object):
                         f"视频帧处理: {crop_hook.__class__.__name__} {x, y, x_size, y_size}"
                     )
 
-            if len(omit_list := omits) > 0 and sum([j for i in omit_list for j in i.values()]) > 0:
+            if len(omit_list := self.omits) > 0 and sum([j for i in omit_list for j in i.values()]) > 0:
                 for omit in omit_list:
                     x, y, x_size, y_size = omit.values()
                     omit_hook = PaintOmitHook((y_size, x_size), (y, x))
@@ -2065,11 +2111,11 @@ class Alynex(object):
             logger.info(f"视频帧长度: {video.frame_count} 分辨率: {video.frame_size} 片段数: {video.frame_count - 1}")
             logger.info(f"压缩视频帧: {video.name}")
             cut_start_time = time.time()
-            cut_range = cutter.cut(video=video, block=block)
+            cut_range = cutter.cut(video=video, block=self.block)
             logger.info(f"压缩完成: {video.name}")
             logger.info(f"压缩耗时: {time.time() - cut_start_time:.2f} 秒")
 
-            stable, unstable = cut_range.get_range(threshold=thres, offset=shift)
+            stable, unstable = cut_range.get_range(threshold=self.thres, offset=self.shift)
 
             file_list = os.listdir(extra_path)
             file_list.sort(key=lambda n: int(n.split("(")[0]))
@@ -2143,20 +2189,13 @@ class Alynex(object):
             begin_frame_id, final_frame_id, time_cost = flick_result
             return begin_frame_id, final_frame_id, time_cost, scores, struct
 
-        # Start
-        if (target_record := await frame_check()) is None:
+        if (target_vision := await self.ask_frame_check(vision)) is None:
             return logger.warning(f"{const.WRN}视频文件损坏: {os.path.basename(vision)}[/]")
 
-        shape, scale = await frame_flip()
-        video_load_time = time.time()
-        video = VideoObject(target_record)
-        logger.info(f"视频帧长度: {video.frame_count} 分辨率: {video.frame_size}")
-        logger.info(f"加载视频帧: {video.name}")
-        video.load_frames(
-            scale=scale, shape=shape, color=color
-        )
-        logger.info(f"视频帧已加载: {video.frame_details(video.frames_data)}")
-        logger.info(f"视频加载耗时: {time.time() - video_load_time:.2f} 秒")
+        frame_path, extra_path, original, *_ = args
+
+        shape, scale = await self.ask_frame_flip(self.shape, self.scale, original)
+        video = await self.ask_frame_load(target_vision, scale, shape, self.color)
 
         struct = await frame_flow() if self.kc else None
         frames = await frame_hold()
