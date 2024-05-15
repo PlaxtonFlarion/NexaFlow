@@ -312,8 +312,7 @@ class Show(object):
         random.choice(stochastic)()
 
     @staticmethod
-    def content_pose(rlt, avg, dur, org, pnt, video_temp, frate):
-        start, close, limit = pnt
+    def content_pose(rlt, avg, dur, org, vd_start, vd_close, vd_limit, video_temp, frate):
         table_info = Table(
             title=f"[bold #F5F5DC]Video Info {os.path.basename(video_temp)}",
             header_style="bold #F5F5DC",
@@ -347,9 +346,9 @@ class Show(object):
 
         table_clip.add_row(
             f"[bold #87CEEB]{dur}",
-            f"[bold][bold #FFA500]start[/]=[[bold #EE82EE]{start}[/]][/]",
-            f"[bold][bold #FFA500]close[/]=[[bold #EE82EE]{close}[/]][/]",
-            f"[bold][bold #FFA500]limit[/]=[[bold #EE82EE]{limit}[/]][/]"
+            f"[bold][bold #FFA500]start[/]=[[bold #EE82EE]{vd_start}[/]][/]",
+            f"[bold][bold #FFA500]close[/]=[[bold #EE82EE]{vd_close}[/]][/]",
+            f"[bold][bold #FFA500]limit[/]=[[bold #EE82EE]{vd_limit}[/]][/]"
         )
 
         Show.console.print(table_info)

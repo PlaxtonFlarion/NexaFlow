@@ -65,9 +65,9 @@ class Parser(object):
 
     @staticmethod
     def parse_mills(dim_str):
-        if type(str) is int or type(dim_str) is float:
+        if type(dim_str) is int or type(dim_str) is float:
             return float(dim_str)
-        if type(dim_str) is str:
+        elif type(dim_str) is str:
             seconds_pattern = re.compile(r"^\d+(\.\d+)?$")
             full_pattern = re.compile(r"(\d{1,2}):(\d{2}):(\d{2})(\.\d+)?")
             if match := full_pattern.match(dim_str):

@@ -230,14 +230,19 @@ class Missions(object):
         close_ms = Parser.parse_mills(deploy.close)
         limit_ms = Parser.parse_mills(deploy.limit)
         content_list = await asyncio.gather(
-            *(clipix.vision_content(video_temp, start_ms, close_ms, limit_ms, deploy.frate)
+            *(clipix.vision_content(video_temp, start_ms, close_ms, limit_ms)
               for video_temp, *_ in task_list)
         )
 
-        if level == "INFO":
-            for (rlt, avg, dur, org, pnt), (video_temp, *_) in zip(content_list, task_list):
+        for (rlt, avg, dur, org, pnt), (video_temp, *_) in zip(content_list, task_list):
+            vd_start, vd_close, vd_limit = pnt
+            logger.debug(f"视频尺寸: {list(org)}")
+            logger.debug(f"实际帧率: [{rlt}] 平均帧率: [{avg}] 转换帧率: [{deploy.frate}]")
+            logger.debug(f"视频时长: [{dur:.6f}] [{Parser.parse_times(dur)}]")
+            logger.debug(f"视频剪辑: start=[{vd_start}] close=[{vd_close}] limit=[{vd_limit}]")
+            if level == "INFO":
                 Show.content_pose(
-                    rlt, avg, f"{dur:.6f}", org, pnt, video_temp, deploy.frate
+                    rlt, avg, f"{dur:.6f}", org, vd_start, vd_close, vd_limit, video_temp, deploy.frate
                 )
 
         *_, duration_list, original_list, final_point_list = zip(*content_list)
@@ -496,14 +501,19 @@ class Missions(object):
                     close_ms = Parser.parse_mills(deploy.close)
                     limit_ms = Parser.parse_mills(deploy.limit)
                     content_list = await asyncio.gather(
-                        *(clipix.vision_content(video_temp, start_ms, close_ms, limit_ms, deploy.frate)
+                        *(clipix.vision_content(video_temp, start_ms, close_ms, limit_ms)
                           for video_temp, *_ in task_list)
                     )
 
-                    if level == "INFO":
-                        for (rlt, avg, dur, org, pnt), (video_temp, *_) in zip(content_list, task_list):
+                    for (rlt, avg, dur, org, pnt), (video_temp, *_) in zip(content_list, task_list):
+                        vd_start, vd_close, vd_limit = pnt
+                        logger.debug(f"视频尺寸: {list(org)}")
+                        logger.debug(f"实际帧率: [{rlt}] 平均帧率: [{avg}] 转换帧率: [{deploy.frate}]")
+                        logger.debug(f"视频时长: [{dur:.6f}] [{Parser.parse_times(dur)}]")
+                        logger.debug(f"视频剪辑: start=[{vd_start}] close=[{vd_close}] limit=[{vd_limit}]")
+                        if level == "INFO":
                             Show.content_pose(
-                                rlt, avg, f"{dur:.6f}", org, pnt, video_temp, deploy.frate
+                                rlt, avg, f"{dur:.6f}", org, vd_start, vd_close, vd_limit, video_temp, deploy.frate
                             )
 
                     *_, duration_list, original_list, final_point_list = zip(*content_list)
@@ -645,14 +655,19 @@ class Missions(object):
                 close_ms = Parser.parse_mills(deploy.close)
                 limit_ms = Parser.parse_mills(deploy.limit)
                 content_list = await asyncio.gather(
-                    *(clipix.vision_content(video_temp, start_ms, close_ms, limit_ms, deploy.frate)
+                    *(clipix.vision_content(video_temp, start_ms, close_ms, limit_ms)
                       for video_temp, *_ in task_list)
                 )
 
-                if level == "INFO":
-                    for (rlt, avg, dur, org, pnt), (video_temp, *_) in zip(content_list, task_list):
+                for (rlt, avg, dur, org, pnt), (video_temp, *_) in zip(content_list, task_list):
+                    vd_start, vd_close, vd_limit = pnt
+                    logger.debug(f"视频尺寸: {list(org)}")
+                    logger.debug(f"实际帧率: [{rlt}] 平均帧率: [{avg}] 转换帧率: [{deploy.frate}]")
+                    logger.debug(f"视频时长: [{dur:.6f}] [{Parser.parse_times(dur)}]")
+                    logger.debug(f"视频剪辑: start=[{vd_start}] close=[{vd_close}] limit=[{vd_limit}]")
+                    if level == "INFO":
                         Show.content_pose(
-                            rlt, avg, f"{dur:.6f}", org, pnt, video_temp, deploy.frate
+                            rlt, avg, f"{dur:.6f}", org, vd_start, vd_close, vd_limit, video_temp, deploy.frate
                         )
 
                 *_, duration_list, original_list, final_point_list = zip(*content_list)
@@ -1172,14 +1187,19 @@ class Missions(object):
             close_ms = Parser.parse_mills(deploy.close)
             limit_ms = Parser.parse_mills(deploy.limit)
             content_list = await asyncio.gather(
-                *(clipix.vision_content(video_temp, start_ms, close_ms, limit_ms, deploy.frate)
+                *(clipix.vision_content(video_temp, start_ms, close_ms, limit_ms)
                   for video_temp, *_ in task_list)
             )
 
-            if level == "INFO":
-                for (rlt, avg, dur, org, pnt), (video_temp, *_) in zip(content_list, task_list):
+            for (rlt, avg, dur, org, pnt), (video_temp, *_) in zip(content_list, task_list):
+                vd_start, vd_close, vd_limit = pnt
+                logger.debug(f"视频尺寸: {list(org)}")
+                logger.debug(f"实际帧率: [{rlt}] 平均帧率: [{avg}] 转换帧率: [{deploy.frate}]")
+                logger.debug(f"视频时长: [{dur:.6f}] [{Parser.parse_times(dur)}]")
+                logger.debug(f"视频剪辑: start=[{vd_start}] close=[{vd_close}] limit=[{vd_limit}]")
+                if level == "INFO":
                     Show.content_pose(
-                        rlt, avg, f"{dur:.6f}", org, pnt, video_temp, deploy.frate
+                        rlt, avg, f"{dur:.6f}", org, vd_start, vd_close, vd_limit, video_temp, deploy.frate
                     )
 
             *_, duration_list, original_list, final_point_list = zip(*content_list)
@@ -1270,6 +1290,24 @@ class Missions(object):
                             f"Video Metrics {os.path.basename(video_temp)}",
                             "\n".join(message_list), "#9E9E9E", "#2196F3", "left"
                         )
+
+                start, end, cost, scores, struct = 0, 0, 0, None, None
+                for *_, total_path, title, query_path, query, frame_path, _, _ in task_list:
+                    result = {
+                        "total": os.path.basename(total_path),
+                        "title": title,
+                        "query": query,
+                        "stage": {"start": start, "end": end, "cost": cost},
+                        "frame": os.path.basename(frame_path),
+                        "style": "speed"
+                    }
+                    logger.debug(f"Speeder: {json.dumps(result, ensure_ascii=False)}")
+                    await reporter.load(result)
+
+                    self.enforce(
+                        reporter.reset_path, struct, start, end, cost,
+                        total_path, title, query_path, query, frame_path
+                    )
 
             # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Keras Analyzer ============================================================
             elif self.basic or self.keras:
@@ -1681,7 +1719,6 @@ class Clipix(object):
             start: typing.Optional[str],
             close: typing.Optional[str],
             limit: typing.Optional[str],
-            frate: int
     ) -> tuple:
 
         video_streams = await Switch.ask_video_stream(self.fpb, video_temp)
@@ -1700,11 +1737,6 @@ class Clipix(object):
         vision_start: str = Parser.parse_times(vision_start)
         vision_close: str = Parser.parse_times(vision_close)
         vision_limit: str = Parser.parse_times(vision_limit)
-
-        logger.debug(f"视频尺寸: {list(original)}")
-        logger.debug(f"实际帧率: [{rlt}] 平均帧率: [{avg}] 转换帧率: [{frate}]")
-        logger.debug(f"视频时长: [{duration:.6f}] [{Parser.parse_times(duration)}]")
-        logger.debug(f"视频剪辑: start=[{vision_start}] close=[{vision_close}] limit=[{vision_limit}]")
 
         return rlt, avg, duration, original, (vision_start, vision_close, vision_limit)
 
