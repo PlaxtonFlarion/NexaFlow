@@ -182,11 +182,10 @@ class Missions(object):
             try:
                 channel = alynex.kc.model.input_shape[-1]
                 if kwargs["color"]:
-                    assert channel == 3, f"彩色模式需要匹配彩色模型 Model Color Channel={channel}"
+                    assert channel == 3
                 else:
-                    assert channel == 1, f"灰度模式需要匹配灰度模型 Model Color Channel={channel}"
-            except AssertionError as e:
-                logger.error(f"{const.ERR}{e}[/]")
+                    assert channel == 1
+            except AssertionError:
                 alynex.kc = None
 
         loop = asyncio.get_event_loop()
@@ -374,7 +373,13 @@ class Missions(object):
                 logger.error(f"{const.ERR}{e}[/]")
                 alynex.kc = None
 
-        logger.info(f"△ △ △ {'智能模式' if alynex.kc else '基础模式'} △ △ △")
+        logger.debug(f"△ △ △ {(alynex_mode := '智能模式' if alynex.kc else '基础模式')} △ △ △")
+        if level == "INFO":
+            Show.show_panel(
+                f"Analyzer Mode",
+                f"△ △ △ {alynex_mode} △ △ △",
+                "#FFFF00", "#87CEFA", "center"
+            )
 
         video_target_list = [
             (os.path.join(
@@ -382,10 +387,16 @@ class Missions(object):
             ), [f"fps={deploy.frate}"]) for video_temp, *_ in task_list
         ]
 
-        for (_, video_filter), (video_temp, *_) in zip(video_target_list, task_list):
-            logger.info(f"开始转换视频: {os.path.basename(video_temp)}")
+        for (tar, flt), (video_temp, *_) in zip(video_target_list, task_list):
+            logger.debug(f"视频过滤: {flt} {(name := os.path.basename(video_temp))}")
+            if level == "INFO":
+                Show.show_panel(
+                    "Video Filter",
+                    f"{name} -> {flt}",
+                    "#B0C4DE", "#E0E0E0", "left"
+                )
 
-        await asyncio.gather(
+        change_result = await asyncio.gather(
             *(clipix.pixels(
                 Switch.ask_video_change, video_filter, video_temp,
                 target, start=vision_start, close=vision_close, limit=vision_limit
@@ -393,11 +404,28 @@ class Missions(object):
                 in zip(video_target_list, task_list, final_point_list))
         )
 
-        for (target, video_filter), (video_temp, *_) in zip(video_target_list, task_list):
-            logger.info(f"视频转换完成: {os.path.basename(target)} {''.join(video_filter)}")
+        for change, (video_temp, *_) in zip(change_result, task_list):
+            message_list = []
+            for message in change.splitlines():
+                if matcher := re.search(r"frame.*fps.*speed.*", message):
+                    discover: typing.Any = lambda x: re.findall(r"(\w+)=\s*([\w.\-:/x]+)", x)
+                    message_list.append(
+                        format_msg := " ".join([f"{k}={v}" for k, v in discover(matcher.group())])
+                    )
+                    logger.debug(format_msg)
+            if level == "INFO":
+                Show.show_panel(
+                    f"Video Metrics {os.path.basename(video_temp)}",
+                    "\n".join(message_list),
+                    "#9E9E9E", "#2196F3", "left"
+                )
             remove_list.append(
                 main_loop.run_in_executor(None, os.remove, video_temp)
             )
+        await asyncio.gather(*remove_list, return_exceptions=True)
+
+        if alynex.kc:
+            deploy.view_deploy()
 
         if len(task_list) == 1:
             task = [
@@ -522,7 +550,8 @@ class Missions(object):
                     remove_list = []
                     if self.alike and len(task_list) > 1:
                         logger.debug(
-                            f"平衡时间: [{(standard := min(duration_list)):.6f}] [{Parser.parse_times(standard)}]")
+                            f"平衡时间: [{(standard := min(duration_list)):.6f}] [{Parser.parse_times(standard)}]"
+                        )
                         if level == "INFO":
                             Show.show_panel(
                                 "Balance Time Standard",
@@ -638,7 +667,13 @@ class Missions(object):
                     logger.error(f"{const.ERR}{e}[/]")
                     alynex.kc = None
 
-            logger.info(f"△ △ △ {'智能模式' if alynex.kc else '基础模式'} △ △ △")
+            logger.debug(f"△ △ △ {(alynex_mode := '智能模式' if alynex.kc else '基础模式')} △ △ △")
+            if level == "INFO":
+                Show.show_panel(
+                    f"Analyzer Mode",
+                    f"△ △ △ {alynex_mode} △ △ △",
+                    "#FFFF00", "#87CEFA", "center"
+                )
             for entry in entries:
                 reporter.title = entry.title
                 task_list = []
@@ -675,7 +710,9 @@ class Missions(object):
                 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Video Balance =========================================================
                 remove_list = []
                 if self.alike and len(task_list) > 1:
-                    logger.debug(f"平衡时间: [{(standard := min(duration_list)):.6f}] [{Parser.parse_times(standard)}]")
+                    logger.debug(
+                        f"平衡时间: [{(standard := min(duration_list)):.6f}] [{Parser.parse_times(standard)}]"
+                    )
                     if level == "INFO":
                         Show.show_panel(
                             "Balance Time Standard",
@@ -703,10 +740,16 @@ class Missions(object):
                     ), [f"fps={deploy.frate}"]) for video_temp, *_ in task_list
                 ]
 
-                for (_, video_filter), (video_temp, *_) in zip(video_target_list, task_list):
-                    logger.info(f"开始转换视频: {os.path.basename(video_temp)}")
+                for (tar, flt), (video_temp, *_) in zip(video_target_list, task_list):
+                    logger.debug(f"视频过滤: {flt} {(name := os.path.basename(video_temp))}")
+                    if level == "INFO":
+                        Show.show_panel(
+                            "Video Filter",
+                            f"{name} -> {flt}",
+                            "#B0C4DE", "#E0E0E0", "left"
+                        )
 
-                await asyncio.gather(
+                change_result = await asyncio.gather(
                     *(clipix.pixels(
                         Switch.ask_video_change, video_filter, video_temp,
                         target, start=vision_start, close=vision_close, limit=vision_limit
@@ -714,11 +757,28 @@ class Missions(object):
                         in zip(video_target_list, task_list, final_point_list))
                 )
 
-                for (target, video_filter), (video_temp, *_) in zip(video_target_list, task_list):
-                    logger.info(f"视频转换完成: {os.path.basename(target)} {''.join(video_filter)}")
+                for change, (video_temp, *_) in zip(change_result, task_list):
+                    message_list = []
+                    for message in change.splitlines():
+                        if matcher := re.search(r"frame.*fps.*speed.*", message):
+                            discover: typing.Any = lambda x: re.findall(r"(\w+)=\s*([\w.\-:/x]+)", x)
+                            message_list.append(
+                                format_msg := " ".join([f"{k}={v}" for k, v in discover(matcher.group())])
+                            )
+                            logger.debug(format_msg)
+                    if level == "INFO":
+                        Show.show_panel(
+                            f"Video Metrics {os.path.basename(video_temp)}",
+                            "\n".join(message_list),
+                            "#9E9E9E", "#2196F3", "left"
+                        )
                     remove_list.append(
                         main_loop.run_in_executor(None, os.remove, video_temp)
                     )
+                await asyncio.gather(*remove_list, return_exceptions=True)
+
+                if alynex.kc:
+                    deploy.view_deploy()
 
                 if len(task_list) == 1:
                     task = [
@@ -1311,7 +1371,13 @@ class Missions(object):
 
             # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Keras Analyzer ============================================================
             elif self.basic or self.keras:
-                logger.info(f"△ △ △ {'智能模式' if alynex.kc else '基础模式'} △ △ △")
+                logger.debug(f"△ △ △ {(alynex_mode := '智能模式' if alynex.kc else '基础模式')} △ △ △")
+                if level == "INFO":
+                    Show.show_panel(
+                        f"Analyzer Mode",
+                        f"△ △ △ {alynex_mode} △ △ △",
+                        "#FFFF00", "#87CEFA", "center"
+                    )
 
                 video_target_list = [
                     (os.path.join(
@@ -1319,10 +1385,16 @@ class Missions(object):
                     ), [f"fps={deploy.frate}"]) for video_temp, *_ in task_list
                 ]
 
-                for (_, video_filter), (video_temp, *_) in zip(video_target_list, task_list):
-                    logger.info(f"开始转换视频: {os.path.basename(video_temp)}")
+                for (tar, flt), (video_temp, *_) in zip(video_target_list, task_list):
+                    logger.debug(f"视频过滤: {flt} {(name := os.path.basename(video_temp))}")
+                    if level == "INFO":
+                        Show.show_panel(
+                            "Video Filter",
+                            f"{name} -> {flt}",
+                            "#B0C4DE", "#E0E0E0", "left"
+                        )
 
-                await asyncio.gather(
+                change_result = await asyncio.gather(
                     *(clipix.pixels(
                         Switch.ask_video_change, video_filter, video_temp,
                         target, start=vision_start, close=vision_close, limit=vision_limit
@@ -1330,11 +1402,28 @@ class Missions(object):
                         in zip(video_target_list, task_list, final_point_list))
                 )
 
-                for (target, video_filter), (video_temp, *_) in zip(video_target_list, task_list):
-                    logger.info(f"视频转换完成: {os.path.basename(target)} {''.join(video_filter)}")
+                for change, (video_temp, *_) in zip(change_result, task_list):
+                    message_list = []
+                    for message in change.splitlines():
+                        if matcher := re.search(r"frame.*fps.*speed.*", message):
+                            discover: typing.Any = lambda x: re.findall(r"(\w+)=\s*([\w.\-:/x]+)", x)
+                            message_list.append(
+                                format_msg := " ".join([f"{k}={v}" for k, v in discover(matcher.group())])
+                            )
+                            logger.debug(format_msg)
+                    if level == "INFO":
+                        Show.show_panel(
+                            f"Video Metrics {os.path.basename(video_temp)}",
+                            "\n".join(message_list),
+                            "#9E9E9E", "#2196F3", "left"
+                        )
                     remove_list.append(
                         main_loop.run_in_executor(None, os.remove, video_temp)
                     )
+                await asyncio.gather(*remove_list, return_exceptions=True)
+
+                if alynex.kc:
+                    deploy.view_deploy()
 
                 if len(task_list) == 1:
                     task = [

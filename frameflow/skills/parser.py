@@ -1,6 +1,7 @@
 import re
 import datetime
 import argparse
+from frameflow import argument
 from nexaflow import const
 
 
@@ -145,57 +146,21 @@ class Parser(object):
 
     @staticmethod
     def parse_cmd() -> argparse.Namespace:
-        parser = argparse.ArgumentParser(const.NAME, None, f"Command Line Arguments {const.DESC}")
+        parser = argparse.ArgumentParser(
+            const.NAME, usage=None, description=f"Command Line Arguments {const.DESC}"
+        )
 
-        group_major_cmd = parser.add_argument_group(title="主要命令", description="参数互斥")
-        group_major = group_major_cmd.add_mutually_exclusive_group()
-        group_major.add_argument("--video", action="append", help="分析视频文件")
-        group_major.add_argument("--stack", action="append", help="分析视频集合")
-        group_major.add_argument("--train", action="append", help="训练模型")
-        group_major.add_argument("--build", action="append", help="编译模型")
-        group_major.add_argument("--flick", action="store_true", help="循环运行模式")
-        group_major.add_argument("--carry", action="append", help="运行指定脚本")
-        group_major.add_argument("--fully", action="append", help="运行全部脚本")
-        group_major.add_argument("--paint", action="store_true", help="绘制分割线条")
-        group_major.add_argument("--union", action="append", help="聚合视频帧报告")
-        group_major.add_argument("--merge", action="append", help="聚合时间戳报告")
+        for keys, values in argument.ARGUMENT.items():
+            description = "参数兼容"
+            if keys in ["主要命令", "附加命令", "视频控制"]:
+                description = "参数互斥"
+                mutually_exclusive = parser.add_argument_group(title=keys, description=description)
+                cmds = mutually_exclusive.add_mutually_exclusive_group()
+            else:
+                cmds = parser.add_argument_group(title=keys, description=description)
 
-        group_means_cmd = parser.add_argument_group(title="附加命令", description="参数互斥")
-        group_means = group_means_cmd.add_mutually_exclusive_group()
-        group_means.add_argument("--speed", action="store_true", help="快速模式")
-        group_means.add_argument("--basic", action="store_true", help="基础模式")
-        group_means.add_argument("--keras", action="store_true", help="智能模式")
-
-        group_space_cmd = parser.add_argument_group(title="视频控制", description="参数互斥")
-        group_space = group_space_cmd.add_mutually_exclusive_group()
-        group_space.add_argument("--alone", action="store_true", help="独立控制")
-        group_space.add_argument("--whist", action="store_true", help="静默录制")
-
-        group_media = parser.add_argument_group(title="视频配置", description="参数兼容")
-        group_media.add_argument("--alike", action="store_true", help="平衡时间")
-
-        group_array = parser.add_argument_group(title="报告配置", description="参数兼容")
-        group_array.add_argument("--group", action="store_true", help="分组报告")
-
-        group_extra = parser.add_argument_group(title="分析配置", description="参数兼容")
-        group_extra.add_argument("--boost", action="store_true", help="跳帧模式")
-        group_extra.add_argument("--color", action="store_true", help="彩色模式")
-        group_extra.add_argument("--shape", nargs="?", const=None, type=str, help="图片尺寸")
-        group_extra.add_argument("--scale", nargs="?", const=None, type=str, help="缩放比例")
-        group_extra.add_argument("--start", nargs="?", const=None, type=str, help="开始时间")
-        group_extra.add_argument("--close", nargs="?", const=None, type=str, help="结束时间")
-        group_extra.add_argument("--limit", nargs="?", const=None, type=str, help="持续时间")
-        group_extra.add_argument("--begin", nargs="?", const=None, type=str, help="开始阶段")
-        group_extra.add_argument("--final", nargs="?", const=None, type=str, help="结束阶段")
-        group_extra.add_argument("--frate", nargs="?", const=None, type=str, help="帧采样率")
-        group_extra.add_argument("--thres", nargs="?", const=None, type=str, help="相似度")
-        group_extra.add_argument("--shift", nargs="?", const=None, type=str, help="补偿值")
-        group_extra.add_argument("--block", nargs="?", const=None, type=str, help="立方体")
-        group_extra.add_argument("--crops", action="append", help="获取区域")
-        group_extra.add_argument("--omits", action="append", help="忽略区域")
-
-        group_debug = parser.add_argument_group(title="调试配置", description="参数兼容")
-        group_debug.add_argument("--debug", action="store_true", help="调试模式")
+            for key, value in values.items():
+                cmds.add_argument(key, **value["args"], help=value["help"])
 
         return parser.parse_args()
 
