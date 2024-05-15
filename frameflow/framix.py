@@ -896,7 +896,7 @@ class Missions(object):
 
         video = VideoObject(video_temp_file)
         logger.info(f"视频帧长度: {video.frame_count} 分辨率: {video.frame_size}")
-        logger.info(f"加载到内存: {video.name}")
+        logger.info(f"加载视频帧: {video.name}")
         video_load_time = time.time()
         video.load_frames(
             scale=None, shape=None, color=True
@@ -906,8 +906,8 @@ class Missions(object):
 
         cutter = VideoCutter()
 
-        logger.info(f"压缩视频: {video.name}")
-        logger.info(f"视频帧数: {video.frame_count} 帧片段数: {video.frame_count - 1} 帧分辨率: {video.frame_size}")
+        logger.info(f"视频帧长度: {video.frame_count} 分辨率: {video.frame_size} 片段数: {video.frame_count - 1}")
+        logger.info(f"压缩视频帧: {video.name}")
         cut_start_time = time.time()
         cut_range = cutter.cut(video=video, block=deploy.block)
         logger.info(f"压缩完成: {video.name}")
@@ -1961,7 +1961,7 @@ class Alynex(object):
             begin_stage_index, begin_frame_index = begin
             final_stage_index, final_frame_index = final
             logger.info(
-                f"Extract frames begin={list(begin)} final={list(final)}"
+                f"取关键帧: begin={list(begin)} final={list(final)}"
             )
 
             try:
@@ -2035,8 +2035,7 @@ class Alynex(object):
             size_hook = FrameSizeHook(1.0, None, True)
             cutter.add_hook(size_hook)
             logger.info(
-                f"视频帧处理: {size_hook.__class__.__name__} "
-                f"{[size_hook.not_grey, size_hook.target_size, size_hook.compress_rate]}"
+                f"视频帧处理: {size_hook.__class__.__name__} {[1.0, None, True]}"
             )
 
             if len(crop_list := crops) > 0 and sum([j for i in crop_list for j in i.values()]) > 0:
@@ -2045,8 +2044,7 @@ class Alynex(object):
                     crop_hook = PaintCropHook((y_size, x_size), (y, x))
                     cutter.add_hook(crop_hook)
                     logger.info(
-                        f"视频帧处理: {crop_hook.__class__.__name__} "
-                        f"{x, y, x_size, y_size}"
+                        f"视频帧处理: {crop_hook.__class__.__name__} {x, y, x_size, y_size}"
                     )
 
             if len(omit_list := omits) > 0 and sum([j for i in omit_list for j in i.values()]) > 0:
@@ -2055,19 +2053,17 @@ class Alynex(object):
                     omit_hook = PaintOmitHook((y_size, x_size), (y, x))
                     cutter.add_hook(omit_hook)
                     logger.info(
-                        f"视频帧处理: {omit_hook.__class__.__name__} "
-                        f"{x, y, x_size, y_size}"
+                        f"视频帧处理: {omit_hook.__class__.__name__} {x, y, x_size, y_size}"
                     )
 
             save_hook = FrameSaveHook(extra_path)
             cutter.add_hook(save_hook)
             logger.info(
-                f"视频帧处理: {save_hook.__class__.__name__} "
-                f"{[os.path.basename(extra_path)]}"
+                f"视频帧处理: {save_hook.__class__.__name__} {[os.path.basename(extra_path)]}"
             )
 
+            logger.info(f"视频帧长度: {video.frame_count} 分辨率: {video.frame_size} 片段数: {video.frame_count - 1}")
             logger.info(f"压缩视频帧: {video.name}")
-            logger.info(f"视频帧总数: {video.frame_count} 片段数: {video.frame_count - 1} 分辨率: {video.frame_size}")
             cut_start_time = time.time()
             cut_range = cutter.cut(video=video, block=block)
             logger.info(f"压缩完成: {video.name}")
@@ -2150,13 +2146,12 @@ class Alynex(object):
         # Start
         if (target_record := await frame_check()) is None:
             return logger.warning(f"{const.WRN}视频文件损坏: {os.path.basename(vision)}[/]")
-        logger.info(f"加载视频帧: {os.path.basename(target_record)}")
 
         shape, scale = await frame_flip()
         video_load_time = time.time()
         video = VideoObject(target_record)
         logger.info(f"视频帧长度: {video.frame_count} 分辨率: {video.frame_size}")
-        logger.info(f"加载到内存: color=[{color}] shape=[{shape}] scale=[{scale}]")
+        logger.info(f"加载视频帧: {video.name}")
         video.load_frames(
             scale=scale, shape=shape, color=color
         )
