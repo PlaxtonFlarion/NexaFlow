@@ -1927,7 +1927,7 @@ class Alynex(object):
         pass
 
     @staticmethod
-    async def ask_frame_check(vision: str):
+    async def ask_frame_grid(vision: str):
         target_screen = None
         if os.path.isfile(vision):
             screen = cv2.VideoCapture(vision)
@@ -1946,10 +1946,7 @@ class Alynex(object):
         return target_screen
 
     @staticmethod
-    async def ask_frame_load(
-            target_vision: str, scale: float = None, shape: tuple = None, color: bool = None
-    ) -> "VideoObject":
-
+    async def ask_frame_load(target_vision: str, scale: float = None, shape: tuple = None, color: bool = None):
         video_load_time = time.time()
         video = VideoObject(target_vision)
         logger.info(f"视频帧长度: {video.frame_count} 分辨率: {video.frame_size}")
@@ -1974,8 +1971,8 @@ class Alynex(object):
 
         return shape, scale
 
-    async def ask_classify(self, vision: str, *args):
-        if (target_vision := await self.ask_frame_check(vision)) is None:
+    async def ask_classify(self, vision: str, *args) -> None:
+        if (target_vision := await self.ask_frame_grid(vision)) is None:
             return logger.warning(f"{const.WRN}视频文件损坏: {os.path.basename(vision)}[/]")
 
         query_path, original, *_ = args
@@ -2189,7 +2186,7 @@ class Alynex(object):
             begin_frame_id, final_frame_id, time_cost = flick_result
             return begin_frame_id, final_frame_id, time_cost, scores, struct
 
-        if (target_vision := await self.ask_frame_check(vision)) is None:
+        if (target_vision := await self.ask_frame_grid(vision)) is None:
             return logger.warning(f"{const.WRN}视频文件损坏: {os.path.basename(vision)}[/]")
 
         frame_path, extra_path, original, *_ = args
