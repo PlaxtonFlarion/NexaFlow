@@ -168,9 +168,9 @@ class Show(object):
             show_header=True,
             show_lines=True
         )
-        table.add_column("选项", justify="center", width=12)
-        table.add_column("参数", justify="center", width=12)
-        table.add_column("说明", justify="center", width=44)
+        table.add_column("选项", justify="left", width=12)
+        table.add_column("参数", justify="left", width=12)
+        table.add_column("说明", justify="left", width=44)
 
         information = [
             ["[bold #FFAFAF]header", "[bold #AFD7FF]标题名", "[bold #DADADA]生成新标题文件夹"],
@@ -304,5 +304,4 @@ class Show(object):
 
 
 if __name__ == '__main__':
-    Show.help_document()
     pass

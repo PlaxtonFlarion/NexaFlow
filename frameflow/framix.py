@@ -427,6 +427,7 @@ class Missions(object):
         if alynex.kc:
             deploy.view_deploy()
 
+        # Ask_Analyzer
         if len(task_list) == 1:
             task = [
                 alynex.ask_analyzer(target, frame_path, extra_path, original, **deploy.deploys)
@@ -780,6 +781,7 @@ class Missions(object):
                 if alynex.kc:
                     deploy.view_deploy()
 
+                # Ask_Analyzer
                 if len(task_list) == 1:
                     task = [
                         alynex.ask_analyzer(target, frame_path, extra_path, original, **deploy.deploys)
@@ -1425,6 +1427,7 @@ class Missions(object):
                 if alynex.kc:
                     deploy.view_deploy()
 
+                # Ask_Analyzer
                 if len(task_list) == 1:
                     task = [
                         alynex.ask_analyzer(target, frame_path, extra_path, original, **deploy.deploys)
@@ -1641,7 +1644,6 @@ class Missions(object):
             except AssertionError as e_:
                 logger.error(f"{const.ERR}{e_}[/]")
                 alynex.kc = None
-        # Initial Alynex
 
         record = Record(
             self.scc, platform, alone=self.alone, whist=self.whist, frate=deploy.frate
@@ -2034,7 +2036,7 @@ class Alynex(object):
             cutter.add_hook(size_hook)
             logger.info(
                 f"视频帧处理: {size_hook.__class__.__name__} "
-                f"{[size_hook.compress_rate, size_hook.target_size, size_hook.not_grey]}"
+                f"{[size_hook.not_grey, size_hook.target_size, size_hook.compress_rate]}"
             )
 
             if len(crop_list := crops) > 0 and sum([j for i in crop_list for j in i.values()]) > 0:
@@ -2064,8 +2066,8 @@ class Alynex(object):
                 f"{[os.path.basename(extra_path)]}"
             )
 
-            logger.info(f"压缩视频: {video.name}")
-            logger.info(f"视频帧数: {video.frame_count} 片段数: {video.frame_count - 1} 分辨率: {video.frame_size}")
+            logger.info(f"压缩视频帧: {video.name}")
+            logger.info(f"视频帧总数: {video.frame_count} 片段数: {video.frame_count - 1} 分辨率: {video.frame_size}")
             cut_start_time = time.time()
             cut_range = cutter.cut(video=video, block=block)
             logger.info(f"压缩完成: {video.name}")
@@ -2148,13 +2150,13 @@ class Alynex(object):
         # Start
         if (target_record := await frame_check()) is None:
             return logger.warning(f"{const.WRN}视频文件损坏: {os.path.basename(vision)}[/]")
-        logger.info(f"开始加载视频: {os.path.basename(target_record)}")
+        logger.info(f"加载视频帧: {os.path.basename(target_record)}")
 
         shape, scale = await frame_flip()
         video_load_time = time.time()
         video = VideoObject(target_record)
         logger.info(f"视频帧长度: {video.frame_count} 分辨率: {video.frame_size}")
-        logger.info(f"加载到内存: {video.name}")
+        logger.info(f"加载到内存: color=[{color}] shape=[{shape}] scale=[{scale}]")
         video.load_frames(
             scale=scale, shape=shape, color=color
         )
