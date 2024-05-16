@@ -23,21 +23,15 @@ class Show(object):
     console = Console()
 
     @staticmethod
-    def show_panel(title: typing.Any, write: typing.Any, tc: typing.Any, bc: typing.Any, jf: typing.Any) -> None:
+    def show_panel(text: typing.Any, wind: dict) -> None:
         """
         展示控制板
-        @param title: 标题
-        @param write: 文本
-        @param tc: 文本颜色
-        @param bc: 边框颜色
-        @param jf: 对齐方式
+        @param text: 文本
+        @param wind: 配置
         @return:
         """
         panel = Panel(
-            Text(write, style=f"bold {tc}", justify=jf),
-            title=f"{title}",
-            border_style=f"bold {bc}",
-            width=int(Show.console.width * 0.7)
+            Text(text, **wind["文本"]), **wind["边框"], width=int(Show.console.width * 0.7)
         )
         Show.console.print(panel)
 
@@ -136,7 +130,7 @@ class Show(object):
 
     @staticmethod
     def help_document():
-        for keys, values in argument.ARGUMENT.items():
+        for keys, values in argument.Args.ARGUMENT.items():
             table = Table(
                 title=f"[bold #FF851B]{const.ITEM} {const.DESC} Command Line {keys}",
                 header_style="bold #FF851B",
@@ -177,8 +171,7 @@ class Show(object):
             ["[bold #FFAFAF]device", "", "[bold #DADADA]选择已连接的设备"],
             ["[bold #FFAFAF]deploy", "", "[bold #DADADA]部署视频分析配置"],
             ["[bold #FFAFAF]create", "", "[bold #DADADA]生成汇总报告"],
-            ["[bold #FFAFAF]invent", "", "[bold #DADADA]生成汇总报告"],
-            ["[bold #FFAFAF]cancel", "", "[bold #DADADA]退出"],
+            ["[bold #FFAFAF]cancel", "", "[bold #DADADA]退出"]
         ]
         for info in information:
             table.add_row(*info)
@@ -273,13 +266,6 @@ class Show(object):
         table_info.add_column("平均帧率", justify="left", width=22)
         table_info.add_column("转换帧率", justify="left", width=22)
 
-        table_info.add_row(
-            f"[bold #87CEEB]{org}",
-            f"[bold #87CEEB]{rlt}",
-            f"[bold #87CEEB]{avg}",
-            f"[bold #87CEEB]{frate}"
-        )
-
         table_clip = Table(
             title=f"[bold #D8BFD8]Video Clip {os.path.basename(video_temp)}",
             header_style="bold #7FFFD4",
@@ -292,15 +278,44 @@ class Show(object):
         table_clip.add_column("结束时间", justify="left", width=22)
         table_clip.add_column("持续时间", justify="left", width=22)
 
-        table_clip.add_row(
+        info_list = [
+            f"[bold #87CEEB]{org}", f"[bold #87CEEB]{rlt}",
+            f"[bold #87CEEB]{avg}", f"[bold #87CEEB]{frate}"
+        ]
+        table_info.add_row(*info_list)
+
+        clip_list = [
             f"[bold #87CEEB]{dur}",
-            f"[bold][bold #FFA500]start[/]=[[bold #EE82EE]{vd_start}[/]][/]",
-            f"[bold][bold #FFA500]close[/]=[[bold #EE82EE]{vd_close}[/]][/]",
-            f"[bold][bold #FFA500]limit[/]=[[bold #EE82EE]{vd_limit}[/]][/]"
-        )
+            f"[bold][[bold #EE82EE]{vd_start}[/]][/]",
+            f"[bold][[bold #EE82EE]{vd_close}[/]][/]",
+            f"[bold][[bold #EE82EE]{vd_limit}[/]][/]"
+        ]
+        table_clip.add_row(*clip_list)
 
         Show.console.print(table_info)
         Show.console.print(table_clip)
+
+    @staticmethod
+    def assort_frame(begin_fr, final_fr, stage_cs):
+        table = Table(
+            title=f"[bold #F5DEB3]{const.DESC} Assort Frame",
+            header_style="bold #D3D3D3",
+            title_justify="center",
+            show_header=True,
+            show_lines=True
+        )
+        table.add_column("开始帧", justify="left", width=22)
+        table.add_column("结束帧", justify="left", width=22)
+        table.add_column("总耗时", justify="left", width=22)
+
+        assort_list = [
+            f"[bold][[bold #C1FFC1]{begin_fr}[/]][/]",
+            f"[bold][[bold #FF4040]{final_fr}[/]][/]",
+            f"[bold][[bold #F4A460]{stage_cs}[/]][/]"
+        ]
+        table.add_row(*assort_list)
+
+        Show.console.print(table)
 
 
 if __name__ == '__main__':

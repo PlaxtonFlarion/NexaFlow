@@ -150,7 +150,7 @@ class Parser(object):
             const.NAME, usage=None, description=f"Command Line Arguments {const.DESC}"
         )
 
-        for keys, values in argument.ARGUMENT.items():
+        for keys, values in argument.Args.ARGUMENT.items():
             description = "参数兼容"
             if keys in ["主要命令", "附加命令", "视频控制"]:
                 description = "参数互斥"
