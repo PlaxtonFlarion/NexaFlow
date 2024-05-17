@@ -342,9 +342,9 @@ class Missions(object):
 
         alynex = kwargs["alynex"]
 
-        logger.debug(f"△ △ △ {'思维导航' if alynex.kc else '基石阵地'} △ △ △")
+        logger.debug(f"△ △ △ {'思维导航' if alynex.kc.model else '基石阵地'} △ △ △")
         if self.level == "INFO":
-            Show.show_panel("", Wind.KERAS if alynex.kc else Wind.BASIC)
+            Show.show_panel("", Wind.KERAS if alynex.kc.model else Wind.BASIC)
 
         video_target_list = [
             (os.path.join(
@@ -755,7 +755,8 @@ class Missions(object):
         # Ask Analyzer
         if len(task_list) == 1:
             task = [
-                alynex.kc.build(*compile_data) for compile_data in task_list
+                main_loop.run_in_executor(None, alynex.kc.build, *compile_data)
+                for compile_data in task_list
             ]
             await asyncio.gather(*task)
 
@@ -765,7 +766,8 @@ class Missions(object):
             func = partial(alynex.kc.build)
             with ProcessPoolExecutor(self.power, None, Active.active, ("ERROR",)) as exe:
                 task = [
-                    main_loop.run_in_executor(exe, func, *compile_data) for compile_data in task_list
+                    main_loop.run_in_executor(exe, func, *compile_data)
+                    for compile_data in task_list
                 ]
                 await asyncio.gather(*task)
             self.level = this_level
@@ -1716,7 +1718,7 @@ class Alynex(object):
         if self.level == "INFO":
             Show.show_panel(f"{task_name}\n{task_info}", Wind.LOADER)
 
-        struct = await frame_flow() if self.kc else None
+        struct = await frame_flow() if self.kc and self.kc.model else None
         frames = await frame_hold()
 
         if struct:
