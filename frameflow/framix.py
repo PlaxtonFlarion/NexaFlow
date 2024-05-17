@@ -165,22 +165,30 @@ class Missions(object):
 
     # """Child Process"""
     def amazing(self, vision: str, *args, **kwargs):
+        # Initial Loop
+        loop = asyncio.get_event_loop()
         # Initial Alynex
         model = self.model if self.lines.keras else None
         alynex = Alynex(self.level, model, **kwargs)
-        if alynex.kc:
-            try:
-                channel = alynex.kc.model.input_shape[-1]
-                if kwargs["color"]:
-                    assert channel == 3
-                else:
-                    assert channel == 1
-            except AssertionError:
-                alynex.kc = None
-
-        loop = asyncio.get_event_loop()
+        try:
+            loop.run_until_complete(alynex.ask_model_load())
+            loop.run_until_complete(alynex.ask_model_walk())
+        except FramixAnalyzerError:
+            pass
         loop_complete = loop.run_until_complete(
             alynex.ask_analyzer(vision, *args)
+        )
+        return loop_complete
+
+    # """Child Process"""
+    def bizarre(self, vision: str, *args, **kwargs):
+        # Initial Loop
+        loop = asyncio.get_event_loop()
+        # Initial Alynex
+        alynex = Alynex(self.level, None, **kwargs)
+
+        loop_complete = loop.run_until_complete(
+            alynex.ask_exercise(vision, *args)
         )
         return loop_complete
 
@@ -188,20 +196,14 @@ class Missions(object):
         # Initial Alynex
         model = self.model if self.lines.keras else None
         alynex = Alynex(self.level, model, **deploy.deploys)
-        if alynex.kc:
-            try:
-                channel = alynex.kc.model.input_shape[-1]
-                if deploy.color:
-                    assert channel == 3, f"彩色模式需要匹配彩色模型 Model Color Channel={channel}"
-                else:
-                    assert channel == 1, f"灰度模式需要匹配灰度模型 Model Color Channel={channel}"
-            except AssertionError as e:
-                logger.error(f"{const.ERR}{e}[/]")
-                alynex.kc = None
-
+        try:
+            await alynex.ask_model_load()
+            await alynex.ask_model_walk()
+        except FramixAnalyzerError as e:
+            logger.error(f"{const.ERR}{e}[/]")
         return alynex
 
-    async def als_check(
+    async def als_track(
             self,
             deploy: "Deploy",
             clipix: "Clipix",
@@ -404,7 +406,6 @@ class Missions(object):
                 ]
                 futures = await asyncio.gather(*task)
             self.level = this_level
-            print(this_level)
 
         # Template
         if isinstance(atom_tmp := await Craft.achieve(self.atom_total_temp), Exception):
@@ -487,7 +488,7 @@ class Missions(object):
             return logger.warning(f"{const.WRN}没有有效任务[/]")
 
         # Receive Argument
-        cmd_lines, platform, deploy, main_loop, *_ = args
+        platform, deploy, main_loop = args
 
         clipix = Clipix(self.fmp, self.fpb)
         report = Report(self.total)
@@ -505,9 +506,7 @@ class Missions(object):
             )
 
         # Information
-        originals, indicates = await self.als_check(
-            deploy, clipix, task_list, main_loop
-        )
+        originals, indicates = await self.als_track(deploy, clipix, task_list, main_loop)
 
         # Pack Argument
         attack = deploy, clipix, report, task_list, originals, indicates
@@ -528,206 +527,248 @@ class Missions(object):
 
         async def load_entries():
             for video_data in video_data_list:
-                find_result = finder.accelerate(video_data)
-                if isinstance(find_result, Exception):
-                    logger.error(f"{const.ERR}{find_result}")
+                finder_result = finder.accelerate(video_data)
+                if isinstance(finder_result, Exception):
+                    logger.error(f"{const.ERR}{finder_result}")
                     continue
-                root_tree, collection_list = find_result
-                Show.console.print(root_tree)
+                tree, collection_list = finder_result
+                Show.console.print(tree)
                 yield collection_list[0]
 
-        cmd_lines, platform, deploy, main_loop, *_ = args
+        # Receive Argument
+        platform, deploy, main_loop = args
 
         finder = Find()
         clipix = Clipix(self.fmp, self.fpb)
 
+        # Profession
         async for entries in load_entries():
-            report = Report(self.total)
-            for entry in entries:
-                report.title = entry.title
-                task_list = []
-                for video in entry.sheet:
-                    shutil.copy(path := video["video"], report.video_path)
-                    new_video_path = os.path.join(report.video_path, os.path.basename(path))
-                    task_list.append(
-                        [new_video_path, None, report.total_path, report.title, report.query_path,
-                         report.query, report.frame_path, report.extra_path, report.proto_path]
-                    )
+            if entries:
+                report = Report(self.total)
+                for entry in entries:
+                    report.title = entry.title
+                    task_list = []
+                    for video in entry.sheet:
+                        video_path = video["video"]
+                        video_name = os.path.basename(video_path)
+                        report.query = f"{time.strftime('%Y%m%d%H%M%S')}_{video_name.split('.')[0]}"
+                        shutil.copy(video_path, report.video_path)
+                        new_video_path = os.path.join(report.video_path, video_name)
+                        task_list.append(
+                            [new_video_path, None, report.total_path, report.title, report.query_path,
+                             report.query, report.frame_path, report.extra_path, report.proto_path]
+                        )
 
-                # Information
-                originals, indicates = await self.als_check(
-                    deploy, clipix, task_list, main_loop
-                )
+                    # Information
+                    originals, indicates = await self.als_track(deploy, clipix, task_list, main_loop)
 
-                # Pack Argument
-                attack = deploy, clipix, report, task_list, originals, indicates
+                    # Pack Argument
+                    attack = deploy, clipix, report, task_list, originals, indicates
 
-                if self.lines.speed:
-                    # Speed Analyzer
-                    await self.als_speed(*attack)
-                else:
-                    # Initial Alynex
-                    alynex = await self.als_loads(deploy)
-                    # Keras Analyzer
-                    await self.als_keras(*attack, main_loop, alynex=alynex)
+                    if self.lines.speed:
+                        # Speed Analyzer
+                        await self.als_speed(*attack)
+                    else:
+                        # Initial Alynex
+                        alynex = await self.als_loads(deploy)
+                        # Keras Analyzer
+                        await self.als_keras(*attack, main_loop, alynex=alynex)
 
-            # Create Report
-            await self.combine(report)
+                # Create Report
+                await self.combine(report)
 
-    # """Child Process"""
-    def train_model(self, video_file: str, deploy: "Deploy"):
-        if not os.path.isfile(video_file):
-            return logger.error(f"{const.ERR}视频文件丢失 {video_file}[/]")
-        logger.info(f"视频文件 {video_file}")
+    async def train_model(self, video_file_list: list, *args):
+        if len(video_file_list := [
+            video_file for video_file in video_file_list if os.path.isfile(video_file)
+        ]) == 0:
+            return logger.warning(f"{const.WRN}没有有效任务[/]")
 
-        screen = cv2.VideoCapture(video_file)
-        if not screen.isOpened():
-            return logger.error(f"{const.ERR}视频文件损坏 {video_file}[/]")
-        screen.release()
-        logger.info(f"播放正常 {video_file}")
+        import uuid
 
+        # Receive Argument
+        platform, deploy, main_loop = args
+
+        clipix = Clipix(self.fmp, self.fpb)
         report = Report(self.total)
-        report.title = f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
-        if not os.path.exists(report.query_path):
-            os.makedirs(report.query_path, exist_ok=True)
 
-        loop = asyncio.get_event_loop()
-
-        video_streams = loop.run_until_complete(
-            Switch.ask_video_stream(self.fpb, video_file)
-        )
-
-        rlt_frame_rate = video_streams["rlt_frame_rate"]
-        avg_frame_rate = video_streams["avg_frame_rate"]
-        duration = video_streams["duration"]
-        original = video_streams["original"]
-
-        vision_start, vision_close, vision_limit = loop.run_until_complete(Switch.ask_magic_point(
-            Parser.parse_mills(deploy.start),
-            Parser.parse_mills(deploy.close),
-            Parser.parse_mills(deploy.limit),
-            duration
-        ))
-        vision_start: str = Parser.parse_times(vision_start)
-        vision_close: str = Parser.parse_times(vision_close)
-        vision_limit: str = Parser.parse_times(vision_limit)
-
-        logger.info(f"视频尺寸: {list(original)}")
-        logger.info(f"实际帧率: [{rlt_frame_rate}] 平均帧率: [{avg_frame_rate}] 转换帧率: [{deploy.frate}]")
-        logger.info(f"视频时长: [{duration}] [{Parser.parse_times(duration)}]")
-        logger.info(f"视频剪辑: start=[{vision_start}] close=[{vision_close}] limit=[{vision_limit}]")
-
-        video_temp_file = os.path.join(
-            report.query_path, f"tmp_fps{deploy.frate}.mp4"
-        )
-
-        loop.run_until_complete(
-            Switch.ask_video_change(
-                self.fmp, [f"fps={deploy.frate}"], video_file, video_temp_file,
-                start=vision_start, close=vision_close, limit=vision_limit
+        # Profession
+        task_list = []
+        for video_file in video_file_list:
+            report.title = f"Model_{uuid.uuid4()}"
+            new_video_path = os.path.join(report.video_path, os.path.basename(video_file))
+            shutil.copy(video_file, new_video_path)
+            task_list.append(
+                [new_video_path, None, report.total_path, report.title, report.query_path,
+                 report.query, report.frame_path, report.extra_path, report.proto_path]
             )
+
+        # Information
+        originals, indicates = await self.als_track(deploy, clipix, task_list, main_loop)
+
+        video_target_list = [
+            (os.path.join(
+                report.query_path, f"tmp_fps{deploy.frate}_{random.randint(10000, 99999)}.mp4"
+            ), [f"fps={deploy.frate}"]) for video_temp, *_ in task_list
+        ]
+
+        for (tar, flt), (video_temp, *_) in zip(video_target_list, task_list):
+            logger.debug(f"视频过滤: {flt} {(name := os.path.basename(video_temp))}")
+            if self.level == "INFO":
+                Show.show_panel(f"{name} -> {flt}", Wind.FILTER)
+
+        change_result = await asyncio.gather(
+            *(clipix.pixels(
+                Switch.ask_video_change, video_filter, video_temp,
+                target, start=vision_start, close=vision_close, limit=vision_limit
+            ) for (target, video_filter), (video_temp, *_), (vision_start, vision_close, vision_limit)
+                in zip(video_target_list, task_list, indicates))
         )
 
-        video = VideoObject(video_temp_file)
-        logger.info(f"视频帧长度: {video.frame_count} 分辨率: {video.frame_size}")
-        logger.info(f"加载视频帧: {video.name}")
-        video_load_time = time.time()
-        video.load_frames(
-            scale=None, shape=None, color=True
-        )
-        logger.info(f"视频帧已加载: {video.frame_details(video.frames_data)}")
-        logger.info(f"视频加载耗时: {time.time() - video_load_time:.2f} 秒")
-
-        cutter = VideoCutter()
-
-        logger.info(f"视频帧长度: {video.frame_count} 分辨率: {video.frame_size} 片段数: {video.frame_count - 1}")
-        logger.info(f"压缩视频帧: {video.name}")
-        cut_start_time = time.time()
-        cut_range = cutter.cut(video=video, block=deploy.block)
-        logger.info(f"压缩完成: {video.name}")
-        logger.info(f"压缩耗时: {time.time() - cut_start_time:.2f} 秒")
-
-        stable, unstable = cut_range.get_range(
-            threshold=deploy.thres, offset=deploy.shift
-        )
-
-        if deploy.shape:
-            w, h, ratio = loop.run_until_complete(
-                Switch.ask_magic_frame(original, deploy.shape)
+        eliminate = []
+        for change, (video_temp, *_) in zip(change_result, task_list):
+            message_list = []
+            for message in change.splitlines():
+                if matcher := re.search(r"frame.*fps.*speed.*", message):
+                    discover: typing.Any = lambda x: re.findall(r"(\w+)=\s*([\w.\-:/x]+)", x)
+                    message_list.append(
+                        format_msg := " ".join([f"{k}={v}" for k, v in discover(matcher.group())])
+                    )
+                    logger.debug(format_msg)
+            if self.level == "INFO":
+                Show.show_panel("\n".join(message_list), Wind.METRIC)
+            eliminate.append(
+                main_loop.run_in_executor(None, os.remove, video_temp)
             )
-            target_shape = w, h
-            target_scale = deploy.scale
-            logger.info(f"调整宽高比: {w} x {h}")
-        elif deploy.scale:
-            target_shape = deploy.shape
-            target_scale = max(0.1, min(1.0, deploy.scale))
+        await asyncio.gather(*eliminate, return_exceptions=True)
+
+        alynex = await self.als_loads(deploy)
+
+        # Ask Analyzer
+        if len(task_list) == 1:
+            task = [
+                alynex.ask_exercise(target, query_path, original)
+                for (target, _), (_, _, _, _, query_path, *_), original
+                in zip(video_target_list, task_list, originals)
+            ]
+            futures = await asyncio.gather(*task)
+
         else:
-            target_shape = deploy.shape
-            target_scale = const.COMPRESS
+            this_level = self.level
+            self.level = "ERROR"
+            func = partial(self.bizarre, **deploy.deploys)
+            with ProcessPoolExecutor(self.power, None, Active.active, ("ERROR",)) as exe:
+                task = [
+                    main_loop.run_in_executor(exe, func, target, query_path, original)
+                    for (target, _), (_, _, _, _, query_path, *_), original
+                    in zip(video_target_list, task_list, originals)
+                ]
+                futures = await asyncio.gather(*task)
+            self.level = this_level
 
-        cut_range.pick_and_save(
-            range_list=stable,
-            frame_count=20,
-            to_dir=report.query_path,
-            meaningful_name=True,
-            not_grey=deploy.color,
-            compress_rate=target_scale,
-            target_size=target_shape
+        for future in futures:
+            logger.debug(f"选择并保存: f'{(path := os.path.relpath(future))}'")
+            if self.level == "INFO":
+                Show.show_panel(path, Wind.CUTTER)
+
+        await asyncio.gather(
+            *(main_loop.run_in_executor(None, os.remove, target) for (target, _) in video_target_list)
         )
 
-        os.remove(video_temp_file)
+    async def build_model(self, video_data_list: list, *args):
+        if len(video_data_list := [
+            video_data for video_data in video_data_list if os.path.isdir(video_data)
+        ]) == 0:
+            return logger.warning(f"{const.WRN}没有有效任务[/]")
 
-    # """Child Process"""
-    @staticmethod
-    def build_model(video_data: str, deploy: "Deploy"):
-        if not os.path.isdir(video_data):
-            return logger.error(f"{const.ERR}编译模型需要一个已经分类的文件夹[/]")
+        # Receive Argument
+        platform, deploy, main_loop = args
 
-        real_path, file_list = "", []
-        logger.debug(f"搜索文件夹: {video_data}")
-        for root, dirs, files in os.walk(video_data, topdown=False):
-            for name in files:
-                file_list.append(os.path.join(root, name))
-            for name in dirs:
-                if len(name) == 1 and re.search(r"0", name):
-                    real_path = os.path.join(root, name)
-                    logger.debug(f"分类文件夹: {real_path}")
+        task_list = []
+        for video_data in video_data_list:
+            real_path, file_list = "", []
+            logger.debug(f"搜索文件夹: {video_data}")
+            for root, dirs, files in os.walk(video_data, topdown=False):
+                for name in files:
+                    file_list.append(os.path.join(root, name))
+                for name in dirs:
+                    if len(name) == 1 and re.search(r"0", name):
+                        real_path = os.path.join(root, name)
+                        logger.debug(f"分类文件夹: {real_path}")
+                        break
+
+            if real_path == "" or len(file_list) == 0:
+                logger.warning(f"{const.WRN}分类不正确: {os.path.basename(video_data)}[/]")
+                continue
+
+            image, image_color, image_aisle = None, "grayscale", 1
+            for image_file in os.listdir(real_path):
+                if not os.path.isfile(image_path := os.path.join(real_path, image_file)):
+                    logger.warning(f"{const.WRN}存在不适用的文件: {os.path.basename(image_path)}[/]")
                     break
 
-        if not real_path or len(file_list) == 0:
-            return logger.error(f"{const.ERR}文件夹未正确分类[/]")
+                try:
+                    image = cv2.imread(image_path)
+                    if image.ndim == 3:
+                        if numpy.array_equal(
+                                image[:, :, 0], image[:, :, 1]
+                        ) and numpy.array_equal(
+                            image[:, :, 1], image[:, :, 2]
+                        ):
+                            logger.debug(f"Image: {list(image.shape)} is grayscale image, stored in RGB format")
+                        else:
+                            logger.debug(f"Image: {list(image.shape)} is color image")
+                            image_color, image_aisle = "rgb", image.ndim
+                    else:
+                        logger.debug(f"Image: {list(image.shape)} is grayscale image")
+                except Exception as e:
+                    logger.error(f"{const.ERR}{e}")
+                    image = None
+                    break
 
-        image, image_color, image_aisle = None, "grayscale", 1
-        for image_file in os.listdir(real_path):
-            image_path = os.path.join(real_path, image_file)
-            if not os.path.isfile(image_path):
-                return logger.error(f"{const.ERR}存在无效的图像文件[/]")
-            image = cv2.imread(image_path)
-            logger.info(f"图像分辨率: {image.shape}")
-            if image.ndim == 3:
-                if numpy.array_equal(image[:, :, 0], image[:, :, 1]) and numpy.array_equal(image[:, :, 1], image[:, :, 2]):
-                    logger.info(f"The image is grayscale image, stored in RGB format")
-                else:
-                    logger.info(f"The image is color image")
-                    image_color, image_aisle = "rgb", image.ndim
-            else:
-                logger.info(f"The image is grayscale image")
-            break
+            try:
+                effective = image.shape
+            except AttributeError as e:
+                logger.error(f"{const.ERR}{e}")
+                continue
 
-        src_model_path = os.path.dirname(real_path)
-        new_model_path = os.path.join(
-            src_model_path, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}", f"{random.randint(100, 999)}"
-        )
+            image_shape = deploy.shape if deploy.shape else effective
+            w, h = image_shape[:2]
+            w, h = max(w, 10), max(h, 10)
 
-        image_shape = deploy.shape if deploy.shape else image.shape
-        w, h, *_ = image_shape
+            src_model_path = os.path.dirname(real_path)
+            new_model_path = os.path.join(
+                src_model_path, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}", f"{random.randint(100, 999)}"
+            )
 
-        name = f"Gray" if image_aisle == 1 else f"Hued"
-        # new_model_name = f"Keras_{name}_W{w}_H{h}_{random.randint(10000, 99999)}.h5"
-        new_model_name = f"Keras_{name}_W{w}_H{h}_{random.randint(10000, 99999)}"
+            name = f"Gray" if image_aisle == 1 else f"Hued"
+            # new_model_name = f"Keras_{name}_W{w}_H{h}_{random.randint(10000, 99999)}.h5"
+            new_model_name = f"Keras_{name}_W{w}_H{h}_{random.randint(10000, 99999)}"
+            task_list.append(
+                (image_color, image_shape, image_aisle, src_model_path, new_model_path, new_model_name)
+            )
 
-        kc = KerasStruct()
-        kc.build(image_color, image_shape, image_aisle, src_model_path, new_model_path, new_model_name)
+        if len(task_list) == 0:
+            return logger.warning(f"{const.WRN}缺少有效文件[/]")
+
+        alynex = await self.als_loads(deploy)
+
+        # Ask Analyzer
+        if len(task_list) == 1:
+            task = [
+                alynex.kc.build(*compile_data) for compile_data in task_list
+            ]
+            await asyncio.gather(*task)
+
+        else:
+            this_level = self.level
+            self.level = "ERROR"
+            func = partial(alynex.kc.build)
+            with ProcessPoolExecutor(self.power, None, Active.active, ("ERROR",)) as exe:
+                task = [
+                    main_loop.run_in_executor(exe, func, *compile_data) for compile_data in task_list
+                ]
+                await asyncio.gather(*task)
+            self.level = this_level
 
     async def painting(self, *args):
 
@@ -941,9 +982,7 @@ class Missions(object):
                 return logger.warning(f"{const.WRN}没有有效任务[/]")
 
             # Information
-            originals, indicates = await self.als_check(
-                deploy, clipix, task_list, main_loop
-            )
+            originals, indicates = await self.als_track(deploy, clipix, task_list, main_loop)
 
             # Pack Argument
             attack = deploy, clipix, report, task_list, originals, indicates
@@ -1312,7 +1351,7 @@ class Clipix(object):
 
 class Alynex(object):
 
-    __kc: typing.Optional["KerasStruct"] = None
+    __kc: typing.Optional["KerasStruct"] = KerasStruct()
 
     def __init__(self, level: str, model: typing.Optional[str] = None, **kwargs):
         self.level = level
@@ -1320,6 +1359,7 @@ class Alynex(object):
 
         self.boost = kwargs.get("boost", const.BOOST)
         self.color = kwargs.get("color", const.COLOR)
+
         self.shape = kwargs.get("shape", const.SHAPE)
         self.scale = kwargs.get("scale", const.SCALE)
         _ = kwargs.get("start", const.START)
@@ -1327,21 +1367,13 @@ class Alynex(object):
         _ = kwargs.get("limit", const.LIMIT)
         self.begin = kwargs.get("begin", const.BEGIN)
         self.final = kwargs.get("final", const.FINAL)
-        self.crops = kwargs.get("crops", const.CROPS)
-        self.omits = kwargs.get("omits", const.OMITS)
+
         _ = kwargs.get("frate", const.FRATE)
         self.thres = kwargs.get("thres", const.THRES)
         self.shift = kwargs.get("shift", const.SHIFT)
         self.block = kwargs.get("block", const.BLOCK)
-
-        if self.model:
-            try:
-                self.kc = KerasStruct()
-                self.kc.load_model(self.model)
-            except Exception as e:
-                logger.error(f"{const.ERR}Keras sequence model load fail[/]")
-                logger.error(f"{e}")
-                self.kc = None
+        self.crops = kwargs.get("crops", const.CROPS)
+        self.omits = kwargs.get("omits", const.OMITS)
 
     @property
     def kc(self) -> typing.Optional["KerasStruct"]:
@@ -1351,11 +1383,26 @@ class Alynex(object):
     def kc(self, value):
         self.__kc = value
 
-    async def __aenter__(self):
-        return self
+    async def ask_model_load(self):
+        if self.model:
+            try:
+                assert self.kc
+                self.kc.load_model(self.model)
+            except (ValueError, AssertionError) as e:
+                self.kc = None
+                raise FramixAnalyzerError(e)
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        pass
+    async def ask_model_walk(self):
+        if self.kc and self.kc.model:
+            try:
+                channel = self.kc.model.input_shape[-1]
+                if self.color:
+                    assert channel == 3, f"彩色模式需要匹配彩色模型 Model Color Channel={channel}"
+                else:
+                    assert channel == 1, f"灰度模式需要匹配灰度模型 Model Color Channel={channel}"
+            except AssertionError as e:
+                self.kc = None
+                raise FramixAnalyzerError(e)
 
     @staticmethod
     async def ask_frame_grid(vision: str):
@@ -1390,7 +1437,7 @@ class Alynex(object):
 
         return shape, scale
 
-    async def ask_exercise(self, vision: str, *args) -> None:
+    async def ask_exercise(self, vision: str, *args) -> typing.Optional[str]:
         if (target_vision := await self.ask_frame_grid(vision)) is None:
             return logger.warning(f"{const.WRN}视频文件损坏: {os.path.basename(vision)}[/]")
 
@@ -1433,10 +1480,8 @@ class Alynex(object):
             threshold=self.thres, offset=self.shift
         )
 
-        cut_range.pick_and_save(
-            range_list=stable,
-            frame_count=20,
-            to_dir=query_path,
+        return cut_range.pick_and_save(
+            stable, 20, query_path,
             meaningful_name=True,
             compress_rate=None,
             target_size=None,
@@ -1679,26 +1724,10 @@ class Alynex(object):
         return Review(*(await analytics_basic()))
 
 
-async def distribute(function: "typing.Callable", parameters: list[str]) -> None:
-
-    proc = members if (members := len(parameters)) <= _power else _power
-    rank = "ERROR" if members > 1 else _level
-
-    parameters = [(await Craft.revise_path(param), _deploy) for param in parameters]
-
-    with Pool(proc, Active.active, (rank,)) as pool:
-        async_task = pool.starmap_async(function, parameters)
-        async_task.get()
-
-    sys.exit(Show.done())
-
-
-async def arithmetic(function: "typing.Callable", parameters: list[str]) -> None:
+async def arithmetic(function: "typing.Callable", parameters: list[str], *args) -> None:
     try:
-        await function(
-            [(await Craft.revise_path(param)) for param in parameters],
-            _lines, _platform, _deploy, _main_loop
-        )
+        parameters = [(await Craft.revise_path(param)) for param in parameters]
+        await function(parameters, *args)
     except (FramixAnalysisError, FramixAnalyzerError, FramixReporterError):
         Show.console.print_exception()
         sys.exit(Show.fail())
@@ -1801,32 +1830,33 @@ if __name__ == '__main__':
     )
 
     from functools import partial
-    from multiprocessing import Pool
     from concurrent.futures import ProcessPoolExecutor
 
     Show.load_animation()
+
+    _args = _platform, _deploy, _main_loop
 
     # Main Process
     try:
         # --video
         if _video_list := _lines.video:
             _main_loop.run_until_complete(
-                arithmetic(_missions.video_file_task, _video_list)
+                arithmetic(_missions.video_file_task, _video_list, *_args)
             )
         # --stack
         elif _stack_list := _lines.stack:
             _main_loop.run_until_complete(
-                arithmetic(_missions.video_data_task, _stack_list)
+                arithmetic(_missions.video_data_task, _stack_list, *_args)
             )
         # --train
         elif _train_list := _lines.train:
             _main_loop.run_until_complete(
-                distribute(_missions.train_model, _train_list)
+                arithmetic(_missions.train_model, _train_list, *_args)
             )
         # --build
         elif _build_list := _lines.build:
             _main_loop.run_until_complete(
-                distribute(_missions.build_model, _build_list)
+                arithmetic(_missions.build_model, _build_list, *_args)
             )
         else:
             from engine.manage import ScreenMonitor

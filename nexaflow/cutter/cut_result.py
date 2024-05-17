@@ -294,7 +294,7 @@ class VideoCutResult(object):
         for index, each_range in enumerate(range_list):
             picked = each_range.pick(frame_count, *args, **kwargs)
             picked_frames = each_range.get_frames(picked)
-            logger.info(f"pick {picked} in range {each_range}")
+            logger.debug(f"pick {picked} in range {each_range}")
             stage_list.append((str(index), picked_frames))
 
         if prune:
@@ -331,9 +331,9 @@ class VideoCutResult(object):
                 each_frame_path = os.path.join(each_stage_dir, image_name)
                 compressed = toolbox.compress_frame(each_frame_object.data, **kwargs)
                 cv2.imwrite(each_frame_path, compressed)
-                # logger.debug(
-                #     f"frame [{each_frame_object.frame_id}] saved to {each_frame_path}"
-                # )
+                logger.debug(
+                    f"frame [{each_frame_object.frame_id}] saved to {each_frame_path}"
+                )
 
         return to_dir
 

@@ -296,7 +296,7 @@ class Deploy(object):
                 f"[bold {cmd}]视界探索",
                 f"[bold {arg}]{['!' for _ in range(len(self.crops))]}",
                 f"[bold][[bold {val}]0 , 1[/] ]",
-                f"[bold]获取 [bold {tip}]{len(self.crops)}[/] 个区域的图像",
+                f"[bold]探索 [bold {tip}]{len(self.crops)}[/] 个区域的图像",
             ],
             [
                 f"[bold {cmd}]视界忽略",
