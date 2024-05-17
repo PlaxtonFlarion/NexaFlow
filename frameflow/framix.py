@@ -125,8 +125,9 @@ except (ImportError, ModuleNotFoundError):
 
 class Missions(object):
 
-    def __init__(self, level: str, *args, **kwargs):
+    def __init__(self, level: str, power, *args, **kwargs):
         self.level = level
+        self.power = power
         self.flick, self.carry, self.fully, self.speed, self.basic, self.keras, *_ = args
         *_, self.alone, self.whist, self.alike, self.group = args
         self.atom_total_temp = kwargs["atom_total_temp"]
@@ -146,30 +147,22 @@ class Missions(object):
 
     @staticmethod
     def enforce(reset_path: str, kc: typing.Optional["KerasStruct"], start: int, end: int, cost: float, *args):
-        with Insert(os.path.join(reset_path, f"{const.NAME}_data.db")) as database:
+        database_path = os.path.join(reset_path, f"{const.NAME}_data.db")
+        with Insert(database_path) as database:
+            basic_columns = ["total_path", "title", "query_path", "query", "stage", "frame_path"]
+            stage = json.dumps({"stage": {"start": start, "end": end, "cost": cost}})
+            value = list(args[:4]) + [stage, args[4]]
+
             if kc:
-                total_path, title, query_path, query, frame_path, extra_path, proto_path, *_ = args
-                column_list = [
-                    "total_path", "title", "query_path", "query", "stage", "frame_path", "extra_path", "proto_path"
-                ]
-                database.create("stocks", *column_list)
-                stage = {"stage": {"start": start, "end": end, "cost": cost}}
-                database.insert(
-                    "stocks", column_list,
-                    (total_path, title, query_path, query,
-                     json.dumps(stage), frame_path, extra_path, proto_path)
-                )
+                extra_columns = ["extra_path", "proto_path"]
+                extra_data = args[5:7]
+                column_list = basic_columns + extra_columns
+                value.extend(extra_data)
             else:
-                total_path, title, query_path, query, frame_path, *_ = args
-                column_list = [
-                    "total_path", "title", "query_path", "query", "stage", "frame_path"
-                ]
-                database.create('stocks', *column_list)
-                stage = {"stage": {"start": start, "end": end, "cost": cost}}
-                database.insert(
-                    "stocks", column_list,
-                    (total_path, title, query_path, query, json.dumps(stage), frame_path)
-                )
+                column_list = basic_columns
+
+            database.create("stocks", *column_list)
+            database.insert("stocks", column_list, tuple(value))
 
     # """Child Process"""
     def amazing(self, vision: str, *args, **kwargs):
@@ -192,11 +185,11 @@ class Missions(object):
         )
         return loop_complete
 
-    async def combine(self, reporter: "Report"):
-        if len(reporter.range_list) == 0:
+    async def combine(self, report: "Report"):
+        if len(report.range_list) == 0:
             return logger.warning(f"{const.WRN}没有可以生成的报告[/]")
         function = getattr(self, "combine_view" if self.speed else "combine_main")
-        return await function([os.path.dirname(reporter.total_path)])
+        return await function([os.path.dirname(report.total_path)])
 
     async def combine_view(self, merge: list):
         views, total = await asyncio.gather(
@@ -234,20 +227,20 @@ class Missions(object):
         if len(video_file_list) == 0:
             return logger.warning(f"{const.WRN}没有有效任务[/]")
 
-        cmd_lines, platform, deploy, power, main_loop, *_ = args
+        cmd_lines, platform, deploy, main_loop, *_ = args
         clipix = Clipix(self.fmp, self.fpb)
 
-        reporter = Report(self.total)
-        reporter.title = f"{const.DESC}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
+        report = Report(self.total)
+        report.title = f"{const.DESC}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
 
         task_list = []
         for video_file in video_file_list:
-            reporter.query = f"{os.path.basename(video_file).split('.')[0]}_{time.strftime('%Y%m%d%H%M%S')}"
-            new_video_path = os.path.join(reporter.video_path, os.path.basename(video_file))
+            report.query = f"{os.path.basename(video_file).split('.')[0]}_{time.strftime('%Y%m%d%H%M%S')}"
+            new_video_path = os.path.join(report.video_path, os.path.basename(video_file))
             shutil.copy(video_file, new_video_path)
             task_list.append(
-                [new_video_path, None, reporter.total_path, reporter.title, reporter.query_path,
-                 reporter.query, reporter.frame_path, reporter.extra_path, reporter.proto_path]
+                [new_video_path, None, report.total_path, report.title, report.query_path,
+                 report.query, report.frame_path, report.extra_path, report.proto_path]
             )
 
         # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Video information =============================================================
@@ -350,10 +343,10 @@ class Missions(object):
                     "style": "speed"
                 }
                 logger.debug(f"Speeder: {json.dumps(result, ensure_ascii=False)}")
-                await reporter.load(result)
+                await report.load(result)
 
                 self.enforce(
-                    reporter.reset_path, struct, start, end, cost,
+                    report.reset_path, struct, start, end, cost,
                     total_path, title, query_path, query, frame_path
                 )
 
@@ -428,7 +421,7 @@ class Missions(object):
 
             else:
                 func = partial(self.amazing, **deploy.deploys)
-                with ProcessPoolExecutor(power, None, Active.active, ("ERROR",)) as exe:
+                with ProcessPoolExecutor(self.power, None, Active.active, ("ERROR",)) as exe:
                     task = [
                         main_loop.run_in_executor(exe, func, target, frame_path, extra_path, original)
                         for (target, _), (*_, frame_path, extra_path, _), original
@@ -457,7 +450,7 @@ class Missions(object):
                             tmp := await Craft.achieve(self.atom_total_temp), Exception):
                         return logger.error(f"{const.ERR}{tmp}[/]")
                     logger.info(f"模版引擎正在渲染 ...")
-                    original_inform = await reporter.ask_draw(
+                    original_inform = await report.ask_draw(
                         scores, struct, proto_path, tmp, deploy.boost
                     )
                     logger.info(f"模版引擎渲染完毕 {os.path.relpath(original_inform)}")
@@ -468,22 +461,22 @@ class Missions(object):
                     result["style"] = "basic"
 
                 logger.debug(f"Restore: {json.dumps(result, ensure_ascii=False)}")
-                await reporter.load(result)
+                await report.load(result)
 
                 self.enforce(
-                    reporter.reset_path, struct, start, end, cost,
+                    report.reset_path, struct, start, end, cost,
                     total_path, title, query_path, query, frame_path, extra_path, proto_path
                 )
 
             await asyncio.gather(*remove_list, return_exceptions=True)
 
-        await self.combine(reporter)
+        await self.combine(report)
 
     async def video_data_task(self, video_data_list: list, *args):
 
         async def load_entries():
             for video_data in video_data_list:
-                find_result = find.accelerate(video_data)
+                find_result = finder.accelerate(video_data)
                 if isinstance(find_result, Exception):
                     logger.error(f"{const.ERR}{find_result}")
                     continue
@@ -491,22 +484,22 @@ class Missions(object):
                 Show.console.print(root_tree)
                 yield collection_list[0]
 
-        find = Find()
+        finder = Find()
 
-        cmd_lines, platform, deploy, power, main_loop, *_ = args
+        cmd_lines, platform, deploy, main_loop, *_ = args
         clipix = Clipix(self.fmp, self.fpb)
 
         async for entries in load_entries():
-            reporter = Report(self.total)
+            report = Report(self.total)
             for entry in entries:
-                reporter.title = entry.title
+                report.title = entry.title
                 task_list = []
                 for video in entry.sheet:
-                    shutil.copy(path := video["video"], reporter.video_path)
-                    new_video_path = os.path.join(reporter.video_path, os.path.basename(path))
+                    shutil.copy(path := video["video"], report.video_path)
+                    new_video_path = os.path.join(report.video_path, os.path.basename(path))
                     task_list.append(
-                        [new_video_path, None, reporter.total_path, reporter.title, reporter.query_path,
-                         reporter.query, reporter.frame_path, reporter.extra_path, reporter.proto_path]
+                        [new_video_path, None, report.total_path, report.title, report.query_path,
+                         report.query, report.frame_path, report.extra_path, report.proto_path]
                     )
 
                 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Video information =====================================================
@@ -610,10 +603,10 @@ class Missions(object):
                             "style": "speed"
                         }
                         logger.debug(f"Speeder: {json.dumps(result, ensure_ascii=False)}")
-                        await reporter.load(result)
+                        await report.load(result)
 
                         self.enforce(
-                            reporter.reset_path, struct, start, end, cost,
+                            report.reset_path, struct, start, end, cost,
                             total_path, title, query_path, query, frame_path
                         )
 
@@ -688,7 +681,7 @@ class Missions(object):
 
                     else:
                         func = partial(self.amazing, **deploy.deploys)
-                        with ProcessPoolExecutor(power, None, Active.active, ("ERROR",)) as exe:
+                        with ProcessPoolExecutor(self.power, None, Active.active, ("ERROR",)) as exe:
                             task = [
                                 main_loop.run_in_executor(exe, func, target, frame_path, extra_path, original)
                                 for (target, _), (*_, frame_path, extra_path, _), original
@@ -717,7 +710,7 @@ class Missions(object):
                                     tmp := await Craft.achieve(self.atom_total_temp), Exception):
                                 return logger.error(f"{const.ERR}{tmp}[/]")
                             logger.info(f"模版引擎正在渲染 ...")
-                            original_inform = await reporter.ask_draw(
+                            original_inform = await report.ask_draw(
                                 scores, struct, proto_path, tmp, deploy.boost
                             )
                             logger.info(f"模版引擎渲染完毕 {os.path.relpath(original_inform)}")
@@ -728,16 +721,16 @@ class Missions(object):
                             result["style"] = "basic"
 
                         logger.debug(f"Restore: {json.dumps(result, ensure_ascii=False)}")
-                        await reporter.load(result)
+                        await report.load(result)
 
                         self.enforce(
-                            reporter.reset_path, struct, start, end, cost,
+                            report.reset_path, struct, start, end, cost,
                             total_path, title, query_path, query, frame_path, extra_path, proto_path
                         )
 
                     await asyncio.gather(*remove_list, return_exceptions=True)
 
-            await self.combine(reporter)
+            await self.combine(report)
 
     # """Child Process"""
     def train_model(self, video_file: str, deploy: "Deploy"):
@@ -751,10 +744,10 @@ class Missions(object):
         screen.release()
         logger.info(f"播放正常 {video_file}")
 
-        reporter = Report(self.total)
-        reporter.title = f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
-        if not os.path.exists(reporter.query_path):
-            os.makedirs(reporter.query_path, exist_ok=True)
+        report = Report(self.total)
+        report.title = f"Model_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
+        if not os.path.exists(report.query_path):
+            os.makedirs(report.query_path, exist_ok=True)
 
         loop = asyncio.get_event_loop()
 
@@ -783,7 +776,7 @@ class Missions(object):
         logger.info(f"视频剪辑: start=[{vision_start}] close=[{vision_close}] limit=[{vision_limit}]")
 
         video_temp_file = os.path.join(
-            reporter.query_path, f"tmp_fps{deploy.frate}.mp4"
+            report.query_path, f"tmp_fps{deploy.frate}.mp4"
         )
 
         loop.run_until_complete(
@@ -833,7 +826,7 @@ class Missions(object):
         cut_range.pick_and_save(
             range_list=stable,
             frame_count=20,
-            to_dir=reporter.query_path,
+            to_dir=report.query_path,
             meaningful_name=True,
             not_grey=deploy.color,
             compress_rate=target_scale,
@@ -1016,7 +1009,7 @@ class Missions(object):
             )
             return resized
 
-        cmd_lines, platform, deploy, power, main_loop, *_ = args
+        cmd_lines, platform, deploy, main_loop, *_ = args
 
         manage = Manage(self.adb)
         device_list = await manage.operate_device()
@@ -1029,11 +1022,11 @@ class Missions(object):
                 console=Show.console, default="Y"
             )
             if action.strip().upper() == "Y":
-                reporter = Report(self.total)
-                reporter.title = f"Hooks_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
+                report = Report(self.total)
+                report.title = f"Hooks_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
                 for device, resize_img in zip(device_list, resized_result):
                     img_save_path = os.path.join(
-                        reporter.query_path, f"hook_{device.sn}_{random.randint(10000, 99999)}.png"
+                        report.query_path, f"hook_{device.sn}_{random.randint(10000, 99999)}.png"
                     )
                     resize_img.save(img_save_path)
                     logger.info(f"保存图片: {os.path.relpath(img_save_path)}")
@@ -1053,7 +1046,7 @@ class Missions(object):
 
             logger.info(f"△ △ △ {('独立' if self.alone else '全局')}控制模式 △ △ △")
 
-            await source_monitor.monitor()
+            await source.monitor()
 
             await asyncio.gather(
                 *(wait_for_device(device) for device in device_list)
@@ -1088,14 +1081,14 @@ class Missions(object):
 
                 await asyncio.sleep(0.5)  # 延时投屏，避免性能瓶颈
 
-                reporter.query = os.path.join(format_folder, device.sn)
+                report.query = os.path.join(format_folder, device.sn)
 
                 video_temp, transports = await record.ask_start_record(
-                    device, reporter.video_path, location=location
+                    device, report.video_path, location=location
                 )
                 todo_list.append(
-                    [video_temp, transports, reporter.total_path, reporter.title, reporter.query_path,
-                     reporter.query, reporter.frame_path, reporter.extra_path, reporter.proto_path]
+                    [video_temp, transports, report.total_path, report.title, report.query_path,
+                     report.query, report.frame_path, report.extra_path, report.proto_path]
                 )
 
             return todo_list
@@ -1205,10 +1198,10 @@ class Missions(object):
                         "style": "speed"
                     }
                     logger.debug(f"Speeder: {json.dumps(result, ensure_ascii=False)}")
-                    await reporter.load(result)
+                    await report.load(result)
 
                     self.enforce(
-                        reporter.reset_path, struct, start, end, cost,
+                        report.reset_path, struct, start, end, cost,
                         total_path, title, query_path, query, frame_path
                     )
 
@@ -1267,7 +1260,7 @@ class Missions(object):
 
                 else:
                     func = partial(self.amazing, **deploy.deploys)
-                    with ProcessPoolExecutor(power, None, Active.active, ("ERROR",)) as exe:
+                    with ProcessPoolExecutor(self.power, None, Active.active, ("ERROR",)) as exe:
                         task = [
                             main_loop.run_in_executor(exe, func, target, frame_path, extra_path, original)
                             for (target, _), (*_, frame_path, extra_path, _), original
@@ -1296,7 +1289,7 @@ class Missions(object):
                                 tmp := await Craft.achieve(self.atom_total_temp), Exception):
                             return logger.error(f"{const.ERR}{tmp}[/]")
                         logger.info(f"模版引擎正在渲染 ...")
-                        original_inform = await reporter.ask_draw(
+                        original_inform = await report.ask_draw(
                             scores, struct, proto_path, tmp, deploy.boost
                         )
                         logger.info(f"模版引擎渲染完毕 {os.path.relpath(original_inform)}")
@@ -1307,10 +1300,10 @@ class Missions(object):
                         result["style"] = "basic"
 
                     logger.debug(f"Restore: {json.dumps(result, ensure_ascii=False)}")
-                    await reporter.load(result)
+                    await report.load(result)
 
                     self.enforce(
-                        reporter.reset_path, struct, start, end, cost,
+                        report.reset_path, struct, start, end, cost,
                         total_path, title, query_path, query, frame_path, extra_path, proto_path
                     )
 
@@ -1449,7 +1442,7 @@ class Missions(object):
                 stop.cancel()
 
         # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Initialization ================================================================
-        cmd_lines, platform, deploy, power, main_loop, *_ = args
+        cmd_lines, platform, deploy, main_loop, *_ = args
         clipix = Clipix(self.fmp, self.fpb)
 
         manage_ = Manage(self.adb)
@@ -1457,7 +1450,7 @@ class Missions(object):
 
         titles_ = {"speed": "Speed", "basic": "Basic", "keras": "Keras"}
         input_title_ = next((title for key, title in titles_.items() if getattr(self, key)), "Video")
-        reporter = Report(self.total)
+        report = Report(self.total)
 
         # Initial Alynex
         model_ = self.model if self.keras else None
@@ -1477,13 +1470,13 @@ class Missions(object):
             self.scc, platform, alone=self.alone, whist=self.whist, frate=deploy.frate
         )
         player = Player()
-        source_monitor = SourceMonitor()
+        source = SourceMonitor()
         # ================================================================ Initialization <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
         # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Flick Loop ====================================================================
         if self.flick:
             const_title_ = f"{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
-            reporter.title = f"{input_title_}_{const_title_}"
+            report.title = f"{input_title_}_{const_title_}"
             timer_mode = 5
             while True:
                 try:
@@ -1500,11 +1493,11 @@ class Missions(object):
                                 if hd_ := match_.group().strip():
                                     src_hd_, a_, b_ = f"{input_title_}_{time.strftime('%Y%m%d_%H%M%S')}", 10000, 99999
                                     logger.success(f"{const.SUC}New title set successfully[/]")
-                                    reporter.title = f"{src_hd_}_{hd_}" if hd_ else f"{src_hd_}_{random.randint(a_, b_)}"
+                                    report.title = f"{src_hd_}_{hd_}" if hd_ else f"{src_hd_}_{random.randint(a_, b_)}"
                                     continue
                             raise FramixAnalysisError(f"Set Error")
                         elif select_ == "create":
-                            await self.combine(reporter)
+                            await self.combine(report)
                             break
                         elif select_ == "deploy":
                             logger.warning(f"{const.WRN}请完全退出编辑器再继续操作[/]")
@@ -1589,7 +1582,7 @@ class Missions(object):
                         suffix_list_ = await pack_commands(suffix_list_)
 
                     for hd_ in header_:
-                        reporter.title = f"{input_title_}_{script_key_}_{hd_}"
+                        report.title = f"{input_title_}_{script_key_}_{hd_}"
                         for _ in range(looper_):
 
                             # prefix
@@ -1620,7 +1613,7 @@ class Missions(object):
                             await analysis_tactics()
                             await asyncio.gather(*suffix_task_list_)
 
-            return await self.combine(reporter)
+            return await self.combine(report)
         # ==================================================================== Other Loop <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
         return None
@@ -1946,8 +1939,10 @@ class Alynex(object):
             just_hook_list.append(cut_save)
 
             if self.level == "INFO":
-                Show.show_panel("\n".join(just_hook_list), Wind.CUTTER)
-                Show.show_panel("\n".join(area_hook_list), Wind.CUTTER)
+                if len(just_hook_list) > 0:
+                    Show.show_panel("\n".join(just_hook_list), Wind.CUTTER)
+                if len(area_hook_list) > 0:
+                    Show.show_panel("\n".join(area_hook_list), Wind.CUTTER)
 
             logger.debug(f"{(cut_name := '视频帧长度: ' f'{video.frame_count}')}")
             logger.debug(f"{(cut_part := '视频帧片段: ' f'{video.frame_count - 1}')}")
@@ -2082,7 +2077,7 @@ async def arithmetic(function: "typing.Callable", parameters: list[str]) -> None
     try:
         await function(
             [(await Craft.revise_path(param)) for param in parameters],
-            _cmd_lines, _platform, _deploy, _power, _main_loop
+            _cmd_lines, _platform, _deploy, _main_loop
         )
     except (FramixAnalysisError, FramixAnalyzerError, FramixReporterError):
         Show.console.print_exception()
@@ -2094,12 +2089,12 @@ async def scheduling() -> None:
         # --flick --carry --fully
         if _cmd_lines.flick or _cmd_lines.carry or _cmd_lines.fully:
             await _missions.analysis(
-                _cmd_lines, _platform, _deploy, _power, _main_loop
+                _cmd_lines, _platform, _deploy, _main_loop
             )
         # --paint
         elif _cmd_lines.paint:
             await _missions.painting(
-                _cmd_lines, _platform, _deploy, _power, _main_loop
+                _cmd_lines, _platform, _deploy, _main_loop
             )
         # --union
         elif _cmd_lines.union:
@@ -2181,7 +2176,7 @@ if __name__ == '__main__':
             logger.debug(f"Initialize Set <{_attr}> {_attribute} -> {getattr(_deploy, _attr)}")
 
     _missions = Missions(
-        _level,
+        _level, _power,
         _flick, _carry, _fully, _speed, _basic, _keras, _alone, _whist, _alike, _group,
         atom_total_temp=_atom_total_temp,
         main_share_temp=_main_share_temp,
