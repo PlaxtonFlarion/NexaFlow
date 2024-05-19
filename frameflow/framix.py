@@ -1373,8 +1373,8 @@ class Alynex(object):
 
     __kc: typing.Optional["KerasStruct"] = KerasStruct()
 
-    def __init__(self, daily_level: str, model_place: typing.Optional[str] = None, **kwargs):
-        self.daily_level = daily_level
+    def __init__(self, level: str, model_place: typing.Optional[str] = None, **kwargs):
+        self.level = level
         self.model_place = model_place
 
         self.boost = kwargs.get("boost", const.BOOST)
@@ -1448,7 +1448,7 @@ class Alynex(object):
             w, h, ratio = await Switch.ask_magic_frame(original, shape)
             shape = w, h
             logger.debug(f"{(flip_name := f'调整宽高比: {w} x {h}')}")
-            if self.daily_level == "INFO":
+            if self.level == "INFO":
                 Show.show_panel(flip_name, Wind.LOADER)
         elif scale:
             scale = max(0.1, min(1.0, scale))
@@ -1470,14 +1470,14 @@ class Alynex(object):
         logger.debug(f"{(task_name := '视频帧长度: ' f'{video.frame_count}')}")
         logger.debug(f"{(task_info := '视频帧尺寸: ' f'{video.frame_size}')}")
         logger.debug(f"{(task_desc := '加载视频帧: ' f'{video.name}')}")
-        if self.daily_level == "INFO":
+        if self.level == "INFO":
             Show.show_panel(f"{task_name}\n{task_info}\n{task_desc}", Wind.LOADER)
         video.load_frames(
             scale=scale, shape=shape, color=self.color
         )
         logger.debug(f"{(task_name := '视频帧加载完成: ' f'{video.frame_details(video.frames_data)}')}")
         logger.debug(f"{(task_info := '视频帧加载耗时: ' f'{time.time() - load_start_time:.2f} 秒')}")
-        if self.daily_level == "INFO":
+        if self.level == "INFO":
             Show.show_panel(f"{task_name}\n{task_info}", Wind.LOADER)
 
         cut_start_time = time.time()
@@ -1486,14 +1486,14 @@ class Alynex(object):
         logger.debug(f"{(cut_part := '视频帧片段: ' f'{video.frame_count - 1}')}")
         logger.debug(f"{(cut_info := '视频帧尺寸: ' f'{video.frame_size}')}")
         logger.debug(f"{(cut_desc := '压缩视频帧: ' f'{video.name}')}")
-        if self.daily_level == "INFO":
+        if self.level == "INFO":
             Show.show_panel(f"{cut_name}\n{cut_part}\n{cut_info}\n{cut_desc}", Wind.CUTTER)
         cut_range = cutter.cut(
             video=video, block=self.block
         )
         logger.debug(f"{(cut_name := '视频帧压缩完成: ' f'{video.name}')}")
         logger.debug(f"{(cut_info := '视频帧压缩耗时: ' f'{time.time() - cut_start_time:.2f} 秒')}")
-        if self.daily_level == "INFO":
+        if self.level == "INFO":
             Show.show_panel(f"{cut_name}\n{cut_info}", Wind.CUTTER)
 
         stable, unstable = cut_range.get_range(
@@ -1526,12 +1526,12 @@ class Alynex(object):
             logger.debug(
                 f"{(extract := f'取关键帧: begin={list(self.begin)} final={list(self.final)}')}"
             )
-            if self.daily_level == "INFO":
+            if self.level == "INFO":
                 Show.show_panel(extract, Wind.FASTER)
 
             try:
                 logger.debug(f"{(stage_name := f'阶段划分: {struct.get_ordered_stage_set()}')}")
-                if self.daily_level == "INFO":
+                if self.level == "INFO":
                     Show.show_panel(stage_name, Wind.FASTER)
                 unstable_stage_range = struct.get_not_stable_stage_range()
                 begin_frame = unstable_stage_range[begin_stage_index][begin_frame_index]
@@ -1553,7 +1553,7 @@ class Alynex(object):
             final_id, final_ts = final_frame.frame_id, final_frame.timestamp
             begin_fr, final_fr = f"{begin_id} - {begin_ts:.5f}", f"{final_id} - {final_ts:.5f}"
             logger.debug(f"开始帧:[{begin_fr}] 结束帧:[{final_fr}] 总耗时:[{(stage_cs := f'{time_cost:.5f}')}]")
-            if self.daily_level == "INFO":
+            if self.level == "INFO":
                 Show.assort_frame(begin_fr, final_fr, stage_cs)
             return begin_frame.frame_id, final_frame.frame_id, time_cost
 
@@ -1623,7 +1623,7 @@ class Alynex(object):
             )
             just_hook_list.append(cut_save)
 
-            if self.daily_level == "INFO":
+            if self.level == "INFO":
                 if len(just_hook_list) > 0:
                     Show.show_panel("\n".join(just_hook_list), Wind.CUTTER)
                 if len(area_hook_list) > 0:
@@ -1633,14 +1633,14 @@ class Alynex(object):
             logger.debug(f"{(cut_part := '视频帧片段: ' f'{video.frame_count - 1}')}")
             logger.debug(f"{(cut_info := '视频帧尺寸: ' f'{video.frame_size}')}")
             logger.debug(f"{(cut_desc := '压缩视频帧: ' f'{video.name}')}")
-            if self.daily_level == "INFO":
+            if self.level == "INFO":
                 Show.show_panel(f"{cut_name}\n{cut_part}\n{cut_info}\n{cut_desc}", Wind.CUTTER)
             cut_range = cutter.cut(
                 video=video, block=self.block
             )
             logger.debug(f"{(cut_name := '视频帧压缩完成: ' f'{video.name}')}")
             logger.debug(f"{(cut_info := '视频帧压缩耗时: ' f'{time.time() - cut_start_time:.2f} 秒')}")
-            if self.daily_level == "INFO":
+            if self.level == "INFO":
                 Show.show_panel(f"{cut_name}\n{cut_info}", Wind.CUTTER)
 
             stable, unstable = cut_range.get_range(threshold=self.thres, offset=self.shift)
@@ -1726,14 +1726,14 @@ class Alynex(object):
         logger.debug(f"{(task_name_ := '视频帧长度: ' f'{video.frame_count}')}")
         logger.debug(f"{(task_info_ := '视频帧尺寸: ' f'{video.frame_size}')}")
         logger.debug(f"{(task_desc_ := '加载视频帧: ' f'{video.name}')}")
-        if self.daily_level == "INFO":
+        if self.level == "INFO":
             Show.show_panel(f"{task_name_}\n{task_info_}\n{task_desc_}", Wind.LOADER)
         video.load_frames(
             scale=scale_, shape=shape_, color=self.color
         )
         logger.debug(f"{(task_name := '视频帧加载完成: ' f'{video.frame_details(video.frames_data)}')}")
         logger.debug(f"{(task_info := '视频帧加载耗时: ' f'{time.time() - start_time_:.2f} 秒')}")
-        if self.daily_level == "INFO":
+        if self.level == "INFO":
             Show.show_panel(f"{task_name}\n{task_info}", Wind.LOADER)
 
         struct = await frame_flow() if self.kc and self.kc.model else None
