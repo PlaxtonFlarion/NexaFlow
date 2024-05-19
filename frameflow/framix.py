@@ -168,8 +168,8 @@ class Missions(object):
         # Initial Loop
         loop = asyncio.get_event_loop()
         # Initial Alynex
-        model = self.model_place if self.lines.keras else None
-        alynex = Alynex(self.level, model, **kwargs)
+        model_place = self.model_place if self.lines.keras else None
+        alynex = Alynex(self.level, model_place, **kwargs)
         try:
             loop.run_until_complete(alynex.ask_model_load())
             loop.run_until_complete(alynex.ask_model_walk())
@@ -185,7 +185,8 @@ class Missions(object):
         # Initial Loop
         loop = asyncio.get_event_loop()
         # Initial Alynex
-        alynex = Alynex(self.level, None, **kwargs)
+        model_place = None
+        alynex = Alynex(self.level, model_place, **kwargs)
 
         loop_complete = loop.run_until_complete(
             alynex.ask_exercise(vision, *args)
@@ -503,8 +504,8 @@ class Missions(object):
             await self.als_speed(*attack)
         else:
             # Initial Alynex
-            model = self.model_place if self.lines.keras else None
-            alynex = Alynex(self.level, model, **deploy.deploys)
+            model_place = self.model_place if self.lines.keras else None
+            alynex = Alynex(self.level, model_place, **deploy.deploys)
             try:
                 await alynex.ask_model_load()
                 await alynex.ask_model_walk()
@@ -566,8 +567,8 @@ class Missions(object):
                         await self.als_speed(*attack)
                     else:
                         # Initial Alynex
-                        model = self.model_place if self.lines.keras else None
-                        alynex = Alynex(self.level, model, **deploy.deploys)
+                        model_place = self.model_place if self.lines.keras else None
+                        alynex = Alynex(self.level, model_place, **deploy.deploys)
                         try:
                             await alynex.ask_model_load()
                             await alynex.ask_model_walk()
@@ -647,8 +648,8 @@ class Missions(object):
         await asyncio.gather(*eliminate, return_exceptions=True)
 
         # Initial Alynex
-        model = None
-        alynex = Alynex(self.level, model, **deploy.deploys)
+        model_place = None
+        alynex = Alynex(self.level, model_place, **deploy.deploys)
 
         # Ask Analyzer
         if len(task_list) == 1:
@@ -757,8 +758,8 @@ class Missions(object):
         if len(task_list) == 0:
             return logger.warning(f"{const.WRN}缺少有效文件[/]")
 
-        model = None
-        alynex = Alynex(self.level, model, **deploy.deploys)
+        model_place = None
+        alynex = Alynex(self.level, model_place, **deploy.deploys)
 
         # Ask Analyzer
         if len(task_list) == 1:
@@ -902,7 +903,7 @@ class Missions(object):
             )
             return resized
 
-        cmd_lines, platform, deploy, main_loop, *_ = args
+        platform, deploy, main_loop = args
 
         manage = Manage(self.adb)
         device_list = await manage.operate_device()
@@ -1139,12 +1140,12 @@ class Missions(object):
         manage_ = Manage(self.adb)
         device_list = await manage_.operate_device()
 
-        cmd_lines, platform, deploy, main_loop, *_ = args
+        platform, deploy, main_loop = args
 
         clipix = Clipix(self.fmp, self.fpb)
 
-        model = self.model_place if self.lines.keras else None
-        alynex = Alynex(self.level, model, **deploy.deploys)
+        model_place = self.model_place if self.lines.keras else None
+        alynex = Alynex(self.level, model_place, **deploy.deploys)
         try:
             await alynex.ask_model_load()
             await alynex.ask_model_walk()
@@ -1757,12 +1758,12 @@ async def scheduling() -> None:
         # --flick --carry --fully
         if _lines.flick or _lines.carry or _lines.fully:
             await _missions.analysis(
-                _lines, _platform, _deploy, _main_loop
+                _platform, _deploy, _main_loop
             )
         # --paint
         elif _lines.paint:
             await _missions.painting(
-                _lines, _platform, _deploy, _main_loop
+                _platform, _deploy, _main_loop
             )
         # --union
         elif _lines.union:
