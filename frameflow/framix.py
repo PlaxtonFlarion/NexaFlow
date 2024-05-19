@@ -303,7 +303,7 @@ class Missions(object):
         start, end, cost, scores, struct = 0, 0, 0, None, None
         for *_, total_path, title, query_path, query, frame_path, _, _ in task_list:
             result = {
-                "total_place": os.path.basename(total_path),
+                "total": os.path.basename(total_path),
                 "title": title,
                 "query": query,
                 "stage": {"start": start, "end": end, "cost": cost},
@@ -408,7 +408,7 @@ class Missions(object):
             *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo
 
             result = {
-                "total_place": os.path.basename(total_path),
+                "total": os.path.basename(total_path),
                 "title": title,
                 "query": query,
                 "stage": {"start": start, "end": end, "cost": f"{cost:.5f}"},
