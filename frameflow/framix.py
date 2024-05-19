@@ -145,14 +145,14 @@ class Missions(object):
         self.scc = kwargs["scc"]
 
     @staticmethod
-    def enforce(reset_path: str, kc: typing.Optional["KerasStruct"], start: int, end: int, cost: float, *args):
+    def enforce(reset_path: str, ks: typing.Optional["KerasStruct"], start: int, end: int, cost: float, *args):
         database_path = os.path.join(reset_path, f"{const.NAME}_data.db")
         with Insert(database_path) as database:
             basic_columns = ["total_path", "title", "query_path", "query", "stage", "frame_path"]
             stage = json.dumps({"stage": {"start": start, "end": end, "cost": cost}})
             value = list(args[:4]) + [stage, args[4]]
 
-            if kc:
+            if ks:
                 extra_columns = ["extra_path", "proto_path"]
                 extra_data = args[5:7]
                 column_list = basic_columns + extra_columns
@@ -330,9 +330,9 @@ class Missions(object):
             alynex: "Alynex"
     ) -> None:
 
-        logger.debug(f"△ △ △ {'思维导航' if alynex.kc.model else '基石阵地'} △ △ △")
+        logger.debug(f"△ △ △ {'思维导航' if alynex.ks.model else '基石阵地'} △ △ △")
         if self.level == "INFO":
-            Show.show_panel("", Wind.KERAS if alynex.kc.model else Wind.BASIC)
+            Show.show_panel("", Wind.KERAS if alynex.ks.model else Wind.BASIC)
 
         video_target_list = [
             (os.path.join(
@@ -370,7 +370,7 @@ class Missions(object):
             )
         await asyncio.gather(*eliminate, return_exceptions=True)
 
-        if alynex.kc.model:
+        if alynex.ks.model:
             deploy.view_deploy()
 
         # Ask Analyzer
@@ -764,7 +764,7 @@ class Missions(object):
         # Ask Analyzer
         if len(task_list) == 1:
             task = [
-                main_loop.run_in_executor(None, alynex.kc.build, *compile_data)
+                main_loop.run_in_executor(None, alynex.ks.build, *compile_data)
                 for compile_data in task_list
             ]
             await asyncio.gather(*task)
@@ -772,7 +772,7 @@ class Missions(object):
         else:
             this_level = self.level
             self.level = "ERROR"
-            func = partial(alynex.kc.build)
+            func = partial(alynex.ks.build)
             with ProcessPoolExecutor(self.power, None, Active.active, ("ERROR",)) as exe:
                 task = [
                     main_loop.run_in_executor(exe, func, *compile_data)
@@ -1371,7 +1371,7 @@ class Clipix(object):
 
 class Alynex(object):
 
-    __kc: typing.Optional["KerasStruct"] = KerasStruct()
+    __ks: typing.Optional["KerasStruct"] = KerasStruct()
 
     def __init__(self, level: str, model_place: typing.Optional[str] = None, **kwargs):
         self.level = level
@@ -1396,32 +1396,32 @@ class Alynex(object):
         self.omits = kwargs.get("omits", const.OMITS)
 
     @property
-    def kc(self) -> typing.Optional["KerasStruct"]:
-        return self.__kc
+    def ks(self) -> typing.Optional["KerasStruct"]:
+        return self.__ks
 
-    @kc.setter
-    def kc(self, value):
-        self.__kc = value
+    @ks.setter
+    def ks(self, value):
+        self.__ks = value
 
     async def ask_model_load(self):
         if self.model_place:
             try:
-                assert self.kc
-                self.kc.load_model(self.model_place)
-            except (ValueError, AssertionError) as e:
-                self.kc = None
+                assert self.ks
+                self.ks.load_model(self.model_place)
+            except (OSError, ValueError, AssertionError) as e:
+                self.ks.model = None
                 raise FramixAnalyzerError(e)
 
     async def ask_model_walk(self):
-        if self.kc and self.kc.model:
+        if self.ks.model:
             try:
-                channel = self.kc.model.input_shape[-1]
+                channel = self.ks.model.input_shape[-1]
                 if self.color:
                     assert channel == 3, f"彩色模式需要匹配彩色模型 Model Color Channel={channel}"
                 else:
                     assert channel == 1, f"灰度模式需要匹配灰度模型 Model Color Channel={channel}"
             except AssertionError as e:
-                self.kc = None
+                self.ks.model = None
                 raise FramixAnalyzerError(e)
 
     @staticmethod
@@ -1666,7 +1666,7 @@ class Alynex(object):
                 toolbox.draw_line(os.path.join(extra_path, draw))
 
             try:
-                struct_data = self.kc.classify(
+                struct_data = self.ks.classify(
                     video=video, valid_range=stable, keep_data=True
                 )
             except AssertionError as e:
@@ -1736,7 +1736,7 @@ class Alynex(object):
         if self.level == "INFO":
             Show.show_panel(f"{task_name}\n{task_info}", Wind.LOADER)
 
-        struct = await frame_flow() if self.kc and self.kc.model else None
+        struct = await frame_flow() if self.ks.model else None
         frames = await frame_hold()
 
         if struct:

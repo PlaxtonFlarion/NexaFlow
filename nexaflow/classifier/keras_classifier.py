@@ -25,7 +25,7 @@ class KerasStruct(BaseModelClassifier):
         super(KerasStruct, self).__init__(*_, **kwargs)
 
         # Model
-        self.__model: typing.Optional[keras.Sequential] = None
+        self.__model: typing.Optional["keras.Sequential"] = None
         # Model Config
         self.score_threshold: float = kwargs.get("score_threshold", 0.0)
         self.nb_train_samples: int = kwargs.get("nb_train_samples", 64)
@@ -47,10 +47,6 @@ class KerasStruct(BaseModelClassifier):
     def model(self, value):
         self.__model = value
 
-    @model.deleter
-    def model(self):
-        self.__model = None
-
     @property
     def follow_cv_size(self):
         return self.model.input_shape[1], self.model.input_shape[2]
@@ -63,7 +59,7 @@ class KerasStruct(BaseModelClassifier):
         self.model = keras.models.load_model(model_path)
         logger.debug(f"Keras sequence model load data {self.model.input_shape}")
 
-    def create_model(self, follow_tf_size: tuple, model_aisle: int) -> keras.Sequential:
+    def create_model(self, follow_tf_size: tuple, model_aisle: int) -> "keras.Sequential":
         logger.info(f"Keras sequence model is being created")
 
         if keras.backend.image_data_format() == "channels_first":
