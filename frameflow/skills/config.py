@@ -287,7 +287,7 @@ class Deploy(object):
                 f"[bold]合并 [bold {tip}]{self.shift}[/] 个变化不大的稳定区间",
             ],
             [
-                f"[bold {cmd}]空间构造",
+                f"[bold {cmd}]矩阵分割",
                 f"[bold {arg}]{self.block}",
                 f"[bold][[bold {val}]1 , ?[/] ]",
                 f"[bold]每个图像分成 [bold {tip}]{self.block}[/] 块",
@@ -314,7 +314,7 @@ class Deploy(object):
 class Option(object):
 
     options = {
-        "total": "", "model": ""
+        "total_place": "", "model_place": ""
     }
 
     def __init__(self, option_file: str):
@@ -327,22 +327,22 @@ class Option(object):
         self.options = state
 
     @property
-    def total(self):
-        return self.options["total"]
+    def total_place(self):
+        return self.options["total_place"]
 
     @property
-    def model(self):
-        return self.options["model"]
+    def model_place(self):
+        return self.options["model_place"]
 
-    @total.setter
-    def total(self, value):
+    @total_place.setter
+    def total_place(self, value):
         if type(value) is str and os.path.isdir(value):
-            self.options["total"] = value
+            self.options["total_place"] = value
 
-    @model.setter
-    def model(self, value):
+    @model_place.setter
+    def model_place(self, value):
         if type(value) is str and os.path.isdir(value):
-            self.options["model"] = value
+            self.options["model_place"] = value
 
     def load_option(self, option_file: str) -> None:
         try:

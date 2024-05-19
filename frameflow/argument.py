@@ -62,17 +62,17 @@ class Args(object):
         "--speed": {
             "args": {"action": "store_true"},
             "view": ["布尔", "一次"],
-            "help": "快速模式"
+            "help": "光速穿梭"
         },
         "--basic": {
             "args": {"action": "store_true"},
             "view": ["布尔", "一次"],
-            "help": "基础模式"
+            "help": "基石阵地"
         },
         "--keras": {
             "args": {"action": "store_true"},
             "view": ["布尔", "一次"],
-            "help": "智能模式"
+            "help": "思维导航"
         }
     }
 
@@ -95,7 +95,7 @@ class Args(object):
         "--alike": {
             "args": {"action": "store_true"},
             "view": ["布尔", "一次"],
-            "help": "平衡时间"
+            "help": "均衡节奏"
         }
     }
 
@@ -104,7 +104,7 @@ class Args(object):
         "--group": {
             "args": {"action": "store_true"},
             "view": ["布尔", "一次"],
-            "help": "分组报告"
+            "help": "集群视图"
         }
     }
 
@@ -113,22 +113,22 @@ class Args(object):
         "--boost": {
             "args": {"action": "store_true"},
             "view": ["布尔", "一次"],
-            "help": "跳帧模式"
+            "help": "加速跳跃"
         },
         "--color": {
             "args": {"action": "store_true"},
             "view": ["布尔", "一次"],
-            "help": "彩色模式"
+            "help": "彩绘世界"
         },
         "--shape": {
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
-            "help": "图片尺寸"
+            "help": "尺寸定制"
         },
         "--scale": {
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
-            "help": "缩放比例"
+            "help": "变幻缩放"
         },
         "--start": {
             "args": {"nargs": "?", "const": None, "type": str},
@@ -158,32 +158,32 @@ class Args(object):
         "--frate": {
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
-            "help": "采样率"
+            "help": "帧采样率"
         },
         "--thres": {
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
-            "help": "相似度"
+            "help": "稳定阈值"
         },
         "--shift": {
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
-            "help": "补偿值"
+            "help": "偏移调整"
         },
         "--block": {
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
-            "help": "立方体"
+            "help": "矩阵分割"
         },
         "--crops": {
             "args": {"action": "append"},
             "view": ["坐标", "多次"],
-            "help": "获取区域"
+            "help": "视界探索"
         },
         "--omits": {
             "args": {"action": "append"},
             "view": ["坐标", "多次"],
-            "help": "忽略区域"
+            "help": "视界忽略"
         }
     }
 

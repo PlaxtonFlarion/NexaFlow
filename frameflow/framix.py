@@ -70,8 +70,8 @@ for _tmp in (_temps := [_atom_total_temp, _main_share_temp, _main_total_temp, _v
 
 _initial_source = os.path.join(_feasible, f"{const.NAME}.source")
 
-_total = os.path.join(_feasible, f"{const.NAME}.report")
-_model = os.path.join(_workable, "archivix", "molds", "Keras_Gray_W256_H256_00000")
+_total_place = os.path.join(_feasible, f"{const.NAME}.report")
+_model_place = os.path.join(_workable, "archivix", "molds", "Keras_Gray_W256_H256_00000")
 
 if len(sys.argv) == 1:
     Show.help_document()
@@ -137,8 +137,8 @@ class Missions(object):
         self.initial_option = kwargs["initial_option"]
         self.initial_deploy = kwargs["initial_deploy"]
         self.initial_script = kwargs["initial_script"]
-        self.total = kwargs["total"]
-        self.model = kwargs["model"]
+        self.total_place = kwargs["total_place"]
+        self.model_place = kwargs["model_place"]
         self.adb = kwargs["adb"]
         self.fmp = kwargs["fmp"]
         self.fpb = kwargs["fpb"]
@@ -168,7 +168,7 @@ class Missions(object):
         # Initial Loop
         loop = asyncio.get_event_loop()
         # Initial Alynex
-        model = self.model if self.lines.keras else None
+        model = self.model_place if self.lines.keras else None
         alynex = Alynex(self.level, model, **kwargs)
         try:
             loop.run_until_complete(alynex.ask_model_load())
@@ -191,17 +191,6 @@ class Missions(object):
             alynex.ask_exercise(vision, *args)
         )
         return loop_complete
-
-    async def als_loads(self, deploy: "Deploy") -> "Alynex":
-        # Initial Alynex
-        model = self.model if self.lines.keras else None
-        alynex = Alynex(self.level, model, **deploy.deploys)
-        try:
-            await alynex.ask_model_load()
-            await alynex.ask_model_walk()
-        except FramixAnalyzerError as e:
-            logger.error(f"{const.ERR}{e}[/]")
-        return alynex
 
     async def als_track(
             self,
@@ -313,7 +302,7 @@ class Missions(object):
         start, end, cost, scores, struct = 0, 0, 0, None, None
         for *_, total_path, title, query_path, query, frame_path, _, _ in task_list:
             result = {
-                "total": os.path.basename(total_path),
+                "total_place": os.path.basename(total_path),
                 "title": title,
                 "query": query,
                 "stage": {"start": start, "end": end, "cost": cost},
@@ -337,10 +326,8 @@ class Missions(object):
             originals: list,
             indicates: list,
             main_loop: "asyncio.AbstractEventLoop",
-            **kwargs
+            alynex: "Alynex"
     ) -> None:
-
-        alynex = kwargs["alynex"]
 
         logger.debug(f"△ △ △ {'思维导航' if alynex.kc.model else '基石阵地'} △ △ △")
         if self.level == "INFO":
@@ -382,7 +369,7 @@ class Missions(object):
             )
         await asyncio.gather(*eliminate, return_exceptions=True)
 
-        if alynex.kc:
+        if alynex.kc.model:
             deploy.view_deploy()
 
         # Ask Analyzer
@@ -420,7 +407,7 @@ class Missions(object):
             *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo
 
             result = {
-                "total": os.path.basename(total_path),
+                "total_place": os.path.basename(total_path),
                 "title": title,
                 "query": query,
                 "stage": {"start": start, "end": end, "cost": f"{cost:.5f}"},
@@ -491,7 +478,7 @@ class Missions(object):
         platform, deploy, main_loop = args
 
         clipix = Clipix(self.fmp, self.fpb)
-        report = Report(self.total)
+        report = Report(self.total_place)
         report.title = f"{const.DESC}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
 
         # Profession
@@ -516,9 +503,18 @@ class Missions(object):
             await self.als_speed(*attack)
         else:
             # Initial Alynex
-            alynex = await self.als_loads(deploy)
+            model = self.model_place if self.lines.keras else None
+            alynex = Alynex(self.level, model, **deploy.deploys)
+            try:
+                await alynex.ask_model_load()
+                await alynex.ask_model_walk()
+            except FramixAnalyzerError as e:
+                logger.error(f"{const.ERR}{e}[/]")
+
+            charge = main_loop, alynex
+
             # Keras Analyzer
-            await self.als_keras(*attack, main_loop, alynex=alynex)
+            await self.als_keras(*attack, *charge)
 
         # Create Report
         await self.combine(report)
@@ -544,7 +540,7 @@ class Missions(object):
         # Profession
         async for entries in load_entries():
             if entries:
-                report = Report(self.total)
+                report = Report(self.total_place)
                 for entry in entries:
                     report.title = entry.title
                     task_list = []
@@ -570,9 +566,18 @@ class Missions(object):
                         await self.als_speed(*attack)
                     else:
                         # Initial Alynex
-                        alynex = await self.als_loads(deploy)
+                        model = self.model_place if self.lines.keras else None
+                        alynex = Alynex(self.level, model, **deploy.deploys)
+                        try:
+                            await alynex.ask_model_load()
+                            await alynex.ask_model_walk()
+                        except FramixAnalyzerError as e:
+                            logger.error(f"{const.ERR}{e}[/]")
+
+                        charge = main_loop, alynex
+
                         # Keras Analyzer
-                        await self.als_keras(*attack, main_loop, alynex=alynex)
+                        await self.als_keras(*attack, *charge)
 
                 # Create Report
                 await self.combine(report)
@@ -589,7 +594,7 @@ class Missions(object):
         platform, deploy, main_loop = args
 
         clipix = Clipix(self.fmp, self.fpb)
-        report = Report(self.total)
+        report = Report(self.total_place)
 
         # Profession
         task_list = []
@@ -641,7 +646,9 @@ class Missions(object):
             )
         await asyncio.gather(*eliminate, return_exceptions=True)
 
-        alynex = await self.als_loads(deploy)
+        # Initial Alynex
+        model = None
+        alynex = Alynex(self.level, model, **deploy.deploys)
 
         # Ask Analyzer
         if len(task_list) == 1:
@@ -750,7 +757,8 @@ class Missions(object):
         if len(task_list) == 0:
             return logger.warning(f"{const.WRN}缺少有效文件[/]")
 
-        alynex = await self.als_loads(deploy)
+        model = None
+        alynex = Alynex(self.level, model, **deploy.deploys)
 
         # Ask Analyzer
         if len(task_list) == 1:
@@ -907,7 +915,7 @@ class Missions(object):
                 console=Show.console, default="Y"
             )
             if action.strip().upper() == "Y":
-                report = Report(self.total)
+                report = Report(self.total_place)
                 report.title = f"Hooks_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
                 for device, resize_img in zip(device_list, resized_result):
                     img_save_path = os.path.join(
@@ -994,7 +1002,7 @@ class Missions(object):
                 await self.als_speed(*attack)
             elif self.lines.basic or self.lines.keras:
                 # Keras Analyzer
-                await self.als_keras(*attack, main_loop, alynex=alynex)
+                await self.als_keras(*attack, *charge)
             else:
                 logger.info(f"△ △ △ 录制模式 △ △ △")
 
@@ -1134,11 +1142,20 @@ class Missions(object):
         cmd_lines, platform, deploy, main_loop, *_ = args
 
         clipix = Clipix(self.fmp, self.fpb)
-        alynex = await self.als_loads(deploy)
+
+        model = self.model_place if self.lines.keras else None
+        alynex = Alynex(self.level, model, **deploy.deploys)
+        try:
+            await alynex.ask_model_load()
+            await alynex.ask_model_walk()
+        except FramixAnalyzerError as e_:
+            logger.error(f"{const.ERR}{e_}[/]")
+
+        charge = main_loop, alynex
 
         titles_ = {"speed": "Speed", "basic": "Basic", "keras": "Keras"}
         input_title_ = next((title for key, title in titles_.items() if getattr(self, key)), "Video")
-        report = Report(self.total)
+        report = Report(self.total_place)
 
         record = Record(
             self.scc, platform, alone=self.lines.alone, whist=self.lines.whist, frate=deploy.frate
@@ -1355,9 +1372,9 @@ class Alynex(object):
 
     __kc: typing.Optional["KerasStruct"] = KerasStruct()
 
-    def __init__(self, level: str, model: typing.Optional[str] = None, **kwargs):
-        self.level = level
-        self.model = model
+    def __init__(self, daily_level: str, model_place: typing.Optional[str] = None, **kwargs):
+        self.daily_level = daily_level
+        self.model_place = model_place
 
         self.boost = kwargs.get("boost", const.BOOST)
         self.color = kwargs.get("color", const.COLOR)
@@ -1386,10 +1403,10 @@ class Alynex(object):
         self.__kc = value
 
     async def ask_model_load(self):
-        if self.model:
+        if self.model_place:
             try:
                 assert self.kc
-                self.kc.load_model(self.model)
+                self.kc.load_model(self.model_place)
             except (ValueError, AssertionError) as e:
                 self.kc = None
                 raise FramixAnalyzerError(e)
@@ -1430,7 +1447,7 @@ class Alynex(object):
             w, h, ratio = await Switch.ask_magic_frame(original, shape)
             shape = w, h
             logger.debug(f"{(flip_name := f'调整宽高比: {w} x {h}')}")
-            if self.level == "INFO":
+            if self.daily_level == "INFO":
                 Show.show_panel(flip_name, Wind.LOADER)
         elif scale:
             scale = max(0.1, min(1.0, scale))
@@ -1452,14 +1469,14 @@ class Alynex(object):
         logger.debug(f"{(task_name := '视频帧长度: ' f'{video.frame_count}')}")
         logger.debug(f"{(task_info := '视频帧尺寸: ' f'{video.frame_size}')}")
         logger.debug(f"{(task_desc := '加载视频帧: ' f'{video.name}')}")
-        if self.level == "INFO":
+        if self.daily_level == "INFO":
             Show.show_panel(f"{task_name}\n{task_info}\n{task_desc}", Wind.LOADER)
         video.load_frames(
             scale=scale, shape=shape, color=self.color
         )
         logger.debug(f"{(task_name := '视频帧加载完成: ' f'{video.frame_details(video.frames_data)}')}")
         logger.debug(f"{(task_info := '视频帧加载耗时: ' f'{time.time() - load_start_time:.2f} 秒')}")
-        if self.level == "INFO":
+        if self.daily_level == "INFO":
             Show.show_panel(f"{task_name}\n{task_info}", Wind.LOADER)
 
         cut_start_time = time.time()
@@ -1468,14 +1485,14 @@ class Alynex(object):
         logger.debug(f"{(cut_part := '视频帧片段: ' f'{video.frame_count - 1}')}")
         logger.debug(f"{(cut_info := '视频帧尺寸: ' f'{video.frame_size}')}")
         logger.debug(f"{(cut_desc := '压缩视频帧: ' f'{video.name}')}")
-        if self.level == "INFO":
+        if self.daily_level == "INFO":
             Show.show_panel(f"{cut_name}\n{cut_part}\n{cut_info}\n{cut_desc}", Wind.CUTTER)
         cut_range = cutter.cut(
             video=video, block=self.block
         )
         logger.debug(f"{(cut_name := '视频帧压缩完成: ' f'{video.name}')}")
         logger.debug(f"{(cut_info := '视频帧压缩耗时: ' f'{time.time() - cut_start_time:.2f} 秒')}")
-        if self.level == "INFO":
+        if self.daily_level == "INFO":
             Show.show_panel(f"{cut_name}\n{cut_info}", Wind.CUTTER)
 
         stable, unstable = cut_range.get_range(
@@ -1508,12 +1525,12 @@ class Alynex(object):
             logger.debug(
                 f"{(extract := f'取关键帧: begin={list(self.begin)} final={list(self.final)}')}"
             )
-            if self.level == "INFO":
+            if self.daily_level == "INFO":
                 Show.show_panel(extract, Wind.FASTER)
 
             try:
                 logger.debug(f"{(stage_name := f'阶段划分: {struct.get_ordered_stage_set()}')}")
-                if self.level == "INFO":
+                if self.daily_level == "INFO":
                     Show.show_panel(stage_name, Wind.FASTER)
                 unstable_stage_range = struct.get_not_stable_stage_range()
                 begin_frame = unstable_stage_range[begin_stage_index][begin_frame_index]
@@ -1535,7 +1552,7 @@ class Alynex(object):
             final_id, final_ts = final_frame.frame_id, final_frame.timestamp
             begin_fr, final_fr = f"{begin_id} - {begin_ts:.5f}", f"{final_id} - {final_ts:.5f}"
             logger.debug(f"开始帧:[{begin_fr}] 结束帧:[{final_fr}] 总耗时:[{(stage_cs := f'{time_cost:.5f}')}]")
-            if self.level == "INFO":
+            if self.daily_level == "INFO":
                 Show.assort_frame(begin_fr, final_fr, stage_cs)
             return begin_frame.frame_id, final_frame.frame_id, time_cost
 
@@ -1605,7 +1622,7 @@ class Alynex(object):
             )
             just_hook_list.append(cut_save)
 
-            if self.level == "INFO":
+            if self.daily_level == "INFO":
                 if len(just_hook_list) > 0:
                     Show.show_panel("\n".join(just_hook_list), Wind.CUTTER)
                 if len(area_hook_list) > 0:
@@ -1615,14 +1632,14 @@ class Alynex(object):
             logger.debug(f"{(cut_part := '视频帧片段: ' f'{video.frame_count - 1}')}")
             logger.debug(f"{(cut_info := '视频帧尺寸: ' f'{video.frame_size}')}")
             logger.debug(f"{(cut_desc := '压缩视频帧: ' f'{video.name}')}")
-            if self.level == "INFO":
+            if self.daily_level == "INFO":
                 Show.show_panel(f"{cut_name}\n{cut_part}\n{cut_info}\n{cut_desc}", Wind.CUTTER)
             cut_range = cutter.cut(
                 video=video, block=self.block
             )
             logger.debug(f"{(cut_name := '视频帧压缩完成: ' f'{video.name}')}")
             logger.debug(f"{(cut_info := '视频帧压缩耗时: ' f'{time.time() - cut_start_time:.2f} 秒')}")
-            if self.level == "INFO":
+            if self.daily_level == "INFO":
                 Show.show_panel(f"{cut_name}\n{cut_info}", Wind.CUTTER)
 
             stable, unstable = cut_range.get_range(threshold=self.thres, offset=self.shift)
@@ -1708,14 +1725,14 @@ class Alynex(object):
         logger.debug(f"{(task_name_ := '视频帧长度: ' f'{video.frame_count}')}")
         logger.debug(f"{(task_info_ := '视频帧尺寸: ' f'{video.frame_size}')}")
         logger.debug(f"{(task_desc_ := '加载视频帧: ' f'{video.name}')}")
-        if self.level == "INFO":
+        if self.daily_level == "INFO":
             Show.show_panel(f"{task_name_}\n{task_info_}\n{task_desc_}", Wind.LOADER)
         video.load_frames(
             scale=scale_, shape=shape_, color=self.color
         )
         logger.debug(f"{(task_name := '视频帧加载完成: ' f'{video.frame_details(video.frames_data)}')}")
         logger.debug(f"{(task_info := '视频帧加载耗时: ' f'{time.time() - start_time_:.2f} 秒')}")
-        if self.level == "INFO":
+        if self.daily_level == "INFO":
             Show.show_panel(f"{task_name}\n{task_info}", Wind.LOADER)
 
         struct = await frame_flow() if self.kc and self.kc.model else None
@@ -1796,10 +1813,10 @@ if __name__ == '__main__':
     logger.debug(f"脚本文件路径: {_initial_script}")
 
     _option = Option(_initial_option)
-    _total = _option.total or _total
-    _model = _option.model or _model
-    logger.debug(f"报告文件路径: {_total}")
-    logger.debug(f"模型文件路径: {_model}")
+    _total_place = _option.total_place or _total_place
+    _model_place = _option.model_place or _model_place
+    logger.debug(f"报告文件路径: {_total_place}")
+    logger.debug(f"模型文件路径: {_model_place}")
 
     logger.debug(f"处理器核心数: {(_power := os.cpu_count())}")
 
@@ -1823,8 +1840,8 @@ if __name__ == '__main__':
         initial_option=_initial_option,
         initial_deploy=_initial_deploy,
         initial_script=_initial_script,
-        total=_total,
-        model=_model,
+        total_place=_total_place,
+        model_place=_model_place,
         adb=_adb,
         fmp=_fmp,
         fpb=_fpb,

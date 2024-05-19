@@ -47,7 +47,7 @@ class Show(object):
                 style="bold #FF6347", complete_style="bold #FFEC8B", finished_style="bold #98FB98"
             ),
             TimeRemainingColumn(),
-            "[progress.percentage][bold #E0FFFF]{task.completed:>5.0f}[/]/[bold #FFDAB9]{task.total}[/]",
+            "[progress.percentage][bold #E0FFFF]{task.completed:>5.0f}[/]/[bold #FFDAB9]{task.total_place}[/]",
             expand=False
         )
 
