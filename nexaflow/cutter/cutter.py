@@ -35,7 +35,12 @@ class VideoCutter(object):
     @staticmethod
     def pic_split(origin: numpy.ndarray, block: int) -> list[numpy.ndarray]:
         """
-        实际上，当 block == 3 时，块的数量将为 3 * 3 = 9
+        函数 `pic_split` 的作用是将一个输入的二维数组（例如图片数据）分割成多个小块。
+        参数 `block` 指定了在每个维度（即高度和宽度）上将数组分割成多少块。
+        这意味着整个数组会被分割成 `block * block` 个子块。
+        @param origin: 一个 `numpy.ndarray`，代表要被分割的图像或任何二维数据。
+        @param block: 一个整数，指定在每个轴（水平和垂直）上要分割成多少块。
+        @return: 函数返回包含所有小块的列表，每个小块仍然是一个 `numpy.ndarray` 对象。
         """
         result: list[numpy.ndarray] = list()
         for each_block in numpy.array_split(origin, block, axis=0):

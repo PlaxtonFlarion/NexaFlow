@@ -43,6 +43,14 @@ class VideoCutRange(object):
         # )
 
     def can_merge(self, another: "VideoCutRange", offset: int = None, **_):
+        """
+        函数 `can_merge` 用于判断两个视频剪辑区域（`VideoCutRange` 对象）是否可以合并。
+        这主要依赖于剪辑区间的结束点和开始点是否接近或连续，以及两个剪辑区间是否来自同一视频文件。
+        @param another: 另一个 `VideoCutRange` 对象，表示要比较的第二个视频剪辑区间。
+        @param offset: 一个可选的整数，用于定义接受两个视频剪辑区间之间间隔的容忍度。
+        @param _:
+        @return: 函数返回一个布尔值，如果两个剪辑区间既连续（考虑到可能的 `offset`）又来自同一视频文件，则返回 `True`，表示它们可以合并；否则返回 `False`。
+        """
         if not offset:
             is_continuous = self.end == another.start
         else:
@@ -121,6 +129,15 @@ class VideoCutRange(object):
     def is_stable(
         self, threshold: float = None, psnr_threshold: float = None, **_
     ) -> bool:
+        """
+        函数 `is_stable` 用于确定一个数据集（可能是图像帧或视频片段）是否稳定。
+        这个函数主要基于结构相似性指数（SSIM）和峰值信噪比（PSNR）来评估稳定性。
+        这两个指标常用于图像和视频质量评估，其中 SSIM 衡量两张图像的相似性，而 PSNR 是衡量图像重建质量的指标。
+        @param threshold: 一个可选的浮点数，设置判断图像稳定性的 SSIM 阈值。如果未指定，函数将使用一个常量值 `const.THRES`。
+        @param psnr_threshold: 一个可选的浮点数，设置判断图像稳定性的 PSNR 阈值。
+        @param _:
+        @return: 函数返回一个布尔值，表示数据集是否稳定。
+        """
 
         threshold = threshold if threshold else const.THRES
 
