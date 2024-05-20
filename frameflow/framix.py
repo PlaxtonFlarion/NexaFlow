@@ -109,7 +109,7 @@ try:
     from frameflow.skills.config import Option
     from frameflow.skills.config import Deploy
     from frameflow.skills.config import Script
-    from frameflow.skills.insert import Insert
+    from frameflow.skills.drovix import Drovix
     from frameflow.skills.parser import Parser
     from nexaflow import toolbox
     from nexaflow.report import Report
@@ -144,25 +144,6 @@ class Missions(object):
         self.fpb = kwargs["fpb"]
         self.scc = kwargs["scc"]
 
-    @staticmethod
-    def enforce(reset_path: str, ks: typing.Optional["KerasStruct"], start: int, end: int, cost: float, *args):
-        database_path = os.path.join(reset_path, f"{const.NAME}_data.db")
-        with Insert(database_path) as database:
-            basic_columns = ["total_path", "title", "query_path", "query", "stage", "frame_path"]
-            stage = json.dumps({"stage": {"start": start, "end": end, "cost": cost}})
-            value = list(args[:4]) + [stage, args[4]]
-
-            if ks:
-                extra_columns = ["extra_path", "proto_path"]
-                extra_data = args[5:7]
-                column_list = basic_columns + extra_columns
-                value.extend(extra_data)
-            else:
-                column_list = basic_columns
-
-            database.create("stocks", *column_list)
-            database.insert("stocks", column_list, tuple(value))
-
     # """Child Process"""
     def amazing(self, vision: str, *args, **kwargs):
         # Initial Loop
@@ -192,6 +173,23 @@ class Missions(object):
             alynex.ask_exercise(vision, *args)
         )
         return loop_complete
+
+    @staticmethod
+    async def enforce(db: "Drovix", ks: typing.Optional["KerasStruct"], start: int, end: int, cost: float, *args):
+        basic_columns = ["total_path", "title", "query_path", "query", "stage", "frame_path"]
+        stage = json.dumps({"stage": {"start": start, "end": end, "cost": cost}})
+        value = list(args[:4]) + [stage, args[4]]
+
+        if ks:
+            extra_columns = ["extra_path", "proto_path"]
+            extra_data = args[5:7]
+            column_list = basic_columns + extra_columns
+            value.extend(extra_data)
+        else:
+            column_list = basic_columns
+
+        await db.create("stocks", *column_list)
+        await db.insert("stocks", column_list, tuple(value))
 
     async def als_track(
             self,
@@ -253,7 +251,7 @@ class Missions(object):
 
         logger.debug(f"△ △ △ 光速穿梭 △ △ △")
         if self.level == "INFO":
-            Show.show_panel("", Wind.BASIC)
+            Show.show_panel("", Wind.SPEED)
 
         const_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
         if deploy.shape:
@@ -299,9 +297,10 @@ class Missions(object):
             if self.level == "INFO":
                 Show.show_panel("\n".join(message_list), Wind.METRIC)
 
-        # Speed Analyzer Result
-        start, end, cost, scores, struct = 0, 0, 0, None, None
-        for *_, total_path, title, query_path, query, frame_path, _, _ in task_list:
+        async def render_speed(todo_list: list[list]):
+            start, end, cost, scores, struct = 0, 0, 0, None, None
+            *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo_list
+
             result = {
                 "total": os.path.basename(total_path),
                 "title": title,
@@ -313,9 +312,19 @@ class Missions(object):
             logger.debug(f"Speeder: {json.dumps(result, ensure_ascii=False)}")
             await report.load(result)
 
-            self.enforce(
-                report.reset_path, struct, start, end, cost,
-                total_path, title, query_path, query, frame_path
+            future_result = struct, start, end, cost
+            todo_list_result = total_path, title, query_path, query, frame_path
+
+            return future_result, todo_list_result
+
+        # Speed Analyzer Result
+        render_result = await asyncio.gather(
+            *(render_speed(todo_list) for todo_list in task_list)
+        )
+
+        async with Drovix(os.path.join(report.reset_path, f"{const.NAME}_data.db")) as db:
+            await asyncio.gather(
+                *(self.enforce(db, *ftr, *tlr) for ftr, tlr in render_result)
             )
 
     async def als_keras(
@@ -399,13 +408,9 @@ class Missions(object):
         if isinstance(atom_tmp := await Craft.achieve(self.atom_total_temp), Exception):
             return logger.error(f"{const.ERR}{atom_tmp}[/]")
 
-        # Keras Analyzer Result
-        for future, todo in zip(futures, task_list):
-            if future is None:
-                continue
-
+        async def render_keras(future: "Review", todo_list: list[list]):
             start, end, cost, scores, struct = future.material
-            *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo
+            *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo_list
 
             result = {
                 "total": os.path.basename(total_path),
@@ -430,9 +435,19 @@ class Missions(object):
             logger.debug(f"Restore: {json.dumps(result, ensure_ascii=False)}")
             await report.load(result)
 
-            self.enforce(
-                report.reset_path, struct, start, end, cost,
-                total_path, title, query_path, query, frame_path, extra_path, proto_path
+            future_result = struct, start, end, cost
+            todo_list_result = total_path, title, query_path, query, frame_path, extra_path, proto_path
+
+            return future_result, todo_list_result
+
+        # Keras Analyzer Result
+        render_result = await asyncio.gather(
+            *(render_keras(future, todo_list) for future, todo_list in zip(futures, task_list) if future)
+        )
+
+        async with Drovix(os.path.join(report.reset_path, f"{const.NAME}_data.db")) as db:
+            await asyncio.gather(
+                *(self.enforce(db, *ftr, *tlr) for ftr, tlr in render_result)
             )
 
     async def combine(self, report: "Report"):
