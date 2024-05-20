@@ -132,7 +132,7 @@ class Show(object):
     def help_document():
         for keys, values in argument.Args.ARGUMENT.items():
             table = Table(
-                title=f"[bold #FF851B]{const.ITEM} {const.DESC} Command Line {keys}",
+                title=f"[bold #FFDAB9]{const.ITEM} {const.DESC} Command Line [bold #66CDAA]**{keys}**[/]",
                 header_style="bold #FF851B",
                 title_justify="center",
                 show_header=True,
@@ -147,11 +147,11 @@ class Show(object):
             ]
             for info in information:
                 cmds, kind, push, desc = info
-                push_color = "[bold #FFAFAF]" if push == "多次" else "[bold #8A8A8A]"
+                push_color = "[bold #FFAFAF]" if push == "多次" else "[bold #CFCFCF]"
                 table.add_row(
                     *[f"[bold #FFDC00]{cmds}", f"[bold #7FDBFF]{kind}", f"{push_color}{push}", f"[bold #39CCCC]{desc}"]
                 )
-            Show.console.print(table)
+            Show.console.print(table, "\t")
 
     @staticmethod
     def tips_document():

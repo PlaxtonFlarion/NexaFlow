@@ -106,9 +106,9 @@ try:
     from engine.flight import FramixAnalyzerError
     from engine.flight import FramixReporterError
     from frameflow.argument import Wind
-    from frameflow.skills.config import Option
-    from frameflow.skills.config import Deploy
-    from frameflow.skills.config import Script
+    from frameflow.skills.brexil import Option
+    from frameflow.skills.brexil import Deploy
+    from frameflow.skills.brexil import Script
     from frameflow.skills.drovix import Drovix
     from frameflow.skills.parser import Parser
     from nexaflow import toolbox
@@ -251,7 +251,7 @@ class Missions(object):
 
         logger.debug(f"△ △ △ 光速穿梭 △ △ △")
         if self.level == "INFO":
-            Show.show_panel("", Wind.SPEED)
+            Show.show_panel(Wind.SPEED_TEXT, Wind.SPEED)
 
         const_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
         if deploy.shape:
@@ -341,7 +341,10 @@ class Missions(object):
 
         logger.debug(f"△ △ △ {'思维导航' if alynex.ks.model else '基石阵地'} △ △ △")
         if self.level == "INFO":
-            Show.show_panel("", Wind.KERAS if alynex.ks.model else Wind.BASIC)
+            Show.show_panel(
+                Wind.KERAS_TEXT if alynex.ks.model else Wind.BASIC_TEXT,
+                Wind.KERAS if alynex.ks.model else Wind.BASIC
+            )
 
         video_target_list = [
             (os.path.join(

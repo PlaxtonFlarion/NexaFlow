@@ -8,52 +8,52 @@ class Args(object):
         "--video": {
             "args": {"action": "append"},
             "view": ["视频文件", "多次"],
-            "help": "分析视频文件"
+            "help": "视频解析探索"
         },
         "--stack": {
             "args": {"action": "append"},
             "view": ["视频集合", "多次"],
-            "help": "分析视频集合"
+            "help": "影像堆叠导航"
         },
         "--train": {
             "args": {"action": "append"},
             "view": ["视频文件", "多次"],
-            "help": "训练模型"
+            "help": "模型训练大师"
         },
         "--build": {
             "args": {"action": "append"},
-            "view": ["图片集合", "多次"],
-            "help": "编译模型"
+            "view": ["分类集合", "多次"],
+            "help": "模型编译大师"
         },
         "--flick": {
             "args": {"action": "store_true"},
-            "view": ["命令参数", "一次"],
-            "help": "循环模式"
+            "view": ["布尔", "一次"],
+            "help": "循环节拍器"
         },
         "--carry": {
             "args": {"action": "append"},
             "view": ["脚本名称", "多次"],
-            "help": "运行指定脚本"
+            "help": "脚本驱动者"
         },
         "--fully": {
             "args": {"action": "append"},
-            "view": ["文件路径", "多次"],
-            "help": "运行全部脚本"
+            "view": ["脚本路径", "多次"],
+            "help": "全域执行者"
         },
         "--paint": {
             "args": {"action": "store_true"},
-            "view": ["命令参数", "一次"],
-            "help": "绘制分割线条"
+            "view": ["布尔", "一次"],
+            "help": "线迹创造者"
         },
         "--union": {
             "args": {"action": "append"},
             "view": ["报告集合", "多次"],
-            "help": "聚合视频帧报告"
+            "help": "时空纽带分析系统"
         },
         "--merge": {
             "args": {"action": "append"},
             "view": ["报告集合", "多次"],
-            "help": "聚合时间戳报告"
+            "help": "时序融合分析系统"
         }
     }
 
@@ -209,6 +209,15 @@ class Args(object):
 
 
 class Wind(object):
+
+    SPEED_TEXT = """> >> >>> >>>> >>>>> >>>>>> >>>>>>> >>>>>>>> >>>>>> >>>>> >>>> >>> >> >
+> > > > > > > > > > > > > > > > > > > >"""
+
+    BASIC_TEXT = """[####][####][####][####][####][####]
+[##################################]"""
+
+    KERAS_TEXT = """|> * -> * -> * -> * -> * -> * -> * -> * -> * -> * 
+|> * -> * -> * -> * -> * -> * -> * -> * -> * -> *"""
 
     SPEED = {
         "文本": {
