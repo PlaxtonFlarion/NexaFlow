@@ -198,6 +198,27 @@ class Missions(object):
             task_list: list[list],
             main_loop: "asyncio.AbstractEventLoop"
     ) -> tuple[list, list]:
+        """
+        异步执行视频的处理追踪，包括内容提取和平衡视频长度等功能。
+
+        此函数用于根据指定的部署配置，提取视频内容，并尝试将多个视频的长度调整为一致。
+        主要处理包括解析视频信息、视频内容提取、时间平衡和删除临时文件。
+
+        参数:
+            deploy (Deploy): 配置信息对象，包含视频处理的起始、结束、限制时间和帧率等。
+            clipix (Clipix): 视频处理工具对象，负责具体的视频内容提取和平衡操作。
+            task_list (list[list]): 包含视频信息的任务列表，每个列表项包括视频模板和其他参数。
+            main_loop (asyncio.AbstractEventLoop): 异步事件循环，用于执行非异步的任务。
+
+        返回:
+            tuple[list, list]: 返回处理后的原始视频列表和指示信息列表。
+
+        注意:
+            - 该函数为异步函数，需要在异步环境中运行。
+            - 函数内部使用了多个异步gather来并行处理视频操作，提高效率。
+            - 确保提供的每个视频都符合`Deploy`中定义的处理标准。
+            - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
+        """
 
         # Video information
         start_ms = Parser.parse_mills(deploy.start)
@@ -248,6 +269,29 @@ class Missions(object):
             originals: list,
             indicates: list
     ) -> None:
+        """
+        异步执行视频的速度分析和调整，包括视频过滤、尺寸调整等功能。
+
+        此函数根据指定的部署配置（deploy）处理视频内容，进行视频尺寸和帧率的调整，并记录视频处理过程中的关键信息。
+        主要操作包括应用视频过滤器，改变视频尺寸和帧率，以及处理并输出视频处理的细节和结果。
+
+        参数:
+            deploy (Deploy): 配置信息对象，包含视频处理的帧率、颜色格式、尺寸等配置。
+            clipix (Clipix): 视频处理工具对象，负责具体的视频内容调整操作。
+            report (Report): 报告处理对象，负责记录和展示处理结果。
+            task_list (list[list]): 包含视频和其他相关参数的任务列表。
+            originals (list): 原始视频列表，用于提取和处理视频内容。
+            indicates (list): 指示信息列表，包含视频处理的具体指标和参数。
+
+        返回:
+            None: 此函数没有返回值，所有结果通过日志和报告对象进行记录和展示。
+
+        注意:
+            - 该函数为异步函数，需要在异步环境中运行。
+            - 函数内部使用了多个异步gather来并行处理视频操作，提高效率。
+            - 确保提供的每个视频都符合Deploy中定义的处理标准。
+            - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
+        """
 
         logger.debug(f"△ △ △ 光速穿梭 △ △ △")
         if self.level == "INFO":
@@ -338,6 +382,28 @@ class Missions(object):
             main_loop: "asyncio.AbstractEventLoop",
             alynex: "Alynex"
     ) -> None:
+        """
+        异步执行视频的Keras模式分析或基本模式分析，包括视频过滤、尺寸调整和动态模板渲染等功能。
+
+        此函数根据部署配置(deploy)调整视频帧率和尺寸，执行视频分析，并根据分析结果采用不同模式处理视频。
+        如果启用了Keras模型，执行深度学习模型分析；否则执行基本分析。
+
+        参数:
+            deploy (Deploy): 配置信息对象，包含视频处理的帧率、颜色格式、尺寸等配置。
+            clipix (Clipix): 视频处理工具对象，负责具体的视频内容调整和分析操作。
+            report (Report): 报告处理对象，负责记录和展示处理结果。
+            task_list (list[list]): 包含视频和其他相关参数的任务列表。
+            originals (list): 原始视频列表，用于提取和处理视频内容。
+            indicates (list): 指示信息列表，包含视频处理的具体指标和参数。
+            main_loop (asyncio.AbstractEventLoop): 异步事件循环，用于执行非异步的任务。
+            alynex (Alynex): 模型分析工具，决定使用Keras模型还是基础分析。
+
+        注意:
+            - 该函数为异步函数，需要在异步环境中运行。
+            - 函数内部使用了多个异步gather来并行处理视频操作，提高效率。
+            - 函数的执行路径依赖于`alynex.ks.model`的状态，确保Alynex实例正确初始化。
+            - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
+        """
 
         logger.debug(f"△ △ △ {'思维导航' if alynex.ks.model else '基石阵地'} △ △ △")
         if self.level == "INFO":
@@ -459,6 +525,7 @@ class Missions(object):
         function = getattr(self, "combine_view" if self.lines.speed else "combine_main")
         return await function([os.path.dirname(report.total_path)])
 
+    # 时空纽带分析系统
     async def combine_view(self, merge: list):
         views, total = await asyncio.gather(
             Craft.achieve(self.view_share_temp), Craft.achieve(self.view_total_temp),
@@ -473,6 +540,7 @@ class Missions(object):
                 logger.error(f"{const.ERR}{state}[/]")
             logger.info(f"成功生成汇总报告 {os.path.relpath(state)}")
 
+    # 时序融合分析系统
     async def combine_main(self, merge: list):
         major, total = await asyncio.gather(
             Craft.achieve(self.main_share_temp), Craft.achieve(self.main_total_temp),
@@ -487,6 +555,7 @@ class Missions(object):
                 logger.error(f"{const.ERR}{state}[/]")
             logger.info(f"成功生成汇总报告 {os.path.relpath(state)}")
 
+    # 视频解析探索
     async def video_file_task(self, video_file_list: list, *args):
         if len(video_file_list := [
             video_file for video_file in video_file_list if os.path.isfile(video_file)
@@ -538,6 +607,7 @@ class Missions(object):
         # Create Report
         await self.combine(report)
 
+    # 影像堆叠导航
     async def video_data_task(self, video_data_list: list, *args):
 
         async def load_entries():
@@ -601,6 +671,7 @@ class Missions(object):
                 # Create Report
                 await self.combine(report)
 
+    # 模型训练大师
     async def train_model(self, video_file_list: list, *args):
         if len(video_file_list := [
             video_file for video_file in video_file_list if os.path.isfile(video_file)
@@ -700,6 +771,7 @@ class Missions(object):
             *(main_loop.run_in_executor(None, os.remove, target) for (target, _) in video_target_list)
         )
 
+    # 模型编译大师
     async def build_model(self, video_data_list: list, *args):
         if len(video_data_list := [
             video_data for video_data in video_data_list if os.path.isdir(video_data)
@@ -799,6 +871,7 @@ class Missions(object):
                 await asyncio.gather(*task)
             self.level = this_level
 
+    # 线迹创造者
     async def painting(self, *args):
 
         import PIL.Image
@@ -948,6 +1021,7 @@ class Missions(object):
             else:
                 logger.warning(f"{const.WRN}没有该选项,请重新输入[/]\n")
 
+    # 循环节拍器
     async def analysis(self, *args):
 
         async def commence():
@@ -1339,6 +1413,30 @@ class Clipix(object):
             close: typing.Optional[str],
             limit: typing.Optional[str],
     ) -> tuple[str, str, float, tuple, tuple]:
+        """
+        异步获取特定视频文件的内容分析，包括实际和平均帧率、视频时长及其视觉处理点。
+
+        此函数分析视频文件，提供关键视频流参数，如帧率和时长，并根据输入的起始、结束和限制时间点计算处理后的视觉时间点。
+
+        参数:
+            video_temp (str): 视频文件的路径。
+            start (Optional[str]): 视频处理的起始时间点（如 "00:00:10" 表示从第10秒开始）。如果为None，则从视频开始处处理。
+            close (Optional[str]): 视频处理的结束时间点。如果为None，则处理到视频结束。
+            limit (Optional[str]): 处理视频的最大时长限制。如果为None，则没有时间限制。
+
+        返回:
+            tuple[str, str, float, tuple, tuple]: 返回一个包含以下元素的元组：
+                - rlt (str): 实际帧率。
+                - avg (str): 平均帧率。
+                - duration (float): 视频总时长（秒）。
+                - original (tuple): 原始视频分辨率和其他基础数据。
+                - (vision_start, vision_close, vision_limit) (tuple): 处理后的起始、结束和限制时间点（格式化为字符串如"00:00:10"）。
+
+        注意:
+            - 确保视频文件路径正确且视频文件可访问。
+            - 输入的时间格式应为字符串形式的标准时间表示（如"HH:MM:SS"），且应确保输入合法。
+            - 返回的时间点格式化为易读的字符串，方便直接使用或显示。
+        """
 
         video_streams = await Switch.ask_video_stream(self.fpb, video_temp)
 
@@ -1360,6 +1458,28 @@ class Clipix(object):
         return rlt, avg, duration, original, (vision_start, vision_close, vision_limit)
 
     async def vision_balance(self, duration: float, standard: float, src: str, frate: float) -> tuple[str, str]:
+        """
+        异步调整视频时长以匹配指定的标准时长，通过裁剪视频的起始和结束时间。
+
+        此函数计算原视频与标准时长的差值，基于这一差值调整视频的开始和结束时间点，以生成新的视频文件，
+        保证其总时长接近标准时长。适用于需要统一视频播放长度的场景。
+
+        参数:
+            duration (float): 原视频的总时长（秒）。
+            standard (float): 目标视频的标准时长（秒）。
+            src (str): 原视频文件的路径。
+            frate (float): 目标视频的帧率。
+
+        返回:
+            tuple[str, str]: 包含两个元素：
+                - video_dst (str): 调整时长后生成的新视频文件的路径。
+                - video_blc (str): 描述视频时长调整详情的字符串。
+
+        注意:
+            - 确保原视频文件路径正确且文件可访问。
+            - 视频处理会生成新的文件，确保有足够的磁盘空间。
+            - 此函数使用异步方式进行视频处理，确保在适当的异步环境中调用。
+        """
         start_time_point = (limit_time_point := duration) - standard
         start_delta = datetime.timedelta(seconds=start_time_point)
         limit_delta = datetime.timedelta(seconds=limit_time_point)
@@ -1378,12 +1498,48 @@ class Clipix(object):
 
     @staticmethod
     async def vision_improve(originals: list[tuple[int, int]], shape: tuple) -> tuple:
+        """
+        异步调整一系列原始视频的分辨率到指定的目标形状。
+
+        此方法接收一系列视频的原始分辨率和一个目标分辨率形状，调整每个视频的分辨率以匹配这个目标形状。
+        主要用于视频前处理，确保所有视频具有统一的分辨率。
+
+        参数:
+            originals (list[tuple[int, int]]): 包含每个视频的原始分辨率的列表，每个元素是一个包含宽度和高度的元组。
+            shape (tuple): 目标视频分辨率形状，为一个包含目标宽度和高度的元组。
+
+        返回:
+            tuple: 包含每个视频调整后的新分辨率信息的元组。
+
+        注意:
+            - 此函数是异步的，需要在适当的异步环境中运行。
+            - 确保所有的输入参数都是准确和有效的。
+        """
         final_shape_list = await asyncio.gather(
             *(Switch.ask_magic_frame(original, shape) for original in originals)
         )
         return final_shape_list
 
     async def pixels(self, function: "typing.Callable", video_filter: list, src: str, dst: str, **kwargs) -> tuple[str]:
+        """
+        执行视频过滤处理函数，应用指定的视频过滤参数，从源视频生成目标视频。
+
+        此方法用于调用具体的视频处理函数，该函数根据提供的过滤参数列表，源视频路径和目标视频路径进行视频处理。
+
+        参数:
+            function (typing.Callable): 要执行的视频处理函数，接收视频处理器、过滤参数、源视频路径和目标视频路径等参数。
+            video_filter (list): 视频过滤参数列表，每个参数为字符串形式。
+            src (str): 源视频文件路径。
+            dst (str): 目标视频文件路径。
+            **kwargs: 传递给视频处理函数的额外关键字参数。
+
+        返回:
+            tuple[str]: 包含处理结果的元组，通常包括处理日志或其他输出信息。
+
+        注意:
+            - 该方法依赖于提供的`function`能够异步执行并返回处理结果。
+            - 确保源视频和目标视频路径正确，且文件系统有足够权限读写文件。
+        """
         return await function(self.fmp, video_filter, src, dst, **kwargs)
 
 

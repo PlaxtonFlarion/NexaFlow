@@ -158,10 +158,29 @@ class ClassifierResult(object):
 
     def get_stage_range(self) -> list[list["SingleClassifierResult"]]:
         """
-        返回范围列表
-        如果您的视频有 30 帧，分 3 个阶段，则此列表可以是:
-        [(0, 1, ... 11), (12, 13 ... 20), (21, 22 ... 30)]
+        从视频数据中提取并返回各个阶段的帧范围列表。
+
+        此方法遍历内部视频数据（self.data），根据帧的阶段属性（stage）对视频帧进行分组。
+        每个分组包含一系列同阶段的连续帧。当检测到阶段变化时，当前阶段的帧列表会被添加到结果列表中，
+        并开始收集下一个阶段的帧。
+
+        返回的列表包含多个子列表，每个子列表代表一个视频阶段中的所有帧。
+
+        示例：
+        如果视频有 30 帧，分为 3 个阶段（0-11，12-20，21-30 帧），则此方法将返回:
+        [
+            [frame_0, frame_1, ..., frame_11],
+            [frame_12, frame_13, ..., frame_20],
+            [frame_21, frame_22, ..., frame_30]
+        ]
+
+        Returns:
+            list[list[SingleClassifierResult]]: 包含每个阶段所有帧的列表的列表。
+
+        Raises:
+            AssertionError: 如果视频数据中所有帧均为同一阶段，抛出断言错误。
         """
+
         result: list[list["SingleClassifierResult"]] = []
 
         cur = self.data[0]
@@ -194,7 +213,17 @@ class ClassifierResult(object):
         self, stage_name: str
     ) -> list[list["SingleClassifierResult"]]:
         """
-        通过阶段名称获取特定阶段范围（可能包含一些分区
+        根据指定的阶段名称返回包含该阶段所有帧的列表。
+
+        此方法调用 `get_stage_range` 来获取视频数据中所有阶段的帧范围，然后筛选出与给定阶段名称匹配的范围。
+        每个阶段由一个列表表示，其中包含属于该阶段的所有`SingleClassifierResult`对象。
+
+        Parameters:
+            stage_name (str): 要检索帧的视频阶段的名称。
+
+        Returns:
+            list[list[SingleClassifierResult]]: 包含每个匹配阶段所有帧的列表的列表。每个内部列表包含
+            一个阶段的所有帧，只返回匹配指定`stage_name`的阶段。
         """
         ret = list()
         for each_range in self.get_stage_range():
@@ -225,6 +254,20 @@ class ClassifierResult(object):
         return self.first(end_stage).timestamp - self.last(start_stage).timestamp
 
     def get_important_frame_list(self) -> list["SingleClassifierResult"]:
+        """
+        从存储的帧数据集中提取关键帧列表。关键帧包括：
+        - 数据集中的第一帧；
+        - 每个阶段变化前后的帧；
+        - 数据集中的最后一帧（如果尚未被包括）。
+
+        关键帧用于标示视频或时间序列数据中的重要转折点，如阶段变化，
+        它们对于后续的数据分析和处理尤为重要，比如视频编辑中的剪辑点检测，
+        或者机器学习模型的训练数据制备。
+
+        Returns:
+            list: 包含`SingleClassifierResult`对象的列表，这些对象代表了识别出的关键帧。
+                  每个对象包含帧的数据以及可能的其他分类或分析结果。
+        """
         result = [self.data[0]]
 
         prev = self.data[0]
@@ -241,8 +284,19 @@ class ClassifierResult(object):
     def calc_changing_cost(
         self,
     ) -> dict[str, tuple["SingleClassifierResult", "SingleClassifierResult"]]:
+        """
+        计算并返回数据集中每次稳定到不稳定状态之间的变化成本。
 
-        cost_dict: typing.Dict[str, typing.Tuple[SingleClassifierResult, SingleClassifierResult]] = {}
+        此方法遍历`self.data`中的帧序列，识别连续的不稳定帧，并记录下这些阶段变化的开始和结束帧。
+        例如，如果一个帧序列从稳定状态变为不稳定，然后再次变为稳定，这个函数将记录下变化开始和结束时的帧。
+
+        Returns:
+            dict[str, tuple[SingleClassifierResult, SingleClassifierResult]]:
+                一个字典，其键为变化的描述（例如 "from stage1 to stage2"），值为一个元组，
+                其中包含表示变化开始的帧和变化结束的帧的`SingleClassifierResult`对象。
+        """
+
+        cost_dict: dict[str, tuple["SingleClassifierResult", "SingleClassifierResult"]] = {}
         i = 0
         while i < len(self.data) - 1:
             cur = self.data[i]
@@ -409,6 +463,26 @@ class BaseClassifier(object):
         *args,
         **kwargs,
     ) -> "ClassifierResult":
+        """
+        分类视频帧，并根据给定参数返回分类结果。
+
+        本方法接受视频文件路径或视频对象，并遍历视频帧以进行分类。可通过valid_range指定只分类特定范围内的帧。
+        可选地，可以增强性能通过跳过帧(step)和利用之前的分类结果(boost_mode)。
+
+        Parameters:
+            video (Union[str, VideoObject]): 要分类的视频路径或视频对象。
+            valid_range (list[VideoCutRange], optional): 一个包含VideoCutRange对象的列表，这些对象定义了需要分类的帧的范围。
+            step (int, optional): 分类时的帧步长，默认为1，表示逐帧处理。
+            keep_data (bool, optional): 是否在返回的结果中保留原始帧数据。
+            boost_mode (bool, optional): 是否启用增强模式，复用前一帧的结果来提高性能。需要valid_range来工作。
+            *args, **kwargs: 传递给钩子函数和帧分类函数的额外参数。
+
+        Returns:
+            ClassifierResult: 包含分类结果的对象，每个结果为一个SingleClassifierResult对象，包括视频路径、帧ID、时间戳和分类结果。
+
+        Raises:
+            AssertionError: 如果启用了boost_mode但没有提供valid_range，将抛出异常。
+        """
 
         # logger.debug(f"classify with {self.__class__.__name__}")
         step = step or 1
@@ -418,7 +492,7 @@ class BaseClassifier(object):
             not (boost_mode or valid_range)
         ), "boost_mode required valid_range"
 
-        final_result: typing.List[SingleClassifierResult] = list()
+        final_result: list["SingleClassifierResult"] = list()
         if isinstance(video, str):
             video = VideoObject(video)
 
