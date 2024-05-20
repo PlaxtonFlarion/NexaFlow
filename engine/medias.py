@@ -126,7 +126,7 @@ class Record(object):
                 return logger.info(f"{desc} 意外停止 ...")
             await asyncio.sleep(0.2)
 
-    async def check_event(self, device, exec_tasks, async_style: bool = False):
+    async def check_event(self, device, exec_tasks):
         if self.alone and (events := self.record_events.get(device.sn, None)):
             bridle = events["stop"], events["done"], events["fail"]
             while True:
@@ -134,12 +134,7 @@ class Record(object):
                     break
                 await asyncio.sleep(1)
         else:
-            if async_style:
-                await self.melody_events.wait()
-            else:
-                await asyncio.get_running_loop().run_in_executor(
-                    None, self.melody_events.wait
-                )
+            await self.melody_events.wait()
 
         if task := exec_tasks.get(device.sn, []):
             task.cancel()

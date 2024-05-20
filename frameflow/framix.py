@@ -1155,7 +1155,7 @@ class Missions(object):
         charge = main_loop, alynex
 
         titles_ = {"speed": "Speed", "basic": "Basic", "keras": "Keras"}
-        input_title_ = next((title for key, title in titles_.items() if getattr(self, key)), "Video")
+        input_title_ = next((title for key, title in titles_.items() if getattr(self.lines, key)), "Video")
         report = Report(self.total_place)
 
         record = Record(
