@@ -1027,10 +1027,10 @@ class Missions(object):
         async def commence():
 
             async def wait_for_device(device):
-                logger.info(f"[bold #FAFAD2]Wait Device Online -> {device.tag} {device.sn}[/]")
+                Show.mark(f"[bold #FAFAD2]Wait Device Online -> {device.tag} {device.sn}[/]")
                 await Terminal.cmd_line(self.adb, "-s", device.sn, "wait-for-device")
 
-            logger.info(f"△ △ △ {('独立' if self.lines.alone else '全局')}控制模式 △ △ △")
+            Show.mark(f"**<* {('独立' if self.lines.alone else '全局')}控制模式 *>**")
 
             await source.monitor()
 
@@ -1039,7 +1039,7 @@ class Missions(object):
             )
 
             media_screen_w, media_screen_h = ScreenMonitor.screen_size()
-            logger.info(f"Media Screen W={media_screen_w} H={media_screen_h}")
+            Show.mark(f"Media Screen W={media_screen_w} H={media_screen_h}")
 
             todo_list = []
             format_folder = time.strftime("%Y%m%d%H%M%S")
@@ -1097,7 +1097,7 @@ class Missions(object):
                 # Keras Analyzer
                 await self.als_keras(*attack, *charge)
             else:
-                logger.info(f"△ △ △ 录制模式 △ △ △")
+                logger.info(f"**<* 录制模式 *>**")
 
         async def anything_time():
             await asyncio.gather(
@@ -1248,7 +1248,6 @@ class Missions(object):
 
         titles_ = {"speed": "Speed", "basic": "Basic", "keras": "Keras"}
         input_title_ = next((title for key, title in titles_.items() if getattr(self.lines, key)), "Video")
-        report = Report(self.total_place)
 
         record = Record(
             self.scc, platform, alone=self.lines.alone, whist=self.lines.whist, frate=deploy.frate
@@ -1258,8 +1257,8 @@ class Missions(object):
 
         # Flick Loop
         if self.lines.flick:
-            const_title_ = f"{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
-            report.title = f"{input_title_}_{const_title_}"
+            report = Report(self.total_place)
+            report.title = f"{input_title_}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
             timer_mode = 5
             while True:
                 try:
@@ -1334,8 +1333,9 @@ class Missions(object):
 
             await manage_.display_device()
             for script_dict_ in script_storage_:
+                report = Report(self.total_place)
                 for script_key_, script_value_ in script_dict_.items():
-                    logger.info(f"Batch Exec: {script_key_}")
+                    logger.debug(f"Batch Exec: {script_key_}")
 
                     if (parser_ := script_value_.get("parser", {})) and type(parser_) is dict:
                         for parser_key_, parser_value_ in parser_.items():
@@ -1353,8 +1353,7 @@ class Missions(object):
                     try:
                         looper_ = int(looper_) if (looper_ := script_value_.get("looper", None)) else 1
                     except ValueError as e_:
-                        logger.error(f"{const.ERR}{e_}[/]")
-                        logger.error(f"{const.ERR}重置循环次数[/] {(looper_ := 1)}")
+                        logger.error(f"{const.ERR}重置循环次数[/] {(looper_ := 1)} {e_}")
 
                     if prefix_list_ := script_value_.get("prefix", []):
                         prefix_list_ = await pack_commands(prefix_list_)
@@ -1395,9 +1394,10 @@ class Missions(object):
                             await analysis_tactics()
                             await asyncio.gather(*suffix_task_list_)
 
-            return await self.combine(report)
+                await self.combine(report)
 
-        return None
+        else:
+            return None
 
 
 class Clipix(object):
@@ -1440,10 +1440,10 @@ class Clipix(object):
 
         video_streams = await Switch.ask_video_stream(self.fpb, video_temp)
 
-        rlt = video_streams["rlt_frame_rate"]
-        avg = video_streams["avg_frame_rate"]
-        duration = video_streams["duration"]
-        original = video_streams["original"]
+        rlt = video_streams.get("rlt_frame_rate", "0/0")
+        avg = video_streams.get("avg_frame_rate", "0/0")
+        duration = video_streams.get("duration", 0.0)
+        original = video_streams.get("original", (0, 0))
 
         vision_start, vision_close, vision_limit = await Switch.ask_magic_point(
             Parser.parse_mills(start),

@@ -7,7 +7,6 @@ import typing
 import random
 import asyncio
 import aiofiles
-import threading
 from pathlib import Path
 from loguru import logger
 from jinja2 import Template
@@ -19,42 +18,26 @@ from nexaflow.classifier.base import ClassifierResult
 
 class Report(object):
 
-    __lock: threading.Lock = threading.Lock()
-    __initialized: bool = False
-    __instance = None
-    __init_var = None
-
-    def __new__(cls, *args, **kwargs):
-        if cls.__instance is None:
-            with cls.__lock:
-                if cls.__instance is None:
-                    cls.__instance = super(Report, cls).__new__(cls)
-                    cls.__init_var = (args, kwargs)
-        return cls.__instance
-
     def __init__(self, total_path: str):
-        if not self.__initialized:
-            self.__initialized = True
+        self.__title = ""
+        self.__query = ""
+        self.query_path = ""
+        self.video_path = ""
+        self.frame_path = ""
+        self.extra_path = ""
 
-            self.__title = ""
-            self.__query = ""
-            self.query_path = ""
-            self.video_path = ""
-            self.frame_path = ""
-            self.extra_path = ""
+        self.range_list = []
+        self.total_list = []
 
-            self.range_list = []
-            self.total_list = []
+        self.total_path = os.path.join(
+            total_path, f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
+        )
+        os.makedirs(self.total_path, exist_ok=True)
 
-            self.total_path = os.path.join(
-                total_path, f"Nexa_{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}", "Nexa_Collection"
-            )
-            os.makedirs(self.total_path, exist_ok=True)
-
-            self.reset_path = os.path.join(os.path.dirname(self.total_path), "Nexa_Recovery")
-            os.makedirs(self.reset_path, exist_ok=True)
-            log_papers = os.path.join(self.reset_path, "nexaflow.log")
-            logger.add(log_papers, format=const.LOG_FORMAT, level="DEBUG")
+        self.reset_path = os.path.join(os.path.dirname(self.total_path), "Nexa_Recovery")
+        os.makedirs(self.reset_path, exist_ok=True)
+        log_papers = os.path.join(self.reset_path, "nexaflow.log")
+        logger.add(log_papers, format=const.WRITE_FORMAT, level="DEBUG")
 
     @property
     def proto_path(self) -> str:

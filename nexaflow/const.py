@@ -46,7 +46,9 @@ BLOCK = 6
 CROPS = []
 OMITS = []
 
-LOG_FORMAT = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>"
+WHILE_FORMAT = f"[bold]{{time:YYYY-MM-DD HH:mm:ss.SSS}} | <level>{{level: <8}}</level> | {{name}}:{{function}}:{{line}} - <level>{{message}}</level>"
+PRINT_FORMAT = f"[bold]{DESC} | <level>{{level: <8}}</level> | <level>{{message}}</level>"
+WRITE_FORMAT = f"<green>{{time:YYYY-MM-DD HH:mm:ss.SSS}}</green> | <level>{{level: <8}}</level> | <level>{{message}}</level>"
 
 NEXA = os.path.dirname(os.path.abspath(__file__))
 WORK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -2,7 +2,6 @@ import os
 import time
 import random
 import typing
-from loguru import logger
 from rich.text import Text
 from rich.table import Table
 from rich.panel import Panel
@@ -21,6 +20,10 @@ from nexaflow import const
 class Show(object):
 
     console = Console()
+
+    @staticmethod
+    def mark(text: typing.Any):
+        Show.console.print(f"[bold]{const.DESC} | Analyzer | {text}[/]")
 
     @staticmethod
     def show_panel(text: typing.Any, wind: dict) -> None:
@@ -47,7 +50,7 @@ class Show(object):
                 style="bold #FF6347", complete_style="bold #FFEC8B", finished_style="bold #98FB98"
             ),
             TimeRemainingColumn(),
-            "[progress.percentage][bold #E0FFFF]{task.completed:>5.0f}[/]/[bold #FFDAB9]{task.total_place}[/]",
+            "[progress.percentage][bold #E0FFFF]{task.completed:>5.0f}[/]/[bold #FFDAB9]{task.total}[/]",
             expand=False
         )
 
@@ -74,34 +77,34 @@ class Show(object):
     @staticmethod
     def done():
         return f"""
-    \033[1m╔════════════════════════════════╗
-    ║       \033[1m\033[32mMissions  Complete\033[0m       ║
+    ╔════════════════════════════════╗
+    ║       \033[1;32mMissions  Complete\033[0m       ║
     ╚════════════════════════════════╝
 
-    ✦✦✦ \033[35m{const.DESC}\033[0m will now automatically exit ✦✦✦
-    ✧✧✧ \033[35m{const.DESC}\033[0m see you next ✧✧✧\033[0m
+    <*=> \033[1;35m{const.DESC}\033[0m will now automatically exit <=*>
+    <*=> \033[1;35m{const.DESC}\033[0m see you next <=*>
     """
 
     @staticmethod
     def fail():
         return f"""
-    \033[1m╔════════════════════════════════╗
-    ║        \033[1m\033[31mMissions  Failed\033[0m        ║
+    ╔════════════════════════════════╗
+    ║        \033[1;31mMissions  Failed\033[0m        ║
     ╚════════════════════════════════╝
 
-    ✦✦✦ \033[35m{const.DESC}\033[0m will now automatically exit ✦✦✦
-    ✧✧✧ \033[35m{const.DESC}\033[0m see you next ✧✧✧\033[0m
+    <*=> \033[1;35m{const.DESC}\033[0m will now automatically exit <=*>
+    <*=> \033[1;35m{const.DESC}\033[0m see you next <=*>
     """
 
     @staticmethod
     def exit():
         return f"""
-    \033[1m╔════════════════════════════════╗
-    ║        \033[1m\033[33mMissions  Exited\033[0m        ║
+    ╔════════════════════════════════╗
+    ║        \033[1;33mMissions  Exited\033[0m        ║
     ╚════════════════════════════════╝
 
-    ✦✦✦ \033[35m{const.DESC}\033[0m will now automatically exit ✦✦✦
-    ✧✧✧ \033[35m{const.DESC}\033[0m see you next ✧✧✧\033[0m
+    <*=> \033[1;35m{const.DESC}\033[0m will now automatically exit <=*>
+    <*=> \033[1;35m{const.DESC}\033[0m see you next <=*>
     """
 
     @staticmethod
@@ -238,11 +241,11 @@ class Show(object):
             return engine_stages[stage % len(engine_stages)]
 
         def animation(step, secs, function):
-            logger.info(f"[bold #C1FFC1]Engine Initializing[/] ...")
+            Show.mark(f"[bold #C1FFC1]Engine Initializing[/] ...")
             for i in range(step):
                 Show.console.print(function(i), justify="left")
                 time.sleep(secs)
-            return logger.info(f"[bold #C1FFC1]Engine Loaded[/] ...")
+            Show.mark(f"[bold #C1FFC1]Engine Loaded[/] ...")
 
         stochastic = [
             lambda: animation(4, 0.2, speed_engine),

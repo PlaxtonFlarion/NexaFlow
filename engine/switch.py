@@ -74,7 +74,7 @@ class Switch(object):
         return await Terminal.cmd_line(*cmd)
 
     @staticmethod
-    async def ask_video_stream(ffprobe, src: str) -> dict | Exception:
+    async def ask_video_stream(ffprobe, src: str) -> dict:
         cmd = [
             ffprobe, "-v", "error", "-select_streams", "v:0",
             "-show_entries", "stream=codec_name,codec_type,width,height,r_frame_rate,avg_frame_rate,nb_read_frames",
@@ -103,8 +103,8 @@ class Switch(object):
                 "size": round(int(format_dict["size"]) / 1048576, 2),
                 "bit_rate": int(format_dict["bit_rate"]) / 1000000,
             }
-        except (AttributeError, KeyError, ValueError, json.JSONDecodeError) as e:
-            return e
+        except (AttributeError, KeyError, ValueError, json.JSONDecodeError):
+            return {}
         return video_streams
 
     @staticmethod

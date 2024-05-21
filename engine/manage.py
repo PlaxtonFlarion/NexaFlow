@@ -3,7 +3,6 @@ import math
 import psutil
 import typing
 import asyncio
-from loguru import logger
 from rich.table import Table
 from rich.prompt import Prompt
 from screeninfo import get_monitors
@@ -110,7 +109,7 @@ class SourceMonitor(object):
 
 class Manage(object):
 
-    device_list: list["Device"] = []
+    device_dict: dict[str, "Device"] = {}
 
     def __init__(self, adb: str):
         self.adb = adb
@@ -188,100 +187,79 @@ class Manage(object):
 
     async def operate_device(self) -> list["Device"]:
         while True:
-            self.device_list = []
             if len(device_dict := await self.current_device()) == 0:
                 Show.simulation_progress(f"Wait for device to connect ...", 1, 0.05)
                 continue
 
-            for device in device_dict.values():
-                self.device_list.append(device)
-
-            if len(self.device_list) == 1:
-                return self.device_list
-
-            for index, device in enumerate(device_dict.values()):
-                Show.console.print(f"[bold][bold #FFFACD]Connect:[/] [{index + 1:02}] {device}[/]")
-
-            return self.device_list
+            self.device_dict = device_dict
+            return list(device_dict.values())
 
     async def another_device(self) -> list["Device"]:
         while True:
-            self.device_list = []
             if len(device_dict := await self.current_device()) == 0:
                 Show.simulation_progress(f"Wait for device to connect ...", 1, 0.05)
                 continue
 
-            for device in device_dict.values():
-                self.device_list.append(device)
+            self.device_dict = device_dict
 
-            if len(self.device_list) == 1:
-                return self.device_list
+            if len(device_dict) == 1:
+                return list(device_dict.values())
 
             for index, device in enumerate(device_dict.values()):
-                Show.console.print(f"[bold][bold #FFFACD]Connect:[/] [{index + 1:02}] {device}[/]")
+                Show.mark(f"[bold][bold #FFFACD]Connect:[/] [{index + 1:02}] {device}[/]")
 
             try:
                 if (action := Prompt.ask(
                         "[bold #FFEC8B]请输入序列号选择一台设备[/]", console=Show.console, default="00")) == "00":
-                    return self.device_list
+                    return list(device_dict.values())
                 return [device_dict[action]]
             except KeyError as e:
-                Show.console.print(f"{const.ERR}序列号不存在 -> {e}[/]\n")
+                Show.mark(f"{const.ERR}序列号不存在 -> {e}[/]\n")
                 await asyncio.sleep(1)
 
     async def display_device(self) -> None:
-        logger.info(f"<Link> <{'单设备模式' if len(self.device_list) == 1 else '多设备模式'}>")
-        for device in self.device_list:
-            logger.info(f"[bold #00FFAF]Connect:[/] {device}")
+        Show.mark(f"<Link> <{'单设备模式' if len(self.device_dict) == 1 else '多设备模式'}>")
+        for device in self.device_dict.values():
+            Show.mark(f"[bold #00FFAF]Connect:[/] {device}")
 
-    async def display_select(self):
-        while True:
-            self.device_list = []
-            if len(device_dict := await self.current_device()) == 0:
-                Show.simulation_progress(f"Wait for device to connect ...", 1, 0.05)
-                continue
+    @staticmethod
+    async def display_select(device_list: list["Device"]) -> None:
+        select_dict = {
+            device.sn: device for device in device_list if len(device.display) > 1
+        }
 
-            for device in device_dict.values():
-                self.device_list.append(device)
+        if len(select_dict) == 0:
+            return Show.console.print(f"{const.WRN}没有多屏幕的设备[/]\n")
 
-            select_dict = {
-                device.sn: device for device in self.device_list if len(device.display) > 1
-            }
+        table = Table(
+            title=f"[bold #FF851B]{const.ITEM} {const.DESC} Select Command Line",
+            header_style="bold #F5F5DC",
+            title_justify="center",
+            show_header=True,
+            show_lines=True
+        )
+        table.add_column("Serial", justify="left", width=22)
+        table.add_column("Screen", justify="left", width=8)
+        table.add_column("Density", justify="left", width=14)
+        table.add_column("Options", justify="left", width=24)
 
-            if len(select_dict) == 0:
-                for index, device in enumerate(device_dict.values()):
-                    Show.console.print(f"[bold][bold #FFFACD]Connect:[/] [{index + 1:02}] {device}[/]")
-                return Show.console.print(f"{const.WRN}没有多屏幕的设备[/]\n")
+        choices = []
+        for device in select_dict.values():
+            for index, display in device.display.items():
+                choices.append(f"{device.sn};{index}")
+                info = [
+                    f"[bold #FFAFAF]{device.sn}[/]",
+                    f"[bold #AFD7FF]{index}[/]",
+                    f"[bold #AFD7FF]{list(display)}[/]",
+                    f"[bold #FFF68F]{device.sn}[bold #FF3030];[/]{index}[/]"
+                ]
+                table.add_row(*info)
+        Show.console.print(table)
 
-            table = Table(
-                title=f"[bold #FF851B]{const.ITEM} {const.DESC} Select Command Line",
-                header_style="bold #F5F5DC",
-                title_justify="center",
-                show_header=True,
-                show_lines=True
-            )
-            table.add_column("Serial", justify="left", width=22)
-            table.add_column("Screen", justify="left", width=8)
-            table.add_column("Density", justify="left", width=14)
-            table.add_column("Options", justify="left", width=24)
-
-            choices = []
-            for device in select_dict.values():
-                for index, display in device.display.items():
-                    choices.append(f"{device.sn};{index}")
-                    info = [
-                        f"[bold #FFAFAF]{device.sn}[/]",
-                        f"[bold #AFD7FF]{index}[/]",
-                        f"[bold #AFD7FF]{list(display)}[/]",
-                        f"[bold #FFF68F]{device.sn}[bold #FF3030];[/]{index}[/]"
-                    ]
-                    table.add_row(*info)
-            Show.console.print(table)
-
-            action = Prompt.ask("[bold #FFEC8B]Select Display[/]", console=Show.console, choices=choices)
-            sn, display_id = re.split(r";", action, re.S)
-            select_dict[sn].id, screen = int(display_id), select_dict[sn].display[int(display_id)]
-            return logger.success(f"{const.SUC} {sn} -> ID=[{display_id}] DISPLAY={list(screen)}")
+        action = Prompt.ask("[bold #FFEC8B]Select Display[/]", console=Show.console, choices=choices)
+        sn, display_id = re.split(r";", action, re.S)
+        select_dict[sn].id, screen = int(display_id), select_dict[sn].display[int(display_id)]
+        Show.mark(f"{const.SUC}{sn} -> ID=[{display_id}] DISPLAY={list(screen)}")
 
 
 if __name__ == '__main__':

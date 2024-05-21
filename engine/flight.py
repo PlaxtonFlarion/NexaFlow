@@ -131,9 +131,9 @@ class Active(object):
     @staticmethod
     def active(log_level: str):
         logger.remove(0)
-        # log_format = f"[bold]{{time:YYYY-MM-DD HH:mm:ss.SSS}} | <level>{{level: <8}}</level> | {{name}}:{{function}}:{{line}} - <level>{{message}}</level>"
-        log_format = f"[bold]{const.DESC} | <level>{{level: <8}}</level> | <level>{{message}}</level>"
-        logger.add(RichSink(Console()), format=log_format, level=log_level.upper(), diagnose=False)
+        logger.add(
+            RichSink(Console()), level=log_level.upper(), format=const.PRINT_FORMAT, diagnose=False
+        )
 
 
 class Review(object):

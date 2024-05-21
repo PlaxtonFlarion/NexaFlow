@@ -192,7 +192,7 @@ class Args(object):
         "--debug": {
             "args": {"action": "store_true"},
             "view": ["布尔", "一次"],
-            "help": "调试模式"
+            "help": "架构透镜"
         }
     }
 
@@ -225,7 +225,7 @@ class Wind(object):
             "justify": "center",
         },
         "边框": {
-            "title": "△ △ △ 光速穿梭 △ △ △",
+            "title": "**<* 光速穿梭 *>**",
             "title_align": "center",
             "subtitle": None,
             "subtitle_align": "center",
@@ -239,7 +239,7 @@ class Wind(object):
             "justify": "center",
         },
         "边框": {
-            "title": "△ △ △ 基石阵地 △ △ △",
+            "title": "**<* 基石阵地 *>**",
             "title_align": "center",
             "subtitle": None,
             "subtitle_align": "center",
@@ -253,7 +253,7 @@ class Wind(object):
             "justify": "center",
         },
         "边框": {
-            "title": "△ △ △ 思维导航 △ △ △",
+            "title": "**<* 思维导航 *>**",
             "title_align": "center",
             "subtitle": None,
             "subtitle_align": "center",
