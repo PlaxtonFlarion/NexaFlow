@@ -243,17 +243,15 @@ class Missions(object):
         # Video Balance
         eliminate = []
         if self.lines.alike and len(task_list) > 1:
-            logger.debug(f"平衡时间: [{(standard := min(durations)):.6f}] [{Parser.parse_times(standard)}]")
-            if self.level == "INFO":
-                Show.show_panel(f"[{standard:.6f}] [{Parser.parse_times(standard)}]", Wind.STANDARD)
+            logger.debug(tip := f"平衡时间: [{(standard := min(durations)):.6f}] [{Parser.parse_times(standard)}]")
+            Show.show_panel(self.level, tip, Wind.STANDARD)
             video_dst_list = await asyncio.gather(
                 *(clipix.vision_balance(duration, standard, video_src, deploy.frate)
                   for duration, (video_src, *_) in zip(durations, task_list))
             )
             for (video_idx, (video_dst, video_blc)), (video_src, *_) in zip(enumerate(video_dst_list), task_list):
                 logger.debug(f"{video_blc}")
-                if self.level == "INFO":
-                    Show.show_panel(video_blc, Wind.BALANCE)
+                Show.show_panel(self.level, video_blc, Wind.TAILOR)
                 eliminate.append(main_loop.run_in_executor(None, os.remove, video_src))
                 task_list[video_idx][0] = video_dst
         await asyncio.gather(*eliminate, return_exceptions=True)
@@ -293,9 +291,7 @@ class Missions(object):
             - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
         """
 
-        logger.debug(f"△ △ △ 光速穿梭 △ △ △")
-        if self.level == "INFO":
-            Show.show_panel(Wind.SPEED_TEXT, Wind.SPEED)
+        Show.show_panel(self.level, Wind.SPEED_TEXT, Wind.SPEED)
 
         const_filter = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
         if deploy.shape:
@@ -317,9 +313,8 @@ class Missions(object):
             ]
 
         for flt, (video_temp, *_) in zip(video_filter_list, task_list):
-            logger.debug(f"视频过滤: {flt} {(name := os.path.basename(video_temp))}")
-            if self.level == "INFO":
-                Show.show_panel(f"{name} -> {flt}", Wind.FILTER)
+            logger.debug(tip := f"视频过滤: {flt} {os.path.basename(video_temp)}")
+            Show.show_panel(self.level, tip, Wind.FILTER)
 
         detach_result = await asyncio.gather(
             *(clipix.pixels(
@@ -338,8 +333,7 @@ class Missions(object):
                         format_msg := " ".join([f"{k}={v}" for k, v in discover(matcher.group())])
                     )
                     logger.debug(format_msg)
-            if self.level == "INFO":
-                Show.show_panel("\n".join(message_list), Wind.METRIC)
+            Show.show_panel(self.level, "\n".join(message_list), Wind.METRIC)
 
         async def render_speed(todo_list: list[list]):
             start, end, cost, scores, struct = 0, 0, 0, None, None
@@ -405,12 +399,11 @@ class Missions(object):
             - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
         """
 
-        logger.debug(f"△ △ △ {'思维导航' if alynex.ks.model else '基石阵地'} △ △ △")
-        if self.level == "INFO":
-            Show.show_panel(
-                Wind.KERAS_TEXT if alynex.ks.model else Wind.BASIC_TEXT,
-                Wind.KERAS if alynex.ks.model else Wind.BASIC
-            )
+        Show.show_panel(
+            self.level,
+            Wind.KERAS_TEXT if alynex.ks.model else Wind.BASIC_TEXT,
+            Wind.KERAS if alynex.ks.model else Wind.BASIC
+        )
 
         video_target_list = [
             (os.path.join(
@@ -419,9 +412,8 @@ class Missions(object):
         ]
 
         for (tar, flt), (video_temp, *_) in zip(video_target_list, task_list):
-            logger.debug(f"视频过滤: {flt} {(name := os.path.basename(video_temp))}")
-            if self.level == "INFO":
-                Show.show_panel(f"{name} -> {flt}", Wind.FILTER)
+            logger.debug(tip := f"视频过滤: {flt} {os.path.basename(video_temp)}")
+            Show.show_panel(self.level, tip, Wind.FILTER)
 
         change_result = await asyncio.gather(
             *(clipix.pixels(
@@ -441,8 +433,7 @@ class Missions(object):
                         format_msg := " ".join([f"{k}={v}" for k, v in discover(matcher.group())])
                     )
                     logger.debug(format_msg)
-            if self.level == "INFO":
-                Show.show_panel("\n".join(message_list), Wind.METRIC)
+            Show.show_panel(self.level, "\n".join(message_list), Wind.METRIC)
             eliminate.append(
                 main_loop.run_in_executor(None, os.remove, video_temp)
             )
@@ -475,7 +466,8 @@ class Missions(object):
 
         # Template
         if isinstance(atom_tmp := await Craft.achieve(self.atom_total_temp), Exception):
-            return logger.error(f"{const.ERR}{atom_tmp}[/]")
+            logger.debug(tip := f"{atom_tmp}")
+            return Show.show_panel(self.level, tip, Wind.KEEPER)
 
         async def render_keras(future: "Review", todo_list: list[list]):
             start, end, cost, scores, struct = future.material
@@ -489,14 +481,15 @@ class Missions(object):
                 "frame": os.path.basename(frame_path)
             }
 
+            stages_inform = ""
             if struct:
-                logger.info(f"模版引擎正在渲染 ...")
-                original_inform = await report.ask_draw(
+                logger.debug(f"模版引擎正在渲染 ...")
+                stages_inform = await report.ask_draw(
                     scores, struct, proto_path, atom_tmp, deploy.boost
                 )
-                logger.info(f"模版引擎渲染完毕 {os.path.relpath(original_inform)}")
+                logger.debug(f"模版引擎渲染完毕 {os.path.basename(stages_inform)}")
                 result["extra"] = os.path.basename(extra_path)
-                result["proto"] = os.path.basename(original_inform)
+                result["proto"] = os.path.basename(stages_inform)
                 result["style"] = "keras"
             else:
                 result["style"] = "basic"
@@ -507,21 +500,27 @@ class Missions(object):
             future_result = struct, start, end, cost
             todo_list_result = total_path, title, query_path, query, frame_path, extra_path, proto_path
 
-            return future_result, todo_list_result
+            return future_result, todo_list_result, os.path.basename(stages_inform)
 
         # Keras Analyzer Result
         render_result = await asyncio.gather(
             *(render_keras(future, todo_list) for future, todo_list in zip(futures, task_list) if future)
         )
 
+        if alynex.ks.model:
+            Show.show_panel(self.level, f"模版引擎正在渲染 ...", Wind.REPORTER)
+            rendering_list = [f"模版引擎渲染完成 {rd}" for *_, rd in render_result]
+            Show.show_panel(self.level, "\n".join(rendering_list), Wind.REPORTER)
+
         async with Drovix(os.path.join(report.reset_path, f"{const.NAME}_data.db")) as db:
             await asyncio.gather(
-                *(self.enforce(db, *ftr, *tlr) for ftr, tlr in render_result)
+                *(self.enforce(db, *ftr, *tlr) for ftr, tlr, _ in render_result)
             )
 
     async def combine(self, report: "Report"):
         if len(report.range_list) == 0:
-            return logger.warning(f"{const.WRN}没有可以生成的报告[/]")
+            logger.debug(tip := f"没有可以生成的报告")
+            return Show.show_panel(self.level, tip, Wind.KEEPER)
         function = getattr(self, "combine_view" if self.lines.speed else "combine_main")
         return await function([os.path.dirname(report.total_path)])
 
@@ -531,14 +530,21 @@ class Missions(object):
             Craft.achieve(self.view_share_temp), Craft.achieve(self.view_total_temp),
             return_exceptions=True
         )
-        logger.info(f"正在生成汇总报告 ...")
+
+        logger.debug(tip := f"正在生成汇总报告 ...")
+        Show.show_panel(self.level, tip, Wind.REPORTER)
         state_list = await asyncio.gather(
             *(Report.ask_create_total_report(m, self.lines.group, views, total) for m in merge)
         )
+
+        efficient_state_list = []
         for state in state_list:
             if isinstance(state, Exception):
-                logger.error(f"{const.ERR}{state}[/]")
-            logger.info(f"成功生成汇总报告 {os.path.relpath(state)}")
+                logger.debug(tip := f"{state}")
+                Show.show_panel(self.level, tip, Wind.KEEPER)
+            logger.debug(tip := f"成功生成汇总报告 {os.path.relpath(state)}")
+            efficient_state_list.append(tip)
+        Show.show_panel(self.level, "\n".join(efficient_state_list), Wind.REPORTER)
 
     # 时序融合分析系统
     async def combine_main(self, merge: list):
@@ -546,21 +552,29 @@ class Missions(object):
             Craft.achieve(self.main_share_temp), Craft.achieve(self.main_total_temp),
             return_exceptions=True
         )
-        logger.info(f"正在生成汇总报告 ...")
+
+        logger.debug(tip := f"正在生成汇总报告 ...")
+        Show.show_panel(self.level, tip, Wind.REPORTER)
         state_list = await asyncio.gather(
             *(Report.ask_create_total_report(m, self.lines.group, major, total) for m in merge)
         )
+
+        efficient_state_list = []
         for state in state_list:
             if isinstance(state, Exception):
-                logger.error(f"{const.ERR}{state}[/]")
-            logger.info(f"成功生成汇总报告 {os.path.relpath(state)}")
+                logger.debug(tip := f"{state}")
+                Show.show_panel(self.level, tip, Wind.KEEPER)
+            logger.debug(tip := f"成功生成汇总报告 {os.path.relpath(state)}")
+            efficient_state_list.append(tip)
+        Show.show_panel(self.level, "\n".join(efficient_state_list), Wind.REPORTER)
 
     # 视频解析探索
     async def video_file_task(self, video_file_list: list, *args):
         if len(video_file_list := [
             video_file for video_file in video_file_list if os.path.isfile(video_file)
         ]) == 0:
-            return logger.warning(f"{const.WRN}没有有效任务[/]")
+            logger.debug(tip := f"没有有效任务")
+            return Show.show_panel(self.level, tip, Wind.KEEPER)
 
         # Receive Argument
         platform, deploy, main_loop = args
@@ -597,7 +611,8 @@ class Missions(object):
                 await alynex.ask_model_load()
                 await alynex.ask_model_walk()
             except FramixAnalyzerError as e:
-                logger.error(f"{const.ERR}{e}[/]")
+                logger.debug(e)
+                Show.show_panel(self.level, e, Wind.KEEPER)
 
             charge = main_loop, alynex
 
@@ -614,7 +629,8 @@ class Missions(object):
             for video_data in video_data_list:
                 finder_result = finder.accelerate(video_data)
                 if isinstance(finder_result, Exception):
-                    logger.error(f"{const.ERR}{finder_result}")
+                    logger.debug(finder_result)
+                    Show.show_panel(self.level, finder_result, Wind.KEEPER)
                     continue
                 tree, collection_list = finder_result
                 Show.console.print(tree)
@@ -661,7 +677,8 @@ class Missions(object):
                             await alynex.ask_model_load()
                             await alynex.ask_model_walk()
                         except FramixAnalyzerError as e:
-                            logger.error(f"{const.ERR}{e}[/]")
+                            logger.debug(e)
+                            Show.show_panel(self.level, e, Wind.KEEPER)
 
                         charge = main_loop, alynex
 
@@ -676,7 +693,8 @@ class Missions(object):
         if len(video_file_list := [
             video_file for video_file in video_file_list if os.path.isfile(video_file)
         ]) == 0:
-            return logger.warning(f"{const.WRN}没有有效任务[/]")
+            logger.debug(tip := f"没有有效任务")
+            return Show.show_panel(self.level, tip, Wind.KEEPER)
 
         import uuid
 
@@ -707,9 +725,8 @@ class Missions(object):
         ]
 
         for (tar, flt), (video_temp, *_) in zip(video_target_list, task_list):
-            logger.debug(f"视频过滤: {flt} {(name := os.path.basename(video_temp))}")
-            if self.level == "INFO":
-                Show.show_panel(f"{name} -> {flt}", Wind.FILTER)
+            logger.debug(tip := f"视频过滤: {flt} {os.path.basename(video_temp)}")
+            Show.show_panel(self.level, tip, Wind.FILTER)
 
         change_result = await asyncio.gather(
             *(clipix.pixels(
@@ -729,8 +746,7 @@ class Missions(object):
                         format_msg := " ".join([f"{k}={v}" for k, v in discover(matcher.group())])
                     )
                     logger.debug(format_msg)
-            if self.level == "INFO":
-                Show.show_panel("\n".join(message_list), Wind.METRIC)
+            Show.show_panel(self.level, "\n".join(message_list), Wind.METRIC)
             eliminate.append(
                 main_loop.run_in_executor(None, os.remove, video_temp)
             )
@@ -762,10 +778,11 @@ class Missions(object):
                 futures = await asyncio.gather(*task)
             self.level = this_level
 
+        pick_info_list = []
         for future in futures:
-            logger.debug(f"选择并保存: f'{(path := os.path.relpath(future))}'")
-            if self.level == "INFO":
-                Show.show_panel(path, Wind.CUTTER)
+            logger.debug(tip := f"保存: {os.path.basename(future)}")
+            pick_info_list.append(tip)
+        Show.show_panel(self.level, "\n".join(pick_info_list), Wind.PROVIDER)
 
         await asyncio.gather(
             *(main_loop.run_in_executor(None, os.remove, target) for (target, _) in video_target_list)
@@ -776,7 +793,8 @@ class Missions(object):
         if len(video_data_list := [
             video_data for video_data in video_data_list if os.path.isdir(video_data)
         ]) == 0:
-            return logger.warning(f"{const.WRN}没有有效任务[/]")
+            logger.debug(tip := f"没有有效任务")
+            return Show.show_panel(self.level, tip, Wind.KEEPER)
 
         # Receive Argument
         platform, deploy, main_loop = args
@@ -784,24 +802,29 @@ class Missions(object):
         task_list = []
         for video_data in video_data_list:
             real_path, file_list = "", []
-            logger.debug(f"搜索文件夹: {video_data}")
+            logger.debug(tip := f"搜索文件夹: {os.path.basename(video_data)}")
+            Show.show_panel(self.level, tip, Wind.DESIGNER)
             for root, dirs, files in os.walk(video_data, topdown=False):
                 for name in files:
                     file_list.append(os.path.join(root, name))
                 for name in dirs:
                     if len(name) == 1 and re.search(r"0", name):
                         real_path = os.path.join(root, name)
-                        logger.debug(f"分类文件夹: {real_path}")
+                        logger.debug(tip := f"分类文件夹: {os.path.basename(os.path.dirname(real_path))}")
+                        Show.show_panel(self.level, tip, Wind.DESIGNER)
                         break
 
             if real_path == "" or len(file_list) == 0:
-                logger.warning(f"{const.WRN}分类不正确: {os.path.basename(video_data)}[/]")
+                logger.debug(tip := f"分类不正确: {os.path.basename(video_data)}")
+                Show.show_panel(self.level, tip, Wind.KEEPER)
                 continue
 
+            efficient_list = []
             image, image_color, image_aisle = None, "grayscale", 1
             for image_file in os.listdir(real_path):
                 if not os.path.isfile(image_path := os.path.join(real_path, image_file)):
-                    logger.warning(f"{const.WRN}存在不适用的文件: {os.path.basename(image_path)}[/]")
+                    logger.debug(tip := f"存在不适用的文件: {os.path.basename(image_path)}")
+                    Show.show_panel(self.level, tip, Wind.KEEPER)
                     break
 
                 try:
@@ -812,22 +835,29 @@ class Missions(object):
                         ) and numpy.array_equal(
                             image[:, :, 1], image[:, :, 2]
                         ):
-                            logger.debug(f"Image: {list(image.shape)} is grayscale image, stored in RGB format")
+                            logger.debug(tip := f"Image: {list(image.shape)} is grayscale image, stored in RGB format")
+                            efficient_list.append(tip)
                         else:
-                            logger.debug(f"Image: {list(image.shape)} is color image")
+                            logger.debug(tip := f"Image: {list(image.shape)} is color image")
+                            efficient_list.append(tip)
                             image_color, image_aisle = "rgb", image.ndim
                     else:
-                        logger.debug(f"Image: {list(image.shape)} is grayscale image")
+                        logger.debug(tip := f"Image: {list(image.shape)} is grayscale image")
+                        efficient_list.append(tip)
                 except Exception as e:
-                    logger.error(f"{const.ERR}{e}")
+                    logger.debug(e)
+                    Show.show_panel(self.level, e, Wind.KEEPER)
                     image = None
                     break
 
             try:
                 effective = image.shape
             except AttributeError as e:
-                logger.error(f"{const.ERR}{e}")
+                logger.debug(e)
+                Show.show_panel(self.level, e, Wind.KEEPER)
                 continue
+
+            Show.show_panel(self.level, "\n".join(efficient_list), Wind.DESIGNER)
 
             image_shape = deploy.shape if deploy.shape else effective
             w, h = image_shape[:2]
@@ -846,7 +876,8 @@ class Missions(object):
             )
 
         if len(task_list) == 0:
-            return logger.warning(f"{const.WRN}缺少有效文件[/]")
+            logger.debug(tip := f"缺少有效文件")
+            return Show.show_panel(self.level, tip, Wind.KEEPER)
 
         model_place = None
         alynex = Alynex(self.level, model_place, **deploy.deploys)
@@ -938,8 +969,9 @@ class Missions(object):
 
                 new_w, new_h = int(twist_w * image_scale), int(twist_h * image_scale)
                 logger.debug(
-                    f"原始尺寸: {(original_w, original_h)} 调整尺寸: {(new_w, new_h)} 缩放比例: {int(image_scale * 100)}%"
+                    tip := f"原始尺寸: {(original_w, original_h)} 调整尺寸: {(new_w, new_h)} 缩放比例: {int(image_scale * 100)} %"
                 )
+                Show.show_panel(self.level, tip, Wind.DRAWER)
 
                 if new_w == new_h:
                     x_line_num, y_line_num = 10, 10
@@ -1014,12 +1046,14 @@ class Missions(object):
                         report.query_path, f"hook_{device.sn}_{random.randint(10000, 99999)}.png"
                     )
                     resize_img.save(img_save_path)
-                    logger.info(f"保存图片: {os.path.relpath(img_save_path)}")
+                    logger.debug(tip_ := f"保存图片: {os.path.relpath(img_save_path)}")
+                    Show.show_panel(self.level, tip_, Wind.DRAWER)
                 break
             elif action.strip().upper() == "N":
                 break
             else:
-                logger.warning(f"{const.WRN}没有该选项,请重新输入[/]\n")
+                tip_ = f"没有该选项,请重新输入\n"
+                Show.show_panel(self.level, tip_, Wind.KEEPER)
 
     # 循环节拍器
     async def analysis(self, *args):
@@ -1081,8 +1115,8 @@ class Missions(object):
 
         async def analysis_tactics():
             if len(task_list) == 0:
-                task_list.clear()
-                return logger.warning(f"{const.WRN}没有有效任务[/]")
+                logger.debug(tip := f"没有有效任务")
+                return Show.show_panel(self.level, tip, Wind.KEEPER)
 
             # Information
             originals, indicates = await self.als_track(deploy, clipix, task_list, main_loop)
@@ -1097,7 +1131,8 @@ class Missions(object):
                 # Keras Analyzer
                 await self.als_keras(*attack, *charge)
             else:
-                logger.info(f"**<* 录制模式 *>**")
+                logger.debug(tip := f"**<* 录制模式 *>**")
+                Show.show_panel(self.level, tip, Wind.EXPLORER)
 
         async def anything_time():
             await asyncio.gather(
@@ -1109,26 +1144,33 @@ class Missions(object):
                 *(record.ask_close_record(video_temp, transports, device)
                   for (video_temp, transports, *_), device in zip(task_list, device_list))
             )
+
+            check_list = []
             for idx, (effective, video_name) in enumerate(effective_list):
                 if "视频录制失败" in effective:
                     task = task_list.pop(idx)
-                    logger.warning(f"{const.WRN}{effective}: {video_name} 移除: {os.path.basename(task[0])}")
+                    logger.debug(tip := f"{effective}: {video_name} 移除: {os.path.basename(task[0])}")
                 else:
-                    logger.success(f"{const.SUC}{effective}: {video_name}")
+                    logger.debug(tip := f"{effective}: {video_name}")
+                check_list.append(f"{tip}")
+            Show.show_panel(self.level, "\n".join(check_list), Wind.EXPLORER)
 
         async def call_commands(exec_func, exec_args, bean, live_devices):
             if not (callable(function := getattr(bean, exec_func, None))):
-                return logger.error(f"{const.ERR}No callable {exec_func}[/]")
+                logger.debug(tip := f"No callable {exec_func}")
+                return Show.show_panel(self.level, tip, Wind.KEEPER)
 
-            sn = getattr(bean, 'sn', bean.__class__.__name__)
+            sn = getattr(bean, "sn", bean.__class__.__name__)
             try:
-                logger.info(f"{sn} {function.__name__} {exec_args}")
+                logger.debug(tip := f"{sn} {function.__name__} {exec_args}")
+                Show.show_panel(self.level, tip, Wind.EXPLORER)
                 if inspect.iscoroutinefunction(function):
                     return await function(*exec_args)
                 return await asyncio.to_thread(function, *exec_args)
             except asyncio.CancelledError:
                 live_devices.pop(sn)
-                logger.info(f"[bold #CD853F]{sn} Call Commands Exit[/]")
+                logger.debug(tip := f"{sn} Call Commands Exit")
+                Show.show_panel(self.level, tip, Wind.EXPLORER)
             except Exception as e:
                 return e
 
@@ -1204,7 +1246,7 @@ class Missions(object):
 
             for exec_pairs in exec_pairs_list:
                 if len(live_devices) == 0:
-                    return logger.info(f"[bold #F0FFF0 on #000000]All tasks canceled[/]")
+                    return Show.mark(f"[bold #F0FFF0 on #000000]All tasks canceled[/]")
                 for exec_func, exec_args in exec_pairs:
                     exec_args = await substitute_star()
                     if exec_func == "audio_player":
@@ -1217,13 +1259,14 @@ class Missions(object):
                 try:
                     exec_status_list = await asyncio.gather(*exec_tasks.values())
                 except asyncio.CancelledError:
-                    return logger.info(f"[bold #F0FFF0 on #000000]All tasks canceled[/]")
+                    return Show.mark(f"[bold #F0FFF0 on #000000]All tasks canceled[/]")
                 finally:
                     exec_tasks.clear()
 
                 for status in exec_status_list:
                     if isinstance(status, Exception):
-                        logger.error(f"{const.ERR}{status}[/]")
+                        logger.debug(status)
+                        Show.show_panel(self.level, status, Wind.KEEPER)
 
             for stop in stop_tasks:
                 stop.cancel()
@@ -1242,7 +1285,8 @@ class Missions(object):
             await alynex.ask_model_load()
             await alynex.ask_model_walk()
         except FramixAnalyzerError as e_:
-            logger.error(f"{const.ERR}{e_}[/]")
+            logger.debug(e_)
+            Show.show_panel(self.level, e_, Wind.KEEPER)
 
         charge = main_loop, alynex
 
@@ -1274,15 +1318,15 @@ class Missions(object):
                             if match_ := re.search(r"(?<=header\s).*", select_):
                                 if hd_ := match_.group().strip():
                                     src_hd_, a_, b_ = f"{input_title_}_{time.strftime('%Y%m%d_%H%M%S')}", 10000, 99999
-                                    logger.success(f"{const.SUC}New title set successfully[/]")
+                                    Show.mark(f"{const.SUC}New title set successfully[/]")
                                     report.title = f"{src_hd_}_{hd_}" if hd_ else f"{src_hd_}_{random.randint(a_, b_)}"
                                     continue
-                            raise FramixAnalysisError(f"Set Error")
+                            raise FramixAnalysisError
                         elif select_ == "create":
                             await self.combine(report)
                             break
                         elif select_ == "deploy":
-                            logger.warning(f"{const.WRN}请完全退出编辑器再继续操作[/]")
+                            Show.mark(f"{const.WRN}请完全退出编辑器再继续操作[/]")
                             deploy.dump_deploy(self.initial_deploy)
                             first_ = ["Notepad"] if platform == "win32" else ["open", "-W", "-a", "TextEdit"]
                             first_.append(self.initial_deploy)
@@ -1294,12 +1338,11 @@ class Missions(object):
                             timer_value_, lower_bound_, upper_bound_ = int(select_), 5, 300
                             if timer_value_ > 300 or timer_value_ < 5:
                                 bound_tips_ = f"{lower_bound_} <= [bold #FFD7AF]Time[/] <= {upper_bound_}"
-                                logger.info(f"[bold #FFFF87]{bound_tips_}[/]")
+                                Show.mark(f"[bold #FFFF87]{bound_tips_}[/]")
                             timer_mode = max(lower_bound_, min(upper_bound_, timer_value_))
                         else:
-                            raise FramixAnalysisError(f"Set Error")
-                except FramixAnalysisError as e_:
-                    logger.error(f"{const.ERR}{e_}[/]")
+                            raise FramixAnalysisError
+                except FramixAnalysisError:
                     Show.tips_document()
                     continue
                 else:
@@ -1335,7 +1378,8 @@ class Missions(object):
             for script_dict_ in script_storage_:
                 report = Report(self.total_place)
                 for script_key_, script_value_ in script_dict_.items():
-                    logger.debug(f"Batch Exec: {script_key_}")
+                    logger.debug(tip_ := f"Batch Exec: {script_key_}")
+                    Show.show_panel(self.level, tip_, Wind.EXPLORER)
 
                     if (parser_ := script_value_.get("parser", {})) and type(parser_) is dict:
                         for parser_key_, parser_value_ in parser_.items():
@@ -1353,7 +1397,8 @@ class Missions(object):
                     try:
                         looper_ = int(looper_) if (looper_ := script_value_.get("looper", None)) else 1
                     except ValueError as e_:
-                        logger.error(f"{const.ERR}重置循环次数[/] {(looper_ := 1)} {e_}")
+                        logger.debug(tip_ := f"重置循环次数 {(looper_ := 1)} {e_}")
+                        Show.show_panel(self.level, tip_, Wind.EXPLORER)
 
                     if prefix_list_ := script_value_.get("prefix", []):
                         prefix_list_ = await pack_commands(prefix_list_)
@@ -1621,9 +1666,8 @@ class Alynex(object):
         if shape:
             w, h, ratio = await Switch.ask_magic_frame(original, shape)
             shape = w, h
-            logger.debug(f"{(flip_name := f'调整宽高比: {w} x {h}')}")
-            if self.level == "INFO":
-                Show.show_panel(flip_name, Wind.LOADER)
+            logger.debug(f"{(tip := f'调整宽高比: {w} x {h}')}")
+            Show.show_panel(self.level, tip, Wind.LOADER)
         elif scale:
             scale = max(0.1, min(1.0, scale))
         else:
@@ -1633,7 +1677,8 @@ class Alynex(object):
 
     async def ask_exercise(self, vision: str, *args) -> typing.Optional[str]:
         if (target_vision := await self.ask_frame_grid(vision)) is None:
-            return logger.warning(f"{const.WRN}视频文件损坏: {os.path.basename(vision)}[/]")
+            logger.debug(tip := f"视频文件损坏: {os.path.basename(vision)}")
+            return Show.show_panel(self.level, tip, Wind.KEEPER)
 
         query_path, original, *_ = args
 
@@ -1644,15 +1689,13 @@ class Alynex(object):
         logger.debug(f"{(task_name := '视频帧长度: ' f'{video.frame_count}')}")
         logger.debug(f"{(task_info := '视频帧尺寸: ' f'{video.frame_size}')}")
         logger.debug(f"{(task_desc := '加载视频帧: ' f'{video.name}')}")
-        if self.level == "INFO":
-            Show.show_panel(f"{task_name}\n{task_info}\n{task_desc}", Wind.LOADER)
+        Show.show_panel(self.level, f"{task_name}\n{task_info}\n{task_desc}", Wind.LOADER)
         video.load_frames(
             scale=scale, shape=shape, color=self.color
         )
         logger.debug(f"{(task_name := '视频帧加载完成: ' f'{video.frame_details(video.frames_data)}')}")
         logger.debug(f"{(task_info := '视频帧加载耗时: ' f'{time.time() - load_start_time:.2f} 秒')}")
-        if self.level == "INFO":
-            Show.show_panel(f"{task_name}\n{task_info}", Wind.LOADER)
+        Show.show_panel(self.level, f"{task_name}\n{task_info}", Wind.LOADER)
 
         cut_start_time = time.time()
         cutter = VideoCutter()
@@ -1660,15 +1703,13 @@ class Alynex(object):
         logger.debug(f"{(cut_part := '视频帧片段: ' f'{video.frame_count - 1}')}")
         logger.debug(f"{(cut_info := '视频帧尺寸: ' f'{video.frame_size}')}")
         logger.debug(f"{(cut_desc := '压缩视频帧: ' f'{video.name}')}")
-        if self.level == "INFO":
-            Show.show_panel(f"{cut_name}\n{cut_part}\n{cut_info}\n{cut_desc}", Wind.CUTTER)
+        Show.show_panel(self.level, f"{cut_name}\n{cut_part}\n{cut_info}\n{cut_desc}", Wind.CUTTER)
         cut_range = cutter.cut(
             video=video, block=self.block
         )
         logger.debug(f"{(cut_name := '视频帧压缩完成: ' f'{video.name}')}")
         logger.debug(f"{(cut_info := '视频帧压缩耗时: ' f'{time.time() - cut_start_time:.2f} 秒')}")
-        if self.level == "INFO":
-            Show.show_panel(f"{cut_name}\n{cut_info}", Wind.CUTTER)
+        Show.show_panel(self.level, f"{cut_name}\n{cut_info}", Wind.CUTTER)
 
         stable, unstable = cut_range.get_range(
             threshold=self.thres, offset=self.shift
@@ -1700,25 +1741,23 @@ class Alynex(object):
             logger.debug(
                 f"{(extract := f'取关键帧: begin={list(self.begin)} final={list(self.final)}')}"
             )
-            if self.level == "INFO":
-                Show.show_panel(extract, Wind.FASTER)
+            Show.show_panel(self.level, extract, Wind.FASTER)
 
             try:
                 logger.debug(f"{(stage_name := f'阶段划分: {struct.get_ordered_stage_set()}')}")
-                if self.level == "INFO":
-                    Show.show_panel(stage_name, Wind.FASTER)
+                Show.show_panel(self.level, stage_name, Wind.FASTER)
                 unstable_stage_range = struct.get_not_stable_stage_range()
                 begin_frame = unstable_stage_range[begin_stage_index][begin_frame_index]
                 final_frame = unstable_stage_range[final_stage_index][final_frame_index]
             except (AssertionError, IndexError) as e:
-                logger.warning(f"{const.WRN}{e}[/]")
-                logger.warning(f"{const.WRN}Analyzer Neural Engine is recalculating ...[/]")
+                logger.debug(e)
+                Show.show_panel(self.level, e, Wind.KEEPER)
                 begin_frame = struct.get_important_frame_list()[0]
                 final_frame = struct.get_important_frame_list()[-1]
 
             if final_frame.frame_id <= begin_frame.frame_id:
-                logger.warning(f"{const.WRN}{final_frame} <= {begin_frame}[/]")
-                logger.warning(f"{const.WRN}Analyzer Neural Engine is recalculating ...[/]")
+                logger.debug(tip := f"{final_frame} <= {begin_frame}")
+                Show.show_panel(self.level, tip, Wind.KEEPER)
                 begin_frame, end_frame = struct.data[0], struct.data[-1]
 
             time_cost = final_frame.timestamp - begin_frame.timestamp
@@ -1797,25 +1836,22 @@ class Alynex(object):
             )
             just_hook_list.append(cut_save)
 
-            if self.level == "INFO":
-                if len(just_hook_list) > 0:
-                    Show.show_panel("\n".join(just_hook_list), Wind.CUTTER)
-                if len(area_hook_list) > 0:
-                    Show.show_panel("\n".join(area_hook_list), Wind.CUTTER)
+            if len(just_hook_list) > 0:
+                Show.show_panel(self.level, "\n".join(just_hook_list), Wind.CUTTER)
+            if len(area_hook_list) > 0:
+                Show.show_panel(self.level, "\n".join(area_hook_list), Wind.CUTTER)
 
             logger.debug(f"{(cut_name := '视频帧长度: ' f'{video.frame_count}')}")
             logger.debug(f"{(cut_part := '视频帧片段: ' f'{video.frame_count - 1}')}")
             logger.debug(f"{(cut_info := '视频帧尺寸: ' f'{video.frame_size}')}")
             logger.debug(f"{(cut_desc := '压缩视频帧: ' f'{video.name}')}")
-            if self.level == "INFO":
-                Show.show_panel(f"{cut_name}\n{cut_part}\n{cut_info}\n{cut_desc}", Wind.CUTTER)
+            Show.show_panel(self.level, f"{cut_name}\n{cut_part}\n{cut_info}\n{cut_desc}", Wind.CUTTER)
             cut_range = cutter.cut(
                 video=video, block=self.block
             )
             logger.debug(f"{(cut_name := '视频帧压缩完成: ' f'{video.name}')}")
             logger.debug(f"{(cut_info := '视频帧压缩耗时: ' f'{time.time() - cut_start_time:.2f} 秒')}")
-            if self.level == "INFO":
-                Show.show_panel(f"{cut_name}\n{cut_info}", Wind.CUTTER)
+            Show.show_panel(self.level, f"{cut_name}\n{cut_info}", Wind.CUTTER)
 
             stable, unstable = cut_range.get_range(threshold=self.thres, offset=self.shift)
 
@@ -1844,7 +1880,8 @@ class Alynex(object):
                     video=video, valid_range=stable, keep_data=True
                 )
             except AssertionError as e:
-                return logger.warning(f"{const.WRN}{e}[/]")
+                logger.debug(e)
+                return Show.show_panel(self.level, e, Wind.KEEPER)
             return struct_data
 
         async def analytics_basic():
@@ -1888,27 +1925,26 @@ class Alynex(object):
             begin_frame_id, final_frame_id, time_cost = flick_result
             return begin_frame_id, final_frame_id, time_cost, scores, struct
 
-        if (target_vision := await self.ask_frame_grid(vision)) is None:
-            return logger.warning(f"{const.WRN}视频文件损坏: {os.path.basename(vision)}[/]")
+        if (target_vision_ := await self.ask_frame_grid(vision)) is None:
+            logger.debug(tip_ := f"视频文件损坏: {os.path.basename(vision)}")
+            return Show.show_panel(self.level, tip_, Wind.KEEPER)
 
         frame_path, extra_path, original, *_ = args
 
         shape_, scale_ = await self.ask_frame_flip(self.shape, self.scale, original)
 
         start_time_ = time.time()
-        video = VideoObject(target_vision)
+        video = VideoObject(target_vision_)
         logger.debug(f"{(task_name_ := '视频帧长度: ' f'{video.frame_count}')}")
         logger.debug(f"{(task_info_ := '视频帧尺寸: ' f'{video.frame_size}')}")
         logger.debug(f"{(task_desc_ := '加载视频帧: ' f'{video.name}')}")
-        if self.level == "INFO":
-            Show.show_panel(f"{task_name_}\n{task_info_}\n{task_desc_}", Wind.LOADER)
+        Show.show_panel(self.level, f"{task_name_}\n{task_info_}\n{task_desc_}", Wind.LOADER)
         video.load_frames(
             scale=scale_, shape=shape_, color=self.color
         )
         logger.debug(f"{(task_name := '视频帧加载完成: ' f'{video.frame_details(video.frames_data)}')}")
         logger.debug(f"{(task_info := '视频帧加载耗时: ' f'{time.time() - start_time_:.2f} 秒')}")
-        if self.level == "INFO":
-            Show.show_panel(f"{task_name}\n{task_info}", Wind.LOADER)
+        Show.show_panel(self.level, f"{task_name}\n{task_info}", Wind.LOADER)
 
         struct = await frame_flow() if self.ks.model else None
         frames = await frame_hold()

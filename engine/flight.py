@@ -167,17 +167,32 @@ class FramixAnalysisError(FramixError):
     def __init__(self, msg: typing.Any):
         self.msg = msg
 
+    def __str__(self):
+        return f"{self.msg}"
+
+    __repr__ = __str__
+
 
 class FramixAnalyzerError(FramixError):
 
     def __init__(self, msg: typing.Any):
         self.msg = msg
 
+    def __str__(self):
+        return f"{self.msg}"
+
+    __repr__ = __str__
+
 
 class FramixReporterError(FramixError):
 
     def __init__(self, msg: typing.Any):
         self.msg = msg
+
+    def __str__(self):
+        return f"{self.msg}"
+
+    __repr__ = __str__
 
 
 if __name__ == '__main__':

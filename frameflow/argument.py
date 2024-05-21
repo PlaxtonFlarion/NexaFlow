@@ -81,12 +81,12 @@ class Args(object):
         "--alone": {
             "args": {"action": "store_true"},
             "view": ["布尔", "一次"],
-            "help": "独立控制"
+            "help": "独立驾驭"
         },
         "--whist": {
             "args": {"action": "store_true"},
             "view": ["布尔", "一次"],
-            "help": "静默录制"
+            "help": "静默守护"
         }
     }
 
@@ -275,13 +275,13 @@ class Wind(object):
         }
     }
 
-    BALANCE = {
+    TAILOR = {
         "文本": {
             "style": "bold #FFD60A",
             "justify": "left",
         },
         "边框": {
-            "title": "Video Balance",
+            "title": "Tailor",
             "title_align": "center",
             "subtitle": None,
             "subtitle_align": "center",
@@ -295,7 +295,7 @@ class Wind(object):
             "justify": "left",
         },
         "边框": {
-            "title": "Video Filter",
+            "title": "Filter",
             "title_align": "center",
             "subtitle": None,
             "subtitle_align": "center",
@@ -309,7 +309,7 @@ class Wind(object):
             "justify": "left",
         },
         "边框": {
-            "title": "Video Metric",
+            "title": "Metric",
             "title_align": "center",
             "subtitle": None,
             "subtitle_align": "center",
@@ -327,7 +327,7 @@ class Wind(object):
             "title_align": "center",
             "subtitle": None,
             "subtitle_align": "center",
-            "border_style": "bold #5F9EA0",
+            "border_style": "bold #2BC0E4",
         }
     }
 
@@ -356,6 +356,90 @@ class Wind(object):
             "subtitle": None,
             "subtitle_align": "center",
             "border_style": "bold #C6E2FF",
+        }
+    }
+
+    PROVIDER = {
+        "文本": {
+            "style": "bold #FCE38A",
+            "justify": "left",
+        },
+        "边框": {
+            "title": "Provider",
+            "title_align": "center",
+            "subtitle": None,
+            "subtitle_align": "center",
+            "border_style": "bold #F38181",
+        }
+    }
+
+    DESIGNER = {
+        "文本": {
+            "style": "bold #8360c3",
+            "justify": "left",
+        },
+        "边框": {
+            "title": "Designer",
+            "title_align": "center",
+            "subtitle": None,
+            "subtitle_align": "center",
+            "border_style": "bold #2ebf91",
+        }
+    }
+
+    REPORTER = {
+        "文本": {
+            "style": "bold #EE7AE9",
+            "justify": "left",
+        },
+        "边框": {
+            "title": "Reporter",
+            "title_align": "center",
+            "subtitle": None,
+            "subtitle_align": "center",
+            "border_style": "bold #008B8B",
+        }
+    }
+
+    KEEPER = {
+        "文本": {
+            "style": "bold #FFFFFF on #FF6347",
+            "justify": "left",
+        },
+        "边框": {
+            "title": "<!> 警告 <!>",
+            "title_align": "center",
+            "subtitle": None,
+            "subtitle_align": "center",
+            "border_style": "bold #FFEDBC"
+        }
+    }
+
+    DRAWER = {
+        "文本": {
+            "style": "bold #B5B5B5",
+            "justify": "left",
+        },
+        "边框": {
+            "title": "Drawer",
+            "title_align": "center",
+            "subtitle": None,
+            "subtitle_align": "center",
+            "border_style": "bold #FFC1C1",
+        }
+    }
+
+    EXPLORER = {
+        "文本": {
+            "style": "bold #FFE47A",
+            "justify": "left",
+        },
+        "边框": {
+            "title": "Explorer",
+            "title_align": "center",
+            "subtitle": None,
+            "subtitle_align": "center",
+            "border_style": "bold #3D7EAA",
         }
     }
 

@@ -26,17 +26,12 @@ class Show(object):
         Show.console.print(f"[bold]{const.DESC} | Analyzer | {text}[/]")
 
     @staticmethod
-    def show_panel(text: typing.Any, wind: dict) -> None:
-        """
-        展示控制板
-        @param text: 文本
-        @param wind: 配置
-        @return:
-        """
-        panel = Panel(
-            Text(text, **wind["文本"]), **wind["边框"], width=int(Show.console.width * 0.7)
-        )
-        Show.console.print(panel)
+    def show_panel(level: str, text: typing.Any, wind: dict) -> None:
+        if level == const.SHOW_LEVEL:
+            panel = Panel(
+                Text(f"{text}", **wind["文本"]), **wind["边框"], width=int(Show.console.width * 0.7)
+            )
+            Show.console.print(panel)
 
     @staticmethod
     def show_progress():
@@ -301,7 +296,7 @@ class Show(object):
     @staticmethod
     def assort_frame(begin_fr, final_fr, stage_cs):
         table = Table(
-            title=f"[bold #F5DEB3]{const.DESC} Assort Frame",
+            title=f"[bold #EED5D2]{const.DESC} Assort Frame",
             header_style="bold #D3D3D3",
             title_justify="center",
             show_header=True,
