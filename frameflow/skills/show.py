@@ -129,8 +129,9 @@ class Show(object):
     @staticmethod
     def help_document():
         for keys, values in argument.Args.ARGUMENT.items():
+            description = "[bold #FFE4E1]互斥[/]" if keys in ["核心操控", "辅助利器", "视控精灵"] else "[bold #C1FFC1]兼容[/]"
             table = Table(
-                title=f"[bold #FFDAB9]{const.ITEM} {const.DESC} Command Line [bold #66CDAA]**{keys}**[/]",
+                title=f"[bold #FFDAB9]{const.ITEM} {const.DESC} CLI [bold #66CDAA]<{keys}>[/] <{description}>",
                 header_style="bold #FF851B",
                 title_justify="center",
                 show_header=True,

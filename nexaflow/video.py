@@ -23,9 +23,9 @@ class VideoFrame(object):
     def initial(
             cap: cv2.VideoCapture,
             frame: np.ndarray,
-            scale: int | float = None,
-            shape: tuple = None,
-            color: bool = None,
+            scale: typing.Optional[typing.Union[int, float]] = None,
+            shape: typing.Optional[tuple] = None,
+            color: typing.Optional[bool] = None,
     ) -> "VideoFrame":
 
         frame_id = toolbox.get_current_frame_id(cap)

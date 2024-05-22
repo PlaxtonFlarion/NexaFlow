@@ -3,7 +3,7 @@
 
 class Args(object):
 
-    # 主要命令
+    # 核心操控
     GROUP_MAJOR = {
         "--video": {
             "args": {"action": "append"},
@@ -57,7 +57,7 @@ class Args(object):
         }
     }
 
-    # 附加命令
+    # 辅助利器
     GROUP_MEANS = {
         "--speed": {
             "args": {"action": "store_true"},
@@ -76,7 +76,7 @@ class Args(object):
         }
     }
 
-    # 视频控制
+    # 视控精灵
     GROUP_SPACE = {
         "--alone": {
             "args": {"action": "store_true"},
@@ -90,7 +90,7 @@ class Args(object):
         }
     }
 
-    # 视频配置
+    # 像素工坊
     GROUP_MEDIA = {
         "--alike": {
             "args": {"action": "store_true"},
@@ -99,7 +99,7 @@ class Args(object):
         }
     }
 
-    # 报告配置
+    # 数据智绘
     GROUP_ARRAY = {
         "--group": {
             "args": {"action": "store_true"},
@@ -108,18 +108,8 @@ class Args(object):
         }
     }
 
-    # 分析配置
-    GROUP_EXTRA = {
-        "--boost": {
-            "args": {"action": "store_true"},
-            "view": ["布尔", "一次"],
-            "help": "加速跳跃"
-        },
-        "--color": {
-            "args": {"action": "store_true"},
-            "view": ["布尔", "一次"],
-            "help": "彩绘世界"
-        },
+    # 图帧先行
+    GROUP_FIRST = {
         "--shape": {
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
@@ -145,6 +135,25 @@ class Args(object):
             "view": ["数值", "一次"],
             "help": "持续时间"
         },
+        "--frate": {
+            "args": {"nargs": "?", "const": None, "type": str},
+            "view": ["数值", "一次"],
+            "help": "频率探测"
+        }
+    }
+
+    # 智析引擎
+    GROUP_EXTRA = {
+        "--boost": {
+            "args": {"action": "store_true"},
+            "view": ["布尔", "一次"],
+            "help": "加速跳跃"
+        },
+        "--color": {
+            "args": {"action": "store_true"},
+            "view": ["布尔", "一次"],
+            "help": "彩绘世界"
+        },
         "--begin": {
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
@@ -154,11 +163,6 @@ class Args(object):
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
             "help": "结束阶段"
-        },
-        "--frate": {
-            "args": {"nargs": "?", "const": None, "type": str},
-            "view": ["数值", "一次"],
-            "help": "帧采样率"
         },
         "--thres": {
             "args": {"nargs": "?", "const": None, "type": str},
@@ -187,7 +191,7 @@ class Args(object):
         }
     }
 
-    # 调试配置
+    # 漏洞追踪
     GROUP_DEBUG = {
         "--debug": {
             "args": {"action": "store_true"},
@@ -198,13 +202,14 @@ class Args(object):
 
     # Argument
     ARGUMENT = {
-        "主要命令": GROUP_MAJOR,
-        "附加命令": GROUP_MEANS,
-        "视频控制": GROUP_SPACE,
-        "视频配置": GROUP_MEDIA,
-        "报告配置": GROUP_ARRAY,
-        "分析配置": GROUP_EXTRA,
-        "调试配置": GROUP_DEBUG
+        "核心操控": GROUP_MAJOR,
+        "辅助利器": GROUP_MEANS,
+        "视控精灵": GROUP_SPACE,
+        "像素工坊": GROUP_MEDIA,
+        "数据智绘": GROUP_ARRAY,
+        "图帧先行": GROUP_FIRST,
+        "智析引擎": GROUP_EXTRA,
+        "漏洞追踪": GROUP_DEBUG
     }
 
 

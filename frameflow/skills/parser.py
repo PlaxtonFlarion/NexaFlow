@@ -151,9 +151,9 @@ class Parser(object):
         )
 
         for keys, values in argument.Args.ARGUMENT.items():
-            description = "参数兼容"
-            if keys in ["主要命令", "附加命令", "视频控制"]:
-                description = "参数互斥"
+            description = "兼容"
+            if keys in ["核心操控", "辅助利器", "视控精灵"]:
+                description = "互斥"
                 mutually_exclusive = parser.add_argument_group(title=keys, description=description)
                 cmds = mutually_exclusive.add_mutually_exclusive_group()
             else:
