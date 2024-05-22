@@ -164,19 +164,19 @@ class FramixError(Exception):
 
 class FramixAnalysisError(FramixError):
 
-    def __init__(self, msg: typing.Optional[typing.Any]):
+    def __init__(self, msg: typing.Optional[typing.Any] = None):
         self.msg = msg
 
 
 class FramixAnalyzerError(FramixError):
 
-    def __init__(self, msg: typing.Optional[typing.Any]):
+    def __init__(self, msg: typing.Optional[typing.Any] = None):
         self.msg = msg
 
 
 class FramixReporterError(FramixError):
 
-    def __init__(self, msg: typing.Optional[typing.Any]):
+    def __init__(self, msg: typing.Optional[typing.Any] = None):
         self.msg = msg
 
 

@@ -258,14 +258,36 @@ class Missions(object):
 
         return originals, indicates
 
+    async def als_waves(
+            self,
+            deploy: "Deploy",
+            clipix: "Clipix",
+            task_list: list[list],
+            originals: list
+    ):
+        if self.lines.speed:
+            filters = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
+        else:
+            filters = [f"fps={deploy.frate}"]
+
+        video_filter_list = await asyncio.gather(
+            *(clipix.vision_improve(
+                deploy.shape, deploy.scale, original, filters) for original in originals)
+        )
+
+        for flt, (video_temp, *_) in zip(video_filter_list, task_list):
+            logger.debug(tip := f"视频过滤: {flt} {os.path.basename(video_temp)}")
+            Show.show_panel(self.level, tip, Wind.FILTER)
+
+        return video_filter_list
+
     async def als_speed(
             self,
             deploy: "Deploy",
             clipix: "Clipix",
             report: "Report",
             task_list: list[list],
-            originals: list,
-            indicates: list
+            main_loop: "asyncio.AbstractEventLoop",
     ) -> None:
         """
         异步执行视频的速度分析和调整，包括视频过滤、尺寸调整等功能。
@@ -294,15 +316,9 @@ class Missions(object):
         logger.debug(f"**<* 光速穿梭 *>**")
         Show.show_panel(self.level, Wind.SPEED_TEXT, Wind.SPEED)
 
-        filters = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
-        video_filter_list = await asyncio.gather(
-            *(clipix.vision_improve(
-                deploy.shape, deploy.scale, original, filters) for original in originals)
-        )
+        originals, indicates = await self.als_track(deploy, clipix, task_list, main_loop)
 
-        for flt, (video_temp, *_) in zip(video_filter_list, task_list):
-            logger.debug(tip := f"视频过滤: {flt} {os.path.basename(video_temp)}")
-            Show.show_panel(self.level, tip, Wind.FILTER)
+        video_filter_list = await self.als_waves(deploy, clipix, task_list, originals)
 
         video_target_list = [
             (flt, frame_path) for flt, (*_, frame_path, _, _) in zip(video_filter_list, task_list)
@@ -361,10 +377,8 @@ class Missions(object):
             clipix: "Clipix",
             report: "Report",
             task_list: list[list],
-            originals: list,
-            indicates: list,
             main_loop: "asyncio.AbstractEventLoop",
-            alynex: "Alynex"
+            **kwargs
     ) -> None:
         """
         异步执行视频的Keras模式分析或基本模式分析，包括视频过滤、尺寸调整和动态模板渲染等功能。
@@ -389,6 +403,8 @@ class Missions(object):
             - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
         """
 
+        alynex = kwargs["alynex"]
+
         logger.debug(f"**<* 思维导航 *>**" if alynex.ks.model else f"**<* 基石阵地 *>**")
         Show.show_panel(
             self.level,
@@ -396,15 +412,9 @@ class Missions(object):
             Wind.KERAS if alynex.ks.model else Wind.BASIC
         )
 
-        filters = [f"fps={deploy.frate}"]
-        video_filter_list = await asyncio.gather(
-            *(clipix.vision_improve(
-                deploy.shape, deploy.scale, original, filters) for original in originals)
-        )
+        originals, indicates = await self.als_track(deploy, clipix, task_list, main_loop)
 
-        for flt, (video_temp, *_) in zip(video_filter_list, task_list):
-            logger.debug(tip := f"视频过滤: {flt} {os.path.basename(video_temp)}")
-            Show.show_panel(self.level, tip, Wind.FILTER)
+        video_filter_list = await self.als_waves(deploy, clipix, task_list, originals)
 
         video_target_list = [
             (flt, os.path.join(
@@ -579,11 +589,8 @@ class Missions(object):
                  report.query, report.frame_path, report.extra_path, report.proto_path]
             )
 
-        # Information
-        originals, indicates = await self.als_track(deploy, clipix, task_list, main_loop)
-
         # Pack Argument
-        attack = deploy, clipix, report, task_list, originals, indicates
+        attack = deploy, clipix, report, task_list, main_loop
 
         if self.lines.speed:
             # Speed Analyzer
@@ -599,10 +606,8 @@ class Missions(object):
                 logger.debug(e)
                 Show.show_panel(self.level, e, Wind.KEEPER)
 
-            charge = main_loop, alynex
-
             # Keras Analyzer
-            await self.als_keras(*attack, *charge)
+            await self.als_keras(*attack, alynex=alynex)
 
         # Create Report
         await self.combine(report)
@@ -645,11 +650,8 @@ class Missions(object):
                              report.query, report.frame_path, report.extra_path, report.proto_path]
                         )
 
-                    # Information
-                    originals, indicates = await self.als_track(deploy, clipix, task_list, main_loop)
-
                     # Pack Argument
-                    attack = deploy, clipix, report, task_list, originals, indicates
+                    attack = deploy, clipix, report, task_list, main_loop
 
                     if self.lines.speed:
                         # Speed Analyzer
@@ -665,10 +667,8 @@ class Missions(object):
                             logger.debug(e)
                             Show.show_panel(self.level, e, Wind.KEEPER)
 
-                        charge = main_loop, alynex
-
                         # Keras Analyzer
-                        await self.als_keras(*attack, *charge)
+                        await self.als_keras(*attack, alynex=alynex)
 
                 # Create Report
                 await self.combine(report)
@@ -703,22 +703,18 @@ class Missions(object):
         # Information
         originals, indicates = await self.als_track(deploy, clipix, task_list, main_loop)
 
-        video_target_list = [
-            (os.path.join(
-                report.query_path, f"tmp_fps{deploy.frate}_{random.randint(10000, 99999)}.mp4"
-            ), [f"fps={deploy.frate}"]) for video_temp, *_ in task_list
-        ]
+        video_filter_list = await self.als_waves(deploy, clipix, task_list, originals)
 
-        for (tar, flt), (video_temp, *_) in zip(video_target_list, task_list):
-            logger.debug(tip := f"视频过滤: {flt} {os.path.basename(video_temp)}")
-            Show.show_panel(self.level, tip, Wind.FILTER)
+        video_target_list = [
+            (flt, os.path.join(
+                report.query_path, f"tmp_fps{deploy.frate}_{random.randint(10000, 99999)}.mp4")
+             ) for flt, (video_temp, *_) in zip(video_filter_list, task_list)
+        ]
 
         change_result = await asyncio.gather(
             *(clipix.pixels(
-                Switch.ask_video_change, video_filter, video_temp,
-                target, start=vision_start, close=vision_close, limit=vision_limit
-            ) for (target, video_filter), (video_temp, *_), (vision_start, vision_close, vision_limit)
-                in zip(video_target_list, task_list, indicates))
+                Switch.ask_video_change, video_filter, video_temp, target, **points
+            ) for (video_filter, target), (video_temp, *_), points in zip(video_target_list, task_list, indicates))
         )
 
         eliminate = []
@@ -745,7 +741,7 @@ class Missions(object):
         if len(task_list) == 1:
             task = [
                 alynex.ask_exercise(target, query_path)
-                for (target, _), (_, _, _, _, query_path, *_) in zip(video_target_list, task_list)
+                for (_, target), (_, _, _, _, query_path, *_) in zip(video_target_list, task_list)
             ]
             futures = await asyncio.gather(*task)
 
@@ -756,7 +752,7 @@ class Missions(object):
             with ProcessPoolExecutor(self.power, None, Active.active, ("ERROR",)) as exe:
                 task = [
                     main_loop.run_in_executor(exe, func, target, query_path)
-                    for (target, _), (_, _, _, _, query_path, *_) in zip(video_target_list, task_list)
+                    for (_, target), (_, _, _, _, query_path, *_) in zip(video_target_list, task_list)
                 ]
                 futures = await asyncio.gather(*task)
             self.level = this_level
@@ -768,7 +764,7 @@ class Missions(object):
         Show.show_panel(self.level, "\n".join(pick_info_list), Wind.PROVIDER)
 
         await asyncio.gather(
-            *(main_loop.run_in_executor(None, os.remove, target) for (target, _) in video_target_list)
+            *(main_loop.run_in_executor(None, os.remove, target) for (_, target) in video_target_list)
         )
 
     # 模型编译大师
@@ -1101,18 +1097,15 @@ class Missions(object):
                 logger.debug(tip := f"没有有效任务")
                 return Show.show_panel(self.level, tip, Wind.KEEPER)
 
-            # Information
-            originals, indicates = await self.als_track(deploy, clipix, task_list, main_loop)
-
             # Pack Argument
-            attack = deploy, clipix, report, task_list, originals, indicates
+            attack = deploy, clipix, report, task_list, main_loop
 
             if self.lines.speed:
                 # Speed Analyzer
                 await self.als_speed(*attack)
             elif self.lines.basic or self.lines.keras:
                 # Keras Analyzer
-                await self.als_keras(*attack, *charge)
+                await self.als_keras(*attack, alynex=alynex)
             else:
                 logger.debug(tip := f"**<* 录制模式 *>**")
                 Show.show_panel(self.level, tip, Wind.EXPLORER)
@@ -1270,8 +1263,6 @@ class Missions(object):
         except FramixAnalyzerError as e_:
             logger.debug(e_)
             Show.show_panel(self.level, e_, Wind.KEEPER)
-
-        charge = main_loop, alynex
 
         titles_ = {"speed": "Speed", "basic": "Basic", "keras": "Keras"}
         input_title_ = next((title for key, title in titles_.items() if getattr(self.lines, key)), "Video")
@@ -1529,6 +1520,25 @@ class Clipix(object):
 
     @staticmethod
     async def vision_improve(shape: tuple, scale: float, original: tuple, filters: list) -> list:
+        """
+        异步方法，用于改进视频的视觉效果，通过调整视频尺寸和应用过滤器列表。
+
+        参数:
+        - shape (tuple): 目标尺寸，格式为 (宽度, 高度)，如果未提供则根据 `scale` 调整尺寸。
+        - scale (float): 缩放比例，有效范围从 0.1 到 1.0。仅在 `shape` 为 None 时使用。如果未指定 `scale`，将使用默认压缩比例。
+        - original (tuple): 原始视频的尺寸，格式为 (原始宽度, 原始高度)。
+        - filters (list): 初始过滤器列表，可以包括例如 'blur', 'contrast' 等过滤器命令。
+
+        返回:
+        - list: 包含所有过滤器命令的列表，包括用于调整尺寸的 'scale' 过滤器。
+
+        注意:
+        - 如果 `shape` 和 `scale` 都未指定，将使用默认的压缩比例。
+        - 此方法应确保传入的 `scale` 值在合法范围内，否则会自动调整至最接近的有效值。
+
+        抛出:
+        - ValueError: 如果输入的参数类型不符合预期。
+        """
         if shape:
             w, h, ratio = await Switch.ask_magic_frame(original, shape)
             video_filter_list = filters + [f"scale={w}:{h}"]
