@@ -1608,6 +1608,21 @@ class Alynex(object):
                 self.ks.model = None
                 raise FramixAnalyzerError(e)
 
+    async def ask_video_load(self, vision: str):
+        start_time_ = time.time()
+        video = VideoObject(vision)
+        logger.debug(f"{(task_name_ := '视频帧长度: ' f'{video.frame_count}')}")
+        logger.debug(f"{(task_info_ := '视频帧尺寸: ' f'{video.frame_size}')}")
+        logger.debug(f"{(task_desc_ := '加载视频帧: ' f'{video.name}')}")
+        Show.show_panel(self.level, f"{task_name_}\n{task_info_}\n{task_desc_}", Wind.LOADER)
+        video.load_frames(
+            scale=None, shape=None, color=self.color
+        )
+        logger.debug(f"{(task_name := '视频帧加载完成: ' f'{video.frame_details(video.frames_data)}')}")
+        logger.debug(f"{(task_info := '视频帧加载耗时: ' f'{time.time() - start_time_:.2f} 秒')}")
+        Show.show_panel(self.level, f"{task_name}\n{task_info}", Wind.LOADER)
+        return video
+
     @staticmethod
     async def ask_frame_grid(vision: str):
         target_screen = None
@@ -1634,26 +1649,15 @@ class Alynex(object):
 
         query_path, *_ = args
 
-        load_start_time = time.time()
-        video = VideoObject(target_vision)
-        logger.debug(f"{(task_name := '视频帧长度: ' f'{video.frame_count}')}")
-        logger.debug(f"{(task_info := '视频帧尺寸: ' f'{video.frame_size}')}")
-        logger.debug(f"{(task_desc := '加载视频帧: ' f'{video.name}')}")
-        Show.show_panel(self.level, f"{task_name}\n{task_info}\n{task_desc}", Wind.LOADER)
-        video.load_frames(
-            scale=None, shape=None, color=self.color
-        )
-        logger.debug(f"{(task_name := '视频帧加载完成: ' f'{video.frame_details(video.frames_data)}')}")
-        logger.debug(f"{(task_info := '视频帧加载耗时: ' f'{time.time() - load_start_time:.2f} 秒')}")
-        Show.show_panel(self.level, f"{task_name}\n{task_info}", Wind.LOADER)
+        video = await self.ask_video_load(target_vision)
 
-        cut_start_time = time.time()
         cutter = VideoCutter()
         logger.debug(f"{(cut_name := '视频帧长度: ' f'{video.frame_count}')}")
         logger.debug(f"{(cut_part := '视频帧片段: ' f'{video.frame_count - 1}')}")
         logger.debug(f"{(cut_info := '视频帧尺寸: ' f'{video.frame_size}')}")
         logger.debug(f"{(cut_desc := '压缩视频帧: ' f'{video.name}')}")
         Show.show_panel(self.level, f"{cut_name}\n{cut_part}\n{cut_info}\n{cut_desc}", Wind.CUTTER)
+        cut_start_time = time.time()
         cut_range = cutter.cut(
             video=video, block=self.block
         )
@@ -1665,13 +1669,13 @@ class Alynex(object):
             threshold=self.thres, offset=self.shift
         )
 
-        return cut_range.pick_and_save(
-            stable, 20, query_path,
-            meaningful_name=True,
-            compress_rate=None,
-            target_size=None,
-            not_grey=True
+        frame_count = 20
+
+        pick_frame_path = cut_range.pick_and_save(
+            stable, frame_count, query_path, meaningful_name=True, compress_rate=None, target_size=None, not_grey=True
         )
+
+        return pick_frame_path
 
     async def ask_analyzer(self, vision: str, *args) -> typing.Optional["Review"]:
 
@@ -1747,17 +1751,16 @@ class Alynex(object):
             return frames_list
 
         async def frame_flow():
-            cut_start_time = time.time()
             cutter = VideoCutter()
 
-            just_hook_list, area_hook_list = [], []
+            panel_hook_list = []
 
             size_hook = FrameSizeHook(1.0, None, True)
             cutter.add_hook(size_hook)
             logger.debug(
                 f"{(cut_size := f'视频帧处理: {size_hook.__class__.__name__} {[1.0, None, True]}')}"
             )
-            just_hook_list.append(cut_size)
+            panel_hook_list.append(cut_size)
 
             if len(crop_list := self.crops) > 0 and sum([j for i in crop_list for j in i.values()]) > 0:
                 for crop in crop_list:
@@ -1767,7 +1770,7 @@ class Alynex(object):
                     logger.debug(
                         f"{(cut_crop := f'视频帧处理: {crop_hook.__class__.__name__} {x, y, x_size, y_size}')}"
                     )
-                    area_hook_list.append(cut_crop)
+                    panel_hook_list.append(cut_crop)
 
             if len(omit_list := self.omits) > 0 and sum([j for i in omit_list for j in i.values()]) > 0:
                 for omit in omit_list:
@@ -1777,25 +1780,23 @@ class Alynex(object):
                     logger.debug(
                         f"{(cut_omit := f'视频帧处理: {omit_hook.__class__.__name__} {x, y, x_size, y_size}')}"
                     )
-                    area_hook_list.append(cut_omit)
+                    panel_hook_list.append(cut_omit)
 
             save_hook = FrameSaveHook(extra_path)
             cutter.add_hook(save_hook)
             logger.debug(
                 f"{(cut_save := f'视频帧处理: {save_hook.__class__.__name__} {[os.path.basename(extra_path)]}')}"
             )
-            just_hook_list.append(cut_save)
+            panel_hook_list.append(cut_save)
 
-            if len(just_hook_list) > 0:
-                Show.show_panel(self.level, "\n".join(just_hook_list), Wind.CUTTER)
-            if len(area_hook_list) > 0:
-                Show.show_panel(self.level, "\n".join(area_hook_list), Wind.CUTTER)
+            Show.show_panel(self.level, "\n".join(panel_hook_list), Wind.CUTTER)
 
             logger.debug(f"{(cut_name := '视频帧长度: ' f'{video.frame_count}')}")
             logger.debug(f"{(cut_part := '视频帧片段: ' f'{video.frame_count - 1}')}")
             logger.debug(f"{(cut_info := '视频帧尺寸: ' f'{video.frame_size}')}")
             logger.debug(f"{(cut_desc := '压缩视频帧: ' f'{video.name}')}")
             Show.show_panel(self.level, f"{cut_name}\n{cut_part}\n{cut_info}\n{cut_desc}", Wind.CUTTER)
+            cut_start_time = time.time()
             cut_range = cutter.cut(
                 video=video, block=self.block
             )
@@ -1875,24 +1876,13 @@ class Alynex(object):
             begin_frame_id, final_frame_id, time_cost = flick_result
             return begin_frame_id, final_frame_id, time_cost, scores, struct
 
-        if (target_vision_ := await self.ask_frame_grid(vision)) is None:
+        if (target_vision := await self.ask_frame_grid(vision)) is None:
             logger.debug(tip_ := f"视频文件损坏: {os.path.basename(vision)}")
             return Show.show_panel(self.level, tip_, Wind.KEEPER)
 
         frame_path, extra_path, *_ = args
 
-        start_time_ = time.time()
-        video = VideoObject(target_vision_)
-        logger.debug(f"{(task_name_ := '视频帧长度: ' f'{video.frame_count}')}")
-        logger.debug(f"{(task_info_ := '视频帧尺寸: ' f'{video.frame_size}')}")
-        logger.debug(f"{(task_desc_ := '加载视频帧: ' f'{video.name}')}")
-        Show.show_panel(self.level, f"{task_name_}\n{task_info_}\n{task_desc_}", Wind.LOADER)
-        video.load_frames(
-            scale=None, shape=None, color=self.color
-        )
-        logger.debug(f"{(task_name := '视频帧加载完成: ' f'{video.frame_details(video.frames_data)}')}")
-        logger.debug(f"{(task_info := '视频帧加载耗时: ' f'{time.time() - start_time_:.2f} 秒')}")
-        Show.show_panel(self.level, f"{task_name}\n{task_info}", Wind.LOADER)
+        video = await self.ask_video_load(target_vision)
 
         struct = await frame_flow() if self.ks.model else None
         frames = await frame_hold()

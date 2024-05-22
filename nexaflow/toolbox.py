@@ -225,9 +225,9 @@ def calc_psnr(pic1: np.ndarray, pic2: np.ndarray) -> float:
 
 def compress_frame(
     frame: np.ndarray,
-    scale: typing.Optional[typing.Union[int, float]] = None,
-    shape: typing.Optional[tuple] = None,
-    color: typing.Optional[bool] = None,
+    compress_rate: typing.Optional[typing.Union[int, float]] = None,
+    target_size: typing.Optional[tuple] = None,
+    not_grey: typing.Optional[bool] = None,
     interpolation: typing.Optional[int] = None,
     *_,
     **__,
@@ -236,17 +236,17 @@ def compress_frame(
     压缩帧
     """
 
-    target = frame if color else turn_grey(frame)
+    target = frame if not_grey else turn_grey(frame)
 
     interpolation = interpolation or cv2.INTER_AREA
 
-    if shape:
-        return cv2.resize(target, shape, interpolation=interpolation)
+    if target_size:
+        return cv2.resize(target, target_size, interpolation=interpolation)
 
-    if not scale:
+    if not compress_rate:
         return target
 
-    return cv2.resize(target, (0, 0), fx=scale, fy=scale, interpolation=interpolation)
+    return cv2.resize(target, (0, 0), fx=compress_rate, fy=compress_rate, interpolation=interpolation)
 
 
 def get_timestamp_str() -> str:
