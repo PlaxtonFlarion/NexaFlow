@@ -73,11 +73,6 @@
             box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
             transition: all 0.3s ease;
         }
-        .info-box:hover {
-            transform: scale(1.02);
-            background: linear-gradient(to top, #c0c0aa, #1cefff);
-            box-shadow: 0px 0px 10px rgba(9, 162, 218, 0.5);
-        }
 
         .case {
             display: flex;
@@ -88,10 +83,17 @@
         .case h3 {
             color: #333333;
         }
+
         .device {
             box-shadow: 0px 0px 3px 3px rgb(0 0 0 / 50%);
             border-radius: 10px;
             margin-bottom: 20px;
+            transition: transform 0.5s ease;
+        }
+        .device:hover {
+            transform: scale(1.01);
+            background: linear-gradient(to top, #c0c0aa, #1cefff);
+            box-shadow: 0px 0px 10px rgba(9, 162, 218, 0.5);
         }
 
         .case-other {

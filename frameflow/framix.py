@@ -650,9 +650,9 @@ class Missions(object):
                     report.title = entry.title
                     task_list = []
                     for video in entry.sheet:
+                        report.query = video["query"]
                         video_path = video["video"]
                         video_name = os.path.basename(video_path)
-                        report.query = f"{time.strftime('%Y%m%d%H%M%S')}_{video_name.split('.')[0]}"
                         shutil.copy(video_path, report.video_path)
                         new_video_path = os.path.join(report.video_path, video_name)
                         task_list.append(
