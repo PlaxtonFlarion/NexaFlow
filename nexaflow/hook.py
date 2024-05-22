@@ -55,10 +55,7 @@ class FrameSizeHook(BaseHook):
     def do(self, frame: VideoFrame, *_, **__) -> typing.Optional[VideoFrame]:
         super().do(frame, *_, **__)
         frame.data = toolbox.compress_frame(
-            frame.data,
-            compress_rate=self.compress_rate,
-            target_size=self.target_size,
-            not_grey=self.not_grey
+            frame.data, self.compress_rate, self.target_size, self.not_grey
         )
         return frame
 
@@ -129,7 +126,7 @@ class _AreaBaseHook(BaseHook):
 
 class CropHook(_AreaBaseHook):
 
-    def do(self, frame: VideoFrame, *_, **__) -> typing.Optional[VideoFrame]:
+    def do(self, frame: "VideoFrame", *_, **__) -> typing.Optional["VideoFrame"]:
         super().do(frame, *_, **__)
 
         height_range, width_range = self.convert_size_and_offset(*frame.data.shape)
@@ -142,7 +139,7 @@ class CropHook(_AreaBaseHook):
 
 class OmitHook(_AreaBaseHook):
 
-    def do(self, frame: VideoFrame, *_, **__) -> typing.Optional[VideoFrame]:
+    def do(self, frame: "VideoFrame", *_, **__) -> typing.Optional["VideoFrame"]:
         super().do(frame, *_, **__)
 
         height_range, width_range = self.convert_size_and_offset(*frame.data.shape)
@@ -154,15 +151,10 @@ class OmitHook(_AreaBaseHook):
 
 class PaintCropHook(_AreaBaseHook):
 
-    def do(self, frame: VideoFrame, *_, **__) -> typing.Optional[VideoFrame]:
+    def do(self, frame: "VideoFrame", *_, **__) -> typing.Optional["VideoFrame"]:
         super().do(frame, *_, **__)
 
-        if len(frame.data.shape) == 3:
-            frame_shape = frame.data.shape[0], frame.data.shape[1]
-        else:
-            frame_shape = frame.data.shape
-
-        height_range, width_range = self.convert_size_and_offset(*frame_shape)
+        height_range, width_range = self.convert_size_and_offset(*frame.data.shape[:2])
         frame.data[: height_range[0], :] = 0
         frame.data[height_range[1]:, :] = 0
         frame.data[:, : width_range[0]] = 0
@@ -172,15 +164,10 @@ class PaintCropHook(_AreaBaseHook):
 
 class PaintOmitHook(_AreaBaseHook):
 
-    def do(self, frame: VideoFrame, *_, **__) -> typing.Optional[VideoFrame]:
+    def do(self, frame: "VideoFrame", *_, **__) -> typing.Optional["VideoFrame"]:
         super().do(frame, *_, **__)
 
-        if len(frame.data.shape) == 3:
-            frame_shape = frame.data.shape[0], frame.data.shape[1]
-        else:
-            frame_shape = frame.data.shape
-
-        height_range, width_range = self.convert_size_and_offset(*frame_shape)
+        height_range, width_range = self.convert_size_and_offset(*frame.data.shape[:2])
         frame.data[
             height_range[0]: height_range[1], width_range[0]: width_range[1]
         ] = 0

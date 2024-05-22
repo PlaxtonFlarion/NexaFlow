@@ -1580,12 +1580,8 @@ class Alynex(object):
         self.omits = kwargs.get("omits", const.OMITS)
 
     @property
-    def ks(self) -> typing.Optional["KerasStruct"]:
+    def ks(self) -> "KerasStruct":
         return self.__ks
-
-    @ks.setter
-    def ks(self, value):
-        self.__ks = value
 
     async def ask_model_load(self):
         if self.model_place:
@@ -1672,7 +1668,8 @@ class Alynex(object):
         frame_count = 20
 
         pick_frame_path = cut_range.pick_and_save(
-            stable, frame_count, query_path, meaningful_name=True, compress_rate=None, target_size=None, not_grey=True
+            stable, frame_count, query_path,
+            meaningful_name=True, compress_rate=None, target_size=None, not_grey=True
         )
 
         return pick_frame_path
