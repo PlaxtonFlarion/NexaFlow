@@ -270,6 +270,9 @@ class Missions(object):
         else:
             filters = [f"fps={deploy.frate}"]
 
+        filters = filters + [f"gblur=sigma={gauss}"] if (gauss := deploy.gauss) else filters
+        filters = filters + [f"unsharp=luma_amount={grind}"] if (grind := deploy.grind) else filters
+
         video_filter_list = await asyncio.gather(
             *(clipix.vision_improve(
                 deploy.shape, deploy.scale, original, filters) for original in originals)

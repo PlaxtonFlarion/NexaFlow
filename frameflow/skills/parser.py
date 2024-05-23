@@ -142,7 +142,15 @@ class Parser(object):
             value = int(dim_str) if dim_str else None
         except (ValueError, TypeError):
             return None
-        return round(max(1, value), 0) if value else None
+        return int(round(max(1, value), 0)) if value else None
+
+    @staticmethod
+    def parse_waves(dim_str):
+        try:
+            value = float(dim_str) if dim_str else None
+        except (ValueError, TypeError):
+            return None
+        return round(max(0.0, value), 2) if value else None
 
     @staticmethod
     def parse_cmd() -> argparse.Namespace:

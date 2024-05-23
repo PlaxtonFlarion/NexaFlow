@@ -135,6 +135,16 @@ class Args(object):
             "view": ["数值", "一次"],
             "help": "持续历程"
         },
+        "--gauss": {
+            "args": {"nargs": "?", "const": None, "type": str},
+            "view": ["数值", "一次"],
+            "help": "朦胧幻界"
+        },
+        "--grind": {
+            "args": {"nargs": "?", "const": None, "type": str},
+            "view": ["数值", "一次"],
+            "help": "边缘觉醒"
+        },
         "--frate": {
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],

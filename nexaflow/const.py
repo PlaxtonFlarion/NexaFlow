@@ -23,23 +23,19 @@ ERR = "[bold #FFFFFF on #FF6347]"
 
 COMPRESS = 0.5
 
-MODEL_SHAPE = (256, 256)
-MODEL_AISLE = 1
-
-ALONE = False
-WHIST = False
-GROUP = False
-
-BOOST = False
-COLOR = False
 SHAPE = None
 SCALE = None
 START = None
 CLOSE = None
 LIMIT = None
+GAUSS = None
+GRIND = None
+FRATE = 60
+
+BOOST = False
+COLOR = False
 BEGIN = (0, 1)
 FINAL = (-1, -1)
-FRATE = 60
 THRES = 0.97
 SHIFT = 3
 BLOCK = 6

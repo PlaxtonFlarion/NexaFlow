@@ -28,6 +28,8 @@ class Deploy(object):
             "start": const.START,
             "close": const.CLOSE,
             "limit": const.LIMIT,
+            "gauss": const.GAUSS,
+            "grind": const.GRIND,
             "frate": const.FRATE
         },
         "ALS": {
@@ -73,6 +75,14 @@ class Deploy(object):
     @property
     def limit(self):
         return self.deploys["FST"]["limit"]
+
+    @property
+    def gauss(self):
+        return self.deploys["FST"]["gauss"]
+
+    @property
+    def grind(self):
+        return self.deploys["FST"]["grind"]
 
     @property
     def frate(self):
@@ -137,6 +147,16 @@ class Deploy(object):
     @limit.setter
     def limit(self, value):
         self.deploys["FST"]["limit"] = Parser.parse_times(value)
+
+    @gauss.setter
+    def gauss(self, value):
+        if effective := Parser.parse_waves(value):
+            self.deploys["FST"]["gauss"] = effective
+
+    @grind.setter
+    def grind(self, value):
+        if effective := Parser.parse_waves(value):
+            self.deploys["FST"]["grind"] = effective
 
     @frate.setter
     def frate(self, value):
@@ -252,6 +272,18 @@ class Deploy(object):
                         f"[bold {arg}]{Parser.parse_mills(self.limit) if self.limit else 'Auto'}",
                         f"[bold][[bold {val}]0 , ?[/] ]",
                         f"[bold {tip}]{self.limit}" if self.limit else f"[bold {auto}]自动",
+                    ],
+                    [
+                        f"[bold {cmd}]朦胧幻界",
+                        f"[bold {arg}]{self.gauss if self.gauss else 'Auto'}",
+                        f"[bold][[bold {val}]0 , ?[/] ]",
+                        f"[bold {tip}]{self.gauss}" if self.gauss else f"[bold {auto}]自动",
+                    ],
+                    [
+                        f"[bold {cmd}]边缘觉醒",
+                        f"[bold {arg}]{self.grind if self.grind else 'Auto'}",
+                        f"[bold][[bold {val}]0 , ?[/] ]",
+                        f"[bold {tip}]{self.grind}" if self.grind else f"[bold {auto}]自动",
                     ],
                     [
                         f"[bold {cmd}]频率探测",
