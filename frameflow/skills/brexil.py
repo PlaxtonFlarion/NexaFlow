@@ -247,49 +247,49 @@ class Deploy(object):
                         f"[bold {cmd}]尺寸定制",
                         f"[bold {arg}]{list(self.shape) if self.shape else 'Auto'}",
                         f"[bold][[bold {val}]? , ?[/] ]",
-                        f"[bold {tip}]{list(self.shape)}" if self.shape else f"[bold {auto}]自动",
+                        f"[bold]宽高 [bold {tip}]{self.shape[0]} x {self.shape[1]}" if self.shape else f"[bold {auto}]自动",
                     ],
                     [
                         f"[bold {cmd}]变幻缩放",
                         f"[bold {arg}]{self.scale if self.scale else 'Auto'}",
                         f"[bold][[bold {val}]0 , 1[/] ]",
-                        f"[bold]压缩图片至 [bold {tip}]{self.scale}[/] 倍" if self.scale else f"[bold {auto}]自动[/]",
+                        f"[bold]压缩 [bold {tip}]{self.scale}[/]" if self.scale else f"[bold {auto}]自动[/]",
                     ],
                     [
                         f"[bold {cmd}]时刻启程",
                         f"[bold {arg}]{Parser.parse_mills(self.start) if self.start else 'Auto'}",
                         f"[bold][[bold {val}]0 , ?[/] ]",
-                        f"[bold {tip}]{self.start}" if self.start else f"[bold {auto}]自动",
+                        f"[bold]开始 [bold {tip}]{self.start}[/]" if self.start else f"[bold {auto}]自动",
                     ],
                     [
                         f"[bold {cmd}]时光封印",
                         f"[bold {arg}]{Parser.parse_mills(self.close) if self.close else 'Auto'}",
                         f"[bold][[bold {val}]0 , ?[/] ]",
-                        f"[bold {tip}]{self.close}" if self.close else f"[bold {auto}]自动",
+                        f"[bold]结束 [bold {tip}]{self.close}[/]" if self.close else f"[bold {auto}]自动",
                     ],
                     [
                         f"[bold {cmd}]持续历程",
                         f"[bold {arg}]{Parser.parse_mills(self.limit) if self.limit else 'Auto'}",
                         f"[bold][[bold {val}]0 , ?[/] ]",
-                        f"[bold {tip}]{self.limit}" if self.limit else f"[bold {auto}]自动",
+                        f"[bold]持续 [bold {tip}]{self.limit}[/]" if self.limit else f"[bold {auto}]自动",
                     ],
                     [
                         f"[bold {cmd}]朦胧幻界",
                         f"[bold {arg}]{self.gauss if self.gauss else 'Auto'}",
                         f"[bold][[bold {val}]0 , ?[/] ]",
-                        f"[bold {tip}]{self.gauss}" if self.gauss else f"[bold {auto}]自动",
+                        f"[bold]模糊 [bold {tip}]{self.gauss}[/]" if self.gauss else f"[bold {auto}]自动",
                     ],
                     [
                         f"[bold {cmd}]边缘觉醒",
                         f"[bold {arg}]{self.grind if self.grind else 'Auto'}",
                         f"[bold][[bold {val}]0 , ?[/] ]",
-                        f"[bold {tip}]{self.grind}" if self.grind else f"[bold {auto}]自动",
+                        f"[bold]锐化 [bold {tip}]{self.grind}[/]" if self.grind else f"[bold {auto}]自动",
                     ],
                     [
                         f"[bold {cmd}]频率探测",
                         f"[bold {arg}]{self.frate}",
                         f"[bold][[bold {val}]1 , 60[/]]",
-                        f"[bold]每秒 [bold {tip}]{self.frate}[/] 帧",
+                        f"[bold]帧率 [bold {tip}]{self.frate}[/]",
                     ]
                 ]
 

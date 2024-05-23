@@ -60,7 +60,7 @@ class KerasStruct(BaseModelClassifier):
         logger.debug(f"Keras sequence model load data {self.model.input_shape}")
 
     def create_model(self, follow_tf_size: tuple, model_aisle: int) -> "keras.Sequential":
-        logger.info(f"Keras sequence model is being created")
+        logger.debug(f"Keras sequence model is being created")
 
         if keras.backend.image_data_format() == "channels_first":
             input_shape = (model_aisle, *follow_tf_size)
@@ -88,7 +88,7 @@ class KerasStruct(BaseModelClassifier):
 
         model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
 
-        logger.info("Keras sequence model is created")
+        logger.debug("Keras sequence model is created")
         return model
 
     def train(self, data_path: str = None, *args, **kwargs):
@@ -145,9 +145,9 @@ class KerasStruct(BaseModelClassifier):
             validation_data=validation_generator,
         )
 
-        logger.info("Model train finished")
+        logger.debug("Model train finished")
 
-    def build(self, model_color: str, model_shape: tuple, model_aisle: int, *args):
+    def build(self, model_color: str, model_shape: tuple, model_aisle: int, *args) -> typing.Optional[str]:
         src_model_path, new_model_path, new_model_name = args
 
         follow_tf_size = model_shape[1], model_shape[0]
@@ -157,16 +157,16 @@ class KerasStruct(BaseModelClassifier):
                 src_model_path, model_color, follow_tf_size, model_aisle
             )
         except AssertionError as e:
-            return logger.error(f"{e}")
+            return logger.error(e)
 
         final_model: str = os.path.join(new_model_path, new_model_name)
         os.makedirs(new_model_path, exist_ok=True)
 
         # self.model.save_weights(final_model, save_format="h5")
         self.model.save(final_model, save_format="tf")
-
         self.model.summary()
-        logger.info(f"Model saved successfully {final_model}")
+
+        return final_model
 
     def predict(self, pic_path: str, *args, **kwargs) -> str:
         picture = toolbox.imread(pic_path)

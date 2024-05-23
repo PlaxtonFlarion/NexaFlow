@@ -249,11 +249,13 @@ class Missions(object):
                 *(clipix.vision_balance(duration, standard, video_src, deploy.frate)
                   for duration, (video_src, *_) in zip(durations, task_list))
             )
+            panel_blc_list = []
             for (video_idx, (video_dst, video_blc)), (video_src, *_) in zip(enumerate(video_dst_list), task_list):
-                logger.debug(f"{video_blc}")
-                Show.show_panel(self.level, video_blc, Wind.TAILOR)
+                logger.debug(tip := f"{video_blc}")
+                panel_blc_list.append(tip)
                 eliminate.append(looper.run_in_executor(None, os.remove, video_src))
                 task_list[video_idx][0] = video_dst
+            Show.show_panel(self.level, "\n".join(panel_blc_list), Wind.TAILOR)
         await asyncio.gather(*eliminate, return_exceptions=True)
 
         return originals, indicates
@@ -278,9 +280,11 @@ class Missions(object):
                 deploy.shape, deploy.scale, original, filters) for original in originals)
         )
 
+        panel_filter_list = []
         for flt, (video_temp, *_) in zip(video_filter_list, task_list):
             logger.debug(tip := f"视频过滤: {flt} {os.path.basename(video_temp)}")
-            Show.show_panel(self.level, tip, Wind.FILTER)
+            panel_filter_list.append(tip)
+        Show.show_panel(self.level, "\n".join(panel_filter_list), Wind.FILTER)
 
         return video_filter_list
 
@@ -861,7 +865,7 @@ class Missions(object):
                 looper.run_in_executor(None, alynex.ks.build, *compile_data)
                 for compile_data in task_list
             ]
-            await asyncio.gather(*task)
+            futures = await asyncio.gather(*task)
 
         else:
             this_level = self.level
@@ -872,8 +876,14 @@ class Missions(object):
                     looper.run_in_executor(exe, func, *compile_data)
                     for compile_data in task_list
                 ]
-                await asyncio.gather(*task)
+                futures = await asyncio.gather(*task)
             self.level = this_level
+
+        final_model_list = []
+        for future in futures:
+            logger.debug(tip := f"Model saved successfully {os.path.basename(future)}")
+            final_model_list.append(tip)
+        Show.show_panel(self.level, "\n".join(final_model_list), Wind.DESIGNER)
 
     # 线迹创造者
     async def painting(self, deploy: "Deploy"):
