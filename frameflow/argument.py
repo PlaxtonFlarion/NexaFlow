@@ -123,17 +123,17 @@ class Args(object):
         "--start": {
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
-            "help": "开始时间"
+            "help": "时刻启程"
         },
         "--close": {
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
-            "help": "结束时间"
+            "help": "时光封印"
         },
         "--limit": {
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
-            "help": "持续时间"
+            "help": "持续历程"
         },
         "--frate": {
             "args": {"nargs": "?", "const": None, "type": str},
@@ -157,12 +157,12 @@ class Args(object):
         "--begin": {
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
-            "help": "开始阶段"
+            "help": "序章开启"
         },
         "--final": {
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
-            "help": "结束阶段"
+            "help": "终章落幕"
         },
         "--thres": {
             "args": {"nargs": "?", "const": None, "type": str},

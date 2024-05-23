@@ -89,6 +89,11 @@
         }
         .device:hover {
             transform: scale(1.01);
+            background-image: linear-gradient(to top, #fff1eb 0%, #ace0f9 100%);
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+        }
+        .device.complete:hover {
+            transform: scale(1.01);
             background-image: linear-gradient(0deg, #fc940a, #e3a965, #bdbda5, #72d0e6);
             box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
         }
@@ -111,7 +116,7 @@
         }
         .cost {
             margin-left: 20px;
-            background-color: rgb(18, 227, 225);
+            background-image: linear-gradient(to top, #e6e9f0 0%, #eef1f5 100%);
         }
 
         .cost-avg {
@@ -123,9 +128,9 @@
             cursor: grab;
         }
         .cost:hover {
-            color: #ffffff;
-            background-color: #0ba9ed;
-            transition: color 0.5s, background-color 0.5s ease;
+            color: #de8e0e;
+            background-image: linear-gradient(to top, #accbee 0%, #e7f0fd 100%);
+            transition: all 0.3s ease;
         }
         .cost-avg:hover {
             background-color: #e8d20c;

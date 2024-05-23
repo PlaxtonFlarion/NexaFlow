@@ -91,7 +91,7 @@ class Switch(object):
             video_streams = {
                 "key_frames": [
                     {"type": frame["pict_type"], "idx": f"{idx + 1}", "time": frame["pts_time"]}
-                    for idx, frame in enumerate(frames_list) if frame["pict_type"] == "I"
+                    for idx, frame in enumerate(frames_list)
                 ],
                 "codec_name": stream_dict["codec_name"],
                 "codec_type": stream_dict["codec_type"],

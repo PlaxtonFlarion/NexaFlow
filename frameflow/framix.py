@@ -196,7 +196,6 @@ class Missions(object):
             deploy: "Deploy",
             clipix: "Clipix",
             task_list: list[list],
-            main_loop: "asyncio.AbstractEventLoop"
     ) -> tuple[list, list]:
         """
         异步执行视频的处理追踪，包括内容提取和平衡视频长度等功能。
@@ -208,7 +207,6 @@ class Missions(object):
             deploy (Deploy): 配置信息对象，包含视频处理的起始、结束、限制时间和帧率等。
             clipix (Clipix): 视频处理工具对象，负责具体的视频内容提取和平衡操作。
             task_list (list[list]): 包含视频信息的任务列表，每个列表项包括视频模板和其他参数。
-            main_loop (asyncio.AbstractEventLoop): 异步事件循环，用于执行非异步的任务。
 
         返回:
             tuple[list, list]: 返回处理后的原始视频列表和指示信息列表。
@@ -219,6 +217,8 @@ class Missions(object):
             - 确保提供的每个视频都符合`Deploy`中定义的处理标准。
             - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
         """
+
+        looper = asyncio.get_event_loop()
 
         # Video information
         start_ms = Parser.parse_mills(deploy.start)
@@ -252,7 +252,7 @@ class Missions(object):
             for (video_idx, (video_dst, video_blc)), (video_src, *_) in zip(enumerate(video_dst_list), task_list):
                 logger.debug(f"{video_blc}")
                 Show.show_panel(self.level, video_blc, Wind.TAILOR)
-                eliminate.append(main_loop.run_in_executor(None, os.remove, video_src))
+                eliminate.append(looper.run_in_executor(None, os.remove, video_src))
                 task_list[video_idx][0] = video_dst
         await asyncio.gather(*eliminate, return_exceptions=True)
 
@@ -264,7 +264,7 @@ class Missions(object):
             clipix: "Clipix",
             task_list: list[list],
             originals: list
-    ):
+    ) -> tuple:
         if self.lines.speed:
             filters = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
         else:
@@ -286,8 +286,7 @@ class Missions(object):
             deploy: "Deploy",
             clipix: "Clipix",
             report: "Report",
-            task_list: list[list],
-            main_loop: "asyncio.AbstractEventLoop",
+            task_list: list[list]
     ) -> None:
         """
         异步执行视频的速度分析和调整，包括视频过滤、尺寸调整等功能。
@@ -316,7 +315,7 @@ class Missions(object):
         logger.debug(f"**<* 光速穿梭 *>**")
         Show.show_panel(self.level, Wind.SPEED_TEXT, Wind.SPEED)
 
-        originals, indicates = await self.als_track(deploy, clipix, task_list, main_loop)
+        originals, indicates = await self.als_track(deploy, clipix, task_list)
 
         video_filter_list = await self.als_waves(deploy, clipix, task_list, originals)
 
@@ -377,7 +376,6 @@ class Missions(object):
             clipix: "Clipix",
             report: "Report",
             task_list: list[list],
-            main_loop: "asyncio.AbstractEventLoop",
             **kwargs
     ) -> None:
         """
@@ -393,8 +391,7 @@ class Missions(object):
             task_list (list[list]): 包含视频和其他相关参数的任务列表。
             originals (list): 原始视频列表，用于提取和处理视频内容。
             indicates (list): 指示信息列表，包含视频处理的具体指标和参数。
-            main_loop (asyncio.AbstractEventLoop): 异步事件循环，用于执行非异步的任务。
-            alynex (Alynex): 模型分析工具，决定使用Keras模型还是基础分析。
+            **kwargs (Alynex): 模型分析工具，决定使用Keras模型还是基础分析。
 
         注意:
             - 该函数为异步函数，需要在异步环境中运行。
@@ -402,6 +399,8 @@ class Missions(object):
             - 函数的执行路径依赖于`alynex.ks.model`的状态，确保Alynex实例正确初始化。
             - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
         """
+
+        looper = asyncio.get_event_loop()
 
         alynex = kwargs["alynex"]
 
@@ -412,7 +411,7 @@ class Missions(object):
             Wind.KERAS if alynex.ks.model else Wind.BASIC
         )
 
-        originals, indicates = await self.als_track(deploy, clipix, task_list, main_loop)
+        originals, indicates = await self.als_track(deploy, clipix, task_list)
 
         video_filter_list = await self.als_waves(deploy, clipix, task_list, originals)
 
@@ -440,7 +439,7 @@ class Missions(object):
                     logger.debug(format_msg)
             Show.show_panel(self.level, "\n".join(message_list), Wind.METRIC)
             eliminate.append(
-                main_loop.run_in_executor(None, os.remove, video_temp)
+                looper.run_in_executor(None, os.remove, video_temp)
             )
         await asyncio.gather(*eliminate, return_exceptions=True)
 
@@ -461,7 +460,7 @@ class Missions(object):
             func = partial(self.amazing, **deploy.deploys["ALS"])
             with ProcessPoolExecutor(self.power, None, Active.active, ("ERROR",)) as exe:
                 task = [
-                    main_loop.run_in_executor(exe, func, target, frame_path, extra_path)
+                    looper.run_in_executor(exe, func, target, frame_path, extra_path)
                     for (_, target), (*_, frame_path, extra_path, _) in zip(video_target_list, task_list)
                 ]
                 futures = await asyncio.gather(*task)
@@ -564,15 +563,12 @@ class Missions(object):
                 Show.show_panel(self.level, tip, Wind.REPORTER)
 
     # 视频解析探索
-    async def video_file_task(self, video_file_list: list, *args):
+    async def video_file_task(self, video_file_list: list, deploy: "Deploy"):
         if len(video_file_list := [
             video_file for video_file in video_file_list if os.path.isfile(video_file)
         ]) == 0:
             logger.debug(tip := f"没有有效任务")
             return Show.show_panel(self.level, tip, Wind.KEEPER)
-
-        # Receive Argument
-        platform, deploy, main_loop = args
 
         clipix = Clipix(self.fmp, self.fpb)
         report = Report(self.total_place)
@@ -590,7 +586,7 @@ class Missions(object):
             )
 
         # Pack Argument
-        attack = deploy, clipix, report, task_list, main_loop
+        attack = deploy, clipix, report, task_list
 
         if self.lines.speed:
             # Speed Analyzer
@@ -613,7 +609,7 @@ class Missions(object):
         await self.combine(report)
 
     # 影像堆叠导航
-    async def video_data_task(self, video_data_list: list, *args):
+    async def video_data_task(self, video_data_list: list, deploy: "Deploy"):
 
         async def load_entries():
             for video_data in video_data_list:
@@ -625,9 +621,6 @@ class Missions(object):
                 tree, collection_list = finder_result
                 Show.console.print(tree)
                 yield collection_list[0]
-
-        # Receive Argument
-        platform, deploy, main_loop = args
 
         finder = Find()
         clipix = Clipix(self.fmp, self.fpb)
@@ -651,7 +644,7 @@ class Missions(object):
                         )
 
                     # Pack Argument
-                    attack = deploy, clipix, report, task_list, main_loop
+                    attack = deploy, clipix, report, task_list
 
                     if self.lines.speed:
                         # Speed Analyzer
@@ -674,7 +667,7 @@ class Missions(object):
                 await self.combine(report)
 
     # 模型训练大师
-    async def train_model(self, video_file_list: list, *args):
+    async def train_model(self, video_file_list: list, deploy: "Deploy"):
         if len(video_file_list := [
             video_file for video_file in video_file_list if os.path.isfile(video_file)
         ]) == 0:
@@ -683,8 +676,7 @@ class Missions(object):
 
         import uuid
 
-        # Receive Argument
-        platform, deploy, main_loop = args
+        looper = asyncio.get_event_loop()
 
         clipix = Clipix(self.fmp, self.fpb)
         report = Report(self.total_place)
@@ -701,7 +693,7 @@ class Missions(object):
             )
 
         # Information
-        originals, indicates = await self.als_track(deploy, clipix, task_list, main_loop)
+        originals, indicates = await self.als_track(deploy, clipix, task_list)
 
         video_filter_list = await self.als_waves(deploy, clipix, task_list, originals)
 
@@ -729,7 +721,7 @@ class Missions(object):
                     logger.debug(format_msg)
             Show.show_panel(self.level, "\n".join(message_list), Wind.METRIC)
             eliminate.append(
-                main_loop.run_in_executor(None, os.remove, video_temp)
+                looper.run_in_executor(None, os.remove, video_temp)
             )
         await asyncio.gather(*eliminate, return_exceptions=True)
 
@@ -751,7 +743,7 @@ class Missions(object):
             func = partial(self.bizarre, **deploy.deploys["ALS"])
             with ProcessPoolExecutor(self.power, None, Active.active, ("ERROR",)) as exe:
                 task = [
-                    main_loop.run_in_executor(exe, func, target, query_path)
+                    looper.run_in_executor(exe, func, target, query_path)
                     for (_, target), (_, _, _, _, query_path, *_) in zip(video_target_list, task_list)
                 ]
                 futures = await asyncio.gather(*task)
@@ -764,19 +756,18 @@ class Missions(object):
         Show.show_panel(self.level, "\n".join(pick_info_list), Wind.PROVIDER)
 
         await asyncio.gather(
-            *(main_loop.run_in_executor(None, os.remove, target) for (_, target) in video_target_list)
+            *(looper.run_in_executor(None, os.remove, target) for (_, target) in video_target_list)
         )
 
     # 模型编译大师
-    async def build_model(self, video_data_list: list, *args):
+    async def build_model(self, video_data_list: list, deploy: "Deploy"):
         if len(video_data_list := [
             video_data for video_data in video_data_list if os.path.isdir(video_data)
         ]) == 0:
             logger.debug(tip := f"没有有效任务")
             return Show.show_panel(self.level, tip, Wind.KEEPER)
 
-        # Receive Argument
-        platform, deploy, main_loop = args
+        looper = asyncio.get_event_loop()
 
         task_list = []
         for video_data in video_data_list:
@@ -864,7 +855,7 @@ class Missions(object):
         # Ask Analyzer
         if len(task_list) == 1:
             task = [
-                main_loop.run_in_executor(None, alynex.ks.build, *compile_data)
+                looper.run_in_executor(None, alynex.ks.build, *compile_data)
                 for compile_data in task_list
             ]
             await asyncio.gather(*task)
@@ -875,14 +866,14 @@ class Missions(object):
             func = partial(alynex.ks.build)
             with ProcessPoolExecutor(self.power, None, Active.active, ("ERROR",)) as exe:
                 task = [
-                    main_loop.run_in_executor(exe, func, *compile_data)
+                    looper.run_in_executor(exe, func, *compile_data)
                     for compile_data in task_list
                 ]
                 await asyncio.gather(*task)
             self.level = this_level
 
     # 线迹创造者
-    async def painting(self, *args):
+    async def painting(self, deploy: "Deploy"):
 
         import PIL.Image
         import PIL.ImageDraw
@@ -1005,8 +996,6 @@ class Missions(object):
             )
             return resized
 
-        platform, deploy, main_loop = args
-
         manage = Manage(self.adb)
         device_list = await manage.operate_device()
         tasks = [paint_lines(device.sn) for device in device_list]
@@ -1035,15 +1024,15 @@ class Missions(object):
                 Show.show_panel(self.level, tip_, Wind.KEEPER)
 
     # 循环节拍器
-    async def analysis(self, *args):
+    async def analysis(self, deploy: "Deploy"):
 
         async def commence():
 
             async def wait_for_device(device):
-                Show.mark(f"[bold #FAFAD2]Wait Device Online -> {device.tag} {device.sn}[/]")
+                Show.notes(f"[bold #FAFAD2]Wait Device Online -> {device.tag} {device.sn}[/]")
                 await Terminal.cmd_line(self.adb, "-s", device.sn, "wait-for-device")
 
-            Show.mark(f"**<* {('独立' if self.lines.alone else '全局')}控制模式 *>**")
+            Show.notes(f"**<* {('独立' if self.lines.alone else '全局')}控制模式 *>**")
 
             await source.monitor()
 
@@ -1052,7 +1041,7 @@ class Missions(object):
             )
 
             media_screen_w, media_screen_h = ScreenMonitor.screen_size()
-            Show.mark(f"Media Screen W={media_screen_w} H={media_screen_h}")
+            Show.notes(f"Media Screen W={media_screen_w} H={media_screen_h}")
 
             todo_list = []
             format_folder = time.strftime("%Y%m%d%H%M%S")
@@ -1098,7 +1087,7 @@ class Missions(object):
                 return Show.show_panel(self.level, tip, Wind.KEEPER)
 
             # Pack Argument
-            attack = deploy, clipix, report, task_list, main_loop
+            attack = deploy, clipix, report, task_list
 
             if self.lines.speed:
                 # Speed Analyzer
@@ -1222,7 +1211,7 @@ class Missions(object):
 
             for exec_pairs in exec_pairs_list:
                 if len(live_devices) == 0:
-                    return Show.mark(f"[bold #F0FFF0 on #000000]All tasks canceled[/]")
+                    return Show.notes(f"[bold #F0FFF0 on #000000]All tasks canceled[/]")
                 for exec_func, exec_args in exec_pairs:
                     exec_args = await substitute_star()
                     if exec_func == "audio_player":
@@ -1235,7 +1224,7 @@ class Missions(object):
                 try:
                     exec_status_list = await asyncio.gather(*exec_tasks.values())
                 except asyncio.CancelledError:
-                    return Show.mark(f"[bold #F0FFF0 on #000000]All tasks canceled[/]")
+                    return Show.notes(f"[bold #F0FFF0 on #000000]All tasks canceled[/]")
                 finally:
                     exec_tasks.clear()
 
@@ -1251,7 +1240,7 @@ class Missions(object):
         manage_ = Manage(self.adb)
         device_list = await manage_.operate_device()
 
-        platform, deploy, main_loop = args
+        platform = sys.platform
 
         clipix = Clipix(self.fmp, self.fpb)
 
@@ -1268,7 +1257,7 @@ class Missions(object):
         input_title_ = next((title for key, title in titles_.items() if getattr(self.lines, key)), "Video")
 
         record = Record(
-            self.scc, platform, alone=self.lines.alone, whist=self.lines.whist, frate=deploy.frate
+            self.scc, alone=self.lines.alone, whist=self.lines.whist, frate=deploy.frate
         )
         player = Player()
         source = SourceMonitor()
@@ -1292,7 +1281,7 @@ class Missions(object):
                             if match_ := re.search(r"(?<=header\s).*", select_):
                                 if hd_ := match_.group().strip():
                                     src_hd_, a_, b_ = f"{input_title_}_{time.strftime('%Y%m%d_%H%M%S')}", 10000, 99999
-                                    Show.mark(f"{const.SUC}New title set successfully[/]")
+                                    Show.notes(f"{const.SUC}New title set successfully[/]")
                                     report.title = f"{src_hd_}_{hd_}" if hd_ else f"{src_hd_}_{random.randint(a_, b_)}"
                                     continue
                             raise FramixAnalysisError
@@ -1300,7 +1289,7 @@ class Missions(object):
                             await self.combine(report)
                             break
                         elif select_ == "deploy":
-                            Show.mark(f"{const.WRN}请完全退出编辑器再继续操作[/]")
+                            Show.notes(f"{const.WRN}请完全退出编辑器再继续操作[/]")
                             deploy.dump_deploy(self.initial_deploy)
                             first_ = ["Notepad"] if platform == "win32" else ["open", "-W", "-a", "TextEdit"]
                             first_.append(self.initial_deploy)
@@ -1312,7 +1301,7 @@ class Missions(object):
                             timer_value_, lower_bound_, upper_bound_ = int(select_), 5, 300
                             if timer_value_ > 300 or timer_value_ < 5:
                                 bound_tips_ = f"{lower_bound_} <= [bold #FFD7AF]Time[/] <= {upper_bound_}"
-                                Show.mark(f"[bold #FFFF87]{bound_tips_}[/]")
+                                Show.notes(f"[bold #FFFF87]{bound_tips_}[/]")
                             timer_mode = max(lower_bound_, min(upper_bound_, timer_value_))
                         else:
                             raise FramixAnalysisError
@@ -1445,12 +1434,12 @@ class Clipix(object):
             limit (Optional[str]): 处理视频的最大时长限制。如果为None，则没有时间限制。
 
         返回:
-            tuple[str, str, float, tuple, tuple]: 返回一个包含以下元素的元组：
+            tuple[str, str, float, tuple, dict]: 返回一个包含以下元素的元组：
                 - rlt (str): 实际帧率。
                 - avg (str): 平均帧率。
                 - duration (float): 视频总时长（秒）。
                 - original (tuple): 原始视频分辨率和其他基础数据。
-                - (vision_start, vision_close, vision_limit) (tuple): 处理后的起始、结束和限制时间点（格式化为字符串如"00:00:10"）。
+                - vision_point (dict): 处理后的起始、结束和限制时间点（格式化为字符串如"00:00:10"）。
 
         注意:
             - 确保视频文件路径正确且视频文件可访问。
@@ -1855,7 +1844,8 @@ class Alynex(object):
             for result in forge_result:
                 for r in result:
                     if isinstance(r, Exception):
-                        logger.error(f"{const.ERR}{r}[/]")
+                        logger.debug(r)
+                        Show.show_panel(self.level, r, Wind.KEEPER)
                     else:
                         scores[r["id"]] = r["picture"]
 
@@ -1864,23 +1854,26 @@ class Alynex(object):
             return begin_frame.frame_id, final_frame.frame_id, time_cost, scores, None
 
         async def analytics_keras():
+            flick_tasks = asyncio.create_task(frame_flick())
+
             forge_tasks = [
                 [frame_forge(frame) for frame in chunk] for chunk in
                 [frames[i:i + 100] for i in range(0, len(frames), 100)]
             ]
-            flick_result, *forge_result = await asyncio.gather(
-                frame_flick(), *(asyncio.gather(*forge) for forge in forge_tasks)
+            forge_result = await asyncio.gather(
+                *(asyncio.gather(*forge) for forge in forge_tasks)
             )
 
             scores = {}
             for result in forge_result:
                 for r in result:
                     if isinstance(r, Exception):
-                        logger.error(f"{const.ERR}{r}[/]")
+                        logger.debug(r)
+                        Show.show_panel(self.level, r, Wind.KEEPER)
                     else:
                         scores[r["id"]] = r["picture"]
 
-            begin_frame_id, final_frame_id, time_cost = flick_result
+            begin_frame_id, final_frame_id, time_cost = await flick_tasks
             return begin_frame_id, final_frame_id, time_cost, scores, struct
 
         if (target_vision := await self.ask_frame_grid(vision)) is None:
@@ -1899,10 +1892,10 @@ class Alynex(object):
         return Review(*(await analytics_basic()))
 
 
-async def arithmetic(function: "typing.Callable", parameters: list[str], *args) -> None:
+async def arithmetic(function: "typing.Callable", parameters: list[str], deploy: "Deploy") -> None:
     try:
         parameters = [(await Craft.revise_path(param)) for param in parameters]
-        await function(parameters, *args)
+        await function(parameters, deploy)
     except (FramixAnalysisError, FramixAnalyzerError, FramixReporterError):
         Show.console.print_exception()
         sys.exit(Show.fail())
@@ -1912,14 +1905,10 @@ async def scheduling() -> None:
     try:
         # --flick --carry --fully
         if _lines.flick or _lines.carry or _lines.fully:
-            await _missions.analysis(
-                _platform, _deploy, _main_loop
-            )
+            await _missions.analysis(_deploy)
         # --paint
         elif _lines.paint:
-            await _missions.painting(
-                _platform, _deploy, _main_loop
-            )
+            await _missions.painting(_deploy)
         # --union
         elif _lines.union:
             await _missions.combine_view(_lines.union)
@@ -2011,29 +2000,27 @@ if __name__ == '__main__':
 
     Show.load_animation()
 
-    _args = _platform, _deploy, _main_loop
-
     # Main Process
     try:
         # --video
         if _video_list := _lines.video:
             _main_loop.run_until_complete(
-                arithmetic(_missions.video_file_task, _video_list, *_args)
+                arithmetic(_missions.video_file_task, _video_list, _deploy)
             )
         # --stack
         elif _stack_list := _lines.stack:
             _main_loop.run_until_complete(
-                arithmetic(_missions.video_data_task, _stack_list, *_args)
+                arithmetic(_missions.video_data_task, _stack_list, _deploy)
             )
         # --train
         elif _train_list := _lines.train:
             _main_loop.run_until_complete(
-                arithmetic(_missions.train_model, _train_list, *_args)
+                arithmetic(_missions.train_model, _train_list, _deploy)
             )
         # --build
         elif _build_list := _lines.build:
             _main_loop.run_until_complete(
-                arithmetic(_missions.build_model, _build_list, *_args)
+                arithmetic(_missions.build_model, _build_list, _deploy)
             )
         else:
             from engine.manage import ScreenMonitor

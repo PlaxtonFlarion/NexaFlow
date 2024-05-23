@@ -206,7 +206,7 @@ class Manage(object):
                 return list(device_dict.values())
 
             for index, device in enumerate(device_dict.values()):
-                Show.mark(f"[bold][bold #FFFACD]Connect:[/] [{index + 1:02}] {device}[/]")
+                Show.notes(f"[bold][bold #FFFACD]Connect:[/] [{index + 1:02}] {device}[/]")
 
             try:
                 if (action := Prompt.ask(
@@ -214,13 +214,13 @@ class Manage(object):
                     return list(device_dict.values())
                 return [device_dict[action]]
             except KeyError as e:
-                Show.mark(f"{const.ERR}序列号不存在 -> {e}[/]\n")
+                Show.notes(f"{const.ERR}序列号不存在 -> {e}[/]\n")
                 await asyncio.sleep(1)
 
     async def display_device(self) -> None:
-        Show.mark(f"<Link> <{'单设备模式' if len(self.device_dict) == 1 else '多设备模式'}>")
+        Show.notes(f"<Link> <{'单设备模式' if len(self.device_dict) == 1 else '多设备模式'}>")
         for device in self.device_dict.values():
-            Show.mark(f"[bold #00FFAF]Connect:[/] {device}")
+            Show.notes(f"[bold #00FFAF]Connect:[/] {device}")
 
     @staticmethod
     async def display_select(device_list: list["Device"]) -> None:
@@ -259,7 +259,7 @@ class Manage(object):
         action = Prompt.ask("[bold #FFEC8B]Select Display[/]", console=Show.console, choices=choices)
         sn, display_id = re.split(r";", action, re.S)
         select_dict[sn].id, screen = int(display_id), select_dict[sn].display[int(display_id)]
-        Show.mark(f"{const.SUC}{sn} -> ID=[{display_id}] DISPLAY={list(screen)}")
+        Show.notes(f"{const.SUC}{sn} -> ID=[{display_id}] DISPLAY={list(screen)}")
 
 
 if __name__ == '__main__':

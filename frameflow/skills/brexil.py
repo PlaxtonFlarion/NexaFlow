@@ -236,19 +236,19 @@ class Deploy(object):
                         f"[bold]压缩图片至 [bold {tip}]{self.scale}[/] 倍" if self.scale else f"[bold {auto}]自动[/]",
                     ],
                     [
-                        f"[bold {cmd}]开始时间",
+                        f"[bold {cmd}]时刻启程",
                         f"[bold {arg}]{Parser.parse_mills(self.start) if self.start else 'Auto'}",
                         f"[bold][[bold {val}]0 , ?[/] ]",
                         f"[bold {tip}]{self.start}" if self.start else f"[bold {auto}]自动",
                     ],
                     [
-                        f"[bold {cmd}]结束时间",
+                        f"[bold {cmd}]时光封印",
                         f"[bold {arg}]{Parser.parse_mills(self.close) if self.close else 'Auto'}",
                         f"[bold][[bold {val}]0 , ?[/] ]",
                         f"[bold {tip}]{self.close}" if self.close else f"[bold {auto}]自动",
                     ],
                     [
-                        f"[bold {cmd}]持续时间",
+                        f"[bold {cmd}]持续历程",
                         f"[bold {arg}]{Parser.parse_mills(self.limit) if self.limit else 'Auto'}",
                         f"[bold][[bold {val}]0 , ?[/] ]",
                         f"[bold {tip}]{self.limit}" if self.limit else f"[bold {auto}]自动",
@@ -277,13 +277,13 @@ class Deploy(object):
                     ],
 
                     [
-                        f"[bold {cmd}]开始阶段",
+                        f"[bold {cmd}]序章开启",
                         f"[bold {arg}]{list(self.begin)}",
                         f"[bold][[bold {val}]? , ?[/] ]",
                         f"[bold]非稳定阶段 [bold {tip}]{list(self.begin)}[/]",
                     ],
                     [
-                        f"[bold {cmd}]结束阶段",
+                        f"[bold {cmd}]终章落幕",
                         f"[bold {arg}]{list(self.final)}",
                         f"[bold][[bold {val}]? , ?[/] ]",
                         f"[bold]非稳定阶段 [bold {tip}]{list(self.final)}[/]",

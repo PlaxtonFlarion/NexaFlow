@@ -64,8 +64,10 @@
             background-image: radial-gradient(at top center, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.03) 100%), linear-gradient(to top, rgba(255,255,255,0.1) 0%, rgba(143,152,157,0.60) 100%);
             background-blend-mode: normal, multiply;
         }
-        .head {
+        .h1-head, .h2-head {
             margin: 0;
+        }
+        .h1-head {
             padding: 10px 1px;
         }
 
@@ -88,9 +90,10 @@
             overflow: hidden;
             text-align: center;
             border-radius: 10px;
-            margin: 20px 10px;
+            margin: 10px;
         }
         .masonry img {
+            margin: 0px 0px 10px;
             max-width: 90%;
             max-height: 90%;
             border-radius: 10px;
@@ -185,7 +188,7 @@
         }
         .name {
             text-align: center;
-            margin: 0px 0px 20px;
+            margin: 0px 0px 10px;
             font-weight: bold;
             color: #ffafbd;
         }
@@ -229,10 +232,10 @@
 
     <div class="main">
         <div class="logo-major-div">
-            <div class="logo-major"><h1 class="head">{{ title }}</h1></div>
+            <div class="logo-major"><h1 class="h1-head">{{ title }}</h1></div>
         </div>
         <div class="logo-minor-div">
-            <div class="logo-minor"><h2 class="head">{{ name }}</h2></div>
+            <div class="logo-minor"><h2 class="h2-head">{{ name }}</h2></div>
         </div>
 
         {% for res in images_list %}

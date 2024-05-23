@@ -22,8 +22,12 @@ class Show(object):
     console = Console()
 
     @staticmethod
-    def mark(text: typing.Any):
+    def notes(text: typing.Any):
         Show.console.print(f"[bold]{const.DESC} | Analyzer | {text}[/]")
+
+    @staticmethod
+    def annal(text: typing.Any):
+        Show.console.print(f"[bold]{const.DESC} | Analyzer |[/]", Text(text, "bold"))
 
     @staticmethod
     def show_panel(level: str, text: typing.Any, wind: dict) -> None:
@@ -155,22 +159,22 @@ class Show(object):
     @staticmethod
     def tips_document():
         table = Table(
-            title=f"[bold #FF851B]{const.ITEM} {const.DESC} Select Command Line",
-            header_style="bold #D7FF00",
+            title=f"[bold #FFDAB9]{const.ITEM} {const.DESC} CLI",
+            header_style="bold #FF851B",
             title_justify="center",
             show_header=True,
             show_lines=True
         )
         table.add_column("选项", justify="left", width=12)
         table.add_column("参数", justify="left", width=12)
-        table.add_column("说明", justify="left", width=44)
+        table.add_column("说明", justify="left", width=12)
 
         information = [
-            ["[bold #FFAFAF]header", "[bold #AFD7FF]标题名", "[bold #DADADA]生成新标题文件夹"],
-            ["[bold #FFAFAF]device", "", "[bold #DADADA]选择已连接的设备"],
-            ["[bold #FFAFAF]deploy", "", "[bold #DADADA]部署视频分析配置"],
-            ["[bold #FFAFAF]create", "", "[bold #DADADA]生成汇总报告"],
-            ["[bold #FFAFAF]cancel", "", "[bold #DADADA]退出"]
+            ["[bold #FFAFAF]header", "[bold #AFD7FF]标题名", "[bold #FFD39B]生成标题"],
+            ["[bold #FFAFAF]device", "[bold #CFCFCF]无参数", "[bold #FFD39B]连接设备"],
+            ["[bold #FFAFAF]deploy", "[bold #CFCFCF]无参数", "[bold #FFD39B]部署配置"],
+            ["[bold #FFAFAF]create", "[bold #CFCFCF]无参数", "[bold #FFD39B]生成报告"],
+            ["[bold #FFAFAF]cancel", "[bold #CFCFCF]无参数", "[bold #FFD39B]退出"]
         ]
         for info in information:
             table.add_row(*info)
@@ -237,11 +241,11 @@ class Show(object):
             return engine_stages[stage % len(engine_stages)]
 
         def animation(step, secs, function):
-            Show.mark(f"[bold #C1FFC1]Engine Initializing[/] ...")
+            Show.notes(f"[bold #C1FFC1]Engine Initializing[/] ...")
             for i in range(step):
                 Show.console.print(function(i), justify="left")
                 time.sleep(secs)
-            Show.mark(f"[bold #C1FFC1]Engine Loaded[/] ...")
+            Show.notes(f"[bold #C1FFC1]Engine Loaded[/] ...")
 
         stochastic = [
             lambda: animation(4, 0.2, speed_engine),
@@ -318,4 +322,5 @@ class Show(object):
 
 
 if __name__ == '__main__':
+    Show.tips_document()
     pass

@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import signal
 import random
@@ -10,9 +11,8 @@ try:
 except ImportError as e:
     raise ImportError("AudioPlayer requires pygame. install it first.")
 
-from loguru import logger
+from frameflow.skills.show import Show
 from engine.terminal import Terminal
-from nexaflow import const
 
 
 class Record(object):
@@ -20,8 +20,9 @@ class Record(object):
     record_events = {}
     melody_events: asyncio.Event = asyncio.Event()
 
-    def __init__(self, scrcpy: str, system: str,  *_, **kwargs):
-        self.scrcpy, self.system = scrcpy, system
+    def __init__(self, scrcpy: str, **kwargs):
+        self.scrcpy, self.platform = scrcpy, sys.platform
+
         self.alone = kwargs.get("alone", False)
         self.whist = kwargs.get("whist", False)
         if self.alone and self.whist:
@@ -32,7 +33,7 @@ class Record(object):
 
         async def input_stream():
             async for line in transports.stdout:
-                logger.info(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
+                Show.annal(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
                 if "Recording started" in stream:
                     events["head"].set()
                 elif "Recording complete" in stream:
@@ -42,7 +43,7 @@ class Record(object):
 
         async def error_stream():
             async for line in transports.stderr:
-                logger.info(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
+                Show.annal(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
                 if "Could not find" in stream or "connection failed" in stream or "Recorder error" in stream:
                     events["fail"].set()
                     break
@@ -92,16 +93,16 @@ class Record(object):
         events = self.record_events[device.sn]
         banner = os.path.basename(video_temp)
 
-        cancel = signal.CTRL_C_EVENT if self.system == "win32" else signal.SIGINT
+        cancel = signal.CTRL_C_EVENT if self.platform == "win32" else signal.SIGINT
         try:
             transports.send_signal(cancel)
         except ProcessLookupError:
-            logger.warning(f"{const.WRN}{desc} Stop Record {info} With Signal[/]")
+            Show.notes(f"{desc} Stop Record {info} With Signal")
 
         try:
             Terminal.cmd_oneshot(["echo", "Cancel"])
         except KeyboardInterrupt:
-            logger.warning(f"{const.WRN}{desc} Stop Record {info} With {cancel.name} Code={cancel.value}[/]")
+            Show.notes(f"{desc} Stop Record {info} With {cancel.name} Code={cancel.value}")
 
         return await complete()
 
@@ -115,15 +116,15 @@ class Record(object):
             if events["head"].is_set():
                 for i in range(amount):
                     row = amount - i if amount - i <= 10 else 10
-                    logger.info(f"{desc} 剩余时间 -> {amount - i:02} 秒 {'----' * row} ...")
+                    Show.notes(f"{desc} 剩余时间 -> {amount - i:02} 秒 {'----' * row} ...")
                     if bridle.is_set() and i != amount:
-                        return logger.info(f"{desc} 主动停止 ...")
+                        return Show.notes(f"{desc} 主动停止 ...")
                     elif events["fail"].is_set():
-                        return logger.info(f"{desc} 意外停止 ...")
+                        return Show.notes(f"{desc} 意外停止 ...")
                     await asyncio.sleep(1)
-                return logger.info(f"{desc} 剩余时间 -> 00 秒")
+                return Show.notes(f"{desc} 剩余时间 -> 00 秒")
             elif events["fail"].is_set():
-                return logger.info(f"{desc} 意外停止 ...")
+                return Show.notes(f"{desc} 意外停止 ...")
             await asyncio.sleep(0.2)
 
     async def check_event(self, device, exec_tasks):
@@ -138,7 +139,7 @@ class Record(object):
 
         if task := exec_tasks.get(device.sn, []):
             task.cancel()
-        return logger.info(f"[bold #CD853F]{device.sn} Cancel task[/]")
+        return Show.notes(f"[bold #CD853F]{device.sn} Cancel task[/]")
 
     async def flunk_event(self):
         return any(
