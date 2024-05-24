@@ -17,16 +17,14 @@ from engine.terminal import Terminal
 
 class Record(object):
 
-    record_events = {}
+    record_events: dict[dict[str, asyncio.Event]] = {}
     melody_events: asyncio.Event = asyncio.Event()
 
-    def __init__(self, scrcpy: str, **kwargs):
-        self.scrcpy, self.platform = scrcpy, sys.platform
+    def __init__(self, **kwargs):
+        self.platform = sys.platform
 
         self.alone = kwargs.get("alone", False)
         self.whist = kwargs.get("whist", False)
-        if self.alone and self.whist:
-            self.whist = False
         self.frate = kwargs.get("frate", 60)
 
     async def ask_start_record(self, device, dst, **kwargs):
@@ -48,20 +46,20 @@ class Record(object):
                     events["fail"].set()
                     break
 
-        self.record_events[device.sn] = {
+        self.record_events[device.sn]: dict[str, asyncio.Event] = {
             "head": asyncio.Event(), "done": asyncio.Event(),
             "stop": asyncio.Event(), "fail": asyncio.Event(),
         }
 
-        bridle = self.record_events[device.sn]["stop"] if self.alone else self.melody_events
-        events = self.record_events[device.sn]
+        bridle: asyncio.Event = self.record_events[device.sn]["stop"] if self.alone else self.melody_events
+        events: dict[str, asyncio.Event] = self.record_events[device.sn]
 
         video_flag = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
 
         loc_name = ["--window-x", "--window-y", "--window-width", "--window-height"]
         location = [f"{k}={v}" for k, v in zip(loc_name, loc)] if (loc := kwargs.get("location", ())) else []
 
-        cmd = [self.scrcpy, "-s", device.sn]
+        cmd = ["scrcpy", "-s", device.sn]
         cmd += [f"--display-id={device.id}"] if device.id != 0 else []
         cmd += location if location else []
         cmd += ["--no-audio"]
@@ -76,35 +74,55 @@ class Record(object):
 
         return video_temp, transports
 
-    async def ask_close_record(self, video_temp, transports, device):
+    async def ask_close_record(self, device, video_temp, transports):
 
-        async def complete():
-            for _ in range(10):
-                if events["done"].is_set():
-                    return f"{desc} 视频录制成功", banner
-                elif events["fail"].is_set():
-                    return f"{desc} 视频录制失败", banner
-                await asyncio.sleep(0.2)
-            return f"{desc} 视频录制失败", banner
+        # TODO
+        # async def complete():
+        #     for _ in range(10):
+        #         if events["done"].is_set():
+        #             return f"{desc} 视频录制成功", banner
+        #         elif events["fail"].is_set():
+        #             return f"{desc} 视频录制失败", banner
+        #         await asyncio.sleep(0.2)
+        #     return f"{desc} 视频录制失败", banner
 
         desc = f"{device.tag} {device.sn}"
         info = f"PID={transports.pid}"
 
-        events = self.record_events[device.sn]
-        banner = os.path.basename(video_temp)
+        events: dict[str, asyncio.Event] = self.record_events[device.sn]
+        banner: str = os.path.basename(video_temp)
 
-        cancel = signal.CTRL_C_EVENT if self.platform == "win32" else signal.SIGINT
+        if self.whist:
+            cancel = signal.CTRL_C_EVENT if self.platform == "win32" else signal.SIGINT
+            try:
+                transports.send_signal(cancel)
+            except ProcessLookupError:
+                Show.notes(f"{desc} Stop Record {info} With Signal")
+
+            try:
+                shell = True if self.platform == "win32" else False
+                Terminal.cmd_oneshot(["echo", "Cancel"], shell=shell)
+            except KeyboardInterrupt:
+                Show.notes(f"{desc} Stop Record {info} With {cancel.name} Code={cancel.value}")
+
+        else:
+            if self.platform == "win32":
+                kill_process = ["taskkill", "/im", "scrcpy.exe"]
+                await Terminal.cmd_link(*kill_process)
+            else:
+                kill_process = ["xargs", "kill", "-SIGINT"]
+                if pid_list := await Terminal.cmd_line("pgrep", "scrcpy"):
+                    await Terminal.cmd_line(
+                        *kill_process, input="\n".join(pid_list).encode()
+                    )
+            Show.notes(f"{desc} Stop With {' '.join(kill_process)}")
+
         try:
-            transports.send_signal(cancel)
-        except ProcessLookupError:
-            Show.notes(f"{desc} Stop Record {info} With Signal")
-
-        try:
-            Terminal.cmd_oneshot(["echo", "Cancel"])
-        except KeyboardInterrupt:
-            Show.notes(f"{desc} Stop Record {info} With {cancel.name} Code={cancel.value}")
-
-        return await complete()
+            await asyncio.wait_for(events["done"].wait(), 2)
+        except asyncio.TimeoutError:
+            return f"{desc} 视频录制失败", banner
+        else:
+            return f"{desc} 视频录制成功", banner
 
     async def check_timer(self, device, amount):
         bridle = self.record_events[device.sn]["stop"] if self.alone else self.melody_events

@@ -35,25 +35,24 @@ if _platform == "win32":
     _adb = os.path.join(_turbo, "win", "platform-tools", "adb.exe")
     _fmp = os.path.join(_turbo, "win", "ffmpeg", "bin", "ffmpeg.exe")
     _fpb = os.path.join(_turbo, "win", "ffmpeg", "bin", "ffprobe.exe")
-    _scc = os.path.join(_turbo, "win", "scrcpy", "scrcpy.exe")
 elif _platform == "darwin":
     _adb = os.path.join(_turbo, "mac", "platform-tools", "adb")
     _fmp = os.path.join(_turbo, "mac", "ffmpeg", "bin", "ffmpeg")
     _fpb = os.path.join(_turbo, "mac", "ffmpeg", "bin", "ffprobe")
-    _scc = os.path.join(_turbo, "mac", "scrcpy", "bin", "scrcpy")
 else:
     logger.error(f"{const.ERR}{const.NAME} compatible with {const.ERR}Win & Mac[/]")
     Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
     sys.exit(Show.fail())
 
-for _tls in (_tools := [_adb, _fmp, _fpb, _scc]):
+for _tls in (_tools := [_adb, _fmp, _fpb]):
     os.environ["PATH"] = os.path.dirname(_tls) + _env_symbol + os.environ.get("PATH", "")
 
 for _tls in _tools:
-    if not shutil.which((_tls_name := os.path.basename(_tls))):
-        logger.error(f"{const.ERR}{const.NAME} missing files {_tls_name}[/]")
-        Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
-        sys.exit(Show.fail())
+    if shutil.which((_tls_name := os.path.basename(_tls))):
+        continue
+    logger.error(f"{const.ERR}{const.NAME} missing files {_tls_name}[/]")
+    Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
+    sys.exit(Show.fail())
 
 _atom_total_temp = os.path.join(_workable, "archivix", "pages", "template_atom_total.html")
 _main_share_temp = os.path.join(_workable, "archivix", "pages", "template_main_share.html")
@@ -142,7 +141,6 @@ class Missions(object):
         self.adb = kwargs["adb"]
         self.fmp = kwargs["fmp"]
         self.fpb = kwargs["fpb"]
-        self.scc = kwargs["scc"]
 
     # """Child Process"""
     def amazing(self, vision: str, *args, **kwargs):
@@ -1125,8 +1123,8 @@ class Missions(object):
 
         async def anything_over():
             effective_list = await asyncio.gather(
-                *(record.ask_close_record(video_temp, transports, device)
-                  for (video_temp, transports, *_), device in zip(task_list, device_list))
+                *(record.ask_close_record(device, video_temp, transports)
+                  for device, (video_temp, transports, *_) in zip(device_list, task_list))
             )
 
             check_list = []
@@ -1280,7 +1278,7 @@ class Missions(object):
         input_title_ = next((title for key, title in titles_.items() if getattr(self.lines, key)), "Video")
 
         record = Record(
-            self.scc, alone=self.lines.alone, whist=self.lines.whist, frate=deploy.frate
+            alone=self.lines.alone, whist=self.lines.whist, frate=deploy.frate
         )
         player = Player()
         source = SourceMonitor()
@@ -1608,7 +1606,7 @@ class Alynex(object):
     async def ask_model_load(self):
         if self.model_place:
             try:
-                assert self.ks
+                assert self.ks, "First load KerasStruct()"
                 self.ks.load_model(self.model_place)
             except (OSError, ValueError, AssertionError) as e:
                 self.ks.model = None
@@ -1925,9 +1923,19 @@ async def arithmetic(function: "typing.Callable", parameters: list[str], deploy:
 
 
 async def scheduling() -> None:
+
+    async def screen_copy_installed():
+        if shutil.which("scrcpy"):
+            return
+        Show.show_panel(
+            "INFO", "Install first https://github.com/Genymobile/scrcpy", Wind.KEEPER
+        )
+        sys.exit(Show.fail())
+
     try:
         # --flick --carry --fully
         if _lines.flick or _lines.carry or _lines.fully:
+            await screen_copy_installed()
             await _missions.analysis(_deploy)
         # --paint
         elif _lines.paint:
@@ -2014,8 +2022,7 @@ if __name__ == '__main__':
         model_place=_model_place,
         adb=_adb,
         fmp=_fmp,
-        fpb=_fpb,
-        scc=_scc,
+        fpb=_fpb
     )
 
     from functools import partial

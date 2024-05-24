@@ -10,7 +10,7 @@ DESC = r"Framix"
 ALIAS = r"画帧秀"
 LICENSE = r"MIT"
 
-DECLARE = f"""{DESC} - {ALIAS}
+DECLARE = f"""**{DESC} - {ALIAS}**
 (C) 2024 {NAME}. All rights reserved.
 Version {VERSION} - Licensed under the [bold #FF00FF]{LICENSE}[/] License
 Last updated on May 20, 2024
@@ -58,13 +58,12 @@ WRITE_FORMAT = f"<green>{{time:YYYY-MM-DD HH:mm:ss.SSS}}</green> | <level>{{leve
 NEXA = os.path.dirname(os.path.abspath(__file__))
 WORK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-AUDIO = os.path.join(WORK, "audio")
-ARRAY = os.path.join(WORK, "data")
 CREDO = os.path.join(WORK, "report")
 MODEL = os.path.join(WORK, "archivix", "molds", "Keras_Gray_W256_H256_00000")
-TEMPLATE = os.path.join(NEXA, "template")
 TEMPLATE_ATOM_TOTAL = os.path.join(NEXA, "template", "template_atom_total.html")
+TEMPLATE_VIEW_TOTAL = os.path.join(NEXA, "template", "template_view_total.html")
 TEMPLATE_MAIN_TOTAL = os.path.join(NEXA, "template", "template_main_total.html")
+TEMPLATE_VIEW_SHARE = os.path.join(NEXA, "template", "template_view_share.html")
 TEMPLATE_MAIN_SHARE = os.path.join(NEXA, "template", "template_main_share.html")
 
 
