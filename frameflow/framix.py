@@ -1132,11 +1132,15 @@ class Missions(object):
             check_list = []
             for idx, (effective, video_name) in enumerate(effective_list):
                 if "视频录制失败" in effective:
-                    task = task_list.pop(idx)
-                    logger.debug(tip := f"{effective}: {video_name} 移除: {os.path.basename(task[0])}")
+                    try:
+                        task = task_list.pop(idx)
+                        logger.debug(tip := f"{effective}: {video_name} 移除: {os.path.basename(task[0])}")
+                        check_list.append(tip)
+                    except IndexError:
+                        continue
                 else:
                     logger.debug(tip := f"{effective}: {video_name}")
-                check_list.append(f"{tip}")
+                    check_list.append(tip)
             Show.show_panel(self.level, "\n".join(check_list), Wind.EXPLORER)
 
         async def call_commands(exec_func, exec_args, bean, live_devices):
