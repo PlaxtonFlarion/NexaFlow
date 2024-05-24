@@ -76,7 +76,6 @@ class Record(object):
 
     async def ask_close_record(self, device, video_temp, transports):
 
-        # TODO
         # async def complete():
         #     for _ in range(10):
         #         if events["done"].is_set():
@@ -86,8 +85,7 @@ class Record(object):
         #         await asyncio.sleep(0.2)
         #     return f"{desc} 视频录制失败", banner
 
-        desc = f"{device.tag} {device.sn}"
-        info = f"PID={transports.pid}"
+        desc = f"{device.tag} {device.sn} PID={transports.pid}"
 
         events: dict[str, asyncio.Event] = self.record_events[device.sn]
         banner: str = os.path.basename(video_temp)
@@ -97,13 +95,13 @@ class Record(object):
             try:
                 transports.send_signal(cancel)
             except ProcessLookupError:
-                Show.notes(f"{desc} Stop Record {info} With Signal")
+                Show.notes(f"{desc} Stop With Signal")
 
             try:
                 shell = True if self.platform == "win32" else False
                 Terminal.cmd_oneshot(["echo", "Cancel"], shell=shell)
             except KeyboardInterrupt:
-                Show.notes(f"{desc} Stop Record {info} With {cancel.name} Code={cancel.value}")
+                Show.notes(f"{desc} Stop With {cancel.name} Code={cancel.value}")
 
         else:
             if self.platform == "win32":
@@ -147,17 +145,30 @@ class Record(object):
 
     async def check_event(self, device, exec_tasks):
         if self.alone and (events := self.record_events.get(device.sn, None)):
-            bridle = events["stop"], events["done"], events["fail"]
-            while True:
-                if any(event.is_set() for event in bridle):
-                    break
-                await asyncio.sleep(1)
+            await asyncio.wait(
+                [asyncio.create_task(events[ev].wait()) for ev in ["stop", "done", "fail"]],
+                return_when=asyncio.FIRST_COMPLETED
+            )
         else:
             await self.melody_events.wait()
 
         if task := exec_tasks.get(device.sn, []):
             task.cancel()
         return Show.notes(f"[bold #CD853F]{device.sn} Cancel task[/]")
+
+    # async def check_event(self, device, exec_tasks):
+    #     if self.alone and (events := self.record_events.get(device.sn, None)):
+    #         bridle = events["stop"], events["done"], events["fail"]
+    #         while True:
+    #             if any(event.is_set() for event in bridle):
+    #                 break
+    #             await asyncio.sleep(1)
+    #     else:
+    #         await self.melody_events.wait()
+    #
+    #     if task := exec_tasks.get(device.sn, []):
+    #         task.cancel()
+    #     return Show.notes(f"[bold #CD853F]{device.sn} Cancel task[/]")
 
     async def flunk_event(self):
         return any(
