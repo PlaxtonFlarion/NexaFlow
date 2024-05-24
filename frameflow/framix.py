@@ -267,10 +267,12 @@ class Missions(object):
             task_list: list[list],
             originals: list
     ) -> tuple:
+
+        filters = [f"fps={deploy.frate}"]
         if self.lines.speed:
-            filters = [f"fps={deploy.frate}"] if deploy.color else [f"fps={deploy.frate}", "format=gray"]
-        else:
-            filters = [f"fps={deploy.frate}"]
+            if deploy.color:
+                filters += [f"eq=brightness=0.06:contrast=1.5:saturation=0.9"]
+                filters += [f"format=gray"]
 
         filters = filters + [f"gblur=sigma={gauss}"] if (gauss := deploy.gauss) else filters
         filters = filters + [f"unsharp=luma_amount={grind}"] if (grind := deploy.grind) else filters
@@ -345,6 +347,8 @@ class Missions(object):
                         format_msg := " ".join([f"{k}={v}" for k, v in discover(matcher.group())])
                     )
                     logger.debug(format_msg)
+                elif re.search(r"Error", message, re.IGNORECASE):
+                    Show.show_panel(self.level, "\n".join(message_list), Wind.KEEPER)
             Show.show_panel(self.level, "\n".join(message_list), Wind.METRIC)
 
         async def render_speed(todo_list: list[list]):
@@ -444,6 +448,8 @@ class Missions(object):
                         format_msg := " ".join([f"{k}={v}" for k, v in discover(matcher.group())])
                     )
                     logger.debug(format_msg)
+                elif re.search(r"Error", message, re.IGNORECASE):
+                    Show.show_panel(self.level, "\n".join(message_list), Wind.KEEPER)
             Show.show_panel(self.level, "\n".join(message_list), Wind.METRIC)
             eliminate.append(
                 looper.run_in_executor(None, os.remove, video_temp)
@@ -2011,6 +2017,7 @@ if __name__ == '__main__':
     from functools import partial
     from concurrent.futures import ProcessPoolExecutor
 
+    Show.minor_logo()
     Show.load_animation()
 
     # Main Process

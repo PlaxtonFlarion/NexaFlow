@@ -150,7 +150,7 @@ class Parser(object):
             value = float(dim_str) if dim_str else None
         except (ValueError, TypeError):
             return None
-        return round(max(0.0, value), 2) if value else None
+        return round(max(0.0, value), 1) if value else None
 
     @staticmethod
     def parse_cmd() -> argparse.Namespace:

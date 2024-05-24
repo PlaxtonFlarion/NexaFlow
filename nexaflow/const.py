@@ -7,7 +7,14 @@ URL = r"https://github.com/PlaxtonFlarion/NexaFlow"
 AUTHOR = r"AceKeppel"
 EMAIL = r"AceKeppel@outlook.com"
 DESC = r"Framix"
+ALIAS = r"画帧秀"
 LICENSE = r"MIT"
+
+DECLARE = f"""{DESC} - {ALIAS}
+(C) 2024 {NAME}. All rights reserved.
+Version {VERSION} - Licensed under the [bold #FF00FF]{LICENSE}[/] License
+Last updated on May 20, 2024
+"""
 
 CHARSET = r"utf-8"
 CUT_RESULT_FILE_NAME = r"cut_result.json"

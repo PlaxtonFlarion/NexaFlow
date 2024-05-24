@@ -2,6 +2,7 @@ import os
 import time
 import random
 import typing
+from rich.tree import Tree
 from rich.text import Text
 from rich.table import Table
 from rich.panel import Panel
@@ -36,6 +37,28 @@ class Show(object):
                 Text(f"{text}", **wind["文本"]), **wind["边框"], width=int(Show.console.width * 0.7)
             )
             Show.console.print(panel)
+
+    @staticmethod
+    def show_tree(path: str) -> None:
+        tree = Tree(f"[link file://{path}]📁 {os.path.basename(path)}[/]", guide_style="bold blue")
+
+        def add_nodes(current_node, current_path):
+            try:
+                with os.scandir(current_path) as scamper:
+                    for cur in scamper:
+                        folder_path = cur.path
+                        if cur.is_dir():
+                            sub_node = current_node.add(
+                                f"[link file://{folder_path}]📁 {cur.name}[/]", guide_style="bold green"
+                            )
+                            add_nodes(sub_node, folder_path)
+                        elif cur.is_file() and cur.name.endswith(('.mp4', '.avi', '.mov', '.mkv')):
+                            current_node.add(f"[link file://{folder_path}]🎥 {cur.name}[/]")
+            except PermissionError:
+                current_node.add("[red]Access denied[/]", style="bold red")
+
+            add_nodes(tree, path)
+            Show.console.print(tree)
 
     @staticmethod
     def show_progress():
@@ -121,14 +144,17 @@ class Show(object):
     @staticmethod
     def minor_logo():
         logo = """[bold #D0D0D0]
-              ███████╗██████╗  █████╗      ███╗   ███╗██╗██╗  ██╗
-              ██╔════╝██╔══██╗██╔══██╗     ████╗ ████║██║╚██╗██╔╝
-              █████╗  ██████╔╝███████║     ██╔████╔██║██║ ╚███╔╝
-              ██╔══╝  ██╔══██╗██╔══██║     ██║╚██╔╝██║██║ ██╔██╗
-              ██║     ██║  ██║██║  ██║     ██║ ╚═╝ ██║██║██╔╝ ██╗
-              ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝     ╚═╝     ╚═╝╚═╝╚═╝  ╚═╝
+            ███████╗ ██████╗   █████╗      ███╗   ███╗ ██╗ ██╗  ██╗
+            ██╔════╝ ██╔══██╗ ██╔══██╗     ████╗ ████║ ██║ ╚██╗██╔╝
+            █████╗   ██████╔╝ ███████║     ██╔████╔██║ ██║  ╚███╔╝
+            ██╔══╝   ██╔══██╗ ██╔══██║     ██║╚██╔╝██║ ██║  ██╔██╗
+            ██║      ██║  ██║ ██║  ██║     ██║ ╚═╝ ██║ ██║ ██╔╝ ██╗
+            ╚═╝      ╚═╝  ╚═╝ ╚═╝  ╚═╝     ╚═╝     ╚═╝ ╚═╝ ╚═╝  ╚═╝
         """
-        Show.console.print(logo)
+        for line in logo.split("\n"):
+            Show.console.print(line)
+            time.sleep(0.05)
+        Show.console.print(const.DECLARE)
 
     @staticmethod
     def help_document():
@@ -144,7 +170,7 @@ class Show(object):
             table.add_column("命令参数", justify="left", width=14)
             table.add_column("参数类型", justify="left", width=12)
             table.add_column("传递次数", justify="left", width=10)
-            table.add_column("功能说明", justify="left", width=22)
+            table.add_column("功能说明", justify="left", width=30)
             information = [
                 [key, *value["view"], value["help"]] for key, value in values.items()
             ]
@@ -322,5 +348,4 @@ class Show(object):
 
 
 if __name__ == '__main__':
-    Show.tips_document()
     pass
