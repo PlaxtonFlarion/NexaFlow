@@ -61,16 +61,17 @@ _view_share_temp = os.path.join(_workable, "archivix", "pages", "template_view_s
 _view_total_temp = os.path.join(_workable, "archivix", "pages", "template_view_total.html")
 
 for _tmp in (_temps := [_atom_total_temp, _main_share_temp, _main_total_temp, _view_share_temp, _view_total_temp]):
-    if not os.path.isfile(_tmp):
-        _tmp_name = os.path.basename(_tmp)
-        logger.error(f"{const.ERR}{const.NAME} missing files {_tmp_name}[/]")
-        Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
-        sys.exit(Show.fail())
+    if os.path.isfile(_tmp) and os.path.basename(_tmp).endswith(".html"):
+        continue
+    _tmp_name = os.path.basename(_tmp)
+    logger.error(f"{const.ERR}{const.NAME} missing files {_tmp_name}[/]")
+    Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
+    sys.exit(Show.fail())
 
 _initial_source = os.path.join(_feasible, f"{const.NAME}.source")
 
 _total_place = os.path.join(_feasible, f"{const.NAME}.report")
-_model_place = os.path.join(_workable, "archivix", "molds", "Keras_Gray_W256_H256_00000")
+_model_place = os.path.join(_workable, "archivix", "molds", const.MODEL)
 
 if len(sys.argv) == 1:
     Show.help_document()
@@ -151,7 +152,6 @@ class Missions(object):
         alynex = Alynex(self.level, model_place, **kwargs)
         try:
             loop.run_until_complete(alynex.ask_model_load())
-            loop.run_until_complete(alynex.ask_model_walk())
         except FramixAnalyzerError:
             pass
         loop_complete = loop.run_until_complete(
@@ -608,7 +608,6 @@ class Missions(object):
             alynex = Alynex(self.level, model_place, **deploy.deploys["ALS"])
             try:
                 await alynex.ask_model_load()
-                await alynex.ask_model_walk()
             except FramixAnalyzerError as e:
                 logger.debug(e)
                 Show.show_panel(self.level, e, Wind.KEEPER)
@@ -666,7 +665,6 @@ class Missions(object):
                         alynex = Alynex(self.level, model_place, **deploy.deploys["ALS"])
                         try:
                             await alynex.ask_model_load()
-                            await alynex.ask_model_walk()
                         except FramixAnalyzerError as e:
                             logger.debug(e)
                             Show.show_panel(self.level, e, Wind.KEEPER)
@@ -1269,7 +1267,6 @@ class Missions(object):
         alynex = Alynex(self.level, model_place, **deploy.deploys["ALS"])
         try:
             await alynex.ask_model_load()
-            await alynex.ask_model_walk()
         except FramixAnalyzerError as e_:
             logger.debug(e_)
             Show.show_panel(self.level, e_, Wind.KEEPER)
@@ -1600,31 +1597,25 @@ class Alynex(object):
         self.omits = kwargs.get("omits", const.OMITS)
 
     @property
-    def ks(self) -> "KerasStruct":
+    def ks(self) -> typing.Optional["KerasStruct"]:
         return self.__ks
 
-    async def ask_model_load(self):
-        if self.model_place:
-            try:
-                assert self.ks, "First load KerasStruct()"
+    async def ask_model_load(self) -> None:
+        try:
+            if self.model_place:
+                assert os.path.isdir(self.model_place), "Model Place Error"
+                assert self.ks, "First Load KerasStruct()"
                 self.ks.load_model(self.model_place)
-            except (OSError, ValueError, AssertionError) as e:
-                self.ks.model = None
-                raise FramixAnalyzerError(e)
-
-    async def ask_model_walk(self):
-        if self.ks.model:
-            try:
                 channel = self.ks.model.input_shape[-1]
                 if self.color:
                     assert channel == 3, f"彩色模式需要匹配彩色模型 Model Color Channel={channel}"
                 else:
                     assert channel == 1, f"灰度模式需要匹配灰度模型 Model Color Channel={channel}"
-            except AssertionError as e:
-                self.ks.model = None
-                raise FramixAnalyzerError(e)
+        except (OSError, TypeError, ValueError, AssertionError, AttributeError) as e:
+            self.ks.model = None
+            raise FramixAnalyzerError(e)
 
-    async def ask_video_load(self, vision: str):
+    async def ask_video_load(self, vision: str) -> "VideoObject":
         start_time_ = time.time()
         video = VideoObject(vision)
         logger.debug(f"{(task_name_ := '视频帧长度: ' f'{video.frame_count}')}")
@@ -1640,7 +1631,7 @@ class Alynex(object):
         return video
 
     @staticmethod
-    async def ask_frame_grid(vision: str):
+    async def ask_frame_grid(vision: str) -> typing.Optional[str]:
         target_screen = None
         if os.path.isfile(vision):
             screen = cv2.VideoCapture(vision)

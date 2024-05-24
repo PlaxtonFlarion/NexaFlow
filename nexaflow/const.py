@@ -49,6 +49,8 @@ BLOCK = 6
 CROPS = []
 OMITS = []
 
+MODEL = "Keras_Gray_W256_H256_00000"
+
 SHOW_LEVEL = "INFO"
 
 WHILE_FORMAT = f"[bold]{{time:YYYY-MM-DD HH:mm:ss.SSS}} | <level>{{level: <8}}</level> | {{name}}:{{function}}:{{line}} - <level>{{message}}</level>"
@@ -58,8 +60,6 @@ WRITE_FORMAT = f"<green>{{time:YYYY-MM-DD HH:mm:ss.SSS}}</green> | <level>{{leve
 NEXA = os.path.dirname(os.path.abspath(__file__))
 WORK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-CREDO = os.path.join(WORK, "report")
-MODEL = os.path.join(WORK, "archivix", "molds", "Keras_Gray_W256_H256_00000")
 TEMPLATE_ATOM_TOTAL = os.path.join(NEXA, "template", "template_atom_total.html")
 TEMPLATE_VIEW_TOTAL = os.path.join(NEXA, "template", "template_view_total.html")
 TEMPLATE_MAIN_TOTAL = os.path.join(NEXA, "template", "template_main_total.html")
