@@ -1,7 +1,6 @@
 import os
 import sys
 import time
-import signal
 import random
 import asyncio
 
@@ -76,44 +75,40 @@ class Record(object):
 
     async def ask_close_record(self, device, video_temp, transports):
 
-        # async def complete():
-        #     for _ in range(10):
-        #         if events["done"].is_set():
-        #             return f"{desc} 视频录制成功", banner
-        #         elif events["fail"].is_set():
-        #             return f"{desc} 视频录制失败", banner
-        #         await asyncio.sleep(0.2)
-        #     return f"{desc} 视频录制失败", banner
+        async def find_child(pid):
+            if self.platform == "win32":
+                child_pids = await Terminal.cmd_line(
+                    "powershell", "-Command", "Get-CimInstance", "Win32_Process", "|", "Where-Object",
+                    f"{{ $_.ParentProcessId -eq {pid} }}", "|", "Select-Object", "-ExpandProperty", "ProcessId"
+                )
+            else:
+                child_pids = await Terminal.cmd_line(
+                    "pgrep", "-P", pid
+                )
+            Show.notes(f"{desc} PID={child_pids}")
+            if child_pids:
+                return [line.strip() for line in child_pids.splitlines() if line.strip().isdigit()]
+            return []
 
-        desc = f"{device.tag} {device.sn} PID={transports.pid}"
+        async def stop_child(pid):
+            if self.platform == "win32":
+                await Terminal.cmd_line(
+                    "powershell", "-Command", "Stop-Process", "-Id", pid, "-Force"
+                )
+            else:
+                await Terminal.cmd_line(
+                    "xargs", "kill", "-SIGINT", input="\n".join(pid).encode()
+                )
+
+        desc = f"{device.tag} {device.sn} PPID={(record_pid := transports.pid)}"
 
         events: dict[str, asyncio.Event] = self.record_events[device.sn]
         banner: str = os.path.basename(video_temp)
 
-        if self.whist:
-            cancel = signal.CTRL_C_EVENT if self.platform == "win32" else signal.SIGINT
-            try:
-                transports.send_signal(cancel)
-            except ProcessLookupError:
-                Show.notes(f"{desc} Stop With Signal")
-
-            try:
-                shell = True if self.platform == "win32" else False
-                Terminal.cmd_oneshot(["echo", "Cancel"], shell=shell)
-            except KeyboardInterrupt:
-                Show.notes(f"{desc} Stop With {cancel.name} Code={cancel.value}")
-
-        else:
-            if self.platform == "win32":
-                kill_process = ["taskkill", "/im", "scrcpy.exe"]
-                await Terminal.cmd_link(*kill_process)
-            else:
-                kill_process = ["xargs", "kill", "-SIGINT"]
-                if pid_list := await Terminal.cmd_line("pgrep", "scrcpy"):
-                    await Terminal.cmd_line(
-                        *kill_process, input="\n".join(pid_list).encode()
-                    )
-            Show.notes(f"{desc} Stop With {' '.join(kill_process)}")
+        if child_process_list := await find_child(record_pid):
+            await asyncio.gather(
+                *(stop_child(pid) for pid in child_process_list if pid)
+            )
 
         try:
             await asyncio.wait_for(events["done"].wait(), 2)
@@ -145,30 +140,17 @@ class Record(object):
 
     async def check_event(self, device, exec_tasks):
         if self.alone and (events := self.record_events.get(device.sn, None)):
-            await asyncio.wait(
-                [asyncio.create_task(events[ev].wait())
-                 for ev in ["stop", "done", "fail"]], return_when=asyncio.FIRST_COMPLETED
-            )
+            bridle = events["stop"], events["done"], events["fail"]
+            while True:
+                if any(event.is_set() for event in bridle):
+                    break
+                await asyncio.sleep(1)
         else:
             await self.melody_events.wait()
 
         if task := exec_tasks.get(device.sn, []):
             task.cancel()
         return Show.notes(f"[bold #CD853F]{device.sn} Cancel task[/]")
-
-    # async def check_event(self, device, exec_tasks):
-    #     if self.alone and (events := self.record_events.get(device.sn, None)):
-    #         bridle = events["stop"], events["done"], events["fail"]
-    #         while True:
-    #             if any(event.is_set() for event in bridle):
-    #                 break
-    #             await asyncio.sleep(1)
-    #     else:
-    #         await self.melody_events.wait()
-    #
-    #     if task := exec_tasks.get(device.sn, []):
-    #         task.cancel()
-    #     return Show.notes(f"[bold #CD853F]{device.sn} Cancel task[/]")
 
     async def flunk_event(self):
         return any(

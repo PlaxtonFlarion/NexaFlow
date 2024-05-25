@@ -270,6 +270,7 @@ class Missions(object):
         if self.lines.speed:
             if deploy.color:
                 filters += [f"eq=brightness=0.06:contrast=1.5:saturation=0.9"]
+            else:
                 filters += [f"format=gray"]
 
         filters = filters + [f"gblur=sigma={gauss}"] if (gauss := deploy.gauss) else filters
@@ -1363,9 +1364,12 @@ class Missions(object):
                     Show.show_panel(self.level, tip_, Wind.EXPLORER)
 
                     if (parser_ := script_value_.get("parser", {})) and type(parser_) is dict:
-                        for parser_key_, parser_value_ in parser_.items():
-                            setattr(deploy, parser_key_, parser_value_)
-                            logger.debug(f"Parser Set <{parser_key_}> {parser_value_} -> {getattr(deploy, parser_key_)}")
+                        for deploy_key_, deploy_value_ in _deploy.deploys.items():
+                            logger.debug(f"Current Key {deploy_key_}")
+                            for d_key_, d_value_ in deploy_value_.items():
+                                if parser_arg_ := parser_.get(deploy_key_, {}).get(d_key_, {}):
+                                    setattr(deploy, d_key_, parser_arg_)
+                                    logger.debug(f"    Parser Set <{d_key_}>  {d_value_} -> {getattr(deploy, d_key_)}")
 
                     header_ = header_ if type(
                         header_ := script_value_.get("header", [])
