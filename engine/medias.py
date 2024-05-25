@@ -146,8 +146,8 @@ class Record(object):
     async def check_event(self, device, exec_tasks):
         if self.alone and (events := self.record_events.get(device.sn, None)):
             await asyncio.wait(
-                [asyncio.create_task(events[ev].wait()) for ev in ["stop", "done", "fail"]],
-                return_when=asyncio.FIRST_COMPLETED
+                [asyncio.create_task(events[ev].wait())
+                 for ev in ["stop", "done", "fail"]], return_when=asyncio.FIRST_COMPLETED
             )
         else:
             await self.melody_events.wait()
