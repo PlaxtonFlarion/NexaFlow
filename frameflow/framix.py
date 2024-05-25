@@ -3,8 +3,8 @@ __all__ = []
 import os
 import sys
 import shutil
-from loguru import logger
 from frameflow.skills.show import Show
+from frameflow.argument import Wind
 from nexaflow import const
 
 _platform = sys.platform.strip().lower()
@@ -25,8 +25,8 @@ elif _software == f"{const.NAME}.py":
     _workable = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     _feasible = os.path.dirname(os.path.abspath(__file__))
 else:
-    logger.error(f"{const.ERR}Software compatible with {const.NAME}[/]")
-    Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
+    Show.show_panel(const.SHOW_LEVEL, f"{const.DESC} compatible with {const.NAME}", Wind.KEEPER)
+    Show.simulation_progress(f"{const.DESC} Exiting ...")
     sys.exit(Show.fail())
 
 _turbo = os.path.join(_workable, "archivix", "tools")
@@ -40,8 +40,8 @@ elif _platform == "darwin":
     _fmp = os.path.join(_turbo, "mac", "ffmpeg", "bin", "ffmpeg")
     _fpb = os.path.join(_turbo, "mac", "ffmpeg", "bin", "ffprobe")
 else:
-    logger.error(f"{const.ERR}{const.NAME} compatible with {const.ERR}Win & Mac[/]")
-    Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
+    Show.show_panel(const.SHOW_LEVEL, f"{const.DESC} compatible with [Win | Mac]", Wind.KEEPER)
+    Show.simulation_progress(f"{const.DESC} Exiting ...")
     sys.exit(Show.fail())
 
 for _tls in (_tools := [_adb, _fmp, _fpb]):
@@ -50,8 +50,8 @@ for _tls in (_tools := [_adb, _fmp, _fpb]):
 for _tls in _tools:
     if shutil.which((_tls_name := os.path.basename(_tls))):
         continue
-    logger.error(f"{const.ERR}{const.NAME} missing files {_tls_name}[/]")
-    Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
+    Show.show_panel(const.SHOW_LEVEL, f"{const.DESC} missing files {_tls_name}", Wind.KEEPER)
+    Show.simulation_progress(f"{const.DESC} Exiting ...")
     sys.exit(Show.fail())
 
 _atom_total_temp = os.path.join(_workable, "archivix", "pages", "template_atom_total.html")
@@ -64,8 +64,8 @@ for _tmp in (_temps := [_atom_total_temp, _main_share_temp, _main_total_temp, _v
     if os.path.isfile(_tmp) and os.path.basename(_tmp).endswith(".html"):
         continue
     _tmp_name = os.path.basename(_tmp)
-    logger.error(f"{const.ERR}{const.NAME} missing files {_tmp_name}[/]")
-    Show.simulation_progress(f"Exit after 5 seconds ...", 1, 0.05)
+    Show.show_panel(const.SHOW_LEVEL, f"{const.DESC} missing files {_tmp_name}", Wind.KEEPER)
+    Show.simulation_progress(f"{const.DESC} Exiting ...")
     sys.exit(Show.fail())
 
 _initial_source = os.path.join(_feasible, f"{const.NAME}.source")
@@ -74,6 +74,7 @@ _total_place = os.path.join(_feasible, f"{const.NAME}.report")
 _model_place = os.path.join(_workable, "archivix", "molds", const.MODEL)
 
 if len(sys.argv) == 1:
+    Show.minor_logo()
     Show.help_document()
     sys.exit(Show.done())
 
@@ -87,13 +88,12 @@ try:
     import numpy
     import random
     import typing
-    import signal
     import inspect
     import asyncio
     import tempfile
     import aiofiles
     import datetime
-    from pathlib import Path
+    from loguru import logger
     from rich.prompt import Prompt
     from engine.manage import Manage
     from engine.switch import Switch
@@ -105,10 +105,8 @@ try:
     from engine.flight import FramixAnalysisError
     from engine.flight import FramixAnalyzerError
     from engine.flight import FramixReporterError
-    from frameflow.argument import Wind
     from frameflow.skills.brexil import Option
     from frameflow.skills.brexil import Deploy
-    from frameflow.skills.brexil import Script
     from frameflow.skills.drovix import Drovix
     from frameflow.skills.parser import Parser
     from nexaflow import toolbox
@@ -145,9 +143,33 @@ class Missions(object):
 
     # """Child Process"""
     def amazing(self, vision: str, *args, **kwargs):
-        # Initial Loop
+        """
+        异步分析视频的子进程方法。
+
+        该方法在异步进程执行器中执行，用于加载 Keras 模型并分析视频。
+
+        参数:
+            vision (str): 视频文件路径。
+            *args: 传递给分析器的其他参数。
+            **kwargs: 传递给 Alynex 类的其他关键字参数。
+
+        返回:
+            处理完成的结果。
+
+        注意:
+            该方法需要在异步进程执行器中执行。
+            示例:
+                from functools import partial
+                func = partial(instance.amazing, **kwargs)
+                with ProcessPoolExecutor() as exe:
+                    tasks = [
+                        looper.run_in_executor(exe, func, task, *args) for task in task_list
+                    ]
+                    futures = asyncio.gather(*tasks)
+        """
+
         loop = asyncio.get_event_loop()
-        # Initial Alynex
+
         model_place = self.model_place if self.lines.keras else None
         alynex = Alynex(self.level, model_place, **kwargs)
         try:
@@ -161,9 +183,33 @@ class Missions(object):
 
     # """Child Process"""
     def bizarre(self, vision: str, *args, **kwargs):
-        # Initial Loop
+        """
+        异步执行视频分析的子进程方法。
+
+        该方法在异步进程执行器中执行，用于分析视频。
+
+        参数:
+            vision (str): 视频文件路径。
+            *args: 传递给分析器的其他参数。
+            **kwargs: 传递给 Alynex 类的其他关键字参数。
+
+        返回:
+            处理完成的结果。
+
+        注意:
+            该方法需要在异步进程执行器中执行。
+            示例:
+                from functools import partial
+                func = partial(instance.bizarre, vision, **kwargs)
+                with ProcessPoolExecutor() as exe:
+                    tasks = [
+                        looper.run_in_executor(exe, func, task, *args) for task in task_list
+                    ]
+                    futures = asyncio.gather(*tasks)
+        """
+
         loop = asyncio.get_event_loop()
-        # Initial Alynex
+
         model_place = None
         alynex = Alynex(self.level, model_place, **kwargs)
 
@@ -174,6 +220,35 @@ class Missions(object):
 
     @staticmethod
     async def enforce(db: "Drovix", ks: typing.Optional["KerasStruct"], start: int, end: int, cost: float, *args):
+        """
+        异步执行数据库插入操作，记录视频分析的相关信息。
+
+        该方法会根据提供的参数创建数据库表，并将分析结果插入到数据库中。
+        如果提供了 Keras 模型，则会记录额外的路径信息。
+
+        参数:
+            db (Drovix): 数据库对象，用于执行数据库操作。
+            ks (Optional[KerasStruct]): Keras 模型对象。如果提供，则记录额外的路径信息。
+            start (int): 分析的起始帧编号。
+            end (int): 分析的结束帧编号。
+            cost (float): 分析所花费的时间。
+            *args: 可变参数列表，包含视频分析的其他相关信息。
+                - args[0] (str): 视频总路径。
+                - args[1] (str): 分析标题。
+                - args[2] (str): 查询路径。
+                - args[3] (str): 查询关键字。
+                - args[4] (str): 帧路径。
+                - args[5] (Optional[str]): 额外路径，仅在提供 Keras 模型时记录。
+                - args[6] (Optional[str]): 原型路径，仅在提供 Keras 模型时记录。
+
+        返回:
+            None: 该方法没有返回值。
+
+        异常:
+            ValueError: 如果提供的参数数量不正确。
+            Exception: 其他可能的异常，如数据库操作失败。
+        """
+
         basic_columns = ["total_path", "title", "query_path", "query", "stage", "frame_path"]
         stage = json.dumps({"stage": {"start": start, "end": end, "cost": cost}})
         value = list(args[:4]) + [stage, args[4]]
@@ -550,7 +625,7 @@ class Missions(object):
                 logger.debug(tip := f"{state}")
                 Show.show_panel(self.level, tip, Wind.KEEPER)
             else:
-                logger.debug(tip := f"成功生成汇总报告 {os.path.relpath(state)}")
+                logger.debug(tip := f"成功生成汇总报告 {os.path.basename(state)}")
                 Show.show_panel(self.level, tip, Wind.REPORTER)
 
     # 时序融合分析系统
@@ -571,7 +646,7 @@ class Missions(object):
                 logger.debug(tip := f"{state}")
                 Show.show_panel(self.level, tip, Wind.KEEPER)
             else:
-                logger.debug(tip := f"成功生成汇总报告 {os.path.relpath(state)}")
+                logger.debug(tip := f"成功生成汇总报告 {os.path.basename(state)}")
                 Show.show_panel(self.level, tip, Wind.REPORTER)
 
     # 视频解析探索
@@ -1030,7 +1105,7 @@ class Missions(object):
                         report.query_path, f"hook_{device.sn}_{random.randint(10000, 99999)}.png"
                     )
                     resize_img.save(img_save_path)
-                    logger.debug(tip_ := f"保存图片: {os.path.relpath(img_save_path)}")
+                    logger.debug(tip_ := f"保存图片: {os.path.basename(img_save_path)}")
                     Show.show_panel(self.level, tip_, Wind.DRAWER)
                 break
             elif action.strip().upper() == "N":
@@ -1364,7 +1439,7 @@ class Missions(object):
                     Show.show_panel(self.level, tip_, Wind.EXPLORER)
 
                     if (parser_ := script_value_.get("parser", {})) and type(parser_) is dict:
-                        for deploy_key_, deploy_value_ in _deploy.deploys.items():
+                        for deploy_key_, deploy_value_ in deploy.deploys.items():
                             logger.debug(f"Current Key {deploy_key_}")
                             for d_key_, d_value_ in deploy_value_.items():
                                 if parser_arg_ := parser_.get(deploy_key_, {}).get(d_key_, {}):
@@ -1923,7 +1998,7 @@ async def scheduling() -> None:
         if shutil.which("scrcpy"):
             return
         Show.show_panel(
-            "INFO", "Install first https://github.com/Genymobile/scrcpy", Wind.KEEPER
+            const.SHOW_LEVEL, "Install first https://github.com/Genymobile/scrcpy", Wind.KEEPER
         )
         sys.exit(Show.fail())
 
