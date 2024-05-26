@@ -2527,6 +2527,7 @@ if __name__ == '__main__':
     for _attr_key, _attribute_value in _deploy.deploys.items():
         logger.debug(f"Current Key {_attr_key}")
         for _attr, _attribute in _attribute_value.items():
+            # 如果命令行中包含部署参数，无论是否存在部署文件，都将覆盖部署文件配置，以命令行参数为第一优先级
             if any(_line.startswith(f"--{_attr}") for _line in _wires):
                 setattr(_deploy, _attr, getattr(_lines, _attr))
                 logger.debug(f"  {_attr_key} Set <{_attr}> {_attribute} -> {getattr(_deploy, _attr)}")
