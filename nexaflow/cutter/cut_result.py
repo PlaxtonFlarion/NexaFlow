@@ -82,7 +82,31 @@ class VideoCutResult(object):
 
     def get_range(
             self, limit: int = None, unstable_limit: int = None, **kwargs
-    ) -> typing.Tuple[typing.List[VideoCutRange], typing.List[VideoCutRange]]:
+    ) -> tuple[list["VideoCutRange"], list["VideoCutRange"]]:
+        """
+        获取视频中稳定和不稳定的时间段范围。
+
+        参数:
+        - limit (int, 可选): 限制返回的稳定范围的数量。
+        - unstable_limit (int, 可选): 限制返回的不稳定范围的数量。
+        - **kwargs: 传递给 get_unstable_range 方法的其他参数。
+
+        返回:
+        - tuple[list[VideoCutRange], list[VideoCutRange]]: 返回一个元组，其中第一个元素是稳定范围列表，第二个元素是不稳定范围列表。
+
+        具体流程:
+        1. 调用 get_unstable_range 方法获取不稳定范围列表。
+        2. 初始化视频的起始和结束帧 ID 和时间戳。
+        3. 定义默认的质量参数字典（SSIM、MSE、PSNR）。
+        4. 如果未检测到不稳定阶段，则返回整个视频作为稳定范围。
+        5. 确定第一个稳定范围的结束帧 ID 和最后一个稳定范围的起始帧 ID。
+        6. 初始化稳定范围列表。
+        7. 如果存在稳定的起始阶段，将其添加到稳定范围列表。
+        8. 遍历不稳定范围列表，将每个不稳定范围之间的阶段作为稳定范围添加到列表中。
+        9. 如果存在稳定的结束阶段，将其添加到稳定范围列表。
+        10. 根据 limit 参数过滤稳定范围列表。
+        11. 将稳定范围列表按开始帧 ID 排序并返回稳定和不稳定范围列表。
+        """
 
         unstable_range_list = self.get_unstable_range(unstable_limit, **kwargs)
 
@@ -277,7 +301,7 @@ class VideoCutResult(object):
 
     def pick_and_save(
             self,
-            range_list: typing.List[VideoCutRange],
+            range_list: list["VideoCutRange"],
             frame_count: int,
             to_dir: str = None,
             prune: float = None,
@@ -289,6 +313,31 @@ class VideoCutResult(object):
             *args,
             **kwargs,
     ) -> str:
+        """
+        从视频切割范围列表中选择帧并保存到指定目录中。
+
+        参数:
+        range_list (list[VideoCutRange]): 视频切割范围列表。
+        frame_count (int): 每个切割范围中要选择的帧数。
+        to_dir (str, 可选): 保存选定帧的目录。如果未指定，则创建一个带有时间戳的新目录。
+        prune (float, 可选): 修剪参数，如果提供，将应用于选定的帧。
+        meaningful_name (bool, 可选): 如果为 True，则使用有意义的文件名，否则使用随机 UUID 文件名。
+        *args: 传递给 pick 方法的其他位置参数。
+        **kwargs: 传递给 pick 方法和 compress_frame 函数的其他关键字参数。
+
+        返回:
+        str: 包含选定帧的目录路径。
+
+        具体流程:
+        1. 初始化 `stage_list` 列表，用于存储每个切割范围中的选定帧。
+        2. 遍历 `range_list` 列表，对每个切割范围对象调用 `pick` 方法选择帧。
+        3. 获取每个选定帧的数据，并将其存储在 `stage_list` 列表中。
+        4. 如果提供了 `prune` 参数，则对 `stage_list` 列表进行修剪。
+        5. 如果未指定 `to_dir` 参数，则创建一个带有时间戳的新目录。
+        6. 创建指定目录及其子目录。
+        7. 遍历 `stage_list` 列表，将每个选定帧保存到对应的目录中。
+        8. 返回保存选定帧的目录路径。
+        """
 
         stage_list = list()
         for index, each_range in enumerate(range_list):

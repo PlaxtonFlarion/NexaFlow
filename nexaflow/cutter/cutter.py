@@ -56,28 +56,56 @@ class VideoCutter(object):
     @staticmethod
     def compare_frame_list(src: list[numpy.ndarray], target: list[numpy.ndarray]) -> list[float]:
         """
-        关于如何比较两个 ndarray 列表并获取它们的 ssim/mse/psnr 的核心方法
-        你可以重写这个方法来实现你自己的算法
+        比较两个 ndarray 列表并获取它们的 SSIM、MSE 和 PSNR 值的核心方法。
+
+        参数:
+        - src (list[numpy.ndarray]): 源帧列表。
+        - target (list[numpy.ndarray]): 目标帧列表。
+
+        返回:
+        - list[float]: 包含 SSIM、MSE 和 PSNR 值的列表。
+
+        方法:
+        1. 初始化 SSIM、MSE 和 PSNR 的默认值。
+        2. 遍历源帧和目标帧的对应对。
+        3. 计算每对帧的 SSIM，并更新最小 SSIM 值。
+        4. 计算每对帧的 MSE，并更新最大 MSE 值。
+        5. 计算每对帧的 PSNR，并更新最大 PSNR 值。
+        6. 返回包含最小 SSIM、最大 MSE 和最大 PSNR 的列表。
+
+        注意:
+        - 你可以重写这个方法来实现你自己的算法。
+        - SSIM 表示结构相似性指数，数值范围在 0 到 1 之间，越接近 1 说明两张图像越相似。
+        - MSE 表示均方误差，数值越小说明两张图像越相似。
+        - PSNR 表示峰值信噪比，数值越大说明两张图像越相似。
         """
-        # 找到最小 ssim 和最大 mse / psnr
+
+        # 初始化 SSIM 为最大值，MSE 和 PSNR 为最小值
         ssim, mse, psnr = 1.0, 0.0, 0.0
 
+        # 遍历源帧和目标帧的对应对
         for part_index, (each_start, each_end) in enumerate(zip(src, target)):
+            # 计算每对帧的 SSIM
             part_ssim = toolbox.compare_ssim(each_start, each_end)
             if part_ssim < ssim:
                 ssim = part_ssim
 
-            # mse 非常敏感
+            # 计算每对帧的 MSE，MSE 非常敏感
             part_mse = toolbox.calc_mse(each_start, each_end)
             if part_mse > mse:
                 mse = part_mse
 
+            # 计算每对帧的 PSNR
             part_psnr = toolbox.calc_psnr(each_start, each_end)
             if part_psnr > psnr:
                 psnr = part_psnr
+
+            # 调试日志
             # logger.debug(
             #     f"part {part_index}: ssim={part_ssim}; mse={part_mse}; psnr={part_psnr}"
             # )
+
+        # 返回包含最小 SSIM、最大 MSE 和最大 PSNR 的列表
         return [ssim, mse, psnr]
 
     @staticmethod
@@ -106,9 +134,27 @@ class VideoCutter(object):
         window_size: int,
         window_coefficient: int
     ) -> list["VideoCutRange"]:
+        """
+        根据视频对象生成视频帧范围的核心方法，使用滑动窗口技术对帧进行分割和分析。
+
+        参数:
+        - video (VideoObject): 视频对象，包含视频帧数据。
+        - block (int): 用于图像分割的块大小。
+        - window_size (int): 滑动窗口的大小，以帧为单位。
+        - window_coefficient (int): 用于权重计算的窗口系数。
+
+        返回:
+        - list[VideoCutRange]: 生成的视频帧范围列表。
+        """
 
         def slice_frame():
-            range_list: typing.List["VideoCutRange"] = list()
+            """
+            使用滑动窗口对视频帧进行分割，并计算每个窗口的SSIM、MSE和PSNR值。
+
+            返回:
+            - list[VideoCutRange]: 生成的视频帧范围列表。
+            """
+            range_list: list["VideoCutRange"] = list()
             progress_bar = toolbox.show_progress(total=video_length, color=174)
             while True:
                 frame_list = window.load_data()
@@ -150,6 +196,29 @@ class VideoCutter(object):
             return range_list
 
         def float_merge(float_list: list[float]) -> float:
+            """
+            根据指定的权重系数，对浮点数列表进行加权平均计算。
+
+            参数:
+            - float_list (list[float]): 包含浮点数的列表，每个浮点数代表一个计算结果。
+
+            返回:
+            - float: 加权平均后的浮点数结果。
+
+            具体流程:
+            1. 初始化变量 `result` 和 `denominator` 为0，用于存储计算结果和权重系数的总和。
+            2. 遍历 `float_list`，对每个浮点数 `each` 进行处理：
+               - 根据窗口的长度和当前索引计算权重 `weight`，权重是基于窗口系数的幂次方。
+               - 将权重和浮点数的乘积累加到 `result`。
+               - 将权重累加到 `denominator`。
+            3. 使用 `result` 除以 `denominator` 计算加权平均值。
+            4. 返回计算的加权平均值。
+
+            应用场景:
+            - 在视频处理和分析过程中，针对每个视频帧或帧段计算一系列指标（如SSIM、MSE、PSNR）。
+            - 使用滑动窗口技术和权重系数，对这些指标进行加权平均，以便更好地反映整个视频段的质量变化。
+            """
+
             # 第一个，最大的
             length = len(float_list)
             result = 0.0
@@ -164,13 +233,52 @@ class VideoCutter(object):
             return final
 
         class Window(object):
+            """
+            窗口类用于在视频帧中创建一个滑动窗口，用于提取和处理视频帧的子集。
+
+            初始化参数:
+            无需参数，使用类中的默认值进行初始化。
+
+            属性:
+            - start (int): 当前窗口的起始帧ID，初始值为1。
+            - size (int): 窗口的大小（包含的帧数），初始值为给定的 `window_size`。
+            - end (int): 当前窗口的结束帧ID，初始值为起始帧加上窗口大小乘以步长 `step`。
+
+            方法:
+            - load_data() -> typing.List[VideoFrame]:
+              从当前窗口位置加载视频帧数据。
+              返回一个包含窗口内视频帧的列表。
+
+            - shift() -> bool:
+              将窗口的位置向前移动一个步长。
+              返回一个布尔值，表示窗口是否可以继续移动（即是否未超出视频帧的范围）。
+
+            工作流程:
+            1. 初始化窗口的起始帧 `start` 为1，窗口大小 `size` 为给定的 `window_size`，结束帧 `end` 为起始帧加上窗口大小乘以步长。
+            2. 在 `load_data` 方法中，从起始帧 `start` 开始逐帧加载视频帧数据，直到结束帧 `end`。如果帧数不足，则补充到至少两个帧。
+            3. 在 `shift` 方法中，将窗口的起始帧和结束帧向前移动一个步长 `step`。如果移动后起始帧超过视频总帧数，返回 `False` 表示窗口无法继续移动；否则，更新窗口位置并返回 `True` 表示窗口可以继续移动。
+
+            应用场景:
+            - 在视频分析和处理过程中，使用滑动窗口技术对视频进行分段处理。
+            - 通过窗口类，可以方便地在视频帧之间滑动，提取特定范围的帧进行进一步处理，如计算质量指标、应用图像处理算法等。
+            """
 
             def __init__(self):
                 self.start = 1
                 self.size = window_size
                 self.end = self.start + window_size * step
 
-            def load_data(self) -> typing.List[VideoFrame]:
+            def load_data(self) -> list["VideoFrame"]:
+                """
+                从当前窗口位置加载视频帧数据。
+
+                返回:
+                - list[VideoFrame]: 窗口内视频帧的列表。
+
+                工作流程:
+                1. 从当前 `start` 开始逐帧加载视频帧数据，直到 `end`。
+                2. 如果帧数不足 `size`，则补充到至少两个帧。
+                """
                 cur = self.start
                 result = []
                 video_operator = video.get_operator()
@@ -185,6 +293,18 @@ class VideoCutter(object):
                 return result
 
             def shift(self) -> bool:
+                """
+                将窗口的位置向前移动一个步长。
+
+                返回:
+                - bool: 窗口是否可以继续移动（未超出视频帧的范围）。
+
+                工作流程:
+                1. 将窗口的起始帧 `start` 和结束帧 `end` 向前移动一个步长 `step`。
+                2. 如果移动后起始帧超过视频总帧数 `video_length`，返回 `False` 表示窗口无法继续移动；
+                   否则，更新窗口位置并返回 `True` 表示窗口可以继续移动。
+                """
+
                 # logger.debug(f"window before: {self.start}, {self.end}")
                 self.start += step
                 self.end += step
@@ -197,7 +317,24 @@ class VideoCutter(object):
                 # logger.debug(f"window after: {self.start}, {self.end}")
                 return True
 
+        # 获取视频总帧数
         video_length = video.frame_count
+
+        """
+        ### step 参数具体作用和使用场景
+        
+        #### 作用
+        - `step` 参数用于控制窗口在视频帧序列上的移动步长。
+        - 在每次调用 `shift()` 方法时，窗口的起始和结束位置都会根据 `step` 的值进行调整。
+        - `step` 决定了每次窗口移动时跳过的帧数。例如，`step=1` 时，窗口每次移动一帧；`step=2` 时，窗口每次移动两帧。
+        
+        #### 使用场景
+        - **细粒度分析**: 当需要对视频帧进行精细分析时，可以设置较小的 `step` 值（例如 `step=1` 或 `step=2`），确保每次窗口移动时覆盖更多的帧，提供更高的分析精度。
+        - **快速处理**: 在需要快速处理视频，且对精度要求不高的情况下，可以设置较大的 `step` 值（例如 `step=5` 或 `step=10`），这样窗口每次移动时跳过更多帧，从而提高处理效率。
+        - **数据平滑**: 在进行视频帧数据的平滑处理时，通过调整 `step` 值，可以控制窗口的重叠程度，从而平衡处理速度和数据平滑效果。较小的 `step` 值可以增加帧间重叠，提供更平滑的数据结果。
+        
+        通过调整 `step` 参数，可以灵活控制窗口的移动步长，以适应不同的处理需求和应用场景。
+        """
         step = self.step
 
         window = Window()
@@ -213,6 +350,66 @@ class VideoCutter(object):
         *_,
         **kwargs,
     ) -> "VideoCutResult":
+        """
+        对视频进行分段处理，生成视频的剪辑结果。
+
+        参数:
+        - video (typing.Union[str, "VideoObject"]): 视频对象或视频文件路径。
+        - block (int, 可选): 视频帧划分的块大小。默认值为3。
+        - window_size (int, 可选): 滑动窗口的大小。默认值为1。
+        - window_coefficient (int, 可选): 窗口系数，用于加权平均计算。默认值为2。
+        - *_: 其他位置参数。
+        - **kwargs: 其他关键字参数。
+
+        返回:
+        - VideoCutResult: 视频剪辑结果对象，包含剪辑的范围列表和相关参数。
+
+        工作流程:
+        1. 如果 `video` 是字符串类型，则将其转换为 `VideoObject` 对象。
+        2. 如果未提供 `block`、`window_size` 或 `window_coefficient` 参数，则使用默认值。
+        3. 调用 `magic_frame_range` 方法，根据指定的块大小、窗口大小和窗口系数，对视频进行帧的分段处理，生成帧的范围列表 `range_list`。
+        4. 返回 `VideoCutResult` 对象，包含视频对象、帧的范围列表和剪辑参数 `kwargs`。
+
+        说明:
+        - `block` 参数用于定义视频帧划分的块大小，默认值为3。
+        - `window_size` 参数用于定义滑动窗口的大小，默认值为1。
+        - `window_coefficient` 参数用于定义窗口系数，用于加权平均计算，默认值为2。
+        - `magic_frame_range` 方法根据指定的参数，对视频帧进行分段处理，生成帧的范围列表。
+        - `VideoCutResult` 对象包含视频对象、帧的范围列表和剪辑参数，表示视频的剪辑结果。
+
+        block 参数:
+        这个参数用于定义在视频帧分析时分割图像的块大小。
+        图像块是一种将图像分割成小块的方法，每个块独立处理。这种方法可以有效减少计算复杂度，同时保持对图像局部特征的敏感度。
+        块大小越大，每个块包含的像素越多，处理时的计算量越大；块大小越小，每个块包含的像素越少，计算量减少，但对细节的敏感度增加。
+
+        应用场景:
+        在视频分析中，使用块来处理帧有助于发现局部变化和细节。
+        例如，在运动检测或场景切换检测中，小块可以更精确地捕捉到图像中的细微变化。选择合适的块大小可以平衡计算性能和检测精度。
+
+        示例:
+        如果 block 为 3，则每个图像将被分割成 3x3 的小块进行处理。这意味着每个图像将被分割成 9 个小块，每个小块独立进行相似度、均方误差和峰值信噪比的计算。
+
+        window_size 参数:
+        这个参数定义了滑动窗口的大小。滑动窗口用于从视频帧序列中提取一组连续帧进行处理。
+        窗口大小越大，每次处理的帧数越多，可以捕捉到更长时间范围内的变化；窗口大小越小，每次处理的帧数越少，更关注局部的短时变化。
+
+        应用场景:
+        使用滑动窗口可以在视频中找到连续帧之间的变化，适用于场景切换检测、运动检测等场景。窗口大小的选择取决于具体应用场景和对时间连续性的要求。例如，在场景切换检测中，较大的窗口可以更好地捕捉到较长时间内的渐变；在运动检测中，较小的窗口可以更敏感地捕捉到细微的变化。
+
+        示例:
+        如果 window_size 为 5，则每次从视频中提取 5 帧进行处理。这意味着每次处理的帧组包含 5 个连续帧，计算这些帧之间的相似度、均方误差和峰值信噪比。
+
+        window_coefficient 参数:
+        这个参数用于在加权平均计算中确定每个值的权重。权重系数越大，窗口内较新帧的权重越高。
+        这意味着在计算相似度、均方误差和峰值信噪比时，较新帧对结果的影响更大。具体地，权重按窗口内帧的倒序指数增加。
+
+        应用场景:
+        当分析视频变化时，较新帧可能比较旧帧更为重要。例如，在检测视频中的突然变化或剪辑时，较新帧的变化可能更显著。
+        通过调整 window_coefficient，可以更灵活地控制每个帧对最终计算结果的贡献。
+
+        示例:
+        如果 window_size 为 5，window_coefficient 为 2，则窗口内的权重依次为 1, 4, 9, 16, 25。权重最高的帧对结果的影响最大。
+        """
 
         video = VideoObject(video) if isinstance(video, str) else video
 
@@ -220,9 +417,11 @@ class VideoCutter(object):
         window_size = window_size or 1
         window_coefficient = window_coefficient or 2
 
-        # 如果视频包含 100 帧
-        # 从1开始，列表长度是99，而不是100
-        # [范围(1-2)、范围(2-3)、范围(3-4) ... 范围(99-100)]
+        """
+        如果视频包含 100 帧
+        从1开始，列表长度是99，而不是100
+        [范围(1-2)、范围(2-3)、范围(3-4) ... 范围(99-100)]
+        """
         range_list = self.magic_frame_range(
             video, block, window_size, window_coefficient
         )
