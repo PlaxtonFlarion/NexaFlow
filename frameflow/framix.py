@@ -340,6 +340,31 @@ class Missions(object):
             task_list: list[list],
             originals: list
     ) -> tuple:
+        """
+        异步执行视频的过滤和改进操作。
+
+        根据提供的配置参数，应用一系列过滤器对视频进行处理，改进视频质量。处理包括调整帧率、颜色、模糊和锐化等操作。
+
+        参数:
+            deploy (Deploy): 包含处理参数的部署配置对象。
+            clipix (Clipix): 视频处理工具对象，负责具体的视频内容调整操作。
+            task_list (List[List]): 包含视频任务信息的列表，每个列表项包括视频路径和其他相关参数。
+            originals (List): 原始视频列表，用于提取和处理视频内容。
+
+        返回:
+            Tuple: 包含处理后的视频过滤列表。
+
+        处理流程:
+            1. 根据配置参数初始化过滤器列表。
+            2. 异步执行视频过滤操作，对每个原始视频应用过滤器。
+            3. 记录和显示过滤操作的日志信息。
+
+        示例:
+            video_filter_list = await instance.als_waves(deploy, clipix, task_list, originals)
+
+        注意:
+            该方法是异步的，需要在异步环境中调用。
+        """
 
         filters = [f"fps={deploy.frate}"]
         if self.lines.speed:
@@ -1502,6 +1527,99 @@ class Missions(object):
 
         else:
             return None
+
+    async def anything_film(self, report, source, record, device_list):
+
+        async def wait_for_device(device):
+            Show.notes(f"[bold #FAFAD2]Wait Device Online -> {device.tag} {device.sn}[/]")
+            await Terminal.cmd_line(self.adb, "-s", device.sn, "wait-for-device")
+
+        Show.notes(f"**<* {('独立' if self.lines.alone else '全局')}控制模式 *>**")
+
+        await source.monitor()
+
+        await asyncio.gather(
+            *(wait_for_device(device) for device in device_list)
+        )
+
+        media_screen_w, media_screen_h = ScreenMonitor.screen_size()
+        Show.notes(f"Media Screen W={media_screen_w} H={media_screen_h}")
+
+        todo_list = []
+        format_folder = time.strftime("%Y%m%d%H%M%S")
+
+        margin_x, margin_y = 50, 75
+        window_x, window_y = 50, 75
+        max_y_height = 0
+        for device in device_list:
+            device_x, device_y = device.display[device.id]
+            device_x, device_y = int(device_x * 0.25), int(device_y * 0.25)
+
+            # 检查是否需要换行
+            if window_x + device_x + margin_x > media_screen_w:
+                window_x = 50  # 重置当前行的开始位置
+                if (new_y_height := window_y + max_y_height) + device_y > media_screen_h:
+                    window_y += margin_y  # 如果新行加设备高度超出屏幕底部，则只增加一个 margin_y
+                else:
+                    window_y = new_y_height  # 否则按计划设置新行的起始位置
+                max_y_height = 0  # 重置当前行的最大高度
+            max_y_height = max(max_y_height, device_y)  # 更新当前行的最大高度
+
+            location = window_x, window_y, device_x, device_y  # 位置确认
+
+            window_x += device_x + margin_x  # 移动到下一个设备的起始位置
+
+            await asyncio.sleep(0.5)  # 延时投屏，避免性能瓶颈
+
+            report.query = os.path.join(format_folder, device.sn)
+
+            video_temp, transports = await record.ask_start_record(
+                device, report.video_path, location=location
+            )
+            todo_list.append(
+                [video_temp, transports, report.total_path, report.title, report.query_path,
+                 report.query, report.frame_path, report.extra_path, report.proto_path]
+            )
+
+        return todo_list
+
+    async def anything_over(self, record, device_list, task_list):
+        effective_list = await asyncio.gather(
+            *(record.ask_close_record(device, video_temp, transports)
+              for device, (video_temp, transports, *_) in zip(device_list, task_list))
+        )
+
+        check_list = []
+        for idx, (effective, video_name) in enumerate(effective_list):
+            if "视频录制失败" in effective:
+                try:
+                    task = task_list.pop(idx)
+                    logger.debug(tip := f"{effective}: {video_name} 移除: {os.path.basename(task[0])}")
+                    check_list.append(tip)
+                except IndexError:
+                    continue
+            else:
+                logger.debug(tip := f"{effective}: {video_name}")
+                check_list.append(tip)
+        Show.show_panel(self.level, "\n".join(check_list), Wind.EXPLORER)
+
+    async def anything_well(self, deploy, clipix, report, alynex, task_list):
+        if len(task_list) == 0:
+            logger.debug(tip := f"没有有效任务")
+            return Show.show_panel(self.level, tip, Wind.KEEPER)
+
+        # Pack Argument
+        attack = deploy, clipix, report, task_list
+
+        if self.lines.speed:
+            # Speed Analyzer
+            await self.als_speed(*attack)
+        elif self.lines.basic or self.lines.keras:
+            # Keras Analyzer
+            await self.als_keras(*attack, alynex=alynex)
+        else:
+            logger.debug(tip := f"**<* 录制模式 *>**")
+            Show.show_panel(self.level, tip, Wind.EXPLORER)
 
 
 class Clipix(object):
