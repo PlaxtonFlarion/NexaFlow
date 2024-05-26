@@ -1117,7 +1117,7 @@ class Missions(object):
     # 循环节拍器
     async def analysis(self, deploy: "Deploy"):
 
-        async def commence():
+        async def anything_film():
 
             async def wait_for_device(device):
                 Show.notes(f"[bold #FAFAD2]Wait Device Online -> {device.tag} {device.sn}[/]")
@@ -1172,29 +1172,6 @@ class Missions(object):
 
             return todo_list
 
-        async def analysis_tactics():
-            if len(task_list) == 0:
-                logger.debug(tip := f"没有有效任务")
-                return Show.show_panel(self.level, tip, Wind.KEEPER)
-
-            # Pack Argument
-            attack = deploy, clipix, report, task_list
-
-            if self.lines.speed:
-                # Speed Analyzer
-                await self.als_speed(*attack)
-            elif self.lines.basic or self.lines.keras:
-                # Keras Analyzer
-                await self.als_keras(*attack, alynex=alynex)
-            else:
-                logger.debug(tip := f"**<* 录制模式 *>**")
-                Show.show_panel(self.level, tip, Wind.EXPLORER)
-
-        async def anything_time():
-            await asyncio.gather(
-                *(record.check_timer(device, timer_mode) for device in device_list)
-            )
-
         async def anything_over():
             effective_list = await asyncio.gather(
                 *(record.ask_close_record(device, video_temp, transports)
@@ -1215,24 +1192,28 @@ class Missions(object):
                     check_list.append(tip)
             Show.show_panel(self.level, "\n".join(check_list), Wind.EXPLORER)
 
-        async def call_commands(exec_func, exec_args, bean, live_devices):
-            if not (callable(function := getattr(bean, exec_func, None))):
-                logger.debug(tip := f"No callable {exec_func}")
+        async def anything_well():
+            if len(task_list) == 0:
+                logger.debug(tip := f"没有有效任务")
                 return Show.show_panel(self.level, tip, Wind.KEEPER)
 
-            sn = getattr(bean, "sn", bean.__class__.__name__)
-            try:
-                logger.debug(tip := f"{sn} {function.__name__} {exec_args}")
+            # Pack Argument
+            attack = deploy, clipix, report, task_list
+
+            if self.lines.speed:
+                # Speed Analyzer
+                await self.als_speed(*attack)
+            elif self.lines.basic or self.lines.keras:
+                # Keras Analyzer
+                await self.als_keras(*attack, alynex=alynex)
+            else:
+                logger.debug(tip := f"**<* 录制模式 *>**")
                 Show.show_panel(self.level, tip, Wind.EXPLORER)
-                if inspect.iscoroutinefunction(function):
-                    return await function(*exec_args)
-                return await asyncio.to_thread(function, *exec_args)
-            except asyncio.CancelledError:
-                live_devices.pop(sn)
-                logger.debug(tip := f"{sn} Call Commands Exit")
-                Show.show_panel(self.level, tip, Wind.EXPLORER)
-            except Exception as e:
-                return e
+
+        async def load_timer():
+            await asyncio.gather(
+                *(record.check_timer(device, timer_mode) for device in device_list)
+            )
 
         async def load_carry(carry):
             if len(parts := re.split(r",|;|!|\s", carry, 1)) == 2:
@@ -1269,6 +1250,25 @@ class Missions(object):
             except (FileNotFoundError, KeyError, json.JSONDecodeError) as e:
                 return e
             return exec_dict
+
+        async def call_commands(exec_func, exec_args, bean, live_devices):
+            if not (callable(function := getattr(bean, exec_func, None))):
+                logger.debug(tip := f"No callable {exec_func}")
+                return Show.show_panel(self.level, tip, Wind.KEEPER)
+
+            sn = getattr(bean, "sn", bean.__class__.__name__)
+            try:
+                logger.debug(tip := f"{sn} {function.__name__} {exec_args}")
+                Show.show_panel(self.level, tip, Wind.EXPLORER)
+                if inspect.iscoroutinefunction(function):
+                    return await function(*exec_args)
+                return await asyncio.to_thread(function, *exec_args)
+            except asyncio.CancelledError:
+                live_devices.pop(sn)
+                logger.debug(tip := f"{sn} Call Commands Exit")
+                Show.show_panel(self.level, tip, Wind.EXPLORER)
+            except Exception as e:
+                return e
 
         async def pack_commands(resolve_list):
             exec_pairs_list = []
@@ -1403,10 +1403,10 @@ class Missions(object):
                     Show.tips_document()
                     continue
                 else:
-                    task_list = await commence()
-                    await anything_time()
+                    task_list = await anything_film()
+                    await load_timer()
                     await anything_over()
-                    await analysis_tactics()
+                    await anything_well()
                     check_ = await record.flunk_event()
                     device_list = await manage_.operate_device() if check_ else device_list
                 finally:
@@ -1476,7 +1476,7 @@ class Missions(object):
                                 await exec_commands(prefix_list_)
 
                             # start record
-                            task_list = await commence()
+                            task_list = await anything_film()
 
                             # action
                             if action_list_:
@@ -1496,7 +1496,7 @@ class Missions(object):
                                 suffix_task_list_.append(
                                     asyncio.create_task(exec_commands(suffix_list_), name="suffix"))
 
-                            await analysis_tactics()
+                            await anything_well()
                             await asyncio.gather(*suffix_task_list_)
 
                 if any((self.lines.speed, self.lines.basic, self.lines.keras)):
