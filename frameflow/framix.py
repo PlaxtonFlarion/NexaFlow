@@ -2534,8 +2534,8 @@ if __name__ == '__main__':
     """
     将命令行参数解析结果转换为基本数据类型
 
-    该代码块将命令行参数解析器解析得到的结果存储在基本数据类型的变量中。这样做的目的是避免在多进程环境中
-    向子进程传递不可序列化的对象，因为这些对象在传递过程中可能会导致`pickle.PicklingError`错误。
+    该代码块将命令行参数解析器解析得到的结果存储在基本数据类型的变量中。
+    这样做的目的是避免在多进程环境中向子进程传递不可序列化的对象，因为这些对象在传递过程中可能会导致`pickle.PicklingError`错误。
     """
     _flick, _carry, _fully = _lines.flick, _lines.carry, _lines.fully
     _speed, _basic, _keras = _lines.speed, _lines.basic, _lines.keras
@@ -2566,7 +2566,29 @@ if __name__ == '__main__':
     Show.minor_logo()
     Show.load_animation()
 
+    """
     # 创建主事件循环
+    
+    注意: 
+    该事件循环对象 (_main_loop) 是不可序列化的，因此不能将其传递给子进程。
+    在需要使用事件循环的类实例化或函数调用时，应当在子进程内创建新的事件循环。
+    
+    使用方法：
+    1. 在主进程中创建事件循环：
+        _main_loop: "asyncio.AbstractEventLoop" = asyncio.get_event_loop()
+    
+    2. 在子进程中创建事件循环：
+        import asyncio
+    
+        def run_in_subprocess():
+            loop = asyncio.get_event_loop()           
+            loop.run_until_complete(async_function())
+    
+    3. 确保不要将主事件循环 (_main_loop) 直接传递给子进程或与子进程共享。
+    
+    4. 获取事件循环：
+    loop = asyncio.get_event_loop()
+    """
     _main_loop: "asyncio.AbstractEventLoop" = asyncio.get_event_loop()
 
     # Main Process
