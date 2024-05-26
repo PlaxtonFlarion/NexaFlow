@@ -1335,8 +1335,6 @@ class Missions(object):
         manage_ = Manage(self.adb)
         device_list = await manage_.operate_device()
 
-        platform = sys.platform
-
         clipix = Clipix(self.fmp, self.fpb)
 
         model_place = self.model_place if self.lines.keras else None
@@ -1385,7 +1383,7 @@ class Missions(object):
                         elif select_ == "deploy":
                             Show.notes(f"{const.WRN}请完全退出编辑器再继续操作[/]")
                             deploy.dump_deploy(self.initial_deploy)
-                            first_ = ["Notepad"] if platform == "win32" else ["open", "-W", "-a", "TextEdit"]
+                            first_ = ["Notepad"] if sys.platform == "win32" else ["open", "-W", "-a", "TextEdit"]
                             first_.append(self.initial_deploy)
                             await Terminal.cmd_line(*first_)
                             deploy.load_deploy(self.initial_deploy)
