@@ -1114,7 +1114,7 @@ class Missions(object):
                 tip_ = f"没有该选项,请重新输入\n"
                 Show.show_panel(self.level, tip_, Wind.KEEPER)
 
-    # 循环节拍器
+    # 循环节拍器 | 脚本驱动者 | 全域执行者
     async def analysis(self, deploy: "Deploy"):
 
         async def anything_film():
@@ -1981,10 +1981,10 @@ class Alynex(object):
         return Review(*(await analytics_basic()))
 
 
-async def arithmetic(function: "typing.Callable", parameters: list[str], deploy: "Deploy") -> None:
+async def arithmetic(function: "typing.Callable", parameters: list[str]) -> None:
     try:
         parameters = [(await Craft.revise_path(param)) for param in parameters]
-        await function(parameters, deploy)
+        await function(parameters, _deploy)
     except (FramixAnalysisError, FramixAnalyzerError, FramixReporterError):
         Show.console.print_exception()
         sys.exit(Show.fail())
@@ -2104,22 +2104,22 @@ if __name__ == '__main__':
         # --video
         if _video_list := _lines.video:
             _main_loop.run_until_complete(
-                arithmetic(_missions.video_file_task, _video_list, _deploy)
+                arithmetic(_missions.video_file_task, _video_list)
             )
         # --stack
         elif _stack_list := _lines.stack:
             _main_loop.run_until_complete(
-                arithmetic(_missions.video_data_task, _stack_list, _deploy)
+                arithmetic(_missions.video_data_task, _stack_list)
             )
         # --train
         elif _train_list := _lines.train:
             _main_loop.run_until_complete(
-                arithmetic(_missions.train_model, _train_list, _deploy)
+                arithmetic(_missions.train_model, _train_list)
             )
         # --build
         elif _build_list := _lines.build:
             _main_loop.run_until_complete(
-                arithmetic(_missions.build_model, _build_list, _deploy)
+                arithmetic(_missions.build_model, _build_list)
             )
         else:
             from engine.manage import ScreenMonitor
