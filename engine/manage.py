@@ -98,12 +98,12 @@ class SourceMonitor(object):
         if (avg_cpu_usage <= self.cpu_usage_threshold and avg_mem_usage <= self.mem_usage_threshold
                 and avg_mem_spare >= self.mem_spare_threshold):
             self.history.clear()
-            table.title = f"[bold #54FF9F]〇 {const.DESC} Performance Success 〇"
+            table.title = f"[bold #54FF9F]**<* {const.DESC} Performance Success *>**"
             return table, "stable"
 
         if not first_examine:
             self.history.clear()
-        table.title = f"[bold #FFEC8B]〇 {const.DESC} Performance Warning 〇"
+        table.title = f"[bold #FFEC8B]**<* {const.DESC} Performance Warning *>**"
         return table, "unstable"
 
 
