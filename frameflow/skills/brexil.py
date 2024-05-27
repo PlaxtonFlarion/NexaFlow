@@ -334,7 +334,4 @@ class Script(object):
 
 
 if __name__ == '__main__':
-    f = r"/Users/acekeppel/PycharmProjects/NexaFlow/data/deploy.json"
-    deploy = Deploy(f)
-    deploy.view_deploy()
     pass
