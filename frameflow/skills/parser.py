@@ -9,9 +9,13 @@ class Parser(object):
 
     @staticmethod
     def parse_shape(dim_str):
+
+        def limited(loc):
+            return min(9999, max(0, loc[0])), min(9999, max(0, loc[1]))
+
         if type(dim_str) is list and len(dim_str) >= 2:
             if all(type(i) is int for i in dim_str):
-                return tuple(dim_str[:2])
+                return limited(dim_str[:2])
         elif type(dim_str) is str:
             match_size_list = re.findall(r"-?\d*\.?\d+", dim_str)
             if len(match_size_list) >= 2:
@@ -22,16 +26,30 @@ class Parser(object):
                     except ValueError:
                         converted_num = float(num)
                     converted.append(converted_num)
-                return tuple(converted[:2])
+                return limited(converted[:2])
         return None
 
     @staticmethod
-    def parse_scale(dim_str):
-        try:
-            value = float(dim_str) if dim_str else None
-        except (ValueError, TypeError):
-            return None
-        return round(max(0.1, min(1.0, value)), 1) if value else None
+    def parse_stage(dim_str):
+
+        def limited(loc):
+            return min(999, max(-999, loc[0])), min(999, max(-999, loc[1]))
+
+        if type(dim_str) is list and len(dim_str) >= 2:
+            if all(type(i) is int for i in dim_str):
+                return limited(dim_str[:2])
+        elif type(dim_str) is str:
+            stage_parts = []
+            parts = re.split(r"[.,;:\s]+", dim_str)
+            match_parts = [part for part in parts if re.match(r"-?\d+(\.\d+)?", part)]
+            for number in match_parts:
+                try:
+                    stage_parts.append(int(number))
+                except ValueError:
+                    stage_parts = []
+                    break
+            return limited(stage_parts[:2]) if len(stage_parts) >= 2 else None
+        return None
 
     @staticmethod
     def parse_times(dim_str):
@@ -82,24 +100,6 @@ class Parser(object):
         return None
 
     @staticmethod
-    def parse_stage(dim_str):
-        if type(dim_str) is list and len(dim_str) >= 2:
-            if all(type(i) is int for i in dim_str):
-                return tuple(dim_str[:2])
-        elif type(dim_str) is str:
-            stage_parts = []
-            parts = re.split(r"[.,;:\s]+", dim_str)
-            match_parts = [part for part in parts if re.match(r"-?\d+(\.\d+)?", part)]
-            for number in match_parts:
-                try:
-                    stage_parts.append(int(number))
-                except ValueError:
-                    stage_parts = []
-                    break
-            return tuple(stage_parts[:2]) if len(stage_parts) >= 2 else None
-        return None
-
-    @staticmethod
     def parse_hooks(dim_str):
         effective_hook_list = []
         for hook in dim_str:
@@ -121,36 +121,13 @@ class Parser(object):
         return effective_hook_list
 
     @staticmethod
-    def parse_frate(dim_str):
+    def parse_waves(dim_str, min_val: int | float, max_val: int | float, decimal_places: int):
         try:
-            value = int(dim_str) if dim_str else None
+            value = float(dim_str)
         except (ValueError, TypeError):
             return None
-        return round(max(1, min(60, int(value))), 1) if value else None
-
-    @staticmethod
-    def parse_thres(dim_str):
-        try:
-            value = float(dim_str) if dim_str else None
-        except (ValueError, TypeError):
-            return None
-        return round(max(0.1, min(1.0, value)), 2) if value else None
-
-    @staticmethod
-    def parse_other(dim_str):
-        try:
-            value = int(dim_str) if dim_str else None
-        except (ValueError, TypeError):
-            return None
-        return int(round(max(1, value), 0)) if value else None
-
-    @staticmethod
-    def parse_waves(dim_str):
-        try:
-            value = float(dim_str) if dim_str else None
-        except (ValueError, TypeError):
-            return None
-        return round(max(0.0, value), 1) if value else None
+        limited_value = round(max(min_val, min(max_val, value)), decimal_places)
+        return int(limited_value) if decimal_places == 0 else limited_value
 
     @staticmethod
     def parse_cmd() -> argparse.Namespace:

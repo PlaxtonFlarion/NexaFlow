@@ -45,7 +45,7 @@ BEGIN = (0, 1)
 FINAL = (-1, -1)
 THRES = 0.97
 SHIFT = 3
-BLOCK = 6
+BLOCK = 3
 CROPS = []
 OMITS = []
 

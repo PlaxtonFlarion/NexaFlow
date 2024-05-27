@@ -390,10 +390,7 @@ class Missions(object):
 
         filters = [f"fps={deploy.frate}"]
         if self.speed:
-            if deploy.color:
-                filters += [f"eq=brightness=0.06:contrast=1.5:saturation=0.9"]
-            else:
-                filters += [f"format=gray"]
+            filters += [] if deploy.color else [f"format=gray"]
 
         filters = filters + [f"gblur=sigma={gauss}"] if (gauss := deploy.gauss) else filters
         filters = filters + [f"unsharp=luma_amount={grind}"] if (grind := deploy.grind) else filters

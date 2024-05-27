@@ -187,35 +187,40 @@ class Manage(object):
 
     async def operate_device(self) -> list["Device"]:
         while True:
-            if len(device_dict := await self.current_device()) == 0:
-                Show.simulation_progress(f"Wait for device to connect ...", 1, 0.05)
+            if len(current_device_dict := await self.current_device()) == 0:
+                Show.simulation_progress(f"Wait for device to connect ...")
                 continue
 
-            self.device_dict = device_dict
-            return list(device_dict.values())
+            self.device_dict = current_device_dict
+            return list(self.device_dict.values())
 
     async def another_device(self) -> list["Device"]:
         while True:
-            if len(device_dict := await self.current_device()) == 0:
-                Show.simulation_progress(f"Wait for device to connect ...", 1, 0.05)
+            if len(current_device_dict := await self.current_device()) == 0:
+                Show.simulation_progress(f"Wait for device to connect ...")
                 continue
 
-            self.device_dict = device_dict
+            self.device_dict = current_device_dict
 
-            if len(device_dict) == 1:
-                return list(device_dict.values())
+            if len(self.device_dict) == 1:
+                return list(self.device_dict.values())
 
-            for index, device in enumerate(device_dict.values()):
+            for index, device in enumerate(self.device_dict.values()):
                 Show.notes(f"[bold][bold #FFFACD]Connect:[/] [{index + 1:02}] {device}[/]")
 
+            if (action := Prompt.ask(
+                    "[bold #FFEC8B]请输入序列号选择一台设备[/]", console=Show.console, default="00")) == "00":
+                return list(self.device_dict.values())
+
             try:
-                if (action := Prompt.ask(
-                        "[bold #FFEC8B]请输入序列号选择一台设备[/]", console=Show.console, default="00")) == "00":
-                    return list(device_dict.values())
-                return [device_dict[action]]
+                choose_device = self.device_dict[action]
             except KeyError as e:
                 Show.notes(f"{const.ERR}序列号不存在 -> {e}[/]\n")
                 await asyncio.sleep(1)
+                continue
+
+            self.device_dict = {action: choose_device}
+            return list(self.device_dict.values())
 
     async def display_device(self) -> None:
         Show.notes(f"<Link> <{'单设备模式' if len(self.device_dict) == 1 else '多设备模式'}>")

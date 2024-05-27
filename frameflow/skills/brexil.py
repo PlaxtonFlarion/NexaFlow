@@ -1,10 +1,12 @@
 import os
 import json
 import typing
+import inspect
 from loguru import logger
 from rich.table import Table
 from frameflow.skills.parser import Parser
 from frameflow.skills.show import Show
+from frameflow.argument import Args
 from nexaflow import const
 
 
@@ -54,7 +56,7 @@ class Deploy(object):
     def __setstate__(self, state):
         self.deploys = state
 
-# Heralds Getter #######################################################################################################
+# Getter ###############################################################################################################
 
     @property
     def shape(self):
@@ -88,7 +90,7 @@ class Deploy(object):
     def frate(self):
         return self.deploys["FST"]["frate"]
 
-# Analyze Getter #######################################################################################################
+# Getter ###############################################################################################################
 
     @property
     def boost(self):
@@ -126,15 +128,17 @@ class Deploy(object):
     def omits(self):
         return self.deploys["ALS"]["omits"]
 
-# Heralds Setter #######################################################################################################
+# Setter ###############################################################################################################
 
     @shape.setter
     def shape(self, value):
-        self.deploys["FST"]["shape"] = Parser.parse_shape(value)
+        if effective := Parser.parse_shape(value):
+            self.deploys["FST"]["shape"] = effective
 
     @scale.setter
     def scale(self, value):
-        self.deploys["FST"]["scale"] = Parser.parse_scale(value)
+        if effective := Parser.parse_waves(value, min_val=0.0, max_val=1.0, decimal_places=1):
+            self.deploys["FST"]["scale"] = effective
 
     @start.setter
     def start(self, value):
@@ -150,20 +154,20 @@ class Deploy(object):
 
     @gauss.setter
     def gauss(self, value):
-        if effective := Parser.parse_waves(value):
+        if effective := Parser.parse_waves(value, min_val=0.0, max_val=10.0, decimal_places=1):
             self.deploys["FST"]["gauss"] = effective
 
     @grind.setter
     def grind(self, value):
-        if effective := Parser.parse_waves(value):
+        if effective := Parser.parse_waves(value, min_val=-2.0, max_val=5.0, decimal_places=1):
             self.deploys["FST"]["grind"] = effective
 
     @frate.setter
     def frate(self, value):
-        if effective := Parser.parse_frate(value):
+        if effective := Parser.parse_waves(value, min_val=1, max_val=60, decimal_places=0):
             self.deploys["FST"]["frate"] = effective
 
-# Analyze Setter #######################################################################################################
+# Setter ###############################################################################################################
 
     @boost.setter
     def boost(self, value):
@@ -185,17 +189,19 @@ class Deploy(object):
 
     @thres.setter
     def thres(self, value):
-        if effective := Parser.parse_thres(value):
-            self.deploys["ALS"]["thres"] = effective
+        if (effective := Parser.parse_waves(value, min_val=0.0, max_val=1.0, decimal_places=2)) is None:
+            effective = const.THRES
+        self.deploys["ALS"]["thres"] = effective
 
     @shift.setter
     def shift(self, value):
-        if effective := Parser.parse_other(value):
-            self.deploys["ALS"]["shift"] = effective
+        if (effective := Parser.parse_waves(value, min_val=0, max_val=10, decimal_places=0)) is None:
+            effective = const.SHIFT
+        self.deploys["ALS"]["shift"] = effective
 
     @block.setter
     def block(self, value):
-        if effective := Parser.parse_other(value):
+        if effective := Parser.parse_waves(value, min_val=1, max_val=10, decimal_places=0):
             self.deploys["ALS"]["block"] = effective
 
     @crops.setter
@@ -225,9 +231,7 @@ class Deploy(object):
             logger.debug(f"An unknown error occurred {e}")
 
     def view_deploy(self) -> None:
-        cmd, arg, val = "#D75F87", "#87AFD7", "#7FFFD4"
-        on, off, auto = "#CAFF70", "#FFB6C1", "#A4D3EE"
-        tip = "#FFD700"
+        deploys_group = {**Args.GROUP_FIRST, **Args.GROUP_EXTRA}
 
         for key, value in self.deploys.items():
             table = Table(
@@ -240,117 +244,12 @@ class Deploy(object):
             table.add_column("参数", no_wrap=True, width=12)
             table.add_column("范围", no_wrap=True, width=8)
             table.add_column("效果", no_wrap=True, min_width=30)
-
-            if key == "FST":
-                information = [
-                    [
-                        f"[bold {cmd}]尺寸定制",
-                        f"[bold {arg}]{list(self.shape) if self.shape else 'Auto'}",
-                        f"[bold][[bold {val}]? , ?[/] ]",
-                        f"[bold]宽高 [bold {tip}]{self.shape[0]} x {self.shape[1]}" if self.shape else f"[bold {auto}]自动",
-                    ],
-                    [
-                        f"[bold {cmd}]变幻缩放",
-                        f"[bold {arg}]{self.scale if self.scale else 'Auto'}",
-                        f"[bold][[bold {val}]0 , 1[/] ]",
-                        f"[bold]压缩 [bold {tip}]{self.scale}[/]" if self.scale else f"[bold {auto}]自动[/]",
-                    ],
-                    [
-                        f"[bold {cmd}]时刻启程",
-                        f"[bold {arg}]{Parser.parse_mills(self.start) if self.start else 'Auto'}",
-                        f"[bold][[bold {val}]0 , ?[/] ]",
-                        f"[bold]开始 [bold {tip}]{self.start}[/]" if self.start else f"[bold {auto}]自动",
-                    ],
-                    [
-                        f"[bold {cmd}]时光封印",
-                        f"[bold {arg}]{Parser.parse_mills(self.close) if self.close else 'Auto'}",
-                        f"[bold][[bold {val}]0 , ?[/] ]",
-                        f"[bold]结束 [bold {tip}]{self.close}[/]" if self.close else f"[bold {auto}]自动",
-                    ],
-                    [
-                        f"[bold {cmd}]持续历程",
-                        f"[bold {arg}]{Parser.parse_mills(self.limit) if self.limit else 'Auto'}",
-                        f"[bold][[bold {val}]0 , ?[/] ]",
-                        f"[bold]持续 [bold {tip}]{self.limit}[/]" if self.limit else f"[bold {auto}]自动",
-                    ],
-                    [
-                        f"[bold {cmd}]朦胧幻界",
-                        f"[bold {arg}]{self.gauss if self.gauss else 'Auto'}",
-                        f"[bold][[bold {val}]0 , ?[/] ]",
-                        f"[bold]模糊 [bold {tip}]{self.gauss}[/]" if self.gauss else f"[bold {auto}]自动",
-                    ],
-                    [
-                        f"[bold {cmd}]边缘觉醒",
-                        f"[bold {arg}]{self.grind if self.grind else 'Auto'}",
-                        f"[bold][[bold {val}]0 , ?[/] ]",
-                        f"[bold]锐化 [bold {tip}]{self.grind}[/]" if self.grind else f"[bold {auto}]自动",
-                    ],
-                    [
-                        f"[bold {cmd}]频率探测",
-                        f"[bold {arg}]{self.frate}",
-                        f"[bold][[bold {val}]1 , 60[/]]",
-                        f"[bold]帧率 [bold {tip}]{self.frate}[/]",
-                    ]
-                ]
-
-            else:
-                information = [
-                    [
-                        f"[bold {cmd}]加速跳跃",
-                        f"[bold {arg}]{self.boost}",
-                        f"[bold][[bold {val}]T | F[/] ]",
-                        f"[bold {on}]开启" if self.boost else f"[bold {off}]关闭",
-                    ],
-                    [
-                        f"[bold {cmd}]彩绘世界",
-                        f"[bold {arg}]{self.color}",
-                        f"[bold][[bold {val}]T | F[/] ]",
-                        f"[bold {on}]开启" if self.color else f"[bold {off}]关闭",
-                    ],
-
-                    [
-                        f"[bold {cmd}]序章开启",
-                        f"[bold {arg}]{list(self.begin)}",
-                        f"[bold][[bold {val}]? , ?[/] ]",
-                        f"[bold]非稳定阶段 [bold {tip}]{list(self.begin)}[/]",
-                    ],
-                    [
-                        f"[bold {cmd}]终章落幕",
-                        f"[bold {arg}]{list(self.final)}",
-                        f"[bold][[bold {val}]? , ?[/] ]",
-                        f"[bold]非稳定阶段 [bold {tip}]{list(self.final)}[/]",
-                    ],
-                    [
-                        f"[bold {cmd}]稳定阈值",
-                        f"[bold {arg}]{self.thres}",
-                        f"[bold][[bold {val}]0 , 1[/] ]",
-                        f"[bold]阈值超过 [bold {tip}]{self.thres}[/] 的帧为稳定帧",
-                    ],
-                    [
-                        f"[bold {cmd}]偏移调整",
-                        f"[bold {arg}]{self.shift}",
-                        f"[bold][[bold {val}]0 , ?[/] ]",
-                        f"[bold]合并 [bold {tip}]{self.shift}[/] 个变化不大的稳定区间",
-                    ],
-                    [
-                        f"[bold {cmd}]矩阵分割",
-                        f"[bold {arg}]{self.block}",
-                        f"[bold][[bold {val}]1 , ?[/] ]",
-                        f"[bold]每个图像分成 [bold {tip}]{self.block}[/] 块",
-                    ],
-                    [
-                        f"[bold {cmd}]视界探索",
-                        f"[bold {arg}]{['!' for _ in range(len(self.crops))]}",
-                        f"[bold][[bold {val}]0 , 1[/] ]",
-                        f"[bold]探索 [bold {tip}]{len(self.crops)}[/] 个区域的图像",
-                    ],
-                    [
-                        f"[bold {cmd}]视界忽略",
-                        f"[bold {arg}]{['!' for _ in range(len(self.omits))]}",
-                        f"[bold][[bold {val}]0 , 1[/] ]",
-                        f"[bold]忽略 [bold {tip}]{len(self.omits)}[/] 个区域的图像",
-                    ]
-                ]
+            information = [
+                [f"[bold #D75F87]{v['help']}"] + (func(self, Parser) if len(
+                    inspect.signature(func := v["push"]).parameters
+                ) == 2 else func(self))
+                for k, v in deploys_group.items() if k.lstrip("--") in value
+            ]
 
             for info in information:
                 table.add_row(*info)
@@ -435,4 +334,7 @@ class Script(object):
 
 
 if __name__ == '__main__':
+    f = r"/Users/acekeppel/PycharmProjects/NexaFlow/data/deploy.json"
+    deploy = Deploy(f)
+    deploy.view_deploy()
     pass
