@@ -1,5 +1,7 @@
 # 🚀 Framix - 画帧秀 - 流畅性的革命！
 
+![LOGO](resource/illustration/Logo.png)
+
 ## ✨ 突破边界：项目简介
 🌟 **Framix - 画帧秀**:
   - 不仅是工具，更是革新，它是为追求极致性能的移动应用开发者量身定做的一款艺术品。
@@ -40,11 +42,106 @@
 
 ## ⚙️ 安装指南
   - **Framix** 提供简洁明了的安装包，让您能够轻松开始您的性能测试之旅。
-  1. 下载: 访问我们的 [发布页面](https://github.com/PlaxtonFlarion/NexaFlow/releases) 下载最新版的 **Framix** 安装包。
-  2. 安装: 运行下载的安装包，并按照提示完成安装过程。
-  3. 启动: 安装完成后，通过命令行启动 Framix 开始体验高效的性能测试。
-  4. 体验: 如果您使用的是 Windows 操作系统，为了增加体验感，强烈建议您使用 [Windows Terminal](https://apps.microsoft.com/detail/9N0DX20HK701) 等现代终端。
-  - **Framix**: 准备就绪，在启动前，确保所有系统正常。
+  - **1. 下载**: 访问我们的 [发布页面](https://github.com/PlaxtonFlarion/NexaFlow/releases) 下载最新版的 **Framix** 安装包。
+  - **2. 安装**: 运行下载的安装包，并按照提示完成安装过程，安装完成后设置系统环境变量。
+    - **MacOS**: 设置环境变量
+      - **在 zsh 终端中设置环境变量**
+        - **1.打开 zsh 配置文件**：使用以下命令打开 `.zshrc` 文件：
+          ```sh
+          nano ~/.zshrc
+          ```
+        - **2.添加环境变量**：在 `.zshrc` 文件末尾添加环境变量。
+          ```sh
+          export PATH=/Applications/framix.app/Contents/MacOS:$PATH
+          ```
+        - **3.保存并退出**：
+          - 按 `Ctrl + O` 保存文件。
+          - 按 `Enter` 确认文件名。
+          - 按 `Ctrl + X` 退出编辑器。
+        - **4.应用更改**：使用以下命令使更改生效：
+          ```sh
+          source ~/.zshrc
+          ```
+      - **在 bash 终端中设置环境变量** 
+        - **1.打开 bash 配置文件**：使用以下命令打开 `.bash_profile` 文件（如果使用的是 macOS 10.15 及更早版本）或 `.bashrc` 文件（macOS 10.15 之后默认使用 zsh，但你可以强制使用 bash）：
+          ```sh
+          nano ~/.bash_profile
+          ``` 
+        - **2.添加环境变量**：在 `.bash_profile` 文件末尾添加你的环境变量。例如：
+          ```sh
+          export PATH=/Applications/framix.app/Contents/MacOS:$PATH
+          ``` 
+        - **3.保存并退出**：
+            - 按 `Ctrl + O` 保存文件。
+            - 按 `Enter` 确认文件名。
+            - 按 `Ctrl + X` 退出编辑器。 
+        - **4.应用更改**：使用以下命令使更改生效：
+          ```sh
+          source ~/.bash_profile
+          ```
+      - **其他注意事项**
+        - **区分全局和用户级别环境变量**：上述方法仅对当前用户生效。如果需要对所有用户生效，可以在 `/etc/profile` 或 `/etc/zshenv` 文件中添加环境变量。
+          - **永久生效**：确保环境变量设置在配置文件中，这样每次启动终端时都会自动加载这些变量。
+          - **验证**：通过以下命令验证环境变量是否设置成功：
+            ```sh
+            which framix
+            ```
+    - **Windows**: 设置环境变量
+      - **通过图形用户界面设置环境变量**
+        - **1.打开系统属性**：
+          - 按 `Win + R` 打开运行对话框，输入 `sysdm.cpl` 然后按 `Enter`。
+          - 或者右键单击“此电脑”图标，选择“属性”，然后点击“高级系统设置”。
+        - **2.进入环境变量设置**：
+           - 在“系统属性”窗口中，点击“高级”选项卡。
+           - 点击“环境变量”按钮。
+        - **3.设置用户或系统环境变量**：
+          - 在“环境变量”窗口中，你可以选择设置用户环境变量（仅对当前用户有效）或系统环境变量（对所有用户有效）。
+          - 点击“新建”按钮添加新的环境变量，或者选择现有的环境变量并点击“编辑”按钮进行修改。
+        - **4.添加或修改环境变量**：
+           - 在“新建系统变量”或“编辑系统变量”窗口中，输入变量名和变量值。例如：
+             - 变量名：`PATH`
+             - 变量值：`C:\Your\Custom\Path`
+           - 点击“确定”保存更改。
+        - **5.应用更改**：
+          - 一旦完成，点击“确定”按钮关闭所有窗口。
+      - **通过命令行设置环境变量**
+        - **1.使用 setx 命令**：
+          - 打开命令提示符（`cmd.exe`）或 PowerShell。
+        - **2.设置用户环境变量**：
+           - 使用 `setx` 命令设置用户环境变量。例如：
+             ```cmd
+             setx VARIABLE_NAME "your_value"
+             ```
+           - 或者添加到 `PATH` 环境变量中：
+             ```cmd
+             setx PATH "%PATH%;C:\Your\Custom\Path"
+             ```
+        - **3.设置系统环境变量**：
+           - 以管理员身份打开命令提示符或 PowerShell。
+           - 使用 `setx` 命令设置系统环境变量。例如：
+             ```cmd
+             setx /M VARIABLE_NAME "your_value"
+             ```
+           - 或者添加到 `PATH` 环境变量中：
+             ```cmd
+             setx /M PATH "%PATH%;C:\Your\Custom\Path"
+             ```
+      - **验证环境变量**
+        - 打开新的命令提示符或 PowerShell 窗口，使用以下命令查看环境变量：
+          ```cmd
+          echo %VARIABLE_NAME%
+          ```
+        - 如果设置的是 `PATH` 变量，使用以下命令查看 `PATH`：
+          ```cmd
+          echo %PATH%
+          ```
+          
+  - **3. 启动**: 安装完成后，通过命令行启动 **Framix** 开始体验高效的性能测试。
+    ```
+    framix
+    ```
+  - **4. 体验**: 如果您使用的是 **Windows** 操作系统，为了增加体验感，强烈建议您使用 [Windows Terminal](https://apps.microsoft.com/detail/9N0DX20HK701) 等现代终端。
+  - **5. 就绪**: 在 **Framix** 启动前，确保所有系统正常。
 
 ## 📖 快速上手
   - **Framix** 的使用可能需要一定的命令行知识。如果您不熟悉命令行操作，建议先了解基础的命令行使用方法。
