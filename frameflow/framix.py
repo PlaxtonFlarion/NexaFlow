@@ -651,47 +651,44 @@ class Missions(object):
         function = getattr(self, "combine_view" if self.speed else "combine_main")
         return await function([os.path.dirname(report.total_path)])
 
-    # 时空纽带分析系统
-    async def combine_view(self, merge: list):
-        views, total = await asyncio.gather(
-            Craft.achieve(self.view_share_temp), Craft.achieve(self.view_total_temp),
+    async def combine_crux(self, share_temp: str, total_temp: str, merge: list) -> None:
+        template_list = await asyncio.gather(
+            Craft.achieve(share_temp), Craft.achieve(total_temp),
             return_exceptions=True
         )
 
+        if isinstance(template_list, Exception):
+            logger.debug(tip := f"{template_list}")
+            return Show.show_panel(self.level, tip, Wind.KEEPER)
+
+        share_form, total_form = template_list
+
         logger.debug(tip := f"正在生成汇总报告 ...")
         Show.show_panel(self.level, tip, Wind.REPORTER)
-        state_list = await asyncio.gather(
-            *(Report.ask_create_total_report(m, self.group, views, total) for m in merge)
+        state_list: tuple[str | BaseException] = await asyncio.gather(
+            *(Report.ask_create_total_report(m, self.group, share_form, total_form) for m in merge),
+            return_exceptions=True
         )
 
         for state in state_list:
             if isinstance(state, Exception):
-                logger.debug(tip := f"{state}")
-                Show.show_panel(self.level, tip, Wind.KEEPER)
+                tip_state, tip_style = f"{state}", Wind.KEEPER
             else:
-                logger.debug(tip := f"成功生成汇总报告 {os.path.basename(state)}")
-                Show.show_panel(self.level, tip, Wind.REPORTER)
+                tip_state, tip_style = f"成功生成汇总报告 {os.path.basename(state)}", Wind.REPORTER
+            logger.debug(tip_state)
+            Show.show_panel(self.level, tip_state, tip_style)
+
+    # 时空纽带分析系统
+    async def combine_view(self, merge: list) -> None:
+        await self.combine_crux(
+            self.view_share_temp, self.view_total_temp, merge
+        )
 
     # 时序融合分析系统
-    async def combine_main(self, merge: list):
-        major, total = await asyncio.gather(
-            Craft.achieve(self.main_share_temp), Craft.achieve(self.main_total_temp),
-            return_exceptions=True
+    async def combine_main(self, merge: list) -> None:
+        await self.combine_crux(
+            self.main_share_temp, self.main_total_temp, merge
         )
-
-        logger.debug(tip := f"正在生成汇总报告 ...")
-        Show.show_panel(self.level, tip, Wind.REPORTER)
-        state_list = await asyncio.gather(
-            *(Report.ask_create_total_report(m, self.group, major, total) for m in merge)
-        )
-
-        for state in state_list:
-            if isinstance(state, Exception):
-                logger.debug(tip := f"{state}")
-                Show.show_panel(self.level, tip, Wind.KEEPER)
-            else:
-                logger.debug(tip := f"成功生成汇总报告 {os.path.basename(state)}")
-                Show.show_panel(self.level, tip, Wind.REPORTER)
 
     # 视频解析探索
     async def video_file_task(self, video_file_list: list, deploy: "Deploy"):

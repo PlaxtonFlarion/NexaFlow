@@ -2,7 +2,7 @@ import os
 
 ITEM = r"NexaFlow"
 NAME = r"framix"
-VERSION = r"0.1.0-beta"
+VERSION = r"1.0.0"
 URL = r"https://github.com/PlaxtonFlarion/NexaFlow"
 AUTHOR = r"AceKeppel"
 EMAIL = r"AceKeppel@outlook.com"
@@ -13,7 +13,7 @@ LICENSE = r"MIT"
 DECLARE = f"""**{DESC} - {ALIAS}**
 (C) 2024 {NAME}. All rights reserved.
 Version {VERSION} - Licensed under the [bold #FF00FF]{LICENSE}[/] License
-Last updated on May 20, 2024
+Last updated on May 28, 2024
 """
 
 CHARSET = r"utf-8"
