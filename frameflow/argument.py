@@ -105,6 +105,11 @@ class Args(object):
             "args": {"action": "store_true"},
             "view": ["布尔", "一次"],
             "help": "集群视图"
+        },
+        "--total": {
+            "args": {"nargs": "?", "const": "", "type": str},
+            "view": ["路径", "一次"],
+            "help": "鉴证之书"
         }
     }
 

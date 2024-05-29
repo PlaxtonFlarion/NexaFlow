@@ -227,6 +227,7 @@ class Deploy(object):
                     logger.debug(f"Load <{k}> = {v} -> {getattr(self, k)}")
         except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
             logger.debug(f"Use DP Because {e}")
+            self.dump_deploy(deploy_file)
         except Exception as e:
             logger.debug(f"An unknown error occurred {e}")
 
@@ -297,6 +298,7 @@ class Option(object):
                 logger.debug(f"Load <{k}> = {v} -> {getattr(self, k)}")
         except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
             logger.debug(f"Use DP Because {e}")
+            self.dump_option(option_file)
         except Exception as e:
             logger.debug(f"An unknown error occurred {e}")
 

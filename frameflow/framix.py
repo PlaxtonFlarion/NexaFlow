@@ -24,35 +24,48 @@ _env_symbol = os.path.pathsep
 
 # 根据应用名称确定工作目录和配置目录
 if _software == f"{const.NAME}.exe":
-    _workable = os.path.dirname(os.path.abspath(sys.argv[0]))
-    _feasible = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
-elif _software == f"{const.NAME}.bin":
-    _workable = os.path.dirname(sys.executable)
-    _feasible = os.path.dirname(os.path.dirname(sys.executable))
+    _fx_work = os.path.dirname(os.path.abspath(sys.argv[0]))
+    _fx_feasible = os.path.dirname(_fx_work)
 elif _software == f"{const.NAME}":
-    _workable = os.path.dirname(sys.executable)
-    _feasible = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(sys.executable))))
+    _fx_work = os.path.dirname(sys.executable)
+    _fx_feasible = os.path.dirname(_fx_work)
 elif _software == f"{const.NAME}.py":
-    _workable = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    _feasible = os.path.dirname(os.path.abspath(__file__))
+    _fx_work = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    _fx_feasible = os.path.dirname(os.path.abspath(__file__))
 else:
     # 如果应用名称不匹配，显示错误信息并退出程序
     Show.show_panel(const.SHOW_LEVEL, f"{const.DESC} compatible with {const.NAME}", Wind.KEEPER)
     Show.simulation_progress(f"{const.DESC} Exiting ...")
     sys.exit(Show.fail())
 
+# 设置模板文件路径
+_atom_total_temp = os.path.join(_fx_work, "specially", "templates", "template_atom_total.html")
+_main_share_temp = os.path.join(_fx_work, "specially", "templates", "template_main_share.html")
+_main_total_temp = os.path.join(_fx_work, "specially", "templates", "template_main_total.html")
+_view_share_temp = os.path.join(_fx_work, "specially", "templates", "template_view_share.html")
+_view_total_temp = os.path.join(_fx_work, "specially", "templates", "template_view_total.html")
+
+# 检查每个模板文件是否存在，如果缺失则显示错误信息并退出程序
+for _tmp in (_temps := [_atom_total_temp, _main_share_temp, _main_total_temp, _view_share_temp, _view_total_temp]):
+    if os.path.isfile(_tmp) and os.path.basename(_tmp).endswith(".html"):
+        continue
+    _tmp_name = os.path.basename(_tmp)
+    Show.show_panel(const.SHOW_LEVEL, f"{const.DESC} missing files {_tmp_name}", Wind.KEEPER)
+    Show.simulation_progress(f"{const.DESC} Exiting ...")
+    sys.exit(Show.fail())
+
 # 设置工具源路径
-_turbo = os.path.join(_workable, "archivix", "tools")
+_turbo = os.path.join(_fx_work, "specially", "supports")
 
 # 根据平台设置 adb 和 ffmpeg 工具路径
 if _platform == "win32":
-    _adb = os.path.join(_turbo, "win", "platform-tools", "adb.exe")
-    _fmp = os.path.join(_turbo, "win", "ffmpeg", "bin", "ffmpeg.exe")
-    _fpb = os.path.join(_turbo, "win", "ffmpeg", "bin", "ffprobe.exe")
+    _adb = os.path.join(_turbo, "Windows", "platform-tools", "adb.exe")
+    _fmp = os.path.join(_turbo, "Windows", "ffmpeg", "bin", "ffmpeg.exe")
+    _fpb = os.path.join(_turbo, "Windows", "ffmpeg", "bin", "ffprobe.exe")
 elif _platform == "darwin":
-    _adb = os.path.join(_turbo, "mac", "platform-tools", "adb")
-    _fmp = os.path.join(_turbo, "mac", "ffmpeg", "bin", "ffmpeg")
-    _fpb = os.path.join(_turbo, "mac", "ffmpeg", "bin", "ffprobe")
+    _adb = os.path.join(_turbo, "MacOS", "platform-tools", "adb")
+    _fmp = os.path.join(_turbo, "MacOS", "ffmpeg", "bin", "ffmpeg")
+    _fpb = os.path.join(_turbo, "MacOS", "ffmpeg", "bin", "ffprobe")
 else:
     # 如果平台不兼容，显示错误信息并退出程序
     Show.show_panel(const.SHOW_LEVEL, f"{const.DESC} compatible with [Win | Mac]", Wind.KEEPER)
@@ -77,28 +90,20 @@ for _tls in _tools:
     Show.simulation_progress(f"{const.DESC} Exiting ...")
     sys.exit(Show.fail())
 
-# 设置模板文件路径
-_atom_total_temp = os.path.join(_workable, "archivix", "pages", "template_atom_total.html")
-_main_share_temp = os.path.join(_workable, "archivix", "pages", "template_main_share.html")
-_main_total_temp = os.path.join(_workable, "archivix", "pages", "template_main_total.html")
-_view_share_temp = os.path.join(_workable, "archivix", "pages", "template_view_share.html")
-_view_total_temp = os.path.join(_workable, "archivix", "pages", "template_view_total.html")
+# 设置初始路径
+if not os.path.exists(
+        _initial_source := os.path.join(_fx_feasible, _fx_source := f"{const.DESC.upper()}")
+):
+    os.makedirs(_initial_source, exist_ok=True)
 
-# 检查每个模板文件是否存在，如果缺失则显示错误信息并退出程序
-for _tmp in (_temps := [_atom_total_temp, _main_share_temp, _main_total_temp, _view_share_temp, _view_total_temp]):
-    if os.path.isfile(_tmp) and os.path.basename(_tmp).endswith(".html"):
-        continue
-    _tmp_name = os.path.basename(_tmp)
-    Show.show_panel(const.SHOW_LEVEL, f"{const.DESC} missing files {_tmp_name}", Wind.KEEPER)
-    Show.simulation_progress(f"{const.DESC} Exiting ...")
-    sys.exit(Show.fail())
+# 设置报告路径
+_total_place = os.path.join(_initial_source, f"{const.DESC}_Report")
 
-# 设置初始源路径
-_initial_source = os.path.join(_feasible, f"{const.NAME}.source")
-
-# 设置报告、模型存储路径
-_total_place = os.path.join(_feasible, f"{const.NAME}.report")
-_model_place = os.path.join(_workable, "archivix", "molds", const.MODEL)
+# 设置模型路径
+if not os.path.exists(
+        _model_place := os.path.join(_initial_source, f"{const.DESC}_Model", const.MODEL)
+):
+    os.makedirs(os.path.dirname(_model_place), exist_ok=True)
 
 try:
     import re
@@ -2499,15 +2504,23 @@ if __name__ == '__main__':
     logger.debug(f"* 模版 * {'=' * 30}\n")
 
     # 设置初始配置文件路径
-    _initial_option = os.path.join(_initial_source, "option.json")
-    _initial_deploy = os.path.join(_initial_source, "deploy.json")
-    _initial_script = os.path.join(_initial_source, "script.json")
+    _initial_option = os.path.join(_initial_source, f"{const.DESC}_Mix", "option.json")
+    _initial_deploy = os.path.join(_initial_source, f"{const.DESC}_Mix", "deploy.json")
+    _initial_script = os.path.join(_initial_source, f"{const.DESC}_Mix", "script.json")
     logger.debug(f"配置文件路径: {_initial_option}")
     logger.debug(f"部署文件路径: {_initial_deploy}")
     logger.debug(f"脚本文件路径: {_initial_script}")
 
     # 加载初始配置
     _option = Option(_initial_option)
+    for _attr_key, _attribute_value in _option.options.items():
+        logger.debug(f"{_option.__class__.__name__} Current Key {_attr_key}")
+        # 如果命令行中包含配置参数，配置文件的参数设置为配置参数
+        if any(_line.startswith(f"--{(_attr_adapt := _attr_key.split('_')[0])}") for _line in _wires):
+            setattr(_option, _attr_key, getattr(_lines, _attr_adapt))
+            logger.debug(f"  Set <{_attr_key}> {_attribute_value} -> {getattr(_option, _attr_key)}")
+
+    # 如果配置参数被设置，则使用配置参数，否则使用默认配置参数
     _total_place = _option.total_place or _total_place
     _model_place = _option.model_place or _model_place
     logger.debug(f"报告文件路径: {_total_place}")
@@ -2519,9 +2532,9 @@ if __name__ == '__main__':
     # 从命令行参数覆盖部署配置
     _deploy = Deploy(_initial_deploy)
     for _attr_key, _attribute_value in _deploy.deploys.items():
-        logger.debug(f"Current Key {_attr_key}")
+        logger.debug(f"{_deploy.__class__.__name__} Current Key {_attr_key}")
         for _attr, _attribute in _attribute_value.items():
-            # 如果命令行中包含部署参数，无论是否存在部署文件，都将覆盖部署文件配置，以命令行参数为第一优先级
+            # 如果命令行中包含部署参数，无论是否存在部署文件，都将覆盖部署文件，以命令行参数为第一优先级
             if any(_line.startswith(f"--{_attr}") for _line in _wires):
                 setattr(_deploy, _attr, getattr(_lines, _attr))
                 logger.debug(f"  {_attr_key} Set <{_attr}> {_attribute} -> {getattr(_deploy, _attr)}")
