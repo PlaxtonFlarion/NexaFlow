@@ -92,18 +92,21 @@ for _tls in _tools:
 
 # 设置初始路径
 if not os.path.exists(
-        _initial_source := os.path.join(_fx_feasible, _fx_source := f"{const.DESC.upper()}")
+    _initial_source := os.path.join(_fx_feasible, _fx_source := f"{const.DESC.upper()}")
 ):
     os.makedirs(_initial_source, exist_ok=True)
 
 # 设置报告路径
-_total_place = os.path.join(_initial_source, f"{const.DESC}_Report")
+if not os.path.exists(
+    _src_total_place := os.path.join(_initial_source, f"{const.DESC}_Report")
+):
+    os.makedirs(_src_total_place, exist_ok=True)
 
 # 设置模型路径
 if not os.path.exists(
-        _model_place := os.path.join(_initial_source, f"{const.DESC}_Model", const.MODEL)
+    _src_model_place := os.path.join(_initial_source, f"{const.DESC}_Model", const.MODEL)
 ):
-    os.makedirs(os.path.dirname(_model_place), exist_ok=True)
+    os.makedirs(os.path.dirname(_src_model_place), exist_ok=True)
 
 try:
     import re
@@ -162,20 +165,20 @@ class Missions(object):
         self.initial_option = kwargs["initial_option"]
         self.initial_deploy = kwargs["initial_deploy"]
         self.initial_script = kwargs["initial_script"]
-        self.total_place = kwargs["total_place"]
-        self.model_place = kwargs["model_place"]
         self.adb = kwargs["adb"]
         self.fmp = kwargs["fmp"]
         self.fpb = kwargs["fpb"]
 
     # """Child Process"""
-    def amazing(self, vision: str, *args, **kwargs):
+    def amazing(self, option: "Option", deploy: "Deploy", vision: str, *args):
         """
         异步分析视频的子进程方法。
 
         该方法在异步进程执行器中执行，用于加载 Keras 模型并分析视频。
 
         参数:
+            option (Option): 选项对象，包含模型路径和其他运行时选项配置。
+            deploy (Deploy): 配置信息对象，包含视频处理的各项配置。
             vision (str): 视频文件路径。
             *args: 传递给分析器的其他参数。
             **kwargs: 传递给 Alynex 类的其他关键字参数。
@@ -194,11 +197,18 @@ class Missions(object):
                         looper.run_in_executor(exe, func, task, *args) for task in task_list
                     ]
                     futures = asyncio.gather(*tasks)
+
+        代码逻辑:
+            1. 获取当前事件循环。
+            2. 根据 `option` 和 `self.keras` 决定模型路径，并创建 Alynex 实例。
+            3. 尝试加载 Keras 模型，如果失败则捕获并处理异常。
+            4. 运行 Alynex 的 `ask_analyzer` 方法，传递视频路径和其他参数。
+            5. 等待异步操作完成，并返回结果。
         """
         loop = asyncio.get_event_loop()
 
-        model_place = self.model_place if self.keras else None
-        alynex = Alynex(self.level, model_place, **kwargs)
+        model_place = option.model_place if self.keras else None
+        alynex = Alynex(self.level, model_place, **deploy.deploys["ALS"])
         try:
             loop.run_until_complete(alynex.ask_model_load())
         except FramixAnalyzerError:
@@ -209,13 +219,14 @@ class Missions(object):
         return loop_complete
 
     # """Child Process"""
-    def bizarre(self, vision: str, *args, **kwargs):
+    def bizarre(self, deploy: "Deploy", vision: str, *args):
         """
         异步执行视频分析的子进程方法。
 
-        该方法在异步进程执行器中执行，用于分析视频。
+        该方法在异步进程执行器中执行，用于分析视频，并利用 Alynex 工具进行处理。
 
         参数:
+            deploy (Deploy): 配置信息对象，包含视频处理的各项配置。
             vision (str): 视频文件路径。
             *args: 传递给分析器的其他参数。
             **kwargs: 传递给 Alynex 类的其他关键字参数。
@@ -234,11 +245,17 @@ class Missions(object):
                         looper.run_in_executor(exe, func, task, *args) for task in task_list
                     ]
                     futures = asyncio.gather(*tasks)
+
+        代码逻辑:
+            1. 获取当前事件循环。
+            2. 创建 Alynex 实例，使用提供的配置进行初始化。
+            3. 运行 Alynex 的 `ask_exercise` 方法，传递视频路径和其他参数。
+            4. 等待异步操作完成，并返回结果。
         """
         loop = asyncio.get_event_loop()
 
         model_place = None
-        alynex = Alynex(self.level, model_place, **kwargs)
+        alynex = Alynex(self.level, model_place, **deploy.deploys["ALS"])
 
         loop_complete = loop.run_until_complete(
             alynex.ask_exercise(vision, *args)
@@ -313,11 +330,36 @@ class Missions(object):
 
         注意:
             - 该函数为异步函数，需要在异步环境中运行。
-            - 函数内部使用了多个异步gather来并行处理视频操作，提高效率。
-            - 确保提供的每个视频都符合`Deploy`中定义的处理标准。
+            - 函数内部使用了多个异步 gather 来并行处理视频操作，提高效率。
+            - 确保提供的每个视频都符合 `Deploy` 中定义的处理标准。
             - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
-        """
 
+        处理流程:
+            1. 初始化事件循环并解析视频处理的起始、结束和限制时间。
+            2. 异步提取视频内容，获取视频尺寸、实际帧率、平均帧率、视频时长等信息。
+            3. 如果需要，将多个视频的长度调整为一致，并记录相关日志信息。
+            4. 删除临时文件，确保资源被妥善释放。
+
+        功能细节:
+            - 提取视频内容：调用 `clipix.vision_content` 方法解析视频信息，包括帧率、视频时长等。
+            - 平衡视频长度：如果需要，将多个视频的长度调整为一致。
+            - 日志记录：记录视频处理的详细信息，并在控制台输出。
+            - 删除临时文件：确保在处理完成后删除不再需要的临时文件。
+
+        代码逻辑:
+            1. 获取事件循环，并解析视频处理的时间参数。
+            2. 使用 `clipix.vision_content` 方法异步提取视频内容。
+            3. 记录视频处理的详细信息，包括视频尺寸、帧率、时长等。
+            4. 如果需要，调用 `clipix.vision_balance` 方法平衡视频长度。
+            5. 删除临时文件，释放资源。
+            6. 返回处理后的原始视频列表和指示信息列表。
+
+        示例:
+            ```python
+            originals, indicates = await instance.als_track(deploy, clipix, task_list)
+            print(originals, indicates)
+            ```
+        """
         looper = asyncio.get_event_loop()
 
         # Video information
@@ -386,11 +428,26 @@ class Missions(object):
             2. 异步执行视频过滤操作，对每个原始视频应用过滤器。
             3. 记录和显示过滤操作的日志信息。
 
-        示例:
-            video_filter_list = await instance.als_waves(deploy, clipix, task_list, originals)
-
         注意:
-            该方法是异步的，需要在异步环境中调用。
+            - 该方法是异步的，需要在异步环境中调用。
+            - 确保提供的每个视频都符合 Deploy 中定义的处理标准。
+            - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
+
+        功能细节:
+            - 初始化过滤器：根据 deploy 配置中的帧率、颜色格式、高斯模糊和锐化参数设置过滤器列表。
+            - 异步处理：使用 `asyncio.gather` 并行执行视频过滤操作，对每个原始视频应用过滤器。
+            - 日志记录：记录每个过滤操作的详细信息，并在控制台输出。
+
+        代码逻辑:
+            1. 根据 `deploy` 配置初始化过滤器列表，包括帧率调整、颜色格式转换、模糊和锐化操作。
+            2. 使用 `clipix.vision_improve` 方法异步处理每个原始视频，应用过滤器。
+            3. 记录并显示过滤操作的日志信息。
+            4. 返回处理后的视频过滤列表。
+
+        示例:
+            ```python
+            video_filter_list = await instance.als_waves(deploy, clipix, task_list, originals)
+            ```
         """
 
         filters = [f"fps={deploy.frate}"]
@@ -442,6 +499,24 @@ class Missions(object):
             - 函数内部使用了多个异步gather来并行处理视频操作，提高效率。
             - 确保提供的每个视频都符合Deploy中定义的处理标准。
             - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
+        功能细节:
+        - 初始设置：通过 `deploy` 和 `clipix` 对象进行初始设置和参数调整。
+        - 视频过滤：调用 `als_waves` 函数对视频进行预处理和过滤。
+        - 视频拆帧：根据 `task_list` 中的任务配置，对视频进行拆帧操作。
+        - 结果处理：使用 `asyncio.gather` 并行处理视频操作，生成分析报告。
+
+        代码逻辑:
+            1. 获取事件循环，并初始化相关对象。
+            2. 使用 `als_track` 函数获取原始视频和指示信息。
+            3. 使用 `als_waves` 函数对视频进行过滤处理。
+            4. 设置视频目标路径，并调用 `clipix.pixels` 函数处理视频帧。
+            5. 处理拆帧结果，并记录相关信息。
+            6. 渲染分析结果并生成报告，存储在指定路径中。
+
+        示例:
+            ```python
+            await als_speed(deploy, clipix, report, task_list)
+            ```
         """
 
         logger.debug(f"**<* 光速穿梭 *>**")
@@ -513,29 +588,50 @@ class Missions(object):
             **kwargs
     ) -> None:
         """
-        异步执行视频的Keras模式分析或基本模式分析，包括视频过滤、尺寸调整和动态模板渲染等功能。
+        异步执行视频的 Keras 模式分析或基本模式分析，包括视频过滤、尺寸调整和动态模板渲染等功能。
 
-        此函数根据部署配置(deploy)调整视频帧率和尺寸，执行视频分析，并根据分析结果采用不同模式处理视频。
-        如果启用了Keras模型，执行深度学习模型分析；否则执行基本分析。
+        此函数根据部署配置（deploy）调整视频帧率和尺寸，执行视频分析，并根据分析结果采用不同模式处理视频。
+        如果启用了 Keras 模型，执行深度学习模型分析；否则执行基本分析。
 
         参数:
             deploy (Deploy): 配置信息对象，包含视频处理的帧率、颜色格式、尺寸等配置。
             clipix (Clipix): 视频处理工具对象，负责具体的视频内容调整和分析操作。
             report (Report): 报告处理对象，负责记录和展示处理结果。
             task_list (list[list]): 包含视频和其他相关参数的任务列表。
-            originals (list): 原始视频列表，用于提取和处理视频内容。
-            indicates (list): 指示信息列表，包含视频处理的具体指标和参数。
-            **kwargs (Alynex): 模型分析工具，决定使用Keras模型还是基础分析。
+            **kwargs: 其他可选参数，包括以下关键字参数：
+                option (Option): 选项对象，包含各种运行时选项配置，用于控制分析和处理流程。
+                alynex (Alynex): 模型分析工具，决定使用 Keras 模型还是基础分析。
 
         注意:
             - 该函数为异步函数，需要在异步环境中运行。
-            - 函数内部使用了多个异步gather来并行处理视频操作，提高效率。
-            - 函数的执行路径依赖于`alynex.ks.model`的状态，确保Alynex实例正确初始化。
+            - 函数内部使用了多个异步 gather 来并行处理视频操作，提高效率。
+            - 函数的执行路径依赖于 `alynex.ks.model` 的状态，确保 Alynex 实例正确初始化。
             - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
+
+        功能细节:
+            - 初始设置：通过 `deploy` 和 `clipix` 对象进行初始设置和参数调整。
+            - 视频过滤：调用 `als_waves` 函数对视频进行预处理和过滤。
+            - 视频拆帧：根据 `task_list` 中的任务配置，对视频进行拆帧操作。
+            - 结果处理：使用 `asyncio.gather` 并行处理视频操作，生成分析报告。
+
+        代码逻辑:
+            1. 获取事件循环，并从 kwargs 中提取选项和分析工具实例。
+            2. 使用 `als_track` 函数获取原始视频和指示信息。
+            3. 使用 `als_waves` 函数对视频进行过滤处理。
+            4. 设置视频目标路径，并调用 `clipix.pixels` 函数处理视频帧。
+            5. 处理拆帧结果，并使用 `os.remove` 删除临时文件。
+            6. 根据 `alynex.ks.model` 的状态决定调用深度学习分析模型还是基础分析。
+            7. 渲染分析结果并生成报告，存储在指定路径中。
+
+        示例:
+            ```python
+            await als_keras(deploy, clipix, report, task_list, option=option, alynex=alynex)
+            ```
         """
 
         looper = asyncio.get_event_loop()
 
+        option = kwargs["option"]
         alynex = kwargs["alynex"]
 
         logger.debug(f"**<* 思维导航 *>**" if alynex.ks.model else f"**<* 基石阵地 *>**")
@@ -593,7 +689,7 @@ class Missions(object):
         else:
             this_level = self.level
             self.level = "ERROR"
-            func = partial(self.amazing,  **deploy.deploys["ALS"])
+            func = partial(self.amazing,  option, deploy)
             with ProcessPoolExecutor(self.power, None, Active.active, ("ERROR",)) as exe:
                 task = [
                     looper.run_in_executor(exe, func, target, frame_path, extra_path)
@@ -649,7 +745,29 @@ class Missions(object):
                 *(self.enforce(db, *ftr, *tlr) for ftr, tlr in render_result)
             )
 
-    async def combine(self, report: "Report"):
+    async def combine(self, report: "Report") -> None:
+        """
+        异步生成组合报告的方法。
+
+        该方法用于检查报告对象的范围列表，并根据配置调用适当的报告生成方法来创建组合报告。
+
+        参数:
+            report (Report): 报告处理对象，包含处理和展示结果的路径和范围列表。
+
+        返回:
+            None: 此函数没有返回值，所有结果通过日志和报告对象进行记录和展示。
+
+        注意:
+            - 该函数为异步函数，需要在异步环境中运行。
+            - 如果范围列表为空，则记录并展示没有可生成的报告信息。
+            - 根据 `self.speed` 配置，调用不同的报告生成方法 (`combine_view` 或 `combine_main`)。
+            - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
+
+        示例:
+            ```python
+            await instance.combine(report)
+            ```
+        """
         if len(report.range_list) == 0:
             logger.debug(tip := f"没有可以生成的报告")
             return Show.show_panel(self.level, tip, Wind.KEEPER)
@@ -657,6 +775,31 @@ class Missions(object):
         return await function([os.path.dirname(report.total_path)])
 
     async def combine_crux(self, share_temp: str, total_temp: str, merge: list) -> None:
+        """
+        异步生成汇总报告的方法。
+
+        该方法用于根据共享模板和汇总模板生成汇总报告，并将多个子报告合并成一个总报告。
+
+        参数:
+            share_temp (str): 共享模板路径，用于生成部分共享报告内容。
+            total_temp (str): 汇总模板路径，用于生成完整的汇总报告。
+            merge (list): 需要合并的子报告列表。
+
+        返回:
+            None: 此函数没有返回值，所有结果通过日志和报告对象进行记录和展示。
+
+        注意:
+            - 该函数为异步函数，需要在异步环境中运行。
+            - 异步获取模板内容，并确保模板获取成功。
+            - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
+            - 生成汇总报告，并记录和展示处理结果。
+
+        示例:
+            ```python
+            await instance.combine_crux(share_temp, total_temp, merge)
+            ```
+        """
+
         template_list = await asyncio.gather(
             Craft.achieve(share_temp), Craft.achieve(total_temp),
             return_exceptions=True
@@ -670,7 +813,7 @@ class Missions(object):
 
         logger.debug(tip := f"正在生成汇总报告 ...")
         Show.show_panel(self.level, tip, Wind.REPORTER)
-        state_list: tuple[str | BaseException] = await asyncio.gather(
+        state_list: tuple[str | Exception] = await asyncio.gather(
             *(Report.ask_create_total_report(m, self.group, share_form, total_form) for m in merge),
             return_exceptions=True
         )
@@ -696,7 +839,7 @@ class Missions(object):
         )
 
     # 视频解析探索
-    async def video_file_task(self, video_file_list: list, deploy: "Deploy"):
+    async def video_file_task(self, video_file_list: list, option: "Option", deploy: "Deploy"):
         if len(video_file_list := [
             video_file for video_file in video_file_list if os.path.isfile(video_file)
         ]) == 0:
@@ -704,7 +847,7 @@ class Missions(object):
             return Show.show_panel(self.level, tip, Wind.KEEPER)
 
         clipix = Clipix(self.fmp, self.fpb)
-        report = Report(self.total_place)
+        report = Report(option.total_place)
         report.title = f"{const.DESC}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
 
         # Profession
@@ -726,7 +869,7 @@ class Missions(object):
             await self.als_speed(*attack)
         else:
             # Initial Alynex
-            model_place = self.model_place if self.keras else None
+            model_place = option.model_place if self.keras else None
             alynex = Alynex(self.level, model_place, **deploy.deploys["ALS"])
             try:
                 await alynex.ask_model_load()
@@ -735,13 +878,13 @@ class Missions(object):
                 Show.show_panel(self.level, e, Wind.KEEPER)
 
             # Keras Analyzer
-            await self.als_keras(*attack, alynex=alynex)
+            await self.als_keras(*attack, option=option, alynex=alynex)
 
         # Create Report
         await self.combine(report)
 
     # 影像堆叠导航
-    async def video_data_task(self, video_data_list: list, deploy: "Deploy"):
+    async def video_data_task(self, video_data_list: list, option: "Option", deploy: "Deploy"):
 
         async def load_entries():
             for video_data in video_data_list:
@@ -760,7 +903,7 @@ class Missions(object):
         # Profession
         async for entries in load_entries():
             if entries:
-                report = Report(self.total_place)
+                report = Report(option.total_place)
                 for entry in entries:
                     report.title = entry.title
                     task_list = []
@@ -783,7 +926,7 @@ class Missions(object):
                         await self.als_speed(*attack)
                     else:
                         # Initial Alynex
-                        model_place = self.model_place if self.keras else None
+                        model_place = option.model_place if self.keras else None
                         alynex = Alynex(self.level, model_place, **deploy.deploys["ALS"])
                         try:
                             await alynex.ask_model_load()
@@ -792,13 +935,13 @@ class Missions(object):
                             Show.show_panel(self.level, e, Wind.KEEPER)
 
                         # Keras Analyzer
-                        await self.als_keras(*attack, alynex=alynex)
+                        await self.als_keras(*attack, option=option, alynex=alynex)
 
                 # Create Report
                 await self.combine(report)
 
     # 模型训练大师
-    async def train_model(self, video_file_list: list, deploy: "Deploy"):
+    async def train_model(self, video_file_list: list, option: "Option", deploy: "Deploy"):
         if len(video_file_list := [
             video_file for video_file in video_file_list if os.path.isfile(video_file)
         ]) == 0:
@@ -810,7 +953,7 @@ class Missions(object):
         looper = asyncio.get_event_loop()
 
         clipix = Clipix(self.fmp, self.fpb)
-        report = Report(self.total_place)
+        report = Report(option.total_place)
 
         # Profession
         task_list = []
@@ -871,7 +1014,7 @@ class Missions(object):
         else:
             this_level = self.level
             self.level = "ERROR"
-            func = partial(self.bizarre, **deploy.deploys["ALS"])
+            func = partial(self.bizarre, deploy)
             with ProcessPoolExecutor(self.power, None, Active.active, ("ERROR",)) as exe:
                 task = [
                     looper.run_in_executor(exe, func, target, query_path)
@@ -882,8 +1025,9 @@ class Missions(object):
 
         pick_info_list = []
         for future in futures:
-            logger.debug(tip := f"保存: {os.path.basename(future)}")
-            pick_info_list.append(tip)
+            if future:
+                logger.debug(tip := f"保存: {os.path.basename(future)}")
+                pick_info_list.append(tip)
         Show.show_panel(self.level, "\n".join(pick_info_list), Wind.PROVIDER)
 
         await asyncio.gather(
@@ -891,7 +1035,7 @@ class Missions(object):
         )
 
     # 模型编译大师
-    async def build_model(self, video_data_list: list, deploy: "Deploy"):
+    async def build_model(self, video_data_list: list, option: "Option", deploy: "Deploy"):
         if len(video_data_list := [
             video_data for video_data in video_data_list if os.path.isdir(video_data)
         ]) == 0:
@@ -965,23 +1109,27 @@ class Missions(object):
             w, h = max(w, 10), max(h, 10)
 
             src_model_path = os.path.dirname(real_path)
-            new_model_path = os.path.join(
-                src_model_path, f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}", f"{random.randint(100, 999)}"
-            )
 
             name = f"Gray" if image_aisle == 1 else f"Hued"
             # new_model_name = f"Keras_{name}_W{w}_H{h}_{random.randint(10000, 99999)}.h5"
             new_model_name = f"Keras_{name}_W{w}_H{h}_{random.randint(10000, 99999)}"
+
             task_list.append(
-                (image_color, image_shape, image_aisle, src_model_path, new_model_path, new_model_name)
+                [image_color, image_shape, image_aisle, src_model_path, new_model_name]
             )
 
         if len(task_list) == 0:
             logger.debug(tip := f"缺少有效文件")
             return Show.show_panel(self.level, tip, Wind.KEEPER)
 
+        # _ = option
         model_place = None
         alynex = Alynex(self.level, model_place, **deploy.deploys["ALS"])
+
+        report = Report(option.total_place)
+        for index, _ in enumerate(task_list):
+            report.title = f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}"
+            task_list[index].insert(-1, report.query_path)
 
         # Ask Analyzer
         if len(task_list) == 1:
@@ -1010,7 +1158,7 @@ class Missions(object):
         Show.show_panel(self.level, "\n".join(final_model_list), Wind.DESIGNER)
 
     # 线迹创造者
-    async def painting(self, deploy: "Deploy"):
+    async def painting(self, option: "Option", deploy: "Deploy"):
         """
         使用设备截图进行绘制操作，并在图像上添加网格线。
 
@@ -1189,7 +1337,7 @@ class Missions(object):
                 console=Show.console, default="Y"
             )
             if action.strip().upper() == "Y":
-                report = Report(self.total_place)
+                report = Report(option.total_place)
                 report.title = f"Hooks_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
                 for device, resize_img in zip(device_list, resized_result):
                     img_save_path = os.path.join(
@@ -1206,7 +1354,7 @@ class Missions(object):
                 Show.show_panel(self.level, tip_, Wind.KEEPER)
 
     # 循环节拍器 | 脚本驱动者 | 全域执行者
-    async def analysis(self, deploy: "Deploy"):
+    async def analysis(self, option: "Option", deploy: "Deploy"):
 
         async def anything_film():
 
@@ -1296,7 +1444,7 @@ class Missions(object):
                 await self.als_speed(*attack)
             elif self.basic or self.keras:
                 # Keras Analyzer
-                await self.als_keras(*attack, alynex=alynex)
+                await self.als_keras(*attack, option=option, alynex=alynex)
             else:
                 logger.debug(tip := f"**<* 录制模式 *>**")
                 Show.show_panel(self.level, tip, Wind.EXPLORER)
@@ -1465,7 +1613,7 @@ class Missions(object):
 
         clipix = Clipix(self.fmp, self.fpb)
 
-        model_place = self.model_place if self.keras else None
+        model_place = option.model_place if self.keras else None
         alynex = Alynex(self.level, model_place, **deploy.deploys["ALS"])
         try:
             await alynex.ask_model_load()
@@ -1484,7 +1632,7 @@ class Missions(object):
 
         # Flick Loop
         if self.flick:
-            report = Report(self.total_place)
+            report = Report(option.total_place)
             report.title = f"{input_title_}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
             timer_mode = 5
             while True:
@@ -1576,7 +1724,7 @@ class Missions(object):
 
             await manage_.display_device()
             for script_dict_ in script_storage_:
-                report = Report(self.total_place)
+                report = Report(option.total_place)
                 for script_key_, script_value_ in script_dict_.items():
                     logger.debug(tip_ := f"Batch Exec: {script_key_}")
                     Show.show_panel(self.level, tip_, Wind.EXPLORER)
@@ -2377,7 +2525,7 @@ async def arithmetic(function: "typing.Callable", parameters: list[str]) -> None
         # 去除重复参数
         parameters = list(dict.fromkeys(parameters))
         # 执行函数
-        await function(parameters, _deploy)
+        await function(parameters, _option, _deploy)
     except (FramixAnalysisError, FramixAnalyzerError, FramixReporterError):
         # 处理异常并记录日志
         Show.console.print_exception()
@@ -2414,10 +2562,10 @@ async def scheduling() -> None:
         # 处理 flick, carry, fully 参数
         if _lines.flick or _lines.carry or _lines.fully:
             await screen_copy_installed()
-            await _missions.analysis(_deploy)
+            await _missions.analysis(_option, _deploy)
         # 处理 paint 参数
         elif _lines.paint:
-            await _missions.painting(_deploy)
+            await _missions.painting(_option, _deploy)
         # 处理 union 参数
         elif _lines.union:
             await _missions.combine_view(_lines.union)
@@ -2513,18 +2661,17 @@ if __name__ == '__main__':
 
     # 加载初始配置
     _option = Option(_initial_option)
+    _option.total_place = _option.total_place or _src_total_place
+    _option.model_place = _option.model_place or _src_model_place
     for _attr_key, _attribute_value in _option.options.items():
         logger.debug(f"{_option.__class__.__name__} Current Key {_attr_key}")
-        # 如果命令行中包含配置参数，配置文件的参数设置为配置参数
-        if any(_line.startswith(f"--{(_attr_adapt := _attr_key.split('_')[0])}") for _line in _wires):
+        # 如果命令行中包含配置参数，无论是否存在配置文件，都将覆盖配置文件，以命令行参数为第一优先级
+        if any(_line.lower().startswith(f"--{(_attr_adapt := _attr_key.split('_')[0])}") for _line in _wires):
             setattr(_option, _attr_key, getattr(_lines, _attr_adapt))
             logger.debug(f"  Set <{_attr_key}> {_attribute_value} -> {getattr(_option, _attr_key)}")
 
-    # 如果配置参数被设置，则使用配置参数，否则使用默认配置参数
-    _total_place = _option.total_place or _total_place
-    _model_place = _option.model_place or _model_place
-    logger.debug(f"报告文件路径: {_total_place}")
-    logger.debug(f"模型文件路径: {_model_place}")
+    logger.debug(f"报告文件路径: {_option.total_place}")
+    logger.debug(f"模型文件路径: {_option.model_place}")
 
     # 获取处理器核心数
     logger.debug(f"处理器核心数: {(_power := os.cpu_count())}")
@@ -2535,7 +2682,7 @@ if __name__ == '__main__':
         logger.debug(f"{_deploy.__class__.__name__} Current Key {_attr_key}")
         for _attr, _attribute in _attribute_value.items():
             # 如果命令行中包含部署参数，无论是否存在部署文件，都将覆盖部署文件，以命令行参数为第一优先级
-            if any(_line.startswith(f"--{_attr}") for _line in _wires):
+            if any(_line.lower().startswith(f"--{_attr}") for _line in _wires):
                 setattr(_deploy, _attr, getattr(_lines, _attr))
                 logger.debug(f"  {_attr_key} Set <{_attr}> {_attribute} -> {getattr(_deploy, _attr)}")
 
@@ -2563,8 +2710,6 @@ if __name__ == '__main__':
         initial_option=_initial_option,
         initial_deploy=_initial_deploy,
         initial_script=_initial_script,
-        total_place=_total_place,
-        model_place=_model_place,
         adb=_adb,
         fmp=_fmp,
         fpb=_fpb
