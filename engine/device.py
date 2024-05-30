@@ -22,7 +22,7 @@ class Device(_Phone):
 
     def __init__(self, adb: str, sn: str, *args):
         super().__init__(sn, *args)
-        self.initial = [adb, "-s", sn, "wait-for-usb-device"]
+        self.initial = [adb, "-s", sn, "wait-for-device"]
 
     @staticmethod
     async def sleep(delay: float) -> None:
@@ -30,8 +30,8 @@ class Device(_Phone):
 
     async def deep_link(self, url: str, service: str):
         compose = f"{url}?{service}"
-        cmd = self.initial + ["shell", "am", "start", "-W", "-a", "android.intent.action.VIEW", "-d", compose]
-        await Terminal.cmd_line(*cmd)
+        cmd = f"{' '.join(self.initial)} shell am start -W -a android.intent.action.VIEW -d {compose}"
+        await Terminal.cmd_line_shell(*cmd)
 
     async def tap(self, x: int, y: int) -> None:
         cmd = self.initial + ["shell", "input", "tap", f"{x}", f"{y}"]

@@ -181,7 +181,6 @@ class Missions(object):
             deploy (Deploy): 配置信息对象，包含视频处理的各项配置。
             vision (str): 视频文件路径。
             *args: 传递给分析器的其他参数。
-            **kwargs: 传递给 Alynex 类的其他关键字参数。
 
         返回:
             处理完成的结果。
@@ -191,7 +190,7 @@ class Missions(object):
             该方法需要在异步进程执行器中执行。
             示例:
                 from functools import partial
-                func = partial(instance.amazing, **kwargs)
+                func = partial(instance.amazing, option, deploy)
                 with ProcessPoolExecutor() as exe:
                     tasks = [
                         looper.run_in_executor(exe, func, task, *args) for task in task_list
@@ -229,7 +228,6 @@ class Missions(object):
             deploy (Deploy): 配置信息对象，包含视频处理的各项配置。
             vision (str): 视频文件路径。
             *args: 传递给分析器的其他参数。
-            **kwargs: 传递给 Alynex 类的其他关键字参数。
 
         返回:
             处理完成的结果。
@@ -239,7 +237,7 @@ class Missions(object):
             该方法需要在异步进程执行器中执行。
             示例:
                 from functools import partial
-                func = partial(instance.bizarre, vision, **kwargs)
+                func = partial(instance.bizarre, vision, deploy)
                 with ProcessPoolExecutor() as exe:
                     tasks = [
                         looper.run_in_executor(exe, func, task, *args) for task in task_list
@@ -993,6 +991,8 @@ class Missions(object):
                         format_msg := " ".join([f"{k}={v}" for k, v in discover(matcher.group())])
                     )
                     logger.debug(format_msg)
+                elif re.search(r"Error", message, re.IGNORECASE):
+                    Show.show_panel(self.level, "\n".join(message_list), Wind.KEEPER)
             Show.show_panel(self.level, "\n".join(message_list), Wind.METRIC)
             eliminate.append(
                 looper.run_in_executor(None, os.remove, video_temp)
@@ -1044,92 +1044,81 @@ class Missions(object):
 
         looper = asyncio.get_event_loop()
 
+        async def conduct():
+            search_file_list, search_dirs_list = [], []
+
+            for root, dirs, files in os.walk(video_data, topdown=False):
+                search_file_list.extend(
+                    os.path.join(root, name) for name in files if name
+                )
+                search_dirs_list.extend(
+                    os.path.join(root, name) for name in dirs if re.search(r"^\d+$", name)
+                )
+
+            if search_dirs_list:
+                search_dirs_list.sort(key=lambda x: int(os.path.basename(x)))
+            return list(dict.fromkeys(search_dirs_list))
+
+        async def channel():
+            image_learn, image_color, image_aisle = None, "grayscale", 1
+            for dirs in dirs_list:
+                channel_list = []
+                for name in os.listdir(dirs):
+                    if name.lower().endswith((".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tiff")):
+                        image_color, image_aisle, image_debug = await measure(
+                            image_learn := cv2.imread(os.path.join(dirs, name))
+                        )
+                        logger.debug(image_debug)
+                        channel_list.append(image_debug)
+                Show.show_panel(self.level, "\n".join(channel_list), Wind.DESIGNER)
+            return image_learn, image_color, image_aisle
+
+        async def measure(image):
+            if image.ndim != 3:
+                return "grayscale", 1, f"Image: {list(image.shape)} is grayscale image"
+            if numpy.array_equal(image[:, :, 0], image[:, :, 1]) and numpy.array_equal(image[:, :, 1], image[:, :, 2]):
+                return "grayscale", 1, f"Image: {list(image.shape)} is grayscale image, stored in RGB format"
+            return "rgb", image.ndim, f"Image: {list(image.shape)} is color image"
+
+        model_place = None
+        alynex = Alynex(self.level, model_place, **deploy.deploys["ALS"])
+        report = Report(option.total_place)
+
         task_list = []
         for video_data in video_data_list:
-            real_path, file_list = "", []
             logger.debug(tip := f"搜索文件夹: {os.path.basename(video_data)}")
             Show.show_panel(self.level, tip, Wind.DESIGNER)
-            for root, dirs, files in os.walk(video_data, topdown=False):
-                for name in files:
-                    file_list.append(os.path.join(root, name))
-                for name in dirs:
-                    if len(name) == 1 and re.search(r"0", name):
-                        real_path = os.path.join(root, name)
-                        logger.debug(tip := f"分类文件夹: {os.path.basename(os.path.dirname(real_path))}")
-                        Show.show_panel(self.level, tip, Wind.DESIGNER)
-                        break
-
-            if real_path == "" or len(file_list) == 0:
-                logger.debug(tip := f"分类不正确: {os.path.basename(video_data)}")
-                Show.show_panel(self.level, tip, Wind.KEEPER)
-                continue
-
-            efficient_list = []
-            image, image_color, image_aisle = None, "grayscale", 1
-            for image_file in os.listdir(real_path):
-                if not os.path.isfile(image_path := os.path.join(real_path, image_file)):
-                    logger.debug(tip := f"存在不适用的文件: {os.path.basename(image_path)}")
-                    Show.show_panel(self.level, tip, Wind.KEEPER)
-                    break
-
+            if dirs_list := await conduct():
+                logger.debug(tip := f"分类文件夹: {os.path.basename(cf_src := os.path.dirname(dirs_list[0]))}")
+                Show.show_panel(self.level, tip, Wind.DESIGNER)
                 try:
-                    image = cv2.imread(image_path)
-                    if image.ndim == 3:
-                        if numpy.array_equal(
-                                image[:, :, 0], image[:, :, 1]
-                        ) and numpy.array_equal(
-                            image[:, :, 1], image[:, :, 2]
-                        ):
-                            logger.debug(tip := f"Image: {list(image.shape)} is grayscale image, stored in RGB format")
-                            efficient_list.append(tip)
-                        else:
-                            logger.debug(tip := f"Image: {list(image.shape)} is color image")
-                            efficient_list.append(tip)
-                            image_color, image_aisle = "rgb", image.ndim
-                    else:
-                        logger.debug(tip := f"Image: {list(image.shape)} is grayscale image")
-                        efficient_list.append(tip)
+                    ready_image, ready_color, ready_aisle = await channel()
+                    image_shape = deploy.shape if deploy.shape else ready_image.shape
                 except Exception as e:
                     logger.debug(e)
                     Show.show_panel(self.level, e, Wind.KEEPER)
-                    image = None
-                    break
+                    continue
 
-            try:
-                effective = image.shape
-            except AttributeError as e:
-                logger.debug(e)
-                Show.show_panel(self.level, e, Wind.KEEPER)
-                continue
+                image_w, image_h = image_shape[:2]
+                w, h = max(image_w, 10), max(image_h, 10)
 
-            Show.show_panel(self.level, "\n".join(efficient_list), Wind.DESIGNER)
+                src_model_name = f"Gray" if ready_aisle == 1 else f"Hued"
+                # new_model_name = f"Keras_{name}_W{w}_H{h}_{random.randint(10000, 99999)}.h5"
+                new_model_name = f"Keras_{src_model_name}_W{w}_H{h}_{random.randint(10000, 99999)}"
 
-            image_shape = deploy.shape if deploy.shape else effective
-            w, h = image_shape[:2]
-            w, h = max(w, 10), max(h, 10)
+                report.title = f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}"
 
-            src_model_path = os.path.dirname(real_path)
+                task_list.append(
+                    [ready_color, image_shape, ready_aisle, cf_src, report.query_path, new_model_name]
+                )
 
-            name = f"Gray" if image_aisle == 1 else f"Hued"
-            # new_model_name = f"Keras_{name}_W{w}_H{h}_{random.randint(10000, 99999)}.h5"
-            new_model_name = f"Keras_{name}_W{w}_H{h}_{random.randint(10000, 99999)}"
-
-            task_list.append(
-                [image_color, image_shape, image_aisle, src_model_path, new_model_name]
-            )
+            else:
+                logger.debug(tip := f"分类不正确: {os.path.basename(video_data)}")
+                Show.show_panel(self.level, tip, Wind.KEEPER)
 
         if len(task_list) == 0:
-            logger.debug(tip := f"缺少有效文件")
+            logger.debug(tip := f"没有有效任务")
             return Show.show_panel(self.level, tip, Wind.KEEPER)
-
-        # _ = option
-        model_place = None
-        alynex = Alynex(self.level, model_place, **deploy.deploys["ALS"])
-
-        report = Report(option.total_place)
-        for index, _ in enumerate(task_list):
-            report.title = f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}"
-            task_list[index].insert(-1, report.query_path)
 
         # Ask Analyzer
         if len(task_list) == 1:
