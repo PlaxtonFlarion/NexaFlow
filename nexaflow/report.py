@@ -289,7 +289,7 @@ class Report(object):
             raise FramixReporterError(f"没有可以汇总的报告 ...")
 
         total_html_temp = Template(total_loc).render(
-            name=const.DESC, report_time=time.strftime('%Y.%m.%d %H:%M:%S'), total_list=total_list
+            head=f"{const.DESC} Information", report_time=time.strftime('%Y.%m.%d %H:%M:%S'), total_list=total_list
         )
         total_html = os.path.join(file_name, "Nexa_Flow.html")
         async with aiofiles.open(total_html, "w", encoding=const.CHARSET) as f:
