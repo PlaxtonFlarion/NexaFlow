@@ -30,8 +30,8 @@ elif _software == f"{const.NAME}":
     _fx_work = os.path.dirname(sys.executable)
     _fx_feasible = os.path.dirname(_fx_work)
 elif _software == f"{const.NAME}.py":
-    _fx_work = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    _fx_feasible = os.path.dirname(os.path.abspath(__file__))
+    _fx_work = os.path.dirname(os.path.abspath(__file__))
+    _fx_feasible = os.path.dirname(_fx_work)
 else:
     # 如果应用名称不匹配，显示错误信息并退出程序
     Show.show_panel(const.SHOW_LEVEL, f"{const.DESC} compatible with {const.NAME}", Wind.KEEPER)
@@ -39,11 +39,11 @@ else:
     sys.exit(Show.fail())
 
 # 设置模板文件路径
-_atom_total_temp = os.path.join(_fx_work, "specially", "templates", "template_atom_total.html")
-_main_share_temp = os.path.join(_fx_work, "specially", "templates", "template_main_share.html")
-_main_total_temp = os.path.join(_fx_work, "specially", "templates", "template_main_total.html")
-_view_share_temp = os.path.join(_fx_work, "specially", "templates", "template_view_share.html")
-_view_total_temp = os.path.join(_fx_work, "specially", "templates", "template_view_total.html")
+_atom_total_temp = os.path.join(_fx_work, "schematic", "templates", "template_atom_total.html")
+_main_share_temp = os.path.join(_fx_work, "schematic", "templates", "template_main_share.html")
+_main_total_temp = os.path.join(_fx_work, "schematic", "templates", "template_main_total.html")
+_view_share_temp = os.path.join(_fx_work, "schematic", "templates", "template_view_share.html")
+_view_total_temp = os.path.join(_fx_work, "schematic", "templates", "template_view_total.html")
 
 # 检查每个模板文件是否存在，如果缺失则显示错误信息并退出程序
 for _tmp in (_temps := [_atom_total_temp, _main_share_temp, _main_total_temp, _view_share_temp, _view_total_temp]):
@@ -55,7 +55,7 @@ for _tmp in (_temps := [_atom_total_temp, _main_share_temp, _main_total_temp, _v
     sys.exit(Show.fail())
 
 # 设置工具源路径
-_turbo = os.path.join(_fx_work, "specially", "supports")
+_turbo = os.path.join(_fx_work, "schematic", "supports")
 
 # 根据平台设置 adb 和 ffmpeg 工具路径
 if _platform == "win32":
@@ -92,7 +92,7 @@ for _tls in _tools:
 
 # 设置初始路径
 if not os.path.exists(
-    _initial_source := os.path.join(_fx_feasible, _fx_source := f"{const.DESC.upper()}")
+    _initial_source := os.path.join(_fx_feasible, f"Specially")
 ):
     os.makedirs(_initial_source, exist_ok=True)
 
@@ -2308,8 +2308,8 @@ class Alynex(object):
                     frames_diff = current.frame_id - previous.frame_id
                     # 如果前后帧都不稳定且帧差大于1，则添加中间的关键帧
                     if not previous.is_stable() and not current.is_stable() and frames_diff > 1:
-                        for specially in struct.data[previous.frame_id: current.frame_id - 1]:
-                            frames_list.append(specially)
+                        for sample in struct.data[previous.frame_id: current.frame_id - 1]:
+                            frames_list.append(sample)
                             pbar.update(1)
                     # 更新前一帧为当前帧
                     previous = current

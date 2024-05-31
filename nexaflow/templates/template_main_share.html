@@ -4,8 +4,7 @@
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-    <title>画帧秀 - Main</title>
-
+    <title>画帧秀 - Main - Share</title>
     <style>
         /* 加载动画 */
         #loading {
@@ -674,7 +673,6 @@
             }
         }
     </style>
-
 </head>
 <body>
     <!--加载动画-->
@@ -982,12 +980,14 @@
 
                     let selectedImage = Array.from(imageContainer.querySelectorAll('.selected'));
                     if (selectedImage.length === 1) {
+                        // 隐藏缩略图
                         images = currentImages.filter(img => img.parentElement.style.display === '');
                         currentImageIndex = images.indexOf(e.target);
                         let diff1 = selectedImage[0].querySelector('img');
                         setBoxDiff(diff1.dataset.frame, '', '0.00000', 'none');
 
                     } else if (selectedImage.length === 2) {
+                        // 隐藏缩略图
                         images = currentImages.filter(img => img.parentElement.style.display === '');
                         currentImageIndex = images.indexOf(e.target);
                         let frame1 = Number(selectedImage[0].querySelector('img').getAttribute('data-frame'));
@@ -1161,9 +1161,12 @@
             });
 
             images = Array.from(container.querySelectorAll('.image-box img'));
+
+            // 显示全部缩略图
             let thumbs = Array.from(document.querySelectorAll('.thumbnail'));
             thumbs.forEach(thumb => {thumb.style.display = ''});
             updateIndex();
+
             updateThumbnails();
             scrollToActive();
             updateButtonStatus();
@@ -1199,10 +1202,10 @@
 
         // 灯箱-主图点击事件
         lightboxImg.addEventListener('click', function(e) {
-            clacTimeCost();
+            calcTimeCost();
         });
 
-        function clacTimeCost() {
+        function calcTimeCost() {
             let parentImg = originalImage.parentElement;
             let buttons = Array.from(parentImg.querySelectorAll('button'));
             let thumbActive = document.querySelector('.thumbnail.active');
@@ -1249,9 +1252,12 @@
                 setBoxDiff('0 -> 0', 'none', '0.00000', 'none');
 
                 images = allImages;
+
+                // 显示全部缩略图
                 let thumbs = Array.from(document.querySelectorAll('.thumbnail'));
                 thumbs.forEach(thumb => {thumb.style.display = ''});
                 updateIndex();
+
                 updateThumbnails();
                 scrollToActive();
                 updateButtonStatus();
@@ -1278,6 +1284,7 @@
                 options[diffIndex].style.display = 'flex';
                 resContainers[diffIndex].style.display = 'flex';
 
+                // 隐藏缩略图
                 images = allImages.filter(img => img.parentElement.style.display === '');
                 updateIndex();
                 updateThumbnails();
@@ -1297,7 +1304,7 @@
         }
     </script>
 
-    <!--复制提示框-->
+    <!--提示框-->
     <script>
         // 开启警告提示框
         function showAlert(message) {
@@ -1617,7 +1624,7 @@
                 var htmlContent = `
                     <html>
                     <head>
-                        <title>画帧秀 - Other</title>
+                        <title>画帧秀 - Main - Extra</title>
                         ${styles}
                     </head>
                     <body>
@@ -1674,7 +1681,7 @@
                     break;
                 case "Enter":
                     // 回车键被按下时执行的代码
-                    clacTimeCost();
+                    calcTimeCost();
                     break;
                 case "Escape":
                     // Escape键被按下时执行的代码
