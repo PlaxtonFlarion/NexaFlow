@@ -247,11 +247,6 @@
     .img1:active, .img2:active {
         transform: scale(0.97);
     }
-    .image-box p {
-        color: beige;
-        margin: 0;
-        font-weight: bold;
-    }
     #difference {
         padding: 5px 30px;
         border: none;
@@ -267,6 +262,17 @@
     #difference:active {
         transform: scale(0.8);
         transition: transform 0.3s ease;
+    }
+
+    #frame-info p {
+        position: fixed; /* Ensure position is fixed */
+        display: none; /* Hide by default */
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 5px;
+        border-radius: 5px;
+        z-index: 1000; /* Ensure it is above other elements */
+        pointer-events: none; /* Ensure p tags don't interfere with mouse events */
     }
 
     /* 横屏模式 */
@@ -380,17 +386,20 @@
         </div>
         <div class="image-wrapper">
             <div class="image-box">
-                <p class="frame1"></p>
-                <p class="timestamp1"></p>
                 <img class="img1" src="">
             </div>
             <div class="image-box">
-                <p class="frame2"></p>
-                <p class="timestamp2"></p>
                 <img class="img2" src="">
             </div>
         </div>
     </div>
+</div>
+
+<div id="frame-info">
+    <p class="frame1"></p>
+    <p class="timestamp1"></p>
+    <p class="frame2"></p>
+    <p class="timestamp2"></p>
 </div>
 
 <div id="custom-alert" class="alert">
@@ -474,10 +483,10 @@
 
     function populateLightbox(info) {
         // 拿到打包的对象后，在这里更新lightbox的内容
-        document.querySelector('#lightbox .frame1').textContent = info.frame1;
-        document.querySelector('#lightbox .frame2').textContent = info.frame2;
-        document.querySelector('#lightbox .timestamp1').textContent = info.timestamp1.toFixed(5);
-        document.querySelector('#lightbox .timestamp2').textContent = info.timestamp2.toFixed(5);
+        document.querySelector('#frame-info .frame1').textContent = info.frame1;
+        document.querySelector('#frame-info .frame2').textContent = info.frame2;
+        document.querySelector('#frame-info .timestamp1').textContent = info.timestamp1.toFixed(5);
+        document.querySelector('#frame-info .timestamp2').textContent = info.timestamp2.toFixed(5);
         document.querySelector('#lightbox .img1').src = info.img1;
         document.querySelector('#lightbox .img2').src = info.img2;
         document.querySelector('#lightbox #difference').textContent = `${info.diff}`;
@@ -551,6 +560,46 @@
                 loader.style.display = "none";
             }, 500);
         }, 1000); // 强制等待
+    });
+</script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const images = document.querySelectorAll(".image-box img");
+        images.forEach(image => {
+            image.addEventListener("mousemove", function(event) {
+                let frame, timestamp;
+                if (this.classList.contains("img1")) {
+                    frame = document.querySelector(".frame1");
+                    timestamp = document.querySelector(".timestamp1");
+                } else if (this.classList.contains("img2")) {
+                    frame = document.querySelector(".frame2");
+                    timestamp = document.querySelector(".timestamp2");
+                }
+
+                frame.style.display = "block";
+                frame.style.left = `${event.clientX + 20}px`;
+                frame.style.top = `${event.clientY - 90}px`;
+
+                timestamp.style.display = "block";
+                timestamp.style.left = `${event.clientX + 20}px`;
+                timestamp.style.top = `${event.clientY - 50}px`;
+            });
+
+            image.addEventListener("mouseleave", function() {
+                let frame, timestamp;
+                if (this.classList.contains("img1")) {
+                    frame = document.querySelector(".frame1");
+                    timestamp = document.querySelector(".timestamp1");
+                } else if (this.classList.contains("img2")) {
+                    frame = document.querySelector(".frame2");
+                    timestamp = document.querySelector(".timestamp2");
+                }
+
+                frame.style.display = "none";
+                timestamp.style.display = "none";
+            });
+        });
     });
 </script>
 

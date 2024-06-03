@@ -1012,11 +1012,6 @@
             });
         });
 
-        document.addEventListener('mousemove', function(e) {
-            tools.style.left = (e.pageX - 80 - 20) + 'px';
-            tools.style.top = (e.pageY - 25 - 10) + 'px';
-        });
-
         // 灯箱-更新缩略图
         function updateThumbnails() {
             let thumbnailsDiv = document.getElementById('thumbnails');
@@ -1042,6 +1037,13 @@
                 if (image.parentElement.classList.contains('selected')) {
                     thumbnail.classList.add('thumb-selected'); // 标记当前选定的图片
                 }
+
+                // 更新 tools 的位置
+                thumbnail.addEventListener('mousemove', function(e) {
+                    tools.style.position = 'fixed';
+                    tools.style.left = (e.clientX - 80 - 20) + 'px';
+                    tools.style.top = (e.clientY - 25 - 10) + 'px';
+                });
 
                 // 一个元素需要显示提示
                 thumbnail.addEventListener('mouseover', function() {
