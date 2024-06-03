@@ -1,6 +1,6 @@
 # 🚀 Framix - 画帧秀 - 流畅性的革命！
 
-![LOGO](resource/illustration/Logo.png)
+![LOGO](frameflow/schematic/resources/illustration/Logo.png)
 
 ## ✨ 突破边界：项目简介
 🌟 **Framix - 画帧秀**:

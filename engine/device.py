@@ -1,5 +1,6 @@
 import re
 import asyncio
+from urllib.parse import quote
 from engine.terminal import Terminal
 
 
@@ -31,7 +32,11 @@ class Device(_Phone):
     async def deep_link(self, url: str, service: str):
         compose = f"{url}?{service}"
         cmd = f"{' '.join(self.initial)} shell am start -W -a android.intent.action.VIEW -d {compose}"
-        await Terminal.cmd_line_shell(*cmd)
+        pattern = "(?<=input_text=).*?(?=\\&)"
+        if input_text := re.search(fr"{pattern}", cmd):
+            if len(text := input_text.group()) > 2:
+                cmd = re.sub(fr"{pattern}", quote(text), cmd)
+        await Terminal.cmd_line_shell(cmd)
 
     async def tap(self, x: int, y: int) -> None:
         cmd = self.initial + ["shell", "input", "tap", f"{x}", f"{y}"]
