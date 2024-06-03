@@ -31,7 +31,7 @@ class Device(_Phone):
 
     async def deep_link(self, url: str, service: str):
         compose = f"{url}?{service}"
-        cmd = f"{' '.join(self.initial)} shell am start -W -a android.intent.action.VIEW -d {compose}"
+        cmd = f"{' '.join(self.initial)} shell am start -W -a android.intent.action.VIEW -d \"{compose}\""
         pattern = "(?<=input_text=).*?(?=\\&)"
         if input_text := re.search(fr"{pattern}", cmd):
             if len(text := input_text.group()) > 2:
