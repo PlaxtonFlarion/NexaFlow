@@ -223,9 +223,9 @@ class Manage(object):
             return list(self.device_dict.values())
 
     async def display_device(self) -> None:
-        Show.notes(f"<Link> <{'单设备模式' if len(self.device_dict) == 1 else '多设备模式'}>")
+        Show.console.print(f"<Link> <{'单设备模式' if len(self.device_dict) == 1 else '多设备模式'}>")
         for device in self.device_dict.values():
-            Show.notes(f"[bold #00FFAF]Connect:[/] {device}")
+            Show.console.print(f"[bold #00FFAF]Connect:[/] {device}")
 
     @staticmethod
     async def display_select(device_list: list["Device"]) -> None:
