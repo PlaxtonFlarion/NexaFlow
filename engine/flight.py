@@ -90,7 +90,7 @@ class Find(object):
             return FramixAnalyzerError(f"文件夹错误")
 
         root_tree = Tree(
-            f"🌐 [bold #FFA54F]Video Library: {os.path.relpath(base_folder)}[/]",
+            f"🌐 [bold #FFA54F]Video Library: {base_folder}[/]",
             guide_style="bold #AEEEEE"
         )
         collection_list = []
