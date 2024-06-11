@@ -1,5 +1,6 @@
 import re
 import asyncio
+import uiautomator2 as u2
 from urllib.parse import quote
 from engine.terminal import Terminal
 
@@ -24,6 +25,7 @@ class Device(_Phone):
     def __init__(self, adb: str, sn: str, *args):
         super().__init__(sn, *args)
         self.initial = [adb, "-s", sn, "wait-for-device"]
+        self.facilities = u2.connect(sn)
 
     @staticmethod
     async def sleep(delay: float) -> None:
@@ -96,6 +98,11 @@ class Device(_Phone):
         cmd = self.initial + ["shell", "wm", "density"]
         result = await Terminal.cmd_line(*cmd)
         return result.strip()
+
+    async def automator(self, method: str, selector: dict = None, *args):
+        element = self.facilities(**selector) if selector else self.facilities
+        if callable(function := getattr(element, method)):
+            await asyncio.to_thread(function, *args)
 
 
 if __name__ == '__main__':

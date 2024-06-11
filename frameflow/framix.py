@@ -1450,8 +1450,8 @@ class Missions(object):
                     return exec_dict
 
                 try:
-                    if exec_dict.get(key, None):
-                        return exec_dict
+                    if current := exec_dict.get(key, None):
+                        return {key: current}
                 except (FileNotFoundError, KeyError, json.JSONDecodeError) as e:
                     return e
 
