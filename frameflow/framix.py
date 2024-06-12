@@ -1455,6 +1455,8 @@ class Missions(object):
                 except (FileNotFoundError, KeyError, json.JSONDecodeError) as e:
                     return e
 
+            raise ValueError("参数错误")
+
         async def load_fully(fully):
             fully = await Craft.revise_path(fully)
             try:

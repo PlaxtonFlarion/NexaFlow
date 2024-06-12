@@ -52,9 +52,9 @@ class Device(_Phone):
         if await self.screen_status() == "false":
             await self.key_event(26)
             await self.sleep(1)
-            cmd = self.initial + ["shell", "input", "touchscreen", "swipe", "250", "650", "250", "50"]
-            await Terminal.cmd_line(*cmd)
-            await self.sleep(1)
+        cmd = self.initial + ["shell", "input", "touchscreen", "swipe", "250", "650", "250", "50"]
+        await Terminal.cmd_line(*cmd)
+        await self.sleep(1)
 
     async def key_event(self, key_code: int) -> None:
         cmd = self.initial + ["shell", "input", "keyevent", f"{key_code}"]
