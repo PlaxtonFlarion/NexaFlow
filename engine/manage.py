@@ -118,14 +118,15 @@ class Manage(object):
 
         async def _device_cpu(sn):
             cmd = [
-                self.adb, "-s", sn, "wait-for-usb-device", "shell",
-                "cat", "/proc/cpuinfo", "|", "grep", "processor"
+                self.adb, "-s", sn, "wait-for-device", "shell", "cat", "/proc/cpuinfo", "|", "grep", "processor"
             ]
             if cpu := await Terminal.cmd_line(*cmd):
                 return len(re.findall(r"processor", cpu, re.S))
 
         async def _device_ram(sn):
-            cmd = ["adb", "-s", sn, "wait-for-usb-device", "shell", "free"]
+            cmd = [
+                self.adb, "-s", sn, "wait-for-device", "shell", "free"
+            ]
             if ram := await Terminal.cmd_line(*cmd):
                 for line in ram.splitlines()[1:2]:
                     if match := re.search(r"\d+", line.split()[1]):
@@ -134,22 +135,19 @@ class Manage(object):
 
         async def _device_tag(sn):
             cmd = [
-                self.adb, "-s", sn, "wait-for-usb-device", "shell",
-                "getprop", "ro.product.brand"
+                self.adb, "-s", sn, "wait-for-device", "shell", "getprop", "ro.product.brand"
             ]
             return await Terminal.cmd_line(*cmd)
 
         async def _device_ver(sn):
             cmd = [
-                self.adb, "-s", sn, "wait-for-usb-device", "shell",
-                "getprop", "ro.build.version.release"
+                self.adb, "-s", sn, "wait-for-device", "shell", "getprop", "ro.build.version.release"
             ]
             return await Terminal.cmd_line(*cmd)
 
         async def _device_display(sn):
             cmd = [
-                self.adb, "-s", sn, "wait-for-usb-device", "shell",
-                "dumpsys", "display", "|", "grep", "mViewports="
+                self.adb, "-s", sn, "wait-for-device", "shell", "dumpsys", "display", "|", "grep", "mViewports="
             ]
             screen_dict = {}
             if information_list := await Terminal.cmd_line(*cmd):
