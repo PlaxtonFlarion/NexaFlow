@@ -120,8 +120,7 @@ class Manage(object):
             cmd = [
                 self.adb, "-s", sn, "wait-for-device", "shell", "cat", "/proc/cpuinfo", "|", "grep", "processor"
             ]
-            if cpu := await Terminal.cmd_line(*cmd):
-                return len(re.findall(r"processor", cpu, re.S))
+            return len(re.findall(r"processor", cpu, re.S)) if (cpu := await Terminal.cmd_line(*cmd)) else None
 
         async def _device_ram(sn):
             cmd = [
@@ -132,18 +131,19 @@ class Manage(object):
                     if match := re.search(r"\d+", line.split()[1]):
                         total_ram = int(match.group()) / 1024 / 1024 / 1024
                         return math.ceil(total_ram)
+            return None
 
         async def _device_tag(sn):
             cmd = [
                 self.adb, "-s", sn, "wait-for-device", "shell", "getprop", "ro.product.brand"
             ]
-            return await Terminal.cmd_line(*cmd)
+            return tag if (tag := await Terminal.cmd_line(*cmd)) else None
 
         async def _device_ver(sn):
             cmd = [
                 self.adb, "-s", sn, "wait-for-device", "shell", "getprop", "ro.build.version.release"
             ]
-            return await Terminal.cmd_line(*cmd)
+            return ver if (ver := await Terminal.cmd_line(*cmd)) else None
 
         async def _device_display(sn):
             cmd = [
@@ -163,8 +163,8 @@ class Manage(object):
 
         async def _device_information(sn):
             information_list = await asyncio.gather(
-                _device_tag(sn), _device_ver(sn), _device_cpu(sn), _device_ram(sn),
-                _device_display(sn), return_exceptions=True
+                _device_tag(sn), _device_ver(sn), _device_cpu(sn), _device_ram(sn), _device_display(sn),
+                return_exceptions=True
             )
             for device_info in information_list:
                 if isinstance(device_info, Exception):

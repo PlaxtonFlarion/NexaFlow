@@ -11,7 +11,7 @@ class _Phone(object):
     def __init__(self, sn: str, *args):
         self.sn = sn
         self.tag, self.ver, self.cpu, self.ram, self.display, *_ = args
-        self.id = list(self.display.keys())[0]
+        self.id = list(self.display.keys())[0] if self.display else 0
 
     def __str__(self):
         head = f"<Device {self.tag} SN={self.sn} OS=[{self.ver}]"
