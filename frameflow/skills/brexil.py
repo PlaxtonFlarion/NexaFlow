@@ -314,7 +314,7 @@ class Script(object):
             "command": [
                 {
                     "ID-X": {
-                        "parser": {"boost": True},
+                        "parser": {"FST": {"frate": 60}, "ALS": {"boost": True}},
                         "header": ["script"],
                         "change": [],
                         "looper": 1,
