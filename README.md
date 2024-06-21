@@ -169,6 +169,35 @@
   ```
   framix --flick
   ```
+    ```json
+  {
+      "FST":{
+          "shape":null,
+          "scale":null,
+          "start":null,
+          "close":null,
+          "limit":null,
+          "gauss":null,
+          "grind":null,
+          "frate":60
+      },
+      "ALS":{
+          "boost":false,
+          "color":false,
+          "begin":[0, 1],
+          "final":[-1, -1],
+          "thres":0.97,
+          "shift":3,
+          "block":3,
+          "crops":[
+              {"x":0, "y":0, "x_size":0, "y_size":0}
+          ],
+          "omits":[
+              {"x":0, "y":0, "x_size":0, "y_size":0}
+          ]
+      }
+  }
+  ```
 
 ### **脚本驱动者 (`--carry`)**: 
 - **功能描述**: 
@@ -199,6 +228,30 @@
   ```
   framix --fully script.json
   ```
+  ```json
+  {
+      "command": [
+          {
+              "ID-X": {
+                  "parser": {"FST": {"frate": 60}, "ALS": {"boost": true}},
+                  "header": ["script"],
+                  "change": [],
+                  "looper": 1,
+                  "prefix": [
+                      {"cmds": [], "args": []}, {"cmds": [], "args": []}
+                  ],
+                  "action": [
+                      {"cmds": [], "args": []}, {"cmds": [], "args": []}
+                  ],
+                  "suffix": [
+                      {"cmds": [], "args": []}, {"cmds": [], "args": []}
+                  ]
+              }
+          }
+      ]
+  }
+  ```
+  
 
 ### **线迹创造者 (`--paint`)**: 
 - **功能描述**: 
