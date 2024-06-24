@@ -31,8 +31,8 @@
 #### 为了克服这些限制，**Framix** 引入了自动化视觉分析技术，与传统的埋点方法形成了高效融合。自动化视觉分析利用先进的图像处理和模式识别技术，从视觉角度监测和分析应用程序的性能表现。这种方法的优势包括：
   - **1.全面性能分析**: 视觉分析能够全面监控应用程序的性能表现，覆盖传统埋点无法达到的区域。
   - **2.非侵入式设计**: 无需修改应用程序代码，从而保持了原有代码的完整性和可维护性。
-  - **3.用户体验中心**: 通过模拟和分析用户实际看到的界面，Framix提供了更符合用户体验的性能评估。
-  - **4.智能数据处理**: 结合机器学习和数据分析算法，Framix能自动识别关键性能瓶颈，提供深入的性能诊断。
+  - **3.用户体验中心**: 通过模拟和分析用户实际看到的界面，**Framix** 提供了更符合用户体验的性能评估。
+  - **4.智能数据处理**: 结合机器学习和数据分析算法，**Framix** 能自动识别关键性能瓶颈，提供深入的性能诊断。
   - **5.适应性强**: 能够适应动态变化的用户交互模式和应用场景，有效地捕捉在实际使用中可能出现的各种性能问题。
 
 ## 🎯 使命宣言
@@ -169,7 +169,8 @@
   ```
   framix --flick
   ```
-    ```json
+- **分析配置**:
+  ```json
   {
       "FST":{
           "shape":null,
@@ -228,6 +229,7 @@
   ```
   framix --fully script.json
   ```
+- **常规配置**:
   ```json
   {
       "command": [
@@ -238,13 +240,41 @@
                   "change": [],
                   "looper": 1,
                   "prefix": [
-                      {"cmds": [], "args": []}, {"cmds": [], "args": []}
+                      {"cmds": ["key_event"], "args": [[3]]}, 
+                      {"cmds": ["sleep"], "args": [[1]]}
                   ],
                   "action": [
-                      {"cmds": [], "args": []}, {"cmds": [], "args": []}
+                      {"cmds": ["automator"], "args": [["click", {"text": "text"}]]}, 
+                      {"cmds": ["sleep"], "args": [[3]]}
                   ],
                   "suffix": [
-                      {"cmds": [], "args": []}, {"cmds": [], "args": []}
+                      {"cmds": ["force_stop"], "args": [["package_name"]]}, 
+                      {"cmds": ["sleep"], "args": [[1]]}
+                  ]
+              }
+          }
+      ]
+  }
+  ```
+- **并发配置**:
+  ```json
+  {
+      "command": [
+          {
+              "ID-X": {
+                  "parser": {"FST": {"frate": 60}, "ALS": {"boost": true}},
+                  "header": ["script"],
+                  "change": [],
+                  "looper": 1,
+                  "prefix": [
+                      {"cmds": ["key_event", "sleep"], "args": [[3], [1]]}
+                  ],
+                  "action": [
+                      {"cmds": ["automator"], "args": [["click", {"text": "text"}]]}, 
+                      {"cmds": ["sleep"], "args": [[3]]}
+                  ],
+                  "suffix": [
+                      {"cmds": ["force_stop", "sleep"], "args": [["package_name"], [1]]} 
                   ]
               }
           }

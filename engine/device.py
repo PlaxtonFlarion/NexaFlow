@@ -109,8 +109,10 @@ class Device(_Phone):
         result = await Terminal.cmd_line(*cmd)
         return result.strip()
 
-    async def automator(self, method: str, selector: dict = None, *args) -> None:
+    async def automator_activation(self) -> None:
         self.facilities = await asyncio.to_thread(u2.connect, self.sn)
+
+    async def automator(self, method: str, selector: dict = None, *args) -> None:
         element = self.facilities(**selector) if selector else self.facilities
         if callable(function := getattr(element, method)):
             await asyncio.to_thread(function, *args)

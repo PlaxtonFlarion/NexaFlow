@@ -1613,7 +1613,7 @@ class Missions(object):
             Show.show_panel(self.level, e_, Wind.KEEPER)
 
         titles_ = {"speed": "Speed", "basic": "Basic", "keras": "Keras"}
-        input_title_ = next((title for key, title in titles_.items() if getattr(self, key)), "Video")
+        input_title_ = next((title_ for key_, title_ in titles_.items() if getattr(self, key_)), "Video")
 
         record = Record(
             alone=self.alone, whist=self.whist, frate=deploy.frate
@@ -1707,6 +1707,16 @@ class Missions(object):
                 )
             else:
                 return None
+
+            for device_ in device_list:
+                logger.debug(tip_ := f"{device_.sn} Automator Activating")
+                Show.show_panel(self.level, tip_, Wind.EXPLORER)
+            await asyncio.gather(
+                *(device_.automator_activation() for device_ in device_list)
+            )
+            for device_ in device_list:
+                logger.debug(tip_ := f"{device_.sn} Automator Activation Success")
+                Show.show_panel(self.level, tip_, Wind.EXPLORER)
 
             for script_data_ in load_script_data_:
                 if isinstance(script_data_, Exception):
