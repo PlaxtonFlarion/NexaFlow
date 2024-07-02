@@ -1491,8 +1491,9 @@ class Missions(object):
                 logger.debug(tip := f"{sn} {function.__name__} {exec_args}")
                 Show.show_panel(self.level, tip, Wind.EXPLORER)
                 if inspect.iscoroutinefunction(function):
-                    return await function(*exec_args)
-                return await asyncio.to_thread(function, *exec_args)
+                    if call_result := await function(*exec_args):
+                        logger.debug(tip := f"Returns: {call_result}")
+                        return Show.show_panel(self.level, tip, Wind.EXPLORER)
             except asyncio.CancelledError:
                 live_devices.pop(sn)
                 logger.debug(tip := f"{sn} Call Commands Exit")

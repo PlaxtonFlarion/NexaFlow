@@ -112,10 +112,17 @@ class Device(_Phone):
     async def automator_activation(self) -> None:
         self.facilities = await asyncio.to_thread(u2.connect, self.sn)
 
-    async def automator(self, method: str, selector: dict = None, *args) -> None:
+    async def automator(self, method: str, selector: dict = None, *args) -> typing.Union[None, str, Exception]:
         element = self.facilities(**selector) if selector else self.facilities
         if callable(function := getattr(element, method)):
-            await asyncio.to_thread(function, *args)
+            arg_list, arg_dict = [], {}
+            for arg in args:
+                if isinstance(arg, dict):
+                    arg_dict.update(arg)
+                else:
+                    arg_list.append(arg)
+            return await asyncio.to_thread(function, *arg_list, **arg_dict)
+        return None
 
 
 if __name__ == '__main__':
