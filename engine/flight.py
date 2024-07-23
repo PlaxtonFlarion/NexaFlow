@@ -9,12 +9,34 @@ from rich.logging import RichHandler
 from nexaflow import const
 
 
+class FramixError(Exception):
+    pass
+
+
+class FramixAnalysisError(FramixError):
+
+    def __init__(self, msg: typing.Optional[typing.Any] = None):
+        self.msg = msg
+
+
+class FramixAnalyzerError(FramixError):
+
+    def __init__(self, msg: typing.Optional[typing.Any] = None):
+        self.msg = msg
+
+
+class FramixReporterError(FramixError):
+
+    def __init__(self, msg: typing.Optional[typing.Any] = None):
+        self.msg = msg
+
+
 class RichSink(RichHandler):
 
     def __init__(self, console: "Console"):
         super().__init__(console=console, rich_tracebacks=True, show_path=False, show_time=False)
 
-    def emit(self, record):
+    def emit(self, record) -> None:
         log_message = self.format(record)
         self.console.print(log_message)
 
@@ -25,7 +47,7 @@ class Entry(object):
         self.title = title
         self.sheet = []
 
-    def update_video(self, subtitle, sequence, video_path):
+    def update_video(self, subtitle: str, sequence: str, video_path: str) -> None:
         self.sheet.append({
             "query": os.path.join(subtitle, sequence),
             "video": video_path
@@ -35,11 +57,11 @@ class Entry(object):
 class Find(object):
 
     @staticmethod
-    def is_video_file(file: str):
+    def is_video_file(file: str) -> bool:
         video_name = (".mp4", ".avi", ".mov", ".mkv", ".flv", ".wmv")
         return file.lower().endswith(video_name)
 
-    def list_videos_in_directory(self, folder):
+    def list_videos_in_directory(self, folder: str) -> list[str]:
         video_file_list = []
         if os.path.exists(folder):
             with os.scandir(folder) as entries:
@@ -48,11 +70,11 @@ class Find(object):
                         video_file_list.append(entry.path)
         return video_file_list
 
-    def find_sequence(self, sequence_path: str):
+    def find_sequence(self, sequence_path: str) -> list[str]:
         video_folder_path = os.path.join(sequence_path, "video")
         return self.list_videos_in_directory(video_folder_path)
 
-    def find_subtitle(self, subtitle_path, subtitle_tree):
+    def find_subtitle(self, subtitle_path: str, subtitle_tree: "Tree"):
         all_videos = []
         with os.scandir(subtitle_path) as sequences:
             for sequence_entry in sequences:
@@ -85,7 +107,7 @@ class Find(object):
                     entries.append(entry)
         return entries
 
-    def accelerate(self, base_folder: str):
+    def accelerate(self, base_folder: str) -> typing.Union[tuple["Tree", list], "FramixAnalyzerError"]:
         if not os.path.exists(base_folder):
             return FramixAnalyzerError(f"文件夹错误")
 
@@ -114,10 +136,7 @@ class Craft(object):
         return re.sub(pattern, "", path)
 
     @staticmethod
-    async def achieve(
-            template: typing.Union[str, "os.PathLike"]
-    ) -> typing.Union[str, "Exception"]:
-
+    async def achieve(template: typing.Union[str, "os.PathLike"]) -> typing.Union[str, "Exception"]:
         try:
             async with aiofiles.open(template, "r", encoding=const.CHARSET) as f:
                 template_file = await f.read()
@@ -129,7 +148,7 @@ class Craft(object):
 class Active(object):
 
     @staticmethod
-    def active(log_level: str):
+    def active(log_level: str) -> None:
         logger.remove(0)
         logger.add(
             RichSink(Console()), level=log_level.upper(), format=const.PRINT_FORMAT, diagnose=False
@@ -156,28 +175,6 @@ class Review(object):
         return f"<Review start={start} end={end} cost={cost}>"
 
     __repr__ = __str__
-
-
-class FramixError(Exception):
-    pass
-
-
-class FramixAnalysisError(FramixError):
-
-    def __init__(self, msg: typing.Optional[typing.Any] = None):
-        self.msg = msg
-
-
-class FramixAnalyzerError(FramixError):
-
-    def __init__(self, msg: typing.Optional[typing.Any] = None):
-        self.msg = msg
-
-
-class FramixReporterError(FramixError):
-
-    def __init__(self, msg: typing.Optional[typing.Any] = None):
-        self.msg = msg
 
 
 if __name__ == '__main__':

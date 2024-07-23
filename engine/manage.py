@@ -15,14 +15,14 @@ from nexaflow import const
 class ScreenMonitor(object):
 
     @staticmethod
-    def screen_size():
-        screen = get_monitors()[0]
+    def screen_size(index: int = 0) -> tuple[int, int]:
+        screen = get_monitors()[index]
         return screen.width, screen.height
 
 
 class SourceMonitor(object):
 
-    history = []
+    history: list[tuple[float, float, float]] = []
 
     def __init__(self):
         base_cpu_usage_threshold = 50
@@ -221,9 +221,9 @@ class Manage(object):
             return list(self.device_dict.values())
 
     async def display_device(self) -> None:
-        Show.console.print(f"<Link> <{'单设备模式' if len(self.device_dict) == 1 else '多设备模式'}>")
+        Show.console.print(f"[bold]<Link> <{'单设备模式' if len(self.device_dict) == 1 else '多设备模式'}>[/]")
         for device in self.device_dict.values():
-            Show.console.print(f"[bold #00FFAF]Connect:[/] {device}")
+            Show.console.print(f"[bold #00FFAF]Connect:[/] [bold]{device}[/]")
 
     @staticmethod
     async def display_select(device_list: list["Device"]) -> None:
