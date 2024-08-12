@@ -10,8 +10,9 @@ try:
 except ImportError as e:
     raise ImportError("AudioPlayer requires pygame. install it first.")
 
-from frameflow.skills.show import Show
 from engine.terminal import Terminal
+from frameflow.skills.show import Show
+from nexaflow import const
 
 
 class Record(object):
@@ -24,7 +25,7 @@ class Record(object):
 
         self.alone = kwargs.get("alone", False)
         self.whist = kwargs.get("whist", False)
-        self.frate = kwargs.get("frate", 60)
+        self.frate = kwargs.get("frate", const.FRATE)
 
     async def ask_start_record(self, device, dst, **kwargs):
         """
@@ -194,6 +195,7 @@ class Record(object):
         返回:
             None
         """
+
         bridle = self.record_events[device.sn]["stop"] if self.alone else self.melody_events
         events = self.record_events[device.sn]
 
@@ -240,6 +242,7 @@ class Record(object):
         返回:
             None
         """
+
         if self.alone and (events := self.record_events.get(device.sn, None)):
             bridle = events["stop"], events["done"], events["fail"]
             while True:
@@ -271,6 +274,7 @@ class Record(object):
             - 如果找到任何一个 `fail` 事件被触发，返回 True。
             - 如果所有设备的 `fail` 事件均未触发，返回 False。
         """
+
         return any(
             events["fail"].is_set() for events in self.record_events.values()
         )
@@ -279,7 +283,7 @@ class Record(object):
         """
         清理所有录制事件并重置状态。
 
-        该方法用于清理所有录制事件，重置状态，以便为新的录制任务做好准备。
+        该方法用于清理所有录制事件，重置状态，以便为新地录制任务做好准备。
 
         操作步骤:
             1. 清除全局事件 `self.melody_events`。
@@ -292,6 +296,7 @@ class Record(object):
                 - 对每个设备事件字典中的事件调用 `clear()` 方法，使其处于未触发状态。
             - 清空 `self.record_events` 字典，移除所有设备的事件记录。
         """
+
         self.melody_events.clear()
         for event_dict in self.record_events.values():
             for events in event_dict.values():
@@ -320,6 +325,7 @@ class Player(object):
             - 播放音频文件，并在音频播放期间通过检查 pygame.mixer.music.get_busy() 保持循环，直到播放结束。
             - 在循环中通过 pygame.time.Clock().tick(10) 控制帧率，防止占用过多 CPU 资源。
         """
+
         pygame.mixer.init()
         pygame.mixer.music.load(audio_file)
         pygame.mixer.music.set_volume(1.0)

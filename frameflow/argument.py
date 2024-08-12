@@ -96,6 +96,11 @@ class Args(object):
             "args": {"action": "store_true"},
             "view": ["布尔", "一次"],
             "help": "均衡节奏"
+        },
+        "--shine": {
+            "args": {"action": "store_true"},
+            "view": ["布尔", "一次"],
+            "help": "平行映射"
         }
     }
 
