@@ -1,11 +1,16 @@
-"""
-███████╗ ██████╗   █████╗      ███╗   ███╗ ██╗ ██╗  ██╗
-██╔════╝ ██╔══██╗ ██╔══██╗     ████╗ ████║ ██║ ╚██╗██╔╝
-█████╗   ██████╔╝ ███████║     ██╔████╔██║ ██║  ╚███╔╝
-██╔══╝   ██╔══██╗ ██╔══██║     ██║╚██╔╝██║ ██║  ██╔██╗
-██║      ██║  ██║ ██║  ██║     ██║ ╚═╝ ██║ ██║ ██╔╝ ██╗
-╚═╝      ╚═╝  ╚═╝ ╚═╝  ╚═╝     ╚═╝     ╚═╝ ╚═╝ ╚═╝  ╚═╝
-"""
+###########################################################
+#                                                         #
+#                                                         #
+# ███████╗ ██████╗   █████╗      ███╗   ███╗ ██╗ ██╗  ██╗ #
+# ██╔════╝ ██╔══██╗ ██╔══██╗     ████╗ ████║ ██║ ╚██╗██╔╝ #
+# █████╗   ██████╔╝ ███████║     ██╔████╔██║ ██║  ╚███╔╝  #
+# ██╔══╝   ██╔══██╗ ██╔══██║     ██║╚██╔╝██║ ██║  ██╔██╗  #
+# ██║      ██║  ██║ ██║  ██║     ██║ ╚═╝ ██║ ██║ ██╔╝ ██╗ #
+# ╚═╝      ╚═╝  ╚═╝ ╚═╝  ╚═╝     ╚═╝     ╚═╝ ╚═╝ ╚═╝  ╚═╝ #
+#                                                         #
+#              Welcome to the Framix Engine!              #
+#                                                         #
+###########################################################
 
 __all__ = []
 
@@ -929,18 +934,6 @@ class Missions(object):
 
     # 影像堆叠导航
     async def video_data_task(self, video_data_list: list, option: "Option", deploy: "Deploy"):
-
-        async def load_entries():
-            for video_data in video_data_list:
-                finder_result = finder.accelerate(video_data)
-                if isinstance(finder_result, Exception):
-                    logger.debug(finder_result)
-                    Show.show_panel(self.level, finder_result, Wind.KEEPER)
-                    continue
-                tree, collection_list = finder_result
-                Show.console.print(tree)
-                yield collection_list[0]
-
         """
         异步处理视频数据任务，并根据配置选项进行分析。
 
@@ -967,6 +960,17 @@ class Missions(object):
             3. 根据配置执行相应的分析操作（快速分析或深度学习分析）。
             4. 生成并展示分析报告。
         """
+
+        async def load_entries():
+            for video_data in video_data_list:
+                finder_result = finder.accelerate(video_data)
+                if isinstance(finder_result, Exception):
+                    logger.debug(finder_result)
+                    Show.show_panel(self.level, finder_result, Wind.KEEPER)
+                    continue
+                tree, collection_list = finder_result
+                Show.console.print(tree)
+                yield collection_list[0]
 
         finder = Find()
         clipix = Clipix(self.fmp, self.fpb)
@@ -1725,7 +1729,7 @@ class Missions(object):
             for resolve in resolve_list:
                 device_cmds_list = resolve.get("cmds", [])
                 if all(isinstance(device_cmds, str) and device_cmds != "" for device_cmds in device_cmds_list):
-                    device_cmds_list = list(dict.fromkeys(device_cmds_list))
+                    # device_cmds_list = list(dict.fromkeys(device_cmds_list))
                     device_args_list = resolve.get("args", [])
                     device_args_list = [
                         device_args if isinstance(device_args, list) else ([] if device_args == "" else [device_args])
@@ -1818,6 +1822,25 @@ class Missions(object):
             for stop in stop_tasks:
                 stop.cancel()
 
+        """
+        此段代码主要负责一系列初始化操作，为后续的程序运行做准备。
+
+        - **管理对象初始化**:
+          创建一个 `Manage` 对象 `manage_`，并通过 `self.adb` 进行设备管理。随后，使用异步方法 `operate_device` 获取设备列表并存储在 `device_list` 中。
+
+        - **Clipix 和 Alynex 初始化**:
+          创建 `Clipix` 对象 `clipix`，用于处理 `fmp` 和 `fpb`。接下来，基于条件（`self.keras`）设置 `model_place` 的值，之后初始化 `Alynex` 对象 `alynex`，负责模型加载和部署。
+
+        - **模型加载与异常处理**:
+          使用 `ask_model_load` 异步方法尝试加载模型。如果加载过程中发生 `FramixAnalyzerError` 异常，捕获并记录该异常，同时显示错误信息面板。
+
+        - **标题初始化**:
+          根据不同的条件（`speed`, `basic`, `keras`）在字典 `titles_` 中查找对应的标题。如果没有匹配到，则默认标题为 "Video"。
+
+        - **记录和播放器初始化**:
+          初始化 `Record` 对象 `record`，用于记录各种状态信息和数据，配置参数包括 `alone`, `whist`, 和 `frate`。接着，初始化 `Player` 对象 `player` 以及 `SourceMonitor` 对象 `source`，分别用于播放和监控源数据。
+        """
+
         # Initialization
         manage_ = Manage(self.adb)
         device_list = await manage_.operate_device()
@@ -1843,6 +1866,41 @@ class Missions(object):
 
         # Flick Loop
         if self.flick:
+            """
+            此段代码处理控制台应用程序中的复杂交互过程，主要负责管理设备显示、设置报告以及通过命令行界面处理各种用户输入。
+
+            - **flick 检查**: 
+              初始条件检查 `flick` 属性是否为 `True`。如果为真，则进入流程。
+
+            - **报告初始化**:
+              创建一个 `Report` 对象，并为其设置一个包含输入标题、当前时间戳和进程ID的标题。
+
+            - **定时器模式设置**:
+              进入一个无限循环，通过捕获用户输入进行交互。默认的计时器模式为5秒。
+
+            - **设备管理与操作**:
+              用户可以选择 "device" 来查看设备列表，或者选择 "cancel" 来退出程序。
+
+            - **标题设置**:
+              如果用户输入 "header"，则解析输入内容以设置新的报告标题。
+
+            - **创建或部署操作**:
+              如果用户输入 "create"，程序将调用 `self.combine` 方法以创建报告。
+              输入 "deploy" 则提示用户退出编辑器后执行部署操作，并通过 `deploy` 模块处理部署文件。
+
+            - **定时器调整**:
+              用户可以输入数字来调整定时器的时间，范围在5到300秒之间。如果输入不在范围内，将提示用户正确的时间范围。
+
+            - **异常处理**:
+              代码使用 `try-except` 块来捕获 `FramixAnalysisError` 异常，并在异常发生时提供提示文档。
+
+            - **任务执行与设备操作**:
+              如果没有发生异常，程序将继续执行一系列任务，并根据结果选择是否进行设备操作。
+
+            - **资源清理**:
+              在 `finally` 块中，无论之前的操作是否成功，都会调用 `record.clean_event` 方法来清理事件，确保资源的正确释放。
+            """
+
             report = Report(option.total_place)
             report.title = f"{input_title_}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
             timer_mode = 5
@@ -2043,6 +2101,18 @@ class Missions(object):
 class Clipix(object):
 
     def __init__(self, fmp: str, fpb: str):
+        """
+        初始化方法 `__init__` 用于设置 `Clipix` 对象的基础配置，接收两个参数 `fmp` 和 `fpb`。
+
+        - **fmp**:
+          表示 `ffmpeg` 的路径，`ffmpeg` 是一个广泛使用的多媒体处理工具，用于视频、音频的编解码、转换、流媒体处理等功能。此路径用于定位 `ffmpeg` 可执行文件。
+
+        - **fpb**:
+          表示 `ffprobe` 的路径，`ffprobe` 是 `ffmpeg` 套件中的一个工具，专门用于分析多媒体文件的格式、编码、比特率、元数据等信息。此路径用于定位 `ffprobe` 可执行文件。
+
+        在初始化过程中，这两个路径被存储在对象的实例变量 `self.fmp` 和 `self.fpb` 中，以便后续在多媒体处理任务中调用。
+        """
+
         self.fmp = fmp
         self.fpb = fpb
 
@@ -2122,6 +2192,7 @@ class Clipix(object):
             - 视频处理会生成新的文件，确保有足够的磁盘空间。
             - 此函数使用异步方式进行视频处理，确保在适当的异步环境中调用。
         """
+
         start_time_point = (limit_time_point := duration) - standard
         start_delta = datetime.timedelta(seconds=start_time_point)
         limit_delta = datetime.timedelta(seconds=limit_time_point)
@@ -2159,6 +2230,7 @@ class Clipix(object):
         抛出:
         - ValueError: 如果输入的参数类型不符合预期。
         """
+
         if shape:
             w, h, ratio = await Switch.ask_magic_frame(original, shape)
             video_filter_list = filters + [f"scale={w}:{h}"]
@@ -2188,6 +2260,7 @@ class Clipix(object):
             - 该方法依赖于提供的`function`能够异步执行并返回处理结果。
             - 确保源视频和目标视频路径正确，且文件系统有足够权限读写文件。
         """
+
         return await function(self.fmp, video_filter, src, dst, **kwargs)
 
 
@@ -2196,6 +2269,21 @@ class Alynex(object):
     __ks: typing.Optional["KerasStruct"] = KerasStruct()
 
     def __init__(self, deploy: "Deploy", level: str, model_place: typing.Optional[str] = None):
+        """
+        初始化方法 `__init__` 用于配置 `Alynex` 对象的基础设置，接收三个参数 `deploy`、`level` 和 `model_place`。
+
+        - **deploy**:
+          表示 `Deploy` 对象，用于处理部署相关的配置和操作。`Deploy` 对象可能包含了系统运行时所需的环境配置、资源管理和其他部署信息。
+
+        - **level**:
+          表示日志等级，用于指定当前运行环境的日志记录级别（如 DEBUG、INFO、WARNING 等）。这个参数决定了程序在运行时记录的日志详细程度，有助于在开发和调试过程中进行问题追踪和分析。
+
+        - **model_place**:
+          可选参数，表示模型文件的路径或存储位置。这个参数用于指定机器学习或数据模型的位置，如果未提供则默认为 `None`。在模型加载或处理过程中，`model_place` 提供了必要的路径信息。
+
+        在初始化过程中，这三个参数被存储在对象的实例变量 `self.deploy`、`self.level` 和 `self.model_place` 中，以便在后续的操作中使用。
+        """
+
         self.deploy = deploy
         self.level = level
         self.model_place = model_place
@@ -2804,6 +2892,17 @@ async def scheduling() -> None:
 
 
 if __name__ == '__main__':
+    # ***********************
+    # *                     *
+    # *  Welcome to Framix  *
+    # *      Execution      *
+    # *                     *
+    # ***********************
+    #           | |
+    #           | |
+    #         __| |__
+    #        |_______|
+
     """
     应用程序入口点。根据命令行参数初始化并运行主进程。
 

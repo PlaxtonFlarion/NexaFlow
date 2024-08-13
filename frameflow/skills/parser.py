@@ -101,11 +101,10 @@ class Parser(object):
 
     @staticmethod
     def parse_hooks(dim_str):
-        effective_hook_list = []
+        effective_hook_list, requires = [], ["x", "y", "x_size", "y_size"]
         for hook in dim_str:
             if type(hook) is dict:
-                requires = {"x", "y", "x_size", "y_size"}
-                if hook.keys() >= requires and all(isinstance(hook[key], (int, float)) for key in requires):
+                if hook.keys() >= set(requires) and all(isinstance(hook[key], (int, float)) for key in requires):
                     if sum([hook[key] for key in requires]) > 0:
                         effective_hook_list.append({key: hook[key] for key in requires})
             elif type(hook) is str:
@@ -114,9 +113,7 @@ class Parser(object):
                         float(num) if "." in num else int(num) for num in match_list
                     ]
                     if len(valid_list) == 4 and sum(valid_list) > 0:
-                        valid_dict = {
-                            k: v for k, v in zip(["x", "y", "x_size", "y_size"], valid_list)
-                        }
+                        valid_dict = {k: v for k, v in zip(requires, valid_list)}
                         effective_hook_list.append(dict(tuple(valid_dict.items())))
         return effective_hook_list
 

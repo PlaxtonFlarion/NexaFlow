@@ -3,6 +3,9 @@
 
 class Args(object):
 
+    reconcilable: list[str] = []
+    discriminate: list[str] = []
+    
     # 核心操控
     GROUP_MAJOR = {
         "--video": {
