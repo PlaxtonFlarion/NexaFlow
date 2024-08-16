@@ -1,3 +1,12 @@
+#
+#   ____                       _
+#  |  _ \ ___ _ __   ___  _ __| |_
+#  | |_) / _ \ '_ \ / _ \| '__| __|
+#  |  _ <  __/ |_) | (_) | |  | |_
+#  |_| \_\___| .__/ \___/|_|   \__|
+#            |_|
+#
+
 import os
 import re
 import json
@@ -11,7 +20,7 @@ from pathlib import Path
 from loguru import logger
 from jinja2 import Template
 from collections import defaultdict
-from engine.flight import FramixReporterError
+from engine.tinker import FramixReporterError
 from nexaflow import toolbox, const
 from nexaflow.classifier.base import ClassifierResult
 

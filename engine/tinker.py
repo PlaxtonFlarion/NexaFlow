@@ -9,29 +9,29 @@ from rich.logging import RichHandler
 from nexaflow import const
 
 
-class FramixError(Exception):
+class _FramixError(Exception):
     pass
 
 
-class FramixAnalysisError(FramixError):
+class FramixAnalysisError(_FramixError):
 
     def __init__(self, msg: typing.Optional[typing.Any] = None):
         self.msg = msg
 
 
-class FramixAnalyzerError(FramixError):
+class FramixAnalyzerError(_FramixError):
 
     def __init__(self, msg: typing.Optional[typing.Any] = None):
         self.msg = msg
 
 
-class FramixReporterError(FramixError):
+class FramixReporterError(_FramixError):
 
     def __init__(self, msg: typing.Optional[typing.Any] = None):
         self.msg = msg
 
 
-class RichSink(RichHandler):
+class _RichSink(RichHandler):
 
     def __init__(self, console: "Console"):
         super().__init__(console=console, rich_tracebacks=True, show_path=False, show_time=False)
@@ -54,7 +54,24 @@ class Entry(object):
         })
 
 
-class Find(object):
+class Craft(object):
+
+    @staticmethod
+    async def revise_path(path: typing.Union[str, "os.PathLike"]) -> str:
+        pattern = r"[\x00-\x1f\x7f-\x9f\u2000-\u20ff\u202a-\u202e]"
+        return re.sub(pattern, "", path)
+
+    @staticmethod
+    async def achieve(template: typing.Union[str, "os.PathLike"]) -> typing.Union[str, "Exception"]:
+        try:
+            async with aiofiles.open(template, "r", encoding=const.CHARSET) as f:
+                template_file = await f.read()
+        except FileNotFoundError as e:
+            return e
+        return template_file
+
+
+class Finder(object):
 
     @staticmethod
     def is_video_file(file: str) -> bool:
@@ -128,30 +145,13 @@ class Find(object):
         return root_tree, collection_list
 
 
-class Craft(object):
-
-    @staticmethod
-    async def revise_path(path: typing.Union[str, "os.PathLike"]) -> str:
-        pattern = r"[\x00-\x1f\x7f-\x9f\u2000-\u20ff\u202a-\u202e]"
-        return re.sub(pattern, "", path)
-
-    @staticmethod
-    async def achieve(template: typing.Union[str, "os.PathLike"]) -> typing.Union[str, "Exception"]:
-        try:
-            async with aiofiles.open(template, "r", encoding=const.CHARSET) as f:
-                template_file = await f.read()
-        except FileNotFoundError as e:
-            return e
-        return template_file
-
-
 class Active(object):
 
     @staticmethod
     def active(log_level: str) -> None:
         logger.remove(0)
         logger.add(
-            RichSink(Console()), level=log_level.upper(), format=const.PRINT_FORMAT, diagnose=False
+            _RichSink(Console()), level=log_level.upper(), format=const.PRINT_FORMAT, diagnose=False
         )
 
 

@@ -1,7 +1,15 @@
+#
+#   _   _             _
+#  | | | | ___   ___ | | __
+#  | |_| |/ _ \ / _ \| |/ /
+#  |  _  | (_) | (_) |   <
+#  |_| |_|\___/ \___/|_|\_\
+#
+
 import os
 import cv2
 import typing
-from loguru import logger
+# from loguru import logger
 from nexaflow import toolbox
 from nexaflow.video import VideoFrame
 

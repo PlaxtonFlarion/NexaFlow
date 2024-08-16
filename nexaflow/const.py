@@ -1,3 +1,11 @@
+#
+#    ____                _
+#   / ___|___  _ __  ___| |_
+#  | |   / _ \| '_ \/ __| __|
+#  | |__| (_) | | | \__ \ |_
+#   \____\___/|_| |_|___/\__|
+#
+
 import os
 
 ITEM = r"NexaFlow"
@@ -48,6 +56,10 @@ SHIFT = 3
 BLOCK = 3
 CROPS = []
 OMITS = []
+HOOKS = [{"x": 0, "y": 0, "x_size": 0, "y_size": 0}]
+
+DB_FILES_NAME = f"{NAME}_data.db"
+DB_TABLE_NAME = f"stocks"
 
 MODEL = "Keras_Gray_W256_H256_00000"
 

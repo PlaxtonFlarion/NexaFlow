@@ -14,11 +14,19 @@
 
 __all__ = []
 
+#   ___                            _
+#  |_ _|_ __ ___  _ __   ___  _ __| |_
+#   | || '_ ` _ \| '_ \ / _ \| '__| __|
+#   | || | | | | | |_) | (_) | |  | |_
+#  |___|_| |_| |_| .__/ \___/|_|   \__|
+#                |_|
 import os
 import sys
 import shutil
+# from frameflow
 from frameflow.skills.show import Show
 from frameflow.argument import Wind
+# from nexaflow
 from nexaflow import const
 
 # 如果没有提供命令行参数，则显示应用程序标志和帮助文档，并退出程序
@@ -124,6 +132,12 @@ if not os.path.exists(
 ):
     os.makedirs(os.path.dirname(_src_model_place), exist_ok=True)
 
+#   ___                            _
+#  |_ _|_ __ ___  _ __   ___  _ __| |_
+#   | || '_ ` _ \| '_ \ / _ \| '__| __|
+#   | || | | | | | |_) | (_) | |  | |_
+#  |___|_| |_| |_| .__/ \___/|_|   \__|
+#                |_|
 try:
     import re
     import cv2
@@ -137,21 +151,24 @@ try:
     import tempfile
     import aiofiles
     import datetime
+    # from
     from loguru import logger
     from functools import partial
     from rich.prompt import Prompt
     from multiprocessing import freeze_support
     from concurrent.futures import ProcessPoolExecutor
-    from engine.flight import Find, Craft, Active, Review
-    from engine.flight import FramixAnalysisError
-    from engine.flight import FramixAnalyzerError
-    from engine.flight import FramixReporterError
+    # from engine
+    from engine.tinker import FramixAnalysisError
+    from engine.tinker import FramixAnalyzerError
+    from engine.tinker import FramixReporterError
+    from engine.tinker import Craft, Finder, Active, Review
     from engine.switch import Switch
     from engine.terminal import Terminal
-    from frameflow.skills.brexil import Option
-    from frameflow.skills.brexil import Deploy
-    from frameflow.skills.drovix import Drovix
+    # from frameflow
     from frameflow.skills.parser import Parser
+    from frameflow.skills.cubicle import DB
+    from frameflow.skills.profile import Deploy, Option
+    # from nexaflow
     from nexaflow import toolbox
     from nexaflow.report import Report
     from nexaflow.video import VideoObject, VideoFrame
@@ -164,6 +181,11 @@ except (ImportError, ModuleNotFoundError):
     sys.exit(Show.fail())
 
 
+#   __  __ _         _
+#  |  \/  (_)___ ___(_) ___  _ __  ___
+#  | |\/| | / __/ __| |/ _ \| '_ \/ __|
+#  | |  | | \__ \__ \ | (_) | | | \__ \
+#  |_|  |_|_|___/___/_|\___/|_| |_|___/
 class Missions(object):
 
     def __init__(self, level: str, power: int, *args, **kwargs):
@@ -278,52 +300,48 @@ class Missions(object):
         )
         return loop_complete
 
+    #   ____  ____
+    #  |  _ \| __ )
+    #  | | | |  _ \
+    #  | |_| | |_) |
+    #  |____/|____/
     @staticmethod
-    async def enforce(db: "Drovix", ks: typing.Optional["KerasStruct"], start: int, end: int, cost: float, *args):
+    async def enforce(db: "DB", style: str, total: str, title: str, nest: str) -> None:
         """
-        异步执行数据库插入操作，记录视频分析的相关信息。
-
-        该方法会根据提供的参数创建数据库表，并将分析结果插入到数据库中。
-        如果提供了 Keras 模型，则会记录额外的路径信息。
+        将分析数据插入数据库表中，并确保表结构存在。
 
         参数:
-            db (Drovix): 数据库对象，用于执行数据库操作。
-            ks (Optional[KerasStruct]): Keras 模型对象。如果提供，则记录额外的路径信息。
-            start (int): 分析的起始帧编号。
-            end (int): 分析的结束帧编号。
-            cost (float): 分析所花费的时间。
-            *args: 可变参数列表，包含视频分析的其他相关信息。
-                - args[0] (str): 视频总路径。
-                - args[1] (str): 分析标题。
-                - args[2] (str): 查询路径。
-                - args[3] (str): 查询关键字。
-                - args[4] (str): 帧路径。
-                - args[5] (Optional[str]): 额外路径，仅在提供 Keras 模型时记录。
-                - args[6] (Optional[str]): 原型路径，仅在提供 Keras 模型时记录。
+            db (DB): 数据库连接对象，必须实现 `create` 和 `insert` 方法。
+            style (str): 分析方式，用于指定数据处理或分析的类型。
+            total (str): 报告的根目录，表示存储分析结果的根文件夹路径。
+            title (str): 标题信息，通常是数据集的名称。
+            nest (str): 嵌套信息，表示可能包含的子结构或子数据的标识。
 
         返回:
-            None: 该方法没有返回值。
+            None: 此方法不返回任何内容。
 
         异常:
-            ValueError: 如果提供的参数数量不正确。
-            Exception: 其他可能的异常，如数据库操作失败。
+            TypeError: 如果 `db` 对象未实现 `create` 或 `insert` 方法。
+            DatabaseError: 如果数据库操作失败，可能抛出特定的数据库异常。
+            ValueError: 如果任何参数的值不符合预期的格式或范围。
+
+        功能:
+            1. 创建一个包含 `style`、`total`、`title` 和 `nest` 列的表结构。如果表已存在，跳过创建步骤。
+            2. 将提供的分析方式、报告根目录、标题和嵌套信息插入到数据库的对应列中。
+
+        说明:
+            - 此方法是异步的，在调用时不会阻塞主线程或事件循环。
+            - 数据库对象 `db` 必须具有 `create` 和 `insert` 方法。
+            - 在插入数据之前，此方法将确保表结构已经创建。
         """
+        await db.create(column_list := ["style", "total", "title", "nest"])
+        await db.insert(column_list, [style, total, title, nest])
 
-        basic_columns = ["total_path", "title", "query_path", "query", "stage", "frame_path"]
-        stage = json.dumps({"stage": {"start": start, "end": end, "cost": cost}})
-        value = list(args[:4]) + [stage, args[4]]
-
-        if ks:
-            extra_columns = ["extra_path", "proto_path"]
-            extra_data = args[5:7]
-            column_list = basic_columns + extra_columns
-            value.extend(extra_data)
-        else:
-            column_list = basic_columns
-
-        await db.create("stocks", *column_list)
-        await db.insert("stocks", column_list, tuple(value))
-
+    #      _    _     ____
+    #     / \  | |   / ___|
+    #    / _ \ | |   \___ \
+    #   / ___ \| |___ ___) |
+    #  /_/   \_\_____|____/
     async def als_track(
             self,
             deploy: "Deploy",
@@ -419,6 +437,11 @@ class Missions(object):
 
         return originals, indicates
 
+    #      _    _     ____
+    #     / \  | |   / ___|
+    #    / _ \ | |   \___ \
+    #   / ___ \| |___ ___) |
+    #  /_/   \_\_____|____/
     async def als_waves(
             self,
             deploy: "Deploy",
@@ -487,6 +510,12 @@ class Missions(object):
 
         return video_filter_list
 
+    #   ____                      _
+    #  / ___| _ __   ___  ___  __| |
+    #  \___ \| '_ \ / _ \/ _ \/ _` |
+    #   ___) | |_) |  __/  __/ (_| |
+    #  |____/| .__/ \___|\___|\__,_|
+    #        |_|
     async def als_speed(
             self,
             deploy: "Deploy",
@@ -578,24 +607,26 @@ class Missions(object):
                 "frame": os.path.basename(frame_path),
                 "style": "speed"
             }
-            logger.debug(f"Speeder: {json.dumps(result, ensure_ascii=False)}")
+            logger.debug(f"Speeder: {(nest := json.dumps(result, ensure_ascii=False))}")
             await report.load(result)
 
-            future_result = struct, start, end, cost
-            todo_list_result = total_path, title, query_path, query, frame_path
-
-            return future_result, todo_list_result
+            return result.get("style"), result.get("total"), result.get("title"), nest
 
         # Speed Analyzer Result
         render_result = await asyncio.gather(
             *(render_speed(todo_list) for todo_list in task_list)
         )
 
-        async with Drovix(os.path.join(report.reset_path, f"{const.NAME}_data.db")) as db:
+        async with DB(os.path.join(report.reset_path, const.DB_FILES_NAME)) as db:
             await asyncio.gather(
-                *(self.enforce(db, *ftr, *tlr) for ftr, tlr in render_result)
+                *(self.enforce(db, *ns) for ns in render_result)
             )
 
+    #   _  __
+    #  | |/ /___ _ __ __ _ ___
+    #  | ' // _ \ '__/ _` / __|
+    #  | . \  __/ | | (_| \__ \
+    #  |_|\_\___|_|  \__,_|___/
     async def als_keras(
             self,
             deploy: "Deploy",
@@ -744,24 +775,26 @@ class Missions(object):
             else:
                 result["style"] = "basic"
 
-            logger.debug(f"Restore: {json.dumps(result, ensure_ascii=False)}")
+            logger.debug(f"Restore: {(nest := json.dumps(result, ensure_ascii=False))}")
             await report.load(result)
 
-            future_result = struct, start, end, cost
-            todo_list_result = total_path, title, query_path, query, frame_path, extra_path, proto_path
-
-            return future_result, todo_list_result
+            return result.get("style"), result.get("total"), result.get("title"), nest
 
         # Keras Analyzer Result
         render_result = await asyncio.gather(
             *(render_keras(future, todo_list) for future, todo_list in zip(futures, task_list) if future)
         )
 
-        async with Drovix(os.path.join(report.reset_path, f"{const.NAME}_data.db")) as db:
+        async with DB(os.path.join(report.reset_path, const.DB_FILES_NAME)) as db:
             await asyncio.gather(
-                *(self.enforce(db, *ftr, *tlr) for ftr, tlr in render_result)
+                *(self.enforce(db, *ns) for ns in render_result)
             )
 
+    #    ____                _     _
+    #   / ___|___  _ __ ___ | |__ (_)_ __   ___
+    #  | |   / _ \| '_ ` _ \| '_ \| | '_ \ / _ \
+    #  | |__| (_) | | | | | | |_) | | | | |  __/
+    #   \____\___/|_| |_| |_|_.__/|_|_| |_|\___|
     async def combine(self, report: "Report") -> None:
         """
         异步生成组合报告的方法。
@@ -792,6 +825,12 @@ class Missions(object):
         function = getattr(self, "combine_view" if self.speed else "combine_main")
         return await function([os.path.dirname(report.total_path)])
 
+    #    ____                _     _
+    #   / ___|___  _ __ ___ | |__ (_)_ __   ___
+    #  | |   / _ \| '_ ` _ \| '_ \| | '_ \ / _ \
+    #  | |__| (_) | | | | | | |_) | | | | |  __/
+    #   \____\___/|_| |_| |_|_.__/|_|_| |_|\___|
+    #
     async def combine_crux(self, share_temp: str, total_temp: str, merge: list) -> None:
         """
         异步生成汇总报告的方法。
@@ -842,16 +881,56 @@ class Missions(object):
             else:
                 tip_state, tip_style = f"成功生成汇总报告 {os.path.basename(state)}", Wind.REPORTER
             logger.debug(tip_state)
+            logger.debug(state)
             Show.show_panel(self.level, tip_state, tip_style)
+            Show.show_panel(self.level, state, tip_style)
 
     # 时空纽带分析系统
     async def combine_view(self, merge: list) -> None:
+        """
+        异步方法：合并视图数据
+
+        功能:
+            - `combine_view` 方法将调用 `combine_crux`，并传递 `view_share_temp`、`view_total_temp` 和 `merge` 列表进行处理。
+            - 将部分数据进行整合处理，并生成最终的合并结果。
+
+        参数:
+            - merge (list): 需要合并的数据列表。
+
+        返回:
+            None: 异步执行，不返回任何值。
+
+        异常:
+            - 如果 `combine_crux` 方法在处理过程中遇到异常，则会抛出并可能导致合并失败。
+
+        示例:
+            await self.combine_view(merge_list)
+        """
         await self.combine_crux(
             self.view_share_temp, self.view_total_temp, merge
         )
 
     # 时序融合分析系统
     async def combine_main(self, merge: list) -> None:
+        """
+        异步方法：合并视图数据
+
+        功能:
+            - `combine_main` 方法调用 `combine_crux`，并传递 `main_share_temp`、`main_total_temp` 和 `merge` 列表进行处理。
+            - 将部分数据进行整合处理，并生成最终的合并结果。
+
+        参数:
+            - merge (list): 需要合并的数据列表。
+
+        返回:
+            None: 异步执行，不返回任何值。
+
+        异常:
+            - 如果 `combine_crux` 方法在处理过程中遇到异常，则会抛出并可能导致合并失败。
+
+        示例:
+            await self.combine_main(merge_list)
+        """
         await self.combine_crux(
             self.main_share_temp, self.main_total_temp, merge
         )
@@ -962,6 +1041,28 @@ class Missions(object):
         """
 
         async def load_entries():
+            """
+            异步生成器函数：加载视频数据条目
+
+            功能:
+                - 逐一处理给定的视频数据列表，并调用 finder.accelerate 进行加速分析。
+                - 如果分析结果是异常对象，记录异常信息并在面板上显示。
+                - 如果分析成功，打印分析结果的树形结构，并生成第一个集合列表项。
+
+            参数:
+                None: 该函数依赖于外部上下文中的 `video_data_list` 变量。
+
+            返回:
+                Generator[dict]: 生成视频数据集合列表的第一个条目。
+
+            异常:
+                - 如果 `finder.accelerate` 返回异常对象，则捕获并处理异常，继续处理下一个视频数据。
+                - 如果生成器中断或取消，可能会导致未处理的视频数据丢失。
+
+            示例:
+                async for entries in load_entries():
+                    # 处理每个视频数据的第一个集合条目
+            """
             for video_data in video_data_list:
                 finder_result = finder.accelerate(video_data)
                 if isinstance(finder_result, Exception):
@@ -972,7 +1073,7 @@ class Missions(object):
                 Show.console.print(tree)
                 yield collection_list[0]
 
-        finder = Find()
+        finder = Finder()
         clipix = Clipix(self.fmp, self.fpb)
 
         # Profession
@@ -1333,6 +1434,7 @@ class Missions(object):
                 4. 调整图像大小并添加网格线。
                 5. 显示最终处理的图像。
             """
+
             image_folder = "/sdcard/Pictures/Shots"
             image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_" + "Shot.png"
             await Terminal.cmd_line(
@@ -1482,8 +1584,35 @@ class Missions(object):
     async def analysis(self, option: "Option", deploy: "Deploy"):
 
         async def anything_film():
+            """
+            异步函数：初始化并启动设备的视频录制任务
+
+            功能:
+                - 等待所有设备上线并准备就绪后，开始视频录制任务。
+                - 根据屏幕尺寸和设备的显示设置，计算每个设备的投屏位置，避免重叠。
+                - 为每个设备创建独立的视频录制任务，并将任务信息存储在列表中。
+
+            参数:
+                无。函数使用了全局或类范围内的 `device_list`、`source` 和 `report`。
+
+            返回:
+                list: 返回包含所有设备录制任务的 `todo_list` 列表。
+
+            异常:
+                - asyncio.CancelledError: 如果在等待设备上线或录制任务过程中任务被取消。
+            """
 
             async def wait_for_device(device):
+                """
+                异步函数：等待指定设备上线
+
+                功能:
+                    - 通过 ADB 命令等待指定设备上线，直到设备连接并准备就绪。
+                    - 在等待过程中，会记录设备的标签和序列号信息。
+
+                参数:
+                    device (Device): 设备对象，包含设备的标签和序列号。
+                """
                 Show.notes(f"[bold #FAFAD2]Wait Device Online -> {device.tag} {device.sn}[/]")
                 await Terminal.cmd_line(self.adb, "-s", device.sn, "wait-for-device")
 
@@ -1537,6 +1666,25 @@ class Missions(object):
             return todo_list
 
         async def anything_over():
+            """
+            异步函数：完成任务后的处理
+
+            功能:
+                - 通过异步方式关闭视频录制任务，并收集处理结果。
+                - 遍历有效列表，根据视频录制的结果判断是否需要移除失败的任务，并记录成功或失败的信息。
+                - 最终将所有处理结果显示在面板上。
+
+            参数:
+                无。函数使用了全局或类范围内的 `device_list` 和 `task_list`。
+
+            返回:
+                None: 该函数不返回任何值。
+
+            异常:
+                - asyncio.CancelledError: 如果在任务执行过程中任务被取消。
+                - IndexError: 在移除失败任务时，可能因任务列表索引越界而抛出此异常。
+            """
+
             effective_list = await asyncio.gather(
                 *(record.ask_close_record(device, video_temp, transports)
                   for device, (video_temp, transports, *_) in zip(device_list, task_list))
@@ -1557,6 +1705,24 @@ class Missions(object):
             Show.show_panel(self.level, "\n".join(check_list), Wind.EXPLORER)
 
         async def anything_well():
+            """
+            执行任务处理，根据不同模式选择适当的分析方法。
+
+            功能:
+                - 判断 `task_list` 是否为空，如果为空，则输出提示信息并终止操作。
+                - 根据不同模式（speed, basic, keras）选择适当的分析方法。
+
+            参数:
+                无。
+
+            返回:
+                None: 该函数不返回任何值。
+
+            异常:
+                - 如果 `als_speed`, `als_keras` 函数内部抛出异常，则可能导致任务处理中断。
+                - asyncio.CancelledError: 如果任务在执行过程中被取消。
+            """
+
             if len(task_list) == 0:
                 logger.debug(tip := f"没有有效任务")
                 return Show.show_panel(self.level, tip, Wind.KEEPER)
@@ -1575,19 +1741,58 @@ class Missions(object):
                 Show.show_panel(self.level, tip, Wind.EXPLORER)
 
         async def load_timer():
+            """
+            并行执行定时任务，对设备列表中的每个设备进行计时操作。
+
+            功能:
+                使用 asyncio.gather 并行执行 `check_timer` 函数，对设备列表中的每个设备进行计时。
+
+            参数:
+                无。
+
+            返回:
+                None: 该函数不返回任何值。
+
+            异常:
+                - 如果 `check_timer` 函数内部抛出异常，则可能导致部分设备的计时任务中断。
+                - asyncio.CancelledError: 如果任务在执行过程中被取消。
+            """
+
             await asyncio.gather(
                 *(record.check_timer(device, timer_mode) for device in device_list)
             )
 
         async def load_carry(carry):
+            """
+            加载并解析传入的 carry 字符串，返回包含执行指令的字典或异常。
+
+            参数:
+                carry (str): 包含路径和关键字的字符串，以逗号、分号、感叹号或空格分隔。
+
+            返回:
+                typing.Union[dict, Exception]:
+                    - 如果成功解析并加载，返回一个包含关键字和对应执行指令的字典。
+                    - 如果出现错误，返回相应的异常信息。
+
+            例外:
+                - FileNotFoundError: 如果指定的文件路径不存在。
+                - KeyError: 如果关键字不在加载的字典中。
+                - json.JSONDecodeError: 如果JSON文件格式不正确。
+                - ValueError: 如果传入的 carry 字符串格式不正确。
+            """
+
+            # 解析传入的 carry 字符串，分割为路径和关键字两部分
             if len(parts := re.split(r",|;|!|\s", carry, 1)) == 2:
                 loc, key = parts
+                # 异步加载执行字典
                 if isinstance(exec_dict := await load_fully(loc), Exception):
                     return exec_dict
 
                 try:
+                    # 查找关键字对应的执行指令
                     if current := exec_dict.get(key, None):
                         return {key: current}
+                # 如果 carry 字符串格式不正确，抛出值错误
                 except (FileNotFoundError, KeyError, json.JSONDecodeError) as e:
                     return e
 
@@ -1826,19 +2031,19 @@ class Missions(object):
         此段代码主要负责一系列初始化操作，为后续的程序运行做准备。
 
         - **管理对象初始化**:
-          创建一个 `Manage` 对象 `manage_`，并通过 `self.adb` 进行设备管理。随后，使用异步方法 `operate_device` 获取设备列表并存储在 `device_list` 中。
+            创建一个 `Manage` 对象 `manage_`，并通过 `self.adb` 进行设备管理。随后，使用异步方法 `operate_device` 获取设备列表并存储在 `device_list` 中。
 
         - **Clipix 和 Alynex 初始化**:
-          创建 `Clipix` 对象 `clipix`，用于处理 `fmp` 和 `fpb`。接下来，基于条件（`self.keras`）设置 `model_place` 的值，之后初始化 `Alynex` 对象 `alynex`，负责模型加载和部署。
+            创建 `Clipix` 对象 `clipix`，用于处理 `fmp` 和 `fpb`。接下来，基于条件（`self.keras`）设置 `model_place` 的值，之后初始化 `Alynex` 对象 `alynex`，负责模型加载和部署。
 
         - **模型加载与异常处理**:
-          使用 `ask_model_load` 异步方法尝试加载模型。如果加载过程中发生 `FramixAnalyzerError` 异常，捕获并记录该异常，同时显示错误信息面板。
+            使用 `ask_model_load` 异步方法尝试加载模型。如果加载过程中发生 `FramixAnalyzerError` 异常，捕获并记录该异常，同时显示错误信息面板。
 
         - **标题初始化**:
-          根据不同的条件（`speed`, `basic`, `keras`）在字典 `titles_` 中查找对应的标题。如果没有匹配到，则默认标题为 "Video"。
+            根据不同的条件（`speed`, `basic`, `keras`）在字典 `titles_` 中查找对应的标题。如果没有匹配到，则默认标题为 "Video"。
 
         - **记录和播放器初始化**:
-          初始化 `Record` 对象 `record`，用于记录各种状态信息和数据，配置参数包括 `alone`, `whist`, 和 `frate`。接着，初始化 `Player` 对象 `player` 以及 `SourceMonitor` 对象 `source`，分别用于播放和监控源数据。
+            初始化 `Record` 对象 `record`，用于记录各种状态信息和数据，配置参数包括 `alone`, `whist`, 和 `frate`。接着，初始化 `Player` 对象 `player` 以及 `SourceMonitor` 对象 `source`，分别用于播放和监控源数据。
         """
 
         # Initialization
@@ -1870,35 +2075,35 @@ class Missions(object):
             此段代码处理控制台应用程序中的复杂交互过程，主要负责管理设备显示、设置报告以及通过命令行界面处理各种用户输入。
 
             - **flick 检查**: 
-              初始条件检查 `flick` 属性是否为 `True`。如果为真，则进入流程。
+                初始条件检查 `flick` 属性是否为 `True`。如果为真，则进入流程。
 
             - **报告初始化**:
-              创建一个 `Report` 对象，并为其设置一个包含输入标题、当前时间戳和进程ID的标题。
+                创建一个 `Report` 对象，并为其设置一个包含输入标题、当前时间戳和进程ID的标题。
 
             - **定时器模式设置**:
-              进入一个无限循环，通过捕获用户输入进行交互。默认的计时器模式为5秒。
+                进入一个无限循环，通过捕获用户输入进行交互。默认的计时器模式为5秒。
 
             - **设备管理与操作**:
-              用户可以选择 "device" 来查看设备列表，或者选择 "cancel" 来退出程序。
+                用户可以选择 "device" 来查看设备列表，或者选择 "cancel" 来退出程序。
 
             - **标题设置**:
-              如果用户输入 "header"，则解析输入内容以设置新的报告标题。
+                如果用户输入 "header"，则解析输入内容以设置新的报告标题。
 
             - **创建或部署操作**:
-              如果用户输入 "create"，程序将调用 `self.combine` 方法以创建报告。
-              输入 "deploy" 则提示用户退出编辑器后执行部署操作，并通过 `deploy` 模块处理部署文件。
+                如果用户输入 "create"，程序将调用 `self.combine` 方法以创建报告。
+                输入 "deploy" 则提示用户退出编辑器后执行部署操作，并通过 `deploy` 模块处理部署文件。
 
             - **定时器调整**:
-              用户可以输入数字来调整定时器的时间，范围在5到300秒之间。如果输入不在范围内，将提示用户正确的时间范围。
+                用户可以输入数字来调整定时器的时间，范围在5到300秒之间。如果输入不在范围内，将提示用户正确的时间范围。
 
             - **异常处理**:
-              代码使用 `try-except` 块来捕获 `FramixAnalysisError` 异常，并在异常发生时提供提示文档。
+                代码使用 `try-except` 块来捕获 `FramixAnalysisError` 异常，并在异常发生时提供提示文档。
 
             - **任务执行与设备操作**:
-              如果没有发生异常，程序将继续执行一系列任务，并根据结果选择是否进行设备操作。
+                如果没有发生异常，程序将继续执行一系列任务，并根据结果选择是否进行设备操作。
 
             - **资源清理**:
-              在 `finally` 块中，无论之前的操作是否成功，都会调用 `record.clean_event` 方法来清理事件，确保资源的正确释放。
+                在 `finally` 块中，无论之前的操作是否成功，都会调用 `record.clean_event` 方法来清理事件，确保资源的正确释放。
             """
 
             report = Report(option.total_place)
@@ -1961,18 +2166,13 @@ class Missions(object):
             执行批量脚本任务，并根据脚本中的配置进行操作。
 
             功能描述:
-            1. 显示设备信息。
-            2. 遍历脚本存储，执行每个脚本中的任务。
-            3. 根据脚本中的 `parser` 参数更新部署配置。
-            4. 处理脚本中的 `header`、`change`、`looper` 参数。
-            5. 根据 `prefix`、`action` 和 `suffix` 命令列表依次执行任务。
-            6. 记录任务执行情况，生成报告。
-            7. 如果需要，结合多种模式生成最终报告。
-
-            示例:
-                await manage_.display_device()
-                for script_dict_ in script_storage_:
-                    ...
+                1. 显示设备信息。
+                2. 遍历脚本存储，执行每个脚本中的任务。
+                3. 根据脚本中的 `parser` 参数更新部署配置。
+                4. 处理脚本中的 `header`、`change`、`looper` 参数。
+                5. 根据 `prefix`、`action` 和 `suffix` 命令列表依次执行任务。
+                6. 记录任务执行情况，生成报告。
+                7. 如果需要，结合多种模式生成最终报告。
             """
 
             if self.carry:
@@ -2098,6 +2298,12 @@ class Missions(object):
             return None
 
 
+#    ____ _ _       _
+#   / ___| (_)_ __ (_)_  __
+#  | |   | | | '_ \| \ \/ /
+#  | |___| | | |_) | |>  <
+#   \____|_|_| .__/|_/_/\_\
+#            |_|
 class Clipix(object):
 
     def __init__(self, fmp: str, fpb: str):
@@ -2264,6 +2470,12 @@ class Clipix(object):
         return await function(self.fmp, video_filter, src, dst, **kwargs)
 
 
+#      _    _
+#     / \  | |_   _ _ __   _____  __
+#    / _ \ | | | | | '_ \ / _ \ \/ /
+#   / ___ \| | |_| | | | |  __/>  <
+#  /_/   \_\_|\__, |_| |_|\___/_/\_\
+#             |___/
 class Alynex(object):
 
     __ks: typing.Optional["KerasStruct"] = KerasStruct()
@@ -2891,6 +3103,11 @@ async def scheduling() -> None:
         sys.exit(Show.fail())
 
 
+#   __  __       _
+#  |  \/  | __ _(_)_ __
+#  | |\/| |/ _` | | '_ \
+#  | |  | | (_| | | | | |
+#  |_|  |_|\__,_|_|_| |_|
 if __name__ == '__main__':
     # ***********************
     # *                     *

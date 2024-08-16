@@ -1,3 +1,11 @@
+#
+#   ____             __ _ _
+#  |  _ \ _ __ ___  / _(_) | ___
+#  | |_) | '__/ _ \| |_| | |/ _ \
+#  |  __/| | | (_) |  _| | |  __/
+#  |_|   |_|  \___/|_| |_|_|\___|
+#
+
 import os
 import json
 import typing
@@ -215,7 +223,7 @@ class Deploy(object):
     def dump_deploy(self, deploy_file: str) -> None:
         for attr in ["crops", "omits"]:
             if len(self.deploys["ALS"][attr]) == 0:
-                self.deploys["ALS"][attr] = [{"x": 0, "y": 0, "x_size": 0, "y_size": 0}]
+                self.deploys["ALS"][attr] = const.HOOKS
         dump_parameters(deploy_file, self.deploys)
 
     def load_deploy(self, deploy_file: str) -> None:
