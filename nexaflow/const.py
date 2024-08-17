@@ -61,8 +61,22 @@ HOOKS = [{"x": 0, "y": 0, "x_size": 0, "y_size": 0}]
 DB_FILES_NAME = f"{NAME}_data.db"
 DB_TABLE_NAME = f"stocks"
 
+R_TOTAL_TAG = f"Nexa"
+R_UNION_TAG = f"Union_Nexa"
+R_COLLECTION = f"Nexa_Collection"
+R_RECOVERY = f"Nexa_Recovery"
+R_LOG_NOTE = f"Recovery"
+R_LOG_FILE = f"nexaflow.log"
+R_TOTAL_HEAD = f"{DESC} Information"
+R_TOTAL_FILE = f"Nexa_Flow.html"
+R_UNION_FILE = f"Union_Nexa_Flow.html"
+R_VIDEO_BASE_NAME = f"video"
+R_FRAME_BASE_NAME = f"frame"
+R_EXTRA_BASE_NAME = f"extra"
+
 MODEL = "Keras_Gray_W256_H256_00000"
 
+NOTE_LEVEL = "DEBUG"
 SHOW_LEVEL = "INFO"
 
 WHILE_FORMAT = f"[bold]{{time:YYYY-MM-DD HH:mm:ss.SSS}} | <level>{{level: <8}}</level> | {{name}}:{{function}}:{{line}} - <level>{{message}}</level>"
@@ -72,11 +86,11 @@ WRITE_FORMAT = f"<green>{{time:YYYY-MM-DD HH:mm:ss.SSS}}</green> | <level>{{leve
 NEXA = os.path.dirname(os.path.abspath(__file__))
 WORK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-TEMPLATE_ATOM_TOTAL = os.path.join(NEXA, "template", "template_atom_total.html")
-TEMPLATE_VIEW_TOTAL = os.path.join(NEXA, "template", "template_view_total.html")
-TEMPLATE_MAIN_TOTAL = os.path.join(NEXA, "template", "template_main_total.html")
-TEMPLATE_VIEW_SHARE = os.path.join(NEXA, "template", "template_view_share.html")
-TEMPLATE_MAIN_SHARE = os.path.join(NEXA, "template", "template_main_share.html")
+TEMPLATE_ATOM_TOTAL = os.path.join(NEXA, "templates", "template_atom_total.html")
+TEMPLATE_VIEW_TOTAL = os.path.join(NEXA, "templates", "template_view_total.html")
+TEMPLATE_MAIN_TOTAL = os.path.join(NEXA, "templates", "template_main_total.html")
+TEMPLATE_VIEW_SHARE = os.path.join(NEXA, "templates", "template_view_share.html")
+TEMPLATE_MAIN_SHARE = os.path.join(NEXA, "templates", "template_main_share.html")
 
 
 if __name__ == '__main__':

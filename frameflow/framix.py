@@ -546,10 +546,10 @@ class Missions(object):
             - 确保提供的每个视频都符合Deploy中定义的处理标准。
             - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
         功能细节:
-        - 初始设置：通过 `deploy` 和 `clipix` 对象进行初始设置和参数调整。
-        - 视频过滤：调用 `als_waves` 函数对视频进行预处理和过滤。
-        - 视频拆帧：根据 `task_list` 中的任务配置，对视频进行拆帧操作。
-        - 结果处理：使用 `asyncio.gather` 并行处理视频操作，生成分析报告。
+            - 初始设置：通过 `deploy` 和 `clipix` 对象进行初始设置和参数调整。
+            - 视频过滤：调用 `als_waves` 函数对视频进行预处理和过滤。
+            - 视频拆帧：根据 `task_list` 中的任务配置，对视频进行拆帧操作。
+            - 结果处理：使用 `asyncio.gather` 并行处理视频操作，生成分析报告。
 
         代码逻辑:
             1. 获取事件循环，并初始化相关对象。
@@ -2485,13 +2485,13 @@ class Alynex(object):
         初始化方法 `__init__` 用于配置 `Alynex` 对象的基础设置，接收三个参数 `deploy`、`level` 和 `model_place`。
 
         - **deploy**:
-          表示 `Deploy` 对象，用于处理部署相关的配置和操作。`Deploy` 对象可能包含了系统运行时所需的环境配置、资源管理和其他部署信息。
+            表示 `Deploy` 对象，用于处理部署相关的配置和操作。`Deploy` 对象可能包含了系统运行时所需的环境配置、资源管理和其他部署信息。
 
         - **level**:
-          表示日志等级，用于指定当前运行环境的日志记录级别（如 DEBUG、INFO、WARNING 等）。这个参数决定了程序在运行时记录的日志详细程度，有助于在开发和调试过程中进行问题追踪和分析。
+            表示日志等级，用于指定当前运行环境的日志记录级别（如 DEBUG、INFO、WARNING 等）。这个参数决定了程序在运行时记录的日志详细程度，有助于在开发和调试过程中进行问题追踪和分析。
 
         - **model_place**:
-          可选参数，表示模型文件的路径或存储位置。这个参数用于指定机器学习或数据模型的位置，如果未提供则默认为 `None`。在模型加载或处理过程中，`model_place` 提供了必要的路径信息。
+            可选参数，表示模型文件的路径或存储位置。这个参数用于指定机器学习或数据模型的位置，如果未提供则默认为 `None`。在模型加载或处理过程中，`model_place` 提供了必要的路径信息。
 
         在初始化过程中，这三个参数被存储在对象的实例变量 `self.deploy`、`self.level` 和 `self.model_place` 中，以便在后续的操作中使用。
         """
@@ -2589,9 +2589,9 @@ class Alynex(object):
             - 如果未提供shape，但提供了压缩率 `scale`，则按压缩率缩放图像尺寸。
 
         参数:
-        - scale (Optional[Union[int, float]]): 压缩率，图像尺寸将按此比例缩放。
-        - shape (Optional[tuple]): 目标尺寸，以 (width, height) 的形式指定。
-        - color (Optional[bool]): 如果为 True，则保持彩色图像，否则转换为灰度图像。
+            - scale (Optional[Union[int, float]]): 压缩率，图像尺寸将按此比例缩放。
+            - shape (Optional[tuple]): 目标尺寸，以 (width, height) 的形式指定。
+            - color (Optional[bool]): 如果为 True，则保持彩色图像，否则转换为灰度图像。
         """
         video.load_frames(
             scale=None, shape=None, color=self.deploy.color
@@ -3124,16 +3124,16 @@ if __name__ == '__main__':
     应用程序入口点。根据命令行参数初始化并运行主进程。
 
     主要功能：
-    1. 显示应用程序标志和帮助文档（如果没有提供命令行参数）。
-    2. 解析命令行参数。
-    3. 设置日志级别和系统环境变量。
-    4. 检查并加载必要的工具和模板文件。
-    5. 初始化配置和部署对象。
-    6. 根据命令行参数选择并运行相应的任务（视频处理、数据堆栈、模型训练、模型构建）。
+        1. 显示应用程序标志和帮助文档（如果没有提供命令行参数）。
+        2. 解析命令行参数。
+        3. 设置日志级别和系统环境变量。
+        4. 检查并加载必要的工具和模板文件。
+        5. 初始化配置和部署对象。
+        6. 根据命令行参数选择并运行相应的任务（视频处理、数据堆栈、模型训练、模型构建）。
 
     环境变量:
-        PATH            系统路径，用于查找可执行文件。
-        CONST           应用程序常量。
+        PATH   系统路径，用于查找可执行文件。
+        CONST  应用程序常量。
 
     异常处理:
         捕获并处理常见的系统异常（如 OSError, RuntimeError, MemoryError, TypeError, ValueError, AttributeError）。
@@ -3144,12 +3144,10 @@ if __name__ == '__main__':
     `freeze_support()` 主要用于在 Windows 平台上启动多进程时确保冻结的可执行文件可以正确运行。
 
     1. **启动子进程**：
-        在 Windows 上，子进程是通过重新运行整个脚本来启动的，而不是像 Unix 系统那样通过 `fork()` 机制。
-        这意味着在脚本重新运行时需要一些额外的处理来确保子进程按预期启动。
+        在 Windows 上，子进程是通过重新运行整个脚本来启动的，而不是像 Unix 系统那样通过 `fork()` 机制。这意味着在脚本重新运行时需要一些额外的处理来确保子进程按预期启动。
 
     2. **支持冻结应用程序**：
-        当使用 `pyinstaller` 或类似工具将 Python 程序打包成独立的可执行文件时，
-        `freeze_support()` 函数确保这些打包的程序在创建新进程时能够正确初始化子进程环境。
+        当使用 `pyinstaller` 或类似工具将 Python 程序打包成独立的可执行文件时， `freeze_support()` 函数确保这些打包的程序在创建新进程时能够正确初始化子进程环境。
     """
     freeze_support()
 
@@ -3157,8 +3155,7 @@ if __name__ == '__main__':
     命令行参数解析器解析命令行参数
 
     该代码块使用命令行参数解析器来解析传入的命令行参数，并将结果存储在变量 `_lines` 中。
-    请注意，此代码块必须在 `__main__` 块下调用，否则可能会导致多进程模块无法正确加载，从而出现类似于
-    'BrokenProcessPool: A process in the process pool was terminated abruptly while the future was running or pending' 的错误。
+    请注意，此代码块必须在 `__main__` 块下调用，否则可能会导致多进程模块无法正确加载，从而出现类似于 'BrokenProcessPool: A process in the process pool was terminated abruptly while the future was running or pending' 的错误。
     """
     _lines = Parser.parse_cmd()
 
@@ -3262,24 +3259,24 @@ if __name__ == '__main__':
     # 创建主事件循环
     
     注意: 
-    该事件循环对象 (_main_loop) 是不可序列化的，因此不能将其传递给子进程。
-    在需要使用事件循环的类实例化或函数调用时，应当在子进程内创建新的事件循环。
+        该事件循环对象 (_main_loop) 是不可序列化的，因此不能将其传递给子进程。
+        在需要使用事件循环的类实例化或函数调用时，应当在子进程内创建新的事件循环。
     
     使用方法：
-    1. 在主进程中创建事件循环：
-        _main_loop: "asyncio.AbstractEventLoop" = asyncio.get_event_loop()
+        1. 在主进程中创建事件循环：
+            _main_loop: "asyncio.AbstractEventLoop" = asyncio.get_event_loop()
     
-    2. 在子进程中创建事件循环：
-        import asyncio
+        2. 在子进程中创建事件循环：
+            import asyncio
     
-        def run_in_subprocess():
-            loop = asyncio.get_event_loop()           
-            loop.run_until_complete(async_function())
+            def run_in_subprocess():
+                loop = asyncio.get_event_loop()           
+                loop.run_until_complete(async_function())
     
-    3. 确保不要将主事件循环 (_main_loop) 直接传递给子进程或与子进程共享。
+        3. 确保不要将主事件循环 (_main_loop) 直接传递给子进程或与子进程共享。
     
-    4. 获取事件循环：
-    loop = asyncio.get_event_loop()
+        4. 获取事件循环：
+            loop = asyncio.get_event_loop()
     """
     _main_loop: "asyncio.AbstractEventLoop" = asyncio.get_event_loop()
 
