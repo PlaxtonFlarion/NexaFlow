@@ -307,7 +307,7 @@ class Report(object):
             frame = inform_part.get("frame", "")
             extra = inform_part.get("extra", "")
             proto = inform_part.get("proto", "")
-            inform_dict: dict[str | int | list | bytes] = {"query": query, "stage": stage}
+            inform_dict: dict = {"query": query, "stage": stage}
 
             if style == "speed":
                 inform_dict["image_list"] = await views_frame(query, frame)
