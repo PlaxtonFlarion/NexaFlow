@@ -1,17 +1,26 @@
+欢迎安装 [Framix]！
 Welcome to the installation of [Framix]!
 
+在继续安装之前，请阅读以下重要注意事项：
 Before proceeding with the installation, please read the following important notes:
 
+1. 系统要求：确保您的计算机满足 [Framix] 的最低系统要求。
 1. System Requirements: Ensure that your computer meets the minimum system requirements for [Framix].
 
+2. 关闭其他应用程序：为了顺利安装过程，请在开始安装之前关闭所有其他正在运行的应用程序。
 2. Close Other Applications: For a smooth installation process, please close all other running applications before starting the installation.
 
+3. 安装时间：安装过程可能需要几分钟，具体取决于您系统的功能。
 3. Installation Time: The installation process may take several minutes, depending on your system's capabilities.
 
+4. 数据备份：虽然不常见，但安装过程有时会导致数据丢失。我们建议在继续之前备份重要数据。
 4. Data Backup: Although it's not common, installation processes can sometimes lead to data loss. We recommend backing up important data before proceeding.
 
+5. 互联网连接：如果安装需要下载其他组件，请确保您有稳定的互联网连接。
 5. Internet Connection: Make sure you have a stable internet connection if the installation requires downloading additional components.
 
+单击“下一步”即表示您同意 [Framix] 的条款和条件。
 By clicking 'Next', you agree to the terms and conditions of [Framix].
 
+感谢您选择 [Framix]！我们希望您喜欢使用我们的产品。
 Thank you for choosing [Framix]! We hope you enjoy using our product.
