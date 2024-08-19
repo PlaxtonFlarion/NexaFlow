@@ -10,6 +10,7 @@ import os
 
 ITEM = r"NexaFlow"
 NAME = r"framix"
+YEAR = r"2024"
 VERSION = r"1.0.0"
 URL = r"https://github.com/PlaxtonFlarion/NexaFlow"
 AUTHOR = r"AceKeppel"
@@ -18,10 +19,9 @@ DESC = r"Framix"
 ALIAS = r"画帧秀"
 LICENSE = r"MIT"
 
-DECLARE = f"""**{DESC} - {ALIAS}**
-(C) 2024 {NAME}. All rights reserved.
-Version {VERSION} - Licensed under the [bold #FF00FF]{LICENSE}[/] License
-Last updated on May 28, 2024
+DECLARE = f"""[bold]^* {DESC} ({ALIAS}) *^
+(C) {YEAR} {DESC}. All rights reserved.
+Version [bold #FFD75F]{VERSION}[/] - Licensed under the [bold #FF00FF]{LICENSE}[/] License.[/]
 """
 
 CHARSET = r"utf-8"
