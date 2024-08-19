@@ -1,10 +1,10 @@
-# LICENSES
+# 许可证 / LICENSES
 
-## Framix-画帧秀 许可证 / Framix License
-    版权所有 (c) 2024  Framix-画帧秀
-    此文件受 "画帧秀"（Framix）许可证的保护。您可以在 LICENSE.md 文件中查看详细的许可条款。
+##  画帧秀 许可证 / Framix License
+    版权所有 (c) 2024  画帧秀
+    此文件受 画帧秀 许可证的保护。您可以在 LICENSE.md 文件中查看详细的许可条款。
 
-    Copyright (c) 2024  Framix-画帧秀
+    Copyright (c) 2024  Framix
     This file is licensed under the Framix License. See the LICENSE.md file for more details.
 
 ### 许可条款 / License Terms
@@ -65,7 +65,7 @@ If you have any questions about this license or need further information, please
 
 ### 申请许可证 / Apply the License
 
-在您的作品中包含 Framix 许可证的副本（通常位于名为 LICENSE 的文件中），并考虑还包含引用该许可证的 NOTICE 文件。
+在您的作品中包含 画帧秀 许可证的副本（通常位于名为 LICENSE 的文件中），并考虑还包含引用该许可证的 NOTICE 文件。
 
 Include a copy of the Framix License, typically in a file called LICENSE, in your work, and consider also including a NOTICE file that references the License.
 
@@ -77,7 +77,7 @@ To apply the Framix License to specific files in your work, attach the following
 
     Copyright [yyyy] [name of copyright owner]
     
-    根据 Framix 许可证 1.0 版（“许可证”）获得许可；
+    根据 画帧秀 许可证 1.0 版（“许可证”）获得许可；
     除非遵守许可证，否则您不得使用此文件。
     您可以在以下位置获取许可证副本
 
@@ -102,7 +102,7 @@ To apply the Framix License to specific files in your work, attach the following
 ---
 
 ## Apache License
-    Copyright 2024  Framix-画帧秀
+    Copyright 2024  Framix(画帧秀)
     
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -176,7 +176,7 @@ e.You may add Your own copyright statement to Your modifications and may provide
 ---
 
 ## GNU GENERAL PUBLIC LICENSE
-    Copyright (C) 2024  Framix-画帧秀
+    Copyright (C) 2024  Framix(画帧秀)
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -396,11 +396,5 @@ IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING WILL ANY C
 If the disclaimer of warranty and limitation of liability provided above cannot be given local legal effect according to their terms, reviewing courts shall apply local law that most closely approximates an absolute waiver of all civil liability in connection with the Program, unless a warranty or assumption of liability accompanies a copy of the Program in return for a fee.
 
 ### END OF TERMS AND CONDITIONS
-
-
-
-
-
-
 
 ---

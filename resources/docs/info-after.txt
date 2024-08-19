@@ -1,13 +1,13 @@
-恭喜！ [Framix] 已成功安装到您的计算机上。
+恭喜！ [画帧秀] 已成功安装到您的计算机上。
 Congratulations! [Framix] has been successfully installed on your computer.
 
 在开始之前，您需要了解以下几点：
 Before you get started, here are a few things to know:
 
-1. 如何启动：您可以从桌面快捷方式或开始菜单启动 [Framix]。
+1. 如何启动：您可以从桌面快捷方式或开始菜单启动 [画帧秀]。
 1. How to Start: You can launch [Framix] from the desktop shortcut or from the Start menu.
 
-2. 用户指南：我们建议阅读安装目录中或在线 [https://github.com/PlaxtonFlarion/NexaFlow] 上提供的用户指南，以熟悉 [Framix] 的特性和功能。
+2. 用户指南：我们建议阅读安装目录中或在线 [https://github.com/PlaxtonFlarion/NexaFlow] 上提供的用户指南，以熟悉 [画帧秀] 的特性和功能。
 2. User Guide: We recommend going through the user guide available in the installation directory or online at [https://github.com/PlaxtonFlarion/NexaFlow] to get familiar with the features and functionalities of [Framix].
 
 3. 更新：定期检查软件更新，以确保您拥有最新的功能和安全增强功能。
@@ -19,7 +19,7 @@ Before you get started, here are a few things to know:
 5. 反馈：我们重视您的反馈。请通过 [AceKeppel@outlook.com] 分享您的经验和建议，以帮助我们改进。
 5. Feedback: We value your feedback. Please share your experience and suggestions to help us improve at [AceKeppel@outlook.com].
 
-感谢您安装 [Framix]。我们很高兴您的加入，并期待为您提供非凡的体验。
+感谢您安装 [画帧秀]。我们很高兴您的加入，并期待为您提供非凡的体验。
 Thank you for installing [Framix]. We are excited to have you on board and look forward to providing an exceptional experience.
 
 

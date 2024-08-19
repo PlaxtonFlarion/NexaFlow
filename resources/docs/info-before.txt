@@ -1,10 +1,10 @@
-欢迎安装 [Framix]！
+欢迎安装 [画帧秀]！
 Welcome to the installation of [Framix]!
 
 在继续安装之前，请阅读以下重要注意事项：
 Before proceeding with the installation, please read the following important notes:
 
-1. 系统要求：确保您的计算机满足 [Framix] 的最低系统要求。
+1. 系统要求：确保您的计算机满足 [画帧秀] 的最低系统要求。
 1. System Requirements: Ensure that your computer meets the minimum system requirements for [Framix].
 
 2. 关闭其他应用程序：为了顺利安装过程，请在开始安装之前关闭所有其他正在运行的应用程序。
@@ -19,8 +19,8 @@ Before proceeding with the installation, please read the following important not
 5. 互联网连接：如果安装需要下载其他组件，请确保您有稳定的互联网连接。
 5. Internet Connection: Make sure you have a stable internet connection if the installation requires downloading additional components.
 
-单击“下一步”即表示您同意 [Framix] 的条款和条件。
+单击“下一步”即表示您同意 [画帧秀] 的条款和条件。
 By clicking 'Next', you agree to the terms and conditions of [Framix].
 
-感谢您选择 [Framix]！我们希望您喜欢使用我们的产品。
+感谢您选择 [画帧秀]！我们希望您喜欢使用我们的产品。
 Thank you for choosing [Framix]! We hope you enjoy using our product.

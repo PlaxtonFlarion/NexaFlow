@@ -12,6 +12,14 @@
 #                                                         #
 ###########################################################
 
+"""
+版权所有 (c) 2024  画帧秀
+此文件受 画帧秀 许可证的保护。您可以在 LICENSE.md 文件中查看详细的许可条款。
+
+Copyright (c) 2024  Framix
+This file is licensed under the Framix License. See the LICENSE.md file for more details.
+"""
+
 __all__ = []
 
 #   ___                            _
