@@ -1,5 +1,9 @@
 # 许可证 / LICENSES
 
+![LOGO](resources/illustration/License.png)
+
+---
+
 ##  画帧秀 许可证 / Framix License
     版权所有 (c) 2024  画帧秀
     此文件受 画帧秀 许可证的保护。您可以在 LICENSE.md 文件中查看详细的许可条款。

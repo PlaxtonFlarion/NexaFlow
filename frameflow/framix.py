@@ -2192,14 +2192,19 @@ class Missions(object):
                     *(load_fully(fully_) for fully_ in self.fully), return_exceptions=True
                 )
             else:
-                return None
+                raise FramixAnalysisError(f"Script file does not exist")
 
             for device_ in device_list:
                 logger.debug(tip_ := f"{device_.sn} Automator Activating")
                 Show.show_panel(self.level, tip_, Wind.EXPLORER)
-            await asyncio.gather(
-                *(device_.automator_activation() for device_ in device_list)
-            )
+
+            try:
+                await asyncio.gather(
+                    *(device_.automator_activation() for device_ in device_list)
+                )
+            except Exception as e_:
+                raise FramixAnalysisError(e_)
+
             for device_ in device_list:
                 logger.debug(tip_ := f"{device_.sn} Automator Activation Success")
                 Show.show_panel(self.level, tip_, Wind.EXPLORER)
@@ -2302,8 +2307,9 @@ class Missions(object):
                 if any((self.speed, self.basic, self.keras)):
                     await self.combine(report)
 
+        # Empty Loop
         else:
-            return None
+            raise FramixAnalysisError(f"Command does not exist")
 
 
 #    ____ _ _       _

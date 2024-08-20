@@ -925,77 +925,77 @@ framix --debug
 ## 🖥️ 使用示例
  
 ### 💾 自动循环录制 (`--flick`)
-```bash
+```
 framix --flick
 ```
 
 ### 💾 加速循环录制 (`--flick --speed --group`)
-```bash
+```
 framix --flick --speed --group
 ```
 
 ### 💾 基础循环分析 (`--flick --basic --group`)
-```bash
+```
 framix --flick --basic --group
 ```
 
 ### 💾 深度学习循环分析 (`--flick --keras --group`)
-```bash
+```
 framix --flick --keras --group
 ```
 
 ### 💾 综合视频集合分析 (`--basic --group --stack`)
-```bash
+```
 framix --basic --group --stack <视频集合路径>
 ```
 
 ### 💾 定制化阶段分析 (`--keras --boost --color --group --begin --final --stack`)
-```bash
+```
 framix --keras --boost --color --group --begin 0,1 --final=-1,-1 --stack <视频集合路径>
 ```
 
 ### 💾 自定义分辨率调整 (`--keras --boost --color --group --shape`)
-```bash
+```
 framix --keras --boost --color --group --shape 300,600 --video <视频文件路径>
 ```
 
 ### 💾 视频缩放优化 (`--keras --boost --color --group --scale`)
-```bash
+```
 framix --keras --boost --color --group --scale 0.5 --video <视频文件路径>
 ```
 
 ### 💾 精确时间控制分析 (`--keras --boost --color --group --start --limit`)
-```bash
+```
 framix --keras --boost --color --group --start 0.5 --limit 2 --video <视频文件路径>
 ```
 
 ### 💾 终止时间设置 (`--keras --boost --color --group --close`)
-```bash
+```
 framix --keras --boost --color --group --close 3 --video <视频文件路径>
 ```
 
 ### 💾 高级分析参数配置 (`--keras --boost --color --group --frate --thres --shift --block`)
-```bash
+```
 framix --keras --boost --color --group --frate 60 --thres 0.97 --shift 3 --block 6 --video <视频文件路径>
 ```
 
 ### 💾 目标区域分析 (`--keras --boost --color --group --crops`)
-```bash
+```
 framix --keras --boost --color --group --crops 0,0.1,1,0.9 --video <视频文件路径>
 ```
 
 ### 💾 忽略区域设置 (`--keras --boost --color --group --omits`)
-```bash
+```
 framix --keras --boost --color --group --omits 0,0,1,0.2 --omits 0,0.9,1,0.1 --video <视频文件路径>
 ```
 
 ### 💾 综合报告生成 (`--group --merge`)
-```bash
+```
 framix --group --merge <文件夹路径> --merge <文件夹路径> --merge <文件夹路径>
 ```
       
 ### 💾 模型编译与配置 (`--build --shape`)
-```bash
+```
 framix --shape 200,200 --build <文件夹路径> --build <文件夹路径> --build <文件夹路径>
 ```
 
