@@ -18,13 +18,13 @@ from frameflow.argument import Args
 from nexaflow import const
 
 
-def dump_parameters(src: str, dst: dict) -> None:
+def dump_parameters(src: typing.Any, dst: dict) -> None:
     os.makedirs(os.path.dirname(src), exist_ok=True)
     with open(src, "w", encoding=const.CHARSET) as file:
         json.dump(dst, file, indent=4, separators=(",", ":"), ensure_ascii=False)
 
 
-def load_parameters(src: str) -> typing.Any:
+def load_parameters(src: typing.Any) -> typing.Any:
     with open(src, "r", encoding=const.CHARSET) as file:
         return json.load(file)
 
@@ -139,94 +139,94 @@ class Deploy(object):
 # Setter ###############################################################################################################
 
     @shape.setter
-    def shape(self, value):
+    def shape(self, value: typing.Any):
         if effective := Parser.parse_shape(value):
             self.deploys["FST"]["shape"] = effective
 
     @scale.setter
-    def scale(self, value):
+    def scale(self, value: typing.Any):
         if effective := Parser.parse_waves(value, min_val=0.0, max_val=1.0, decimal_places=1):
             self.deploys["FST"]["scale"] = effective
 
     @start.setter
-    def start(self, value):
+    def start(self, value: typing.Any):
         self.deploys["FST"]["start"] = Parser.parse_times(value)
 
     @close.setter
-    def close(self, value):
+    def close(self, value: typing.Any):
         self.deploys["FST"]["close"] = Parser.parse_times(value)
 
     @limit.setter
-    def limit(self, value):
+    def limit(self, value: typing.Any):
         self.deploys["FST"]["limit"] = Parser.parse_times(value)
 
     @gauss.setter
-    def gauss(self, value):
+    def gauss(self, value: typing.Any):
         if effective := Parser.parse_waves(value, min_val=0.0, max_val=10.0, decimal_places=1):
             self.deploys["FST"]["gauss"] = effective
 
     @grind.setter
-    def grind(self, value):
+    def grind(self, value: typing.Any):
         if effective := Parser.parse_waves(value, min_val=-2.0, max_val=5.0, decimal_places=1):
             self.deploys["FST"]["grind"] = effective
 
     @frate.setter
-    def frate(self, value):
+    def frate(self, value: typing.Any):
         if effective := Parser.parse_waves(value, min_val=1, max_val=60, decimal_places=0):
             self.deploys["FST"]["frate"] = effective
 
 # Setter ###############################################################################################################
 
     @boost.setter
-    def boost(self, value):
+    def boost(self, value: typing.Any):
         self.deploys["ALS"]["boost"] = value
 
     @color.setter
-    def color(self, value):
+    def color(self, value: typing.Any):
         self.deploys["ALS"]["color"] = value
 
     @begin.setter
-    def begin(self, value):
+    def begin(self, value: typing.Any):
         if effective := Parser.parse_stage(value):
             self.deploys["ALS"]["begin"] = effective
 
     @final.setter
-    def final(self, value):
+    def final(self, value: typing.Any):
         if effective := Parser.parse_stage(value):
             self.deploys["ALS"]["final"] = effective
 
     @thres.setter
-    def thres(self, value):
-        if (effective := Parser.parse_waves(value, min_val=0.0, max_val=1.0, decimal_places=2)) is None:
+    def thres(self, value: typing.Any):
+        if not (effective := Parser.parse_waves(value, min_val=0.0, max_val=1.0, decimal_places=2)):
             effective = const.THRES
         self.deploys["ALS"]["thres"] = effective
 
     @shift.setter
-    def shift(self, value):
-        if (effective := Parser.parse_waves(value, min_val=0, max_val=10, decimal_places=0)) is None:
+    def shift(self, value: typing.Any):
+        if not (effective := Parser.parse_waves(value, min_val=0, max_val=10, decimal_places=0)):
             effective = const.SHIFT
         self.deploys["ALS"]["shift"] = effective
 
     @block.setter
-    def block(self, value):
+    def block(self, value: typing.Any):
         if effective := Parser.parse_waves(value, min_val=1, max_val=10, decimal_places=0):
             self.deploys["ALS"]["block"] = effective
 
     @crops.setter
-    def crops(self, value):
+    def crops(self, value: typing.Any):
         self.deploys["ALS"]["crops"] = Parser.parse_hooks(value)
 
     @omits.setter
-    def omits(self, value):
+    def omits(self, value: typing.Any):
         self.deploys["ALS"]["omits"] = Parser.parse_hooks(value)
 
-    def dump_deploy(self, deploy_file: str) -> None:
+    def dump_deploy(self, deploy_file: typing.Any) -> None:
         for attr in ["crops", "omits"]:
             if len(self.deploys["ALS"][attr]) == 0:
                 self.deploys["ALS"][attr] = const.HOOKS
         dump_parameters(deploy_file, self.deploys)
 
-    def load_deploy(self, deploy_file: str) -> None:
+    def load_deploy(self, deploy_file: typing.Any) -> None:
         try:
             parameters = load_parameters(deploy_file)
             for key, value in self.deploys.items():
@@ -268,10 +268,13 @@ class Deploy(object):
 class Option(object):
 
     options = {
-        "total_place": "", "model_place": ""
+        "total_place": "",
+        "model_place": "",
+        "faint_model": "",
+        "color_model": ""
     }
 
-    def __init__(self, option_file: str):
+    def __init__(self, option_file: typing.Any):
         self.load_option(option_file)
 
     def __getstate__(self):
@@ -288,17 +291,35 @@ class Option(object):
     def model_place(self):
         return self.options["model_place"]
 
+    @property
+    def faint_model(self):
+        return self.options["faint_model"]
+
+    @property
+    def color_model(self):
+        return self.options["color_model"]
+
     @total_place.setter
-    def total_place(self, value):
+    def total_place(self, value: typing.Any):
         if type(value) is str and os.path.isdir(value):
             self.options["total_place"] = value
 
     @model_place.setter
-    def model_place(self, value):
+    def model_place(self, value: typing.Any):
         if type(value) is str and os.path.isdir(value):
             self.options["model_place"] = value
 
-    def load_option(self, option_file: str) -> None:
+    @faint_model.setter
+    def faint_model(self, value: typing.Any):
+        if type(value) is str and value:
+            self.options["faint_model"] = value
+
+    @color_model.setter
+    def color_model(self, value: typing.Any):
+        if type(value) is str and value:
+            self.options["color_model"] = value
+
+    def load_option(self, option_file: typing.Any) -> None:
         try:
             parameters = load_parameters(option_file)
             for k, v in self.options.items():
@@ -310,14 +331,14 @@ class Option(object):
         except Exception as e:
             logger.debug(f"An unknown error occurred {e}")
 
-    def dump_option(self, option_file: str) -> None:
+    def dump_option(self, option_file: typing.Any) -> None:
         dump_parameters(option_file, self.options)
 
 
 class Script(object):
 
     @staticmethod
-    def dump_script(script_file: str) -> None:
+    def dump_script(script_file: typing.Any) -> None:
         scripts = {
             "command": [
                 {

@@ -22,12 +22,6 @@ This file is licensed under the Framix License. See the LICENSE.md file for more
 
 __all__ = []
 
-#   ___                            _
-#  |_ _|_ __ ___  _ __   ___  _ __| |_
-#   | || '_ ` _ \| '_ \ / _ \| '__| __|
-#   | || | | | | | |_) | (_) | |  | |_
-#  |___|_| |_| |_| .__/ \___/|_|   \__|
-#                |_|
 import os
 import sys
 import shutil
@@ -69,11 +63,11 @@ else:
     sys.exit(Show.fail())
 
 # 设置模板文件路径
-_atom_total_temp = os.path.join(_fx_work, "schematic", "templates", "template_atom_total.html")
-_main_share_temp = os.path.join(_fx_work, "schematic", "templates", "template_main_share.html")
-_main_total_temp = os.path.join(_fx_work, "schematic", "templates", "template_main_total.html")
-_view_share_temp = os.path.join(_fx_work, "schematic", "templates", "template_view_share.html")
-_view_total_temp = os.path.join(_fx_work, "schematic", "templates", "template_view_total.html")
+_atom_total_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_atom_total.html")
+_main_share_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_main_share.html")
+_main_total_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_main_total.html")
+_view_share_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_view_share.html")
+_view_total_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_view_total.html")
 
 # 检查每个模板文件是否存在，如果缺失则显示错误信息并退出程序
 for _tmp in (_temps := [_atom_total_temp, _main_share_temp, _main_total_temp, _view_share_temp, _view_total_temp]):
@@ -85,7 +79,7 @@ for _tmp in (_temps := [_atom_total_temp, _main_share_temp, _main_total_temp, _v
     sys.exit(Show.fail())
 
 # 设置工具源路径
-_turbo = os.path.join(_fx_work, "schematic", "supports")
+_turbo = os.path.join(_fx_work, const.F_SCHEMATIC, "supports").format()
 
 # 根据平台设置 adb 和 ffmpeg 工具路径
 if _platform == "win32":
@@ -124,28 +118,22 @@ for _tls in _tools:
 
 # 设置初始路径
 if not os.path.exists(
-    _initial_source := os.path.join(_fx_feasible, f"Specially")
+    _initial_source := os.path.join(_fx_feasible, const.F_SPECIALLY).format()
 ):
     os.makedirs(_initial_source, exist_ok=True)
 
-# 设置报告路径
-if not os.path.exists(
-    _src_total_place := os.path.join(_initial_source, f"{const.DESC}_Report")
-):
-    os.makedirs(_src_total_place, exist_ok=True)
-
 # 设置模型路径
 if not os.path.exists(
-    _src_model_place := os.path.join(_initial_source, f"{const.DESC}_Model", const.MODEL)
+    _src_model_place := os.path.join(_initial_source, const.F_SRC_MODEL_PLACE).format()
 ):
     os.makedirs(os.path.dirname(_src_model_place), exist_ok=True)
 
-#   ___                            _
-#  |_ _|_ __ ___  _ __   ___  _ __| |_
-#   | || '_ ` _ \| '_ \ / _ \| '__| __|
-#   | || | | | | | |_) | (_) | |  | |_
-#  |___|_| |_| |_| .__/ \___/|_|   \__|
-#                |_|
+# 设置报告路径
+if not os.path.exists(
+    _src_total_place := os.path.join(_initial_source, const.F_SRC_TOTAL_PLACE).format()
+):
+    os.makedirs(_src_total_place, exist_ok=True)
+
 try:
     import re
     import cv2
@@ -234,14 +222,6 @@ class Missions(object):
         注意:
             避免传递复杂对象，或者传递的对象是可以序列化的，或者传递基本数据类型。
             该方法需要在异步进程执行器中执行。
-            示例:
-                from functools import partial
-                func = partial(instance.amazing, option, deploy)
-                with ProcessPoolExecutor() as exe:
-                    tasks = [
-                        looper.run_in_executor(exe, func, task, *args) for task in task_list
-                    ]
-                    futures = asyncio.gather(*tasks)
 
         代码逻辑:
             1. 获取当前事件循环。
@@ -250,11 +230,10 @@ class Missions(object):
             4. 运行 Alynex 的 `ask_analyzer` 方法，传递视频路径和其他参数。
             5. 等待异步操作完成，并返回结果。
         """
-
         loop = asyncio.get_event_loop()
 
-        model_place = option.model_place if self.keras else None
-        alynex = Alynex(deploy, self.level, model_place)
+        option.model_place = option.model_place if self.keras else None
+        alynex = Alynex(option, deploy, self.level)
         try:
             loop.run_until_complete(alynex.ask_model_load())
         except FramixAnalyzerError:
@@ -265,13 +244,14 @@ class Missions(object):
         return loop_complete
 
     # """Child Process"""
-    def bizarre(self, deploy: "Deploy", vision: str, *args):
+    def bizarre(self, option: "Option", deploy: "Deploy", vision: str, *args):
         """
         异步执行视频分析的子进程方法。
 
         该方法在异步进程执行器中执行，用于分析视频，并利用 Alynex 工具进行处理。
 
         参数:
+            option (Option): 选项对象，包含模型路径和其他运行时选项配置。
             deploy (Deploy): 配置信息对象，包含视频处理的各项配置。
             vision (str): 视频文件路径。
             *args: 传递给分析器的其他参数。
@@ -282,14 +262,6 @@ class Missions(object):
         注意:
             避免传递复杂对象，或者传递的对象是可以序列化的，或者传递基本数据类型。
             该方法需要在异步进程执行器中执行。
-            示例:
-                from functools import partial
-                func = partial(instance.bizarre, vision, deploy)
-                with ProcessPoolExecutor() as exe:
-                    tasks = [
-                        looper.run_in_executor(exe, func, task, *args) for task in task_list
-                    ]
-                    futures = asyncio.gather(*tasks)
 
         代码逻辑:
             1. 获取当前事件循环。
@@ -297,11 +269,10 @@ class Missions(object):
             3. 运行 Alynex 的 `ask_exercise` 方法，传递视频路径和其他参数。
             4. 等待异步操作完成，并返回结果。
         """
-
         loop = asyncio.get_event_loop()
 
-        model_place = None
-        alynex = Alynex(deploy, self.level, model_place)
+        option.model_place = None
+        alynex = Alynex(option, deploy, self.level)
 
         loop_complete = loop.run_until_complete(
             alynex.ask_exercise(vision, *args)
@@ -395,14 +366,7 @@ class Missions(object):
             4. 如果需要，调用 `clipix.vision_balance` 方法平衡视频长度。
             5. 删除临时文件，释放资源。
             6. 返回处理后的原始视频列表和指示信息列表。
-
-        示例:
-            ```python
-            originals, indicates = await instance.als_track(deploy, clipix, task_list)
-            print(originals, indicates)
-            ```
         """
-
         looper = asyncio.get_event_loop()
 
         # Video information
@@ -491,13 +455,7 @@ class Missions(object):
             2. 使用 `clipix.vision_improve` 方法异步处理每个原始视频，应用过滤器。
             3. 记录并显示过滤操作的日志信息。
             4. 返回处理后的视频过滤列表。
-
-        示例:
-            ```python
-            video_filter_list = await instance.als_waves(deploy, clipix, task_list, originals)
-            ```
         """
-
         filters = [f"fps={deploy.frate}"]
         if self.speed:
             filters += [] if deploy.color else [f"format=gray"]
@@ -566,13 +524,7 @@ class Missions(object):
             4. 设置视频目标路径，并调用 `clipix.pixels` 函数处理视频帧。
             5. 处理拆帧结果，并记录相关信息。
             6. 渲染分析结果并生成报告，存储在指定路径中。
-
-        示例:
-            ```python
-            await als_speed(deploy, clipix, report, task_list)
-            ```
         """
-
         logger.debug(f"**<* 光速穿梭 *>**")
         Show.show_panel(self.level, Wind.SPEED_TEXT, Wind.SPEED)
 
@@ -604,6 +556,11 @@ class Missions(object):
             Show.show_panel(self.level, "\n".join(message_list), Wind.METRIC)
 
         async def render_speed(todo_list: list[list]):
+            total_path: str
+            query_path: str
+            frame_path: str
+            extra_path: str
+            proto_path: str
             start, end, cost, scores, struct = 0, 0, 0, None, None
             *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo_list
 
@@ -625,7 +582,7 @@ class Missions(object):
             *(render_speed(todo_list) for todo_list in task_list)
         )
 
-        async with DB(os.path.join(report.reset_path, const.DB_FILES_NAME)) as db:
+        async with DB(os.path.join(report.reset_path, const.DB_FILES_NAME).format()) as db:
             await asyncio.gather(
                 *(self.enforce(db, *ns) for ns in render_result)
             )
@@ -678,13 +635,7 @@ class Missions(object):
             5. 处理拆帧结果，并使用 `os.remove` 删除临时文件。
             6. 根据 `alynex.ks.model` 的状态决定调用深度学习分析模型还是基础分析。
             7. 渲染分析结果并生成报告，存储在指定路径中。
-
-        示例:
-            ```python
-            await als_keras(deploy, clipix, report, task_list, option=option, alynex=alynex)
-            ```
         """
-
         looper = asyncio.get_event_loop()
 
         option = kwargs["option"]
@@ -760,6 +711,11 @@ class Missions(object):
             return Show.show_panel(self.level, tip, Wind.KEEPER)
 
         async def render_keras(future: "Review", todo_list: list[list]):
+            total_path: str
+            query_path: str
+            frame_path: str
+            extra_path: str
+            proto_path: str
             start, end, cost, scores, struct = future.material
             *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo_list
 
@@ -793,7 +749,7 @@ class Missions(object):
             *(render_keras(future, todo_list) for future, todo_list in zip(futures, task_list) if future)
         )
 
-        async with DB(os.path.join(report.reset_path, const.DB_FILES_NAME)) as db:
+        async with DB(os.path.join(report.reset_path, const.DB_FILES_NAME).format()) as db:
             await asyncio.gather(
                 *(self.enforce(db, *ns) for ns in render_result)
             )
@@ -820,13 +776,7 @@ class Missions(object):
             - 如果范围列表为空，则记录并展示没有可生成的报告信息。
             - 根据 `self.speed` 配置，调用不同的报告生成方法 (`combine_view` 或 `combine_main`)。
             - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
-
-        示例:
-            ```python
-            await instance.combine(report)
-            ```
         """
-
         if len(report.range_list) == 0:
             logger.debug(tip := f"没有可以生成的报告")
             return Show.show_panel(self.level, tip, Wind.KEEPER)
@@ -858,13 +808,7 @@ class Missions(object):
             - 异步获取模板内容，并确保模板获取成功。
             - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
             - 生成汇总报告，并记录和展示处理结果。
-
-        示例:
-            ```python
-            await instance.combine_crux(share_temp, total_temp, merge)
-            ```
         """
-
         template_list = await asyncio.gather(
             Craft.achieve(share_temp), Craft.achieve(total_temp),
             return_exceptions=True
@@ -910,9 +854,6 @@ class Missions(object):
 
         异常:
             - 如果 `combine_crux` 方法在处理过程中遇到异常，则会抛出并可能导致合并失败。
-
-        示例:
-            await self.combine_view(merge_list)
         """
         await self.combine_crux(
             self.view_share_temp, self.view_total_temp, merge
@@ -935,9 +876,6 @@ class Missions(object):
 
         异常:
             - 如果 `combine_crux` 方法在处理过程中遇到异常，则会抛出并可能导致合并失败。
-
-        示例:
-            await self.combine_main(merge_list)
         """
         await self.combine_crux(
             self.main_share_temp, self.main_total_temp, merge
@@ -975,7 +913,6 @@ class Missions(object):
             3. 根据配置执行相应的分析操作（快速分析或深度学习分析）。
             4. 生成并展示分析报告。
         """
-
         if len(video_file_list := [
             video_file for video_file in video_file_list if os.path.isfile(video_file)
         ]) == 0:
@@ -991,7 +928,7 @@ class Missions(object):
         for video_file in video_file_list:
             report.query = f"{os.path.basename(video_file).split('.')[0]}_{time.strftime('%Y%m%d%H%M%S')}"
             new_video_path = os.path.join(report.video_path, os.path.basename(video_file))
-            shutil.copy(video_file, new_video_path)
+            shutil.copy(video_file, new_video_path.format())
             task_list.append(
                 [new_video_path, None, report.total_path, report.title, report.query_path,
                  report.query, report.frame_path, report.extra_path, report.proto_path]
@@ -1005,8 +942,8 @@ class Missions(object):
             await self.als_speed(*attack)
         else:
             # Initial Alynex
-            model_place = option.model_place if self.keras else None
-            alynex = Alynex(deploy, self.level, model_place)
+            option.model_place = option.model_place if self.keras else None
+            alynex = Alynex(option, deploy, self.level)
             try:
                 await alynex.ask_model_load()
             except FramixAnalyzerError as e:
@@ -1066,10 +1003,6 @@ class Missions(object):
             异常:
                 - 如果 `finder.accelerate` 返回异常对象，则捕获并处理异常，继续处理下一个视频数据。
                 - 如果生成器中断或取消，可能会导致未处理的视频数据丢失。
-
-            示例:
-                async for entries in load_entries():
-                    # 处理每个视频数据的第一个集合条目
             """
             for video_data in video_data_list:
                 finder_result = finder.accelerate(video_data)
@@ -1110,8 +1043,8 @@ class Missions(object):
                         await self.als_speed(*attack)
                     else:
                         # Initial Alynex
-                        model_place = option.model_place if self.keras else None
-                        alynex = Alynex(deploy, self.level, model_place)
+                        option.model_place = option.model_place if self.keras else None
+                        alynex = Alynex(option, deploy, self.level)
                         try:
                             await alynex.ask_model_load()
                         except FramixAnalyzerError as e:
@@ -1154,7 +1087,6 @@ class Missions(object):
             - 在多任务模式下，设置`self.level`为`ERROR`级别以确保多进程中的正确日志记录。
             - 临时文件在任务完成后被清理以释放存储空间。
         """
-
         if len(video_file_list := [
             video_file for video_file in video_file_list if os.path.isfile(video_file)
         ]) == 0:
@@ -1173,7 +1105,7 @@ class Missions(object):
         for video_file in video_file_list:
             report.title = f"Model_{uuid.uuid4()}"
             new_video_path = os.path.join(report.video_path, os.path.basename(video_file))
-            shutil.copy(video_file, new_video_path)
+            shutil.copy(video_file, new_video_path.format())
             task_list.append(
                 [new_video_path, None, report.total_path, report.title, report.query_path,
                  report.query, report.frame_path, report.extra_path, report.proto_path]
@@ -1215,8 +1147,8 @@ class Missions(object):
         await asyncio.gather(*eliminate, return_exceptions=True)
 
         # Initial Alynex
-        model_place = None
-        alynex = Alynex(deploy, self.level, model_place)
+        option.model_place = None
+        alynex = Alynex(option, deploy, self.level)
 
         # Ask Analyzer
         if len(task_list) == 1:
@@ -1229,7 +1161,7 @@ class Missions(object):
         else:
             this_level = self.level
             self.level = "ERROR"
-            func = partial(self.bizarre, deploy)
+            func = partial(self.bizarre, option, deploy)
             with ProcessPoolExecutor(self.power, None, Active.active, ("ERROR",)) as exe:
                 task = [
                     looper.run_in_executor(exe, func, target, query_path)
@@ -1280,7 +1212,6 @@ class Missions(object):
             - 在多任务模式下，设置`self.level`为`ERROR`级别以确保多进程中的正确日志记录。
             - 处理过程中可能抛出的异常将记录并展示为错误信息。
         """
-
         if len(video_data_list := [
             video_data for video_data in video_data_list if os.path.isdir(video_data)
         ]) == 0:
@@ -1325,8 +1256,8 @@ class Missions(object):
                 return "grayscale", 1, f"Image: {list(image.shape)} is grayscale image, stored in RGB format"
             return "rgb", image.ndim, f"Image: {list(image.shape)} is color image"
 
-        model_place = None
-        alynex = Alynex(deploy, self.level, model_place)
+        option.model_place = None
+        alynex = Alynex(option, deploy, self.level)
         report = Report(option.total_place)
 
         task_list = []
@@ -1408,17 +1339,6 @@ class Missions(object):
                 - 调整图像大小并添加网格线。
                 - 显示最终处理的图像。
             3. 处理完成后，询问用户是否保存图片，并根据用户选择保存图片。
-
-        内部方法:
-            paint_lines(device):
-                处理单个设备的截图，进行图像操作并添加网格线。
-
-        异步方法:
-            manage.operate_device():
-                获取设备列表。
-
-        示例:
-            await self.painting(deploy)
         """
 
         import PIL.Image
@@ -1442,7 +1362,6 @@ class Missions(object):
                 4. 调整图像大小并添加网格线。
                 5. 显示最终处理的图像。
             """
-
             image_folder = "/sdcard/Pictures/Shots"
             image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_" + "Shot.png"
             await Terminal.cmd_line(
@@ -1692,7 +1611,6 @@ class Missions(object):
                 - asyncio.CancelledError: 如果在任务执行过程中任务被取消。
                 - IndexError: 在移除失败任务时，可能因任务列表索引越界而抛出此异常。
             """
-
             effective_list = await asyncio.gather(
                 *(record.ask_close_record(device, video_temp, transports)
                   for device, (video_temp, transports, *_) in zip(device_list, task_list))
@@ -1730,7 +1648,6 @@ class Missions(object):
                 - 如果 `als_speed`, `als_keras` 函数内部抛出异常，则可能导致任务处理中断。
                 - asyncio.CancelledError: 如果任务在执行过程中被取消。
             """
-
             if len(task_list) == 0:
                 logger.debug(tip := f"没有有效任务")
                 return Show.show_panel(self.level, tip, Wind.KEEPER)
@@ -1765,7 +1682,6 @@ class Missions(object):
                 - 如果 `check_timer` 函数内部抛出异常，则可能导致部分设备的计时任务中断。
                 - asyncio.CancelledError: 如果任务在执行过程中被取消。
             """
-
             await asyncio.gather(
                 *(record.check_timer(device, timer_mode) for device in device_list)
             )
@@ -1788,7 +1704,6 @@ class Missions(object):
                 - json.JSONDecodeError: 如果JSON文件格式不正确。
                 - ValueError: 如果传入的 carry 字符串格式不正确。
             """
-
             # 解析传入的 carry 字符串，分割为路径和关键字两部分
             if len(parts := re.split(r",|;|!|\s", carry, 1)) == 2:
                 loc, key = parts
@@ -1833,7 +1748,6 @@ class Missions(object):
                 - 在读取和解析JSON文件时处理可能出现的异常情况，如文件不存在或JSON格式错误。
                 - 返回的字典`exec_dict`只包含有效的命令条目，空的命令部分会被过滤掉。
             """
-
             fully = await Craft.revise_path(fully)
             try:
                 async with aiofiles.open(fully, "r", encoding=const.CHARSET) as f:
@@ -1889,7 +1803,6 @@ class Missions(object):
                 - 在协程函数调用中处理返回值和异常，确保异步流程的正确性。
                 - 捕获`asyncio.CancelledError`以确保协程在被取消时正确处理。
             """
-
             if not (callable(function := getattr(bean, exec_func, None))):
                 logger.debug(tip := f"No callable {exec_func}")
                 return Show.show_panel(self.level, tip, Wind.KEEPER)
@@ -1937,7 +1850,6 @@ class Missions(object):
                 - `args`列表中的每个参数也必须经过处理后转换为列表形式。
                 - 处理过程中确保命令与参数数量匹配，不足部分用空列表补充。
             """
-
             exec_pairs_list = []
             for resolve in resolve_list:
                 device_cmds_list = resolve.get("cmds", [])
@@ -1977,13 +1889,6 @@ class Missions(object):
                 8. 清除执行任务字典。
                 9. 处理执行任务的状态，如果有异常，则记录异常并显示面板消息。
                 10. 取消所有停止任务。
-
-            内部方法:
-                substitute_star():
-                    用于替换命令中占位符的内部异步函数。
-
-            示例:
-                await exec_commands(exec_pairs_list, *change)
             """
 
             async def substitute_star():
@@ -2060,8 +1965,8 @@ class Missions(object):
 
         clipix = Clipix(self.fmp, self.fpb)
 
-        model_place = option.model_place if self.keras else None
-        alynex = Alynex(deploy, self.level, model_place)
+        option.model_place = option.model_place if self.keras else None
+        alynex = Alynex(option, deploy, self.level)
         try:
             await alynex.ask_model_load()
         except FramixAnalyzerError as e_:
@@ -2113,7 +2018,6 @@ class Missions(object):
             - **资源清理**:
                 在 `finally` 块中，无论之前的操作是否成功，都会调用 `record.clean_event` 方法来清理事件，确保资源的正确释放。
             """
-
             report = Report(option.total_place)
             report.title = f"{input_title_}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
             timer_mode = 5
@@ -2182,7 +2086,6 @@ class Missions(object):
                 6. 记录任务执行情况，生成报告。
                 7. 如果需要，结合多种模式生成最终报告。
             """
-
             if self.carry:
                 load_script_data_ = await asyncio.gather(
                     *(load_carry(carry_) for carry_ in self.carry), return_exceptions=True
@@ -2332,7 +2235,6 @@ class Clipix(object):
 
         在初始化过程中，这两个路径被存储在对象的实例变量 `self.fmp` 和 `self.fpb` 中，以便后续在多媒体处理任务中调用。
         """
-
         self.fmp = fmp
         self.fpb = fpb
 
@@ -2367,7 +2269,6 @@ class Clipix(object):
             - 输入的时间格式应为字符串形式的标准时间表示（如"HH:MM:SS"），且应确保输入合法。
             - 返回的时间点格式化为易读的字符串，方便直接使用或显示。
         """
-
         video_streams = await Switch.ask_video_stream(self.fpb, video_temp)
 
         rlt = video_streams.get("rlt_frame_rate", "0/0")
@@ -2412,7 +2313,6 @@ class Clipix(object):
             - 视频处理会生成新的文件，确保有足够的磁盘空间。
             - 此函数使用异步方式进行视频处理，确保在适当的异步环境中调用。
         """
-
         start_time_point = (limit_time_point := duration) - standard
         start_delta = datetime.timedelta(seconds=start_time_point)
         limit_delta = datetime.timedelta(seconds=limit_time_point)
@@ -2435,22 +2335,21 @@ class Clipix(object):
         异步方法，用于改进视频的视觉效果，通过调整视频尺寸和应用过滤器列表。
 
         参数:
-        - shape (tuple): 目标尺寸，格式为 (宽度, 高度)，如果未提供则根据 `scale` 调整尺寸。
-        - scale (float): 缩放比例，有效范围从 0.1 到 1.0。仅在 `shape` 为 None 时使用。如果未指定 `scale`，将使用默认压缩比例。
-        - original (tuple): 原始视频的尺寸，格式为 (原始宽度, 原始高度)。
-        - filters (list): 初始过滤器列表，可以包括例如 'blur', 'contrast' 等过滤器命令。
+            - shape (tuple): 目标尺寸，格式为 (宽度, 高度)，如果未提供则根据 `scale` 调整尺寸。
+            - scale (float): 缩放比例，有效范围从 0.1 到 1.0。仅在 `shape` 为 None 时使用。如果未指定 `scale`，将使用默认压缩比例。
+            - original (tuple): 原始视频的尺寸，格式为 (原始宽度, 原始高度)。
+            - filters (list): 初始过滤器列表，可以包括例如 'blur', 'contrast' 等过滤器命令。
 
         返回:
-        - list: 包含所有过滤器命令的列表，包括用于调整尺寸的 'scale' 过滤器。
+            - list: 包含所有过滤器命令的列表，包括用于调整尺寸的 'scale' 过滤器。
 
         注意:
-        - 如果 `shape` 和 `scale` 都未指定，将使用默认的压缩比例。
-        - 此方法应确保传入的 `scale` 值在合法范围内，否则会自动调整至最接近的有效值。
+            - 如果 `shape` 和 `scale` 都未指定，将使用默认的压缩比例。
+            - 此方法应确保传入的 `scale` 值在合法范围内，否则会自动调整至最接近的有效值。
 
         抛出:
-        - ValueError: 如果输入的参数类型不符合预期。
+            - ValueError: 如果输入的参数类型不符合预期。
         """
-
         if shape:
             w, h, ratio = await Switch.ask_magic_frame(original, shape)
             video_filter_list = filters + [f"scale={w}:{h}"]
@@ -2480,7 +2379,6 @@ class Clipix(object):
             - 该方法依赖于提供的`function`能够异步执行并返回处理结果。
             - 确保源视频和目标视频路径正确，且文件系统有足够权限读写文件。
         """
-
         return await function(self.fmp, video_filter, src, dst, **kwargs)
 
 
@@ -2494,25 +2392,25 @@ class Alynex(object):
 
     __ks: typing.Optional["KerasStruct"] = KerasStruct()
 
-    def __init__(self, deploy: "Deploy", level: str, model_place: typing.Optional[str] = None):
+    def __init__(self, option: "Option", deploy: "Deploy", extent: "typing.Any"):
         """
-        初始化方法 `__init__` 用于配置 `Alynex` 对象的基础设置，接收三个参数 `deploy`、`level` 和 `model_place`。
+        初始化方法，配置分析器的选项、部署信息和日志记录的详细程度。
 
-        - **deploy**:
-            表示 `Deploy` 对象，用于处理部署相关的配置和操作。`Deploy` 对象可能包含了系统运行时所需的环境配置、资源管理和其他部署信息。
+        参数说明:
+            - option (`Option`): 分析过程中的选项配置，通常包括模型路径、模型类型等。
+            - deploy (`Deploy`): 部署配置，可能涉及设备信息、工作模式等。
+            - extent (`typing.Any`): 日志等级或扩展设置，用于控制日志输出的详细程度或其他扩展功能。
 
-        - **level**:
-            表示日志等级，用于指定当前运行环境的日志记录级别（如 DEBUG、INFO、WARNING 等）。这个参数决定了程序在运行时记录的日志详细程度，有助于在开发和调试过程中进行问题追踪和分析。
+        详细描述:
+            1. `option`: 包含用户在分析过程中指定的各种配置选项。
+            2. `deploy`: 包含部署相关的配置信息，如设备和运行模式等。
+            3. `extent`: 用于控制日志输出的详细程度（例如 DEBUG、INFO、WARNING 等）或实现额外的日志功能。
 
-        - **model_place**:
-            可选参数，表示模型文件的路径或存储位置。这个参数用于指定机器学习或数据模型的位置，如果未提供则默认为 `None`。在模型加载或处理过程中，`model_place` 提供了必要的路径信息。
-
-        在初始化过程中，这三个参数被存储在对象的实例变量 `self.deploy`、`self.level` 和 `self.model_place` 中，以便在后续的操作中使用。
+        用于初始化分析器实例，使其具备运行所需的配置信息和日志控制能力。
         """
-
+        self.option = option
         self.deploy = deploy
-        self.level = level
-        self.model_place = model_place
+        self.extent = extent
 
     @property
     def ks(self) -> typing.Optional["KerasStruct"]:
@@ -2520,31 +2418,41 @@ class Alynex(object):
 
     async def ask_model_load(self) -> None:
         """
-        加载 Keras 模型并进行验证。
+        异步加载模型到 KerasStruct 实例。
 
-        功能描述:
-            1. 检查并验证模型存放路径是否存在。
-            2. 加载 Keras 模型。
-            3. 验证加载的模型是否与期望的颜色通道匹配（彩色或灰度）。
+        该方法主要用于加载训练好的模型，以便在后续分析过程中使用。
+        根据配置选项选择彩色或灰度模型，并确保模型结构和输入数据的兼容性。
+
+        Raises:
+            FramixAnalyzerError: 当模型路径无效或加载失败时，抛出此异常。
+
+        详细描述:
+            1. 确认 `model_place` 路径存在，并且是一个有效的目录。
+            2. 确认 `ks` (KerasStruct 实例) 已初始化。
+            3. 根据用户选择的模型类型（彩色或灰度），构造模型的最终路径并尝试加载。
+            4. 验证模型的输入通道是否与选定的模型类型匹配。
+            5. 若加载或验证过程中发生错误，清空 `ks.model` 并抛出 `FramixAnalyzerError`。
 
         异常处理:
-            捕获并处理 OSError, TypeError, ValueError, AssertionError, AttributeError 异常。
-            如果出现异常，将 self.ks.model 设置为 None 并抛出 FramixAnalyzerError 异常。
-
-        具体步骤:
-            1. 检查 self.model_place 是否存在且为目录。
-            2. 确保 KerasStruct 实例 self.ks 已被初始化。
-            3. 调用 self.ks 的 load_model 方法加载模型。
-            4. 检查模型的输入通道数是否与期望的颜色模式匹配（彩色模式需要3个通道，灰度模式需要1个通道）。
-
-        示例:
-            await self.ask_model_load()
+            - OSError: 当模型路径无效或无法访问时抛出。
+            - TypeError: 当模型文件类型不正确时抛出。
+            - ValueError: 当模型加载过程中发生数据错误时抛出。
+            - AssertionError: 当模型通道不匹配或 `ks` 实例未正确初始化时抛出。
+            - AttributeError: 当尝试访问未初始化的属性时抛出。
         """
         try:
-            if self.model_place:
-                assert os.path.isdir(self.model_place), "Model Place Error"
-                assert self.ks, "First Load KerasStruct()"
-                self.ks.load_model(self.model_place)
+            if mp := self.option.model_place:
+                assert os.path.isdir(self.option.model_place), f"Invalid Model {mp}"
+                assert self.ks, f"First Load KerasStruct()"
+
+                assert os.path.isdir(
+                    final_model := os.path.join(
+                        mp,
+                        mn := self.option.color_model if self.deploy.color else self.option.faint_model
+                    )
+                ), f"Invalid Model {mn}"
+                self.ks.load_model(final_model.format())
+
                 channel = self.ks.model.input_shape[-1]
                 if self.deploy.color:
                     assert channel == 3, f"彩色模式需要匹配彩色模型 Model Color Channel={channel}"
@@ -2574,11 +2482,7 @@ class Alynex(object):
 
         日志记录:
             记录视频帧长度、尺寸、加载过程及耗时等详细信息到日志中，并在控制台面板中显示。
-
-        示例:
-            video = await self.ask_video_load("path/to/video.mp4")
         """
-
         # 开始计时
         start_time_ = time.time()
 
@@ -2589,7 +2493,7 @@ class Alynex(object):
         logger.debug(f"{(task_name_ := '视频帧长度: ' f'{video.frame_count}')}")
         logger.debug(f"{(task_info_ := '视频帧尺寸: ' f'{video.frame_size}')}")
         logger.debug(f"{(task_desc_ := '加载视频帧: ' f'{video.name}')}")
-        Show.show_panel(self.level, f"{task_name_}\n{task_info_}\n{task_desc_}", Wind.LOADER)
+        Show.show_panel(self.extent, f"{task_name_}\n{task_info_}\n{task_desc_}", Wind.LOADER)
 
         """
         加载视频帧
@@ -2614,7 +2518,7 @@ class Alynex(object):
         # 记录视频帧加载完成后的详细信息和耗时
         logger.debug(f"{(task_name := '视频帧加载完成: ' f'{video.frame_details(video.frames_data)}')}")
         logger.debug(f"{(task_info := '视频帧加载耗时: ' f'{time.time() - start_time_:.2f} 秒')}")
-        Show.show_panel(self.level, f"{task_name}\n{task_info}", Wind.LOADER)
+        Show.show_panel(self.extent, f"{task_name}\n{task_info}", Wind.LOADER)
 
         # 返回 VideoObject 对象
         return video
@@ -2634,9 +2538,6 @@ class Alynex(object):
             1. 检查 vision 是否为文件路径，如果是则尝试打开该文件。
             2. 如果 vision 为目录路径，则获取目录中的第一个文件并尝试打开。
             3. 如果视频文件成功打开，返回该文件的路径。
-
-        示例:
-            video_path = await ask_frame_grid("path/to/video/or/directory")
         """
         target_screen = None
 
@@ -2681,7 +2582,7 @@ class Alynex(object):
         """
         if (target_vision := await self.ask_frame_grid(vision)) is None:
             logger.debug(tip := f"视频文件损坏: {os.path.basename(vision)}")
-            return Show.show_panel(self.level, tip, Wind.KEEPER)
+            return Show.show_panel(self.extent, tip, Wind.KEEPER)
 
         query_path, *_ = args
 
@@ -2692,7 +2593,7 @@ class Alynex(object):
         logger.debug(f"{(cut_part := '视频帧片段: ' f'{video.frame_count - 1}')}")
         logger.debug(f"{(cut_info := '视频帧尺寸: ' f'{video.frame_size}')}")
         logger.debug(f"{(cut_desc := '压缩视频帧: ' f'{video.name}')}")
-        Show.show_panel(self.level, f"{cut_name}\n{cut_part}\n{cut_info}\n{cut_desc}", Wind.CUTTER)
+        Show.show_panel(self.extent, f"{cut_name}\n{cut_part}\n{cut_info}\n{cut_desc}", Wind.CUTTER)
         cut_start_time = time.time()
 
         cut_range = cutter.cut(
@@ -2701,7 +2602,7 @@ class Alynex(object):
 
         logger.debug(f"{(cut_name := '视频帧压缩完成: ' f'{video.name}')}")
         logger.debug(f"{(cut_info := '视频帧压缩耗时: ' f'{time.time() - cut_start_time:.2f} 秒')}")
-        Show.show_panel(self.level, f"{cut_name}\n{cut_info}", Wind.CUTTER)
+        Show.show_panel(self.extent, f"{cut_name}\n{cut_info}", Wind.CUTTER)
 
         stable, unstable = cut_range.get_range(
             threshold=self.deploy.thres, offset=self.deploy.shift
@@ -2732,9 +2633,6 @@ class Alynex(object):
             2. 加载视频帧信息。
             3. 根据是否有模型加载结果执行相应的视频处理流程。
             4. 根据处理流程返回视频分析结果。
-
-        示例:
-            result = await self.ask_analyzer("path/to/video", "frame_path", "extra_path")
         """
 
         async def frame_forge(frame):
@@ -2776,12 +2674,12 @@ class Alynex(object):
             logger.debug(
                 f"{(extract := f'取关键帧: begin={list(self.deploy.begin)} final={list(self.deploy.final)}')}"
             )
-            Show.show_panel(self.level, extract, Wind.FASTER)
+            Show.show_panel(self.extent, extract, Wind.FASTER)
 
             try:
                 # 获取视频的阶段信息并打印
                 logger.debug(f"{(stage_name := f'阶段划分: {struct.get_ordered_stage_set()}')}")
-                Show.show_panel(self.level, stage_name, Wind.FASTER)
+                Show.show_panel(self.extent, stage_name, Wind.FASTER)
                 # 获取视频的不稳定阶段范围
                 unstable_stage_range = struct.get_not_stable_stage_range()
                 # 获取起始帧和结束帧
@@ -2790,14 +2688,14 @@ class Alynex(object):
             except (AssertionError, IndexError) as e:
                 # 捕获异常并记录日志，使用默认的第一个和最后一个重要帧
                 logger.debug(e)
-                Show.show_panel(self.level, e, Wind.KEEPER)
+                Show.show_panel(self.extent, e, Wind.KEEPER)
                 begin_frame = struct.get_important_frame_list()[0]
                 final_frame = struct.get_important_frame_list()[-1]
 
             # 检查是否开始帧的ID小于等于结束帧的ID，若是则使用默认的第一个和最后一个帧
             if final_frame.frame_id <= begin_frame.frame_id:
                 logger.debug(tip := f"{final_frame} <= {begin_frame}")
-                Show.show_panel(self.level, tip, Wind.KEEPER)
+                Show.show_panel(self.extent, tip, Wind.KEEPER)
                 begin_frame, end_frame = struct.data[0], struct.data[-1]
 
             # 计算起始帧和结束帧之间的时间成本
@@ -2810,7 +2708,7 @@ class Alynex(object):
             # 打印开始帧和结束帧的详细信息以及总时间成本
             begin_fr, final_fr = f"{begin_id} - {begin_ts:.5f}", f"{final_id} - {final_ts:.5f}"
             logger.debug(f"开始帧:[{begin_fr}] 结束帧:[{final_fr}] 总耗时:[{(stage_cs := f'{time_cost:.5f}')}]")
-            if self.level == const.SHOW_LEVEL:
+            if self.extent == const.SHOW_LEVEL:
                 Show.assort_frame(begin_fr, final_fr, stage_cs)
 
             # 返回关键帧信息和时间成本
@@ -2913,13 +2811,13 @@ class Alynex(object):
             )
             panel_hook_list.append(cut_save)
 
-            Show.show_panel(self.level, "\n".join(panel_hook_list), Wind.CUTTER)
+            Show.show_panel(self.extent, "\n".join(panel_hook_list), Wind.CUTTER)
 
             logger.debug(f"{(cut_name := '视频帧长度: ' f'{video.frame_count}')}")
             logger.debug(f"{(cut_part := '视频帧片段: ' f'{video.frame_count - 1}')}")
             logger.debug(f"{(cut_info := '视频帧尺寸: ' f'{video.frame_size}')}")
             logger.debug(f"{(cut_desc := '压缩视频帧: ' f'{video.name}')}")
-            Show.show_panel(self.level, f"{cut_name}\n{cut_part}\n{cut_info}\n{cut_desc}", Wind.CUTTER)
+            Show.show_panel(self.extent, f"{cut_name}\n{cut_part}\n{cut_info}\n{cut_desc}", Wind.CUTTER)
             cut_start_time = time.time()
 
             cut_range = cutter.cut(
@@ -2928,7 +2826,7 @@ class Alynex(object):
 
             logger.debug(f"{(cut_name := '视频帧压缩完成: ' f'{video.name}')}")
             logger.debug(f"{(cut_info := '视频帧压缩耗时: ' f'{time.time() - cut_start_time:.2f} 秒')}")
-            Show.show_panel(self.level, f"{cut_name}\n{cut_info}", Wind.CUTTER)
+            Show.show_panel(self.extent, f"{cut_name}\n{cut_info}", Wind.CUTTER)
 
             stable, unstable = cut_range.get_range(
                 threshold=self.deploy.thres, offset=self.deploy.shift
@@ -2952,7 +2850,7 @@ class Alynex(object):
                     os.remove(os.path.join(extra_path, file))
 
             for draw in toolbox.show_progress(items=os.listdir(extra_path), color=146):
-                toolbox.draw_line(os.path.join(extra_path, draw))
+                toolbox.draw_line(os.path.join(extra_path, draw).format())
 
             try:
                 struct_data = self.ks.classify(
@@ -2960,7 +2858,7 @@ class Alynex(object):
                 )
             except AssertionError as e:
                 logger.debug(e)
-                return Show.show_panel(self.level, e, Wind.KEEPER)
+                return Show.show_panel(self.extent, e, Wind.KEEPER)
             return struct_data
 
         async def analytics_basic():
@@ -2983,7 +2881,7 @@ class Alynex(object):
                 for r in result:
                     if isinstance(r, Exception):
                         logger.debug(r)
-                        Show.show_panel(self.level, r, Wind.KEEPER)
+                        Show.show_panel(self.extent, r, Wind.KEEPER)
                     else:
                         scores[r["id"]] = r["picture"]
 
@@ -3013,7 +2911,7 @@ class Alynex(object):
                 for r in result:
                     if isinstance(r, Exception):
                         logger.debug(r)
-                        Show.show_panel(self.level, r, Wind.KEEPER)
+                        Show.show_panel(self.extent, r, Wind.KEEPER)
                     else:
                         scores[r["id"]] = r["picture"]
 
@@ -3023,7 +2921,7 @@ class Alynex(object):
         # 检查并获取有效的视频文件路径
         if (target_vision := await self.ask_frame_grid(vision)) is None:
             logger.debug(tip_ := f"视频文件损坏: {os.path.basename(vision)}")
-            return Show.show_panel(self.level, tip_, Wind.KEEPER)
+            return Show.show_panel(self.extent, tip_, Wind.KEEPER)
 
         # 解包额外的参数
         frame_path, extra_path, *_ = args
@@ -3083,7 +2981,7 @@ async def scheduling() -> None:
         如果发生异常，记录异常信息并退出程序。
     """
 
-    async def screen_copy_installed():
+    async def _already_installed():
         """
         检查 scrcpy 是否已安装，如果未安装则显示安装提示并退出程序。
         """
@@ -3097,7 +2995,7 @@ async def scheduling() -> None:
     try:
         # 处理 flick, carry, fully 参数
         if _lines.flick or _lines.carry or _lines.fully:
-            await screen_copy_installed()
+            await _already_installed()
             await _missions.analysis(_option, _deploy)
         # 处理 paint 参数
         elif _lines.paint:
@@ -3212,6 +3110,8 @@ if __name__ == '__main__':
     _option = Option(_initial_option)
     _option.total_place = _option.total_place or _src_total_place
     _option.model_place = _option.model_place or _src_model_place
+    _option.faint_model = _option.faint_model or const.FAINT_MODEL
+    _option.color_model = _option.color_model or const.COLOR_MODEL
     for _attr_key, _attribute_value in _option.options.items():
         logger.debug(f"{_option.__class__.__name__} Current Key {_attr_key}")
         # 如果命令行中包含配置参数，无论是否存在配置文件，都将覆盖配置文件，以命令行参数为第一优先级

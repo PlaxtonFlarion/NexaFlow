@@ -74,7 +74,13 @@ R_VIDEO_BASE_NAME = f"video"
 R_FRAME_BASE_NAME = f"frame"
 R_EXTRA_BASE_NAME = f"extra"
 
-MODEL = "Keras_Gray_W256_H256_00000"
+FAINT_MODEL = "Keras_Gray_W256_H256"
+COLOR_MODEL = "Keras_Hued_W256_H256"
+
+F_SCHEMATIC = f"schematic"
+F_SPECIALLY = f"Specially"
+F_SRC_MODEL_PLACE = f"{DESC}_Model"
+F_SRC_TOTAL_PLACE = f"{DESC}_Report"
 
 NOTE_LEVEL = "DEBUG"
 SHOW_LEVEL = "INFO"
