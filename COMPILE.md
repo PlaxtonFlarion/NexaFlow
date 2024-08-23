@@ -70,4 +70,3 @@ python -m nuitka --standalone --macos-create-app-bundle --macos-app-icon=resourc
       - **Info.plist**
 
 ---
-
