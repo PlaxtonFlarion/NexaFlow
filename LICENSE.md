@@ -4,12 +4,12 @@
 
 ---
 
-##  画帧秀 许可证 / Framix License
-    版权所有 (c) 2024  画帧秀
-    此文件受 画帧秀 许可证的保护。您可以在 LICENSE.md 文件中查看详细的许可条款。
+##  Framix(画帧秀) 许可证 / Framix(画帧秀) License
+    版权所有 (c) 2024  Framix(画帧秀)
+    此文件受 Framix(画帧秀) 许可证的保护。您可以在 LICENSE.md 文件中查看详细的许可条款。
 
-    Copyright (c) 2024  Framix
-    This file is licensed under the Framix License. See the LICENSE.md file for more details.
+    Copyright (c) 2024  Framix(画帧秀)
+    This file is licensed under the Framix(画帧秀) License. See the LICENSE.md file for more details.
 
 ### 许可条款 / License Terms
 
@@ -69,23 +69,23 @@ If you have any questions about this license or need further information, please
 
 ### 申请许可证 / Apply the License
 
-在您的作品中包含 画帧秀 许可证的副本（通常位于名为 LICENSE 的文件中），并考虑还包含引用该许可证的 NOTICE 文件。
+在您的作品中包含 Framix(画帧秀) 许可证的副本（通常位于名为 LICENSE 的文件中），并考虑还包含引用该许可证的 NOTICE 文件。
 
-Include a copy of the Framix License, typically in a file called LICENSE, in your work, and consider also including a NOTICE file that references the License.
+Include a copy of the Framix(画帧秀) License, typically in a file called LICENSE, in your work, and consider also including a NOTICE file that references the License.
 
-要将 Framix 许可证应用于您工作中的特定文件，请附加以下样板声明，并将括号“[]”括起来的字段替换为您自己的识别信息。 （不要包含括号！）用适合文件格式的注释语法将文本括起来。我们还建议您在版权声明所在的同一“打印页”上包含文件或类名称以及用途描述，以便在第三方档案中更容易识别。
+要将 Framix(画帧秀) 许可证应用于您工作中的特定文件，请附加以下样板声明，并将括号“[]”括起来的字段替换为您自己的识别信息。 （不要包含括号！）用适合文件格式的注释语法将文本括起来。我们还建议您在版权声明所在的同一“打印页”上包含文件或类名称以及用途描述，以便在第三方档案中更容易识别。
 
-To apply the Framix License to specific files in your work, attach the following boilerplate declaration, replacing the fields enclosed by brackets "[]" with your own identifying information. (Don't include the brackets!) Enclose the text in the appropriate comment syntax for the file format. We also recommend that you include a file or class name and description of purpose on the same "printed page" as the copyright notice for easier identification within third-party archives.
+To apply the Framix(画帧秀) License to specific files in your work, attach the following boilerplate declaration, replacing the fields enclosed by brackets "[]" with your own identifying information. (Don't include the brackets!) Enclose the text in the appropriate comment syntax for the file format. We also recommend that you include a file or class name and description of purpose on the same "printed page" as the copyright notice for easier identification within third-party archives.
     
     版权所有 [yyyy] [版权所有者姓名]
 
     Copyright [yyyy] [name of copyright owner]
     
-    根据 画帧秀 许可证 1.0 版（“许可证”）获得许可；
+    根据 Framix(画帧秀) 许可证 1.0 版（“许可证”）获得许可；
     除非遵守许可证，否则您不得使用此文件。
     您可以在以下位置获取许可证副本
 
-    Licensed under the Framix License, Version 1.0 (the "License");
+    Licensed under the Framix(画帧秀) License, Version 1.0 (the "License");
     you may not use this file except in compliance with the License.
     You may obtain a copy of the License at
     
