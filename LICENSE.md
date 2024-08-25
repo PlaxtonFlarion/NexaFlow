@@ -4,17 +4,11 @@
 
 ---
 
-##  Framix(画帧秀) 许可证 / Framix(画帧秀) License
-    版权所有 (c) 2024  Framix(画帧秀)
-    此文件受 Framix(画帧秀) 许可证的保护。您可以在 LICENSE.md 文件中查看详细的许可条款。
-
-    Copyright (c) 2024  Framix(画帧秀)
-    This file is licensed under the Framix(画帧秀) License. See the LICENSE.md file for more details.
+##  Framix(画帧秀) 许可证 / License
 
 ### 许可条款 / License Terms
 
 #### 1. 使用权限 / Permission
-
 在满足以下条件的前提下，任何人均可免费获得本软件及其相关文档文件（以下简称“软件”）的副本，包括但不限于使用、复制、修改、合并、发布、分发、再许可和/或销售本软件的副本，并允许软件的使用者在满足以下条件的情况下这样做。
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,14 +19,12 @@ copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
 #### 2. 版权声明 / Copyright Notice
-
 在软件的所有副本或重要部分中，必须包含上述版权声明和本许可声明。
 
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 
 #### 3. 责任限制 / Limitation of Liability
-
 本软件按“现状”提供，不提供任何形式的明示或暗示担保，包括但不限于对适销性、特定用途适用性和非侵权性的担保。在任何情况下，版权持有人或其他贡献者均不对因本软件产生的任何索赔、损害或其他责任负责，无论是在合同诉讼、侵权行为或其他法律诉讼中，亦或是因使用本软件或与本软件的其他交易而产生。
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
@@ -44,50 +36,33 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 #### 4. 修改与分发 / Modification and Distribution
-
 您可以在本许可条款下修改本软件并将其分发给第三方，但必须在所有修改的文件中明确标注修改内容和日期，同时不得移除或更改本许可中的任何条款。
 
 You may modify the Software and distribute it to third parties under the terms of this License, provided that you clearly state the modifications and the date of any change, and do not remove or alter any terms of this License.
 
 #### 5. 不得用于非法目的 / No Unlawful Use
-
 本软件不得用于任何非法或不道德的目的。用户必须遵守其所在国家/地区的所有适用法律法规。
 
 The Software shall not be used for any unlawful or unethical purposes. Users must comply with all applicable laws and regulations in their respective jurisdictions.
 
 #### 6. 终止 / Termination
-
 如果您违反了本许可条款，本许可将自动终止，您不得再继续使用、复制或分发本软件。根据本许可获得的软件副本的其他接收者，其权利不会因您的违反而受到影响。
 
 This License shall automatically terminate if you violate any of its terms. Upon termination, you must cease using, copying, or distributing the Software. The rights of others who have received copies of the Software under this License will not be affected.
 
 ### 联系方式 / Contact Information
-
 如对本许可证有任何疑问或需要进一步信息，请联系：[AceKeppel@outlook.com]
 
 If you have any questions about this license or need further information, please contact: [AceKeppel@outlook.com]
 
 ### 申请许可证 / Apply the License
+在您的作品中包含 Framix(画帧秀) 许可证的副本。
 
-在您的作品中包含 Framix(画帧秀) 许可证的副本（通常位于名为 LICENSE 的文件中），并考虑还包含引用该许可证的 NOTICE 文件。
-
-Include a copy of the Framix(画帧秀) License, typically in a file called LICENSE, in your work, and consider also including a NOTICE file that references the License.
-
-要将 Framix(画帧秀) 许可证应用于您工作中的特定文件，请附加以下样板声明，并将括号“[]”括起来的字段替换为您自己的识别信息。 （不要包含括号！）用适合文件格式的注释语法将文本括起来。我们还建议您在版权声明所在的同一“打印页”上包含文件或类名称以及用途描述，以便在第三方档案中更容易识别。
-
-To apply the Framix(画帧秀) License to specific files in your work, attach the following boilerplate declaration, replacing the fields enclosed by brackets "[]" with your own identifying information. (Don't include the brackets!) Enclose the text in the appropriate comment syntax for the file format. We also recommend that you include a file or class name and description of purpose on the same "printed page" as the copyright notice for easier identification within third-party archives.
-    
     版权所有 [yyyy] [版权所有者姓名]
-
-    Copyright [yyyy] [name of copyright owner]
     
     根据 Framix(画帧秀) 许可证 1.0 版（“许可证”）获得许可；
     除非遵守许可证，否则您不得使用此文件。
     您可以在以下位置获取许可证副本
-
-    Licensed under the Framix(画帧秀) License, Version 1.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
     
         https://github.com/PlaxtonFlarion/NexaFlow/blob/main/LICENSE.md
     
@@ -96,6 +71,16 @@ To apply the Framix(画帧秀) License to specific files in your work, attach th
     不提供任何明示或暗示的保证或条件。
     请参阅许可证以了解特定语言的管理权限和
     许可证下的限制。
+
+Include a copy of the Framix(画帧秀) License.
+
+    Copyright [yyyy] [name of copyright owner]
+
+    Licensed under the Framix(画帧秀) License, Version 1.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+    
+        https://github.com/PlaxtonFlarion/NexaFlow/blob/main/LICENSE.md
     
     Unless required by applicable law or agreed to in writing, software
     distributed under the License is distributed on an "AS IS" BASIS,
