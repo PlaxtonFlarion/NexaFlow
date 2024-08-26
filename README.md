@@ -1,6 +1,6 @@
 # 🚀 Framix(画帧秀) - 流畅性的革命！
 
-![LOGO](resources/images/illustration/Logo.png)
+![LOGO](resources/images/illustration/Readme.png)
 
 ---
 
