@@ -1905,11 +1905,11 @@ class Missions(object):
                 - 异常处理机制确保在任务执行过程中遇到问题时能够妥善处理和记录。
             """
 
-            async def substitute_star():
+            async def substitute_star(replaces):
                 substitute = iter(change)
                 return [
                     "".join(next(substitute, "*") if c == "*" else c for c in i)
-                    if isinstance(i, str) else (next(substitute, "*") if i == "*" else i) for i in exec_args
+                    if isinstance(i, str) else (next(substitute, "*") if i == "*" else i) for i in replaces
                 ]
 
             live_devices = {device.sn: device for device in device_list}.copy()
@@ -1925,7 +1925,7 @@ class Missions(object):
                 if len(live_devices) == 0:
                     return Show.notes(f"[bold #F0FFF0 on #000000]All tasks canceled[/]")
                 for exec_func, exec_vals, exec_args, exec_kwds in exec_pairs:
-                    exec_vals = await substitute_star()
+                    exec_vals = await substitute_star(exec_vals)
                     if exec_func == "audio_player":
                         await call_commands(player, live_devices, exec_func, exec_vals, exec_args, exec_kwds)
                     else:
