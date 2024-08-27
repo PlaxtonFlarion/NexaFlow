@@ -1771,37 +1771,35 @@ class Missions(object):
                 return e
             return exec_dict
 
-        async def call_commands(exec_func, exec_args, bean, live_devices):
+        async def call_commands(bean, live_devices, exec_func, exec_vals, exec_args, exec_kwds):
             """
-            异步调用命令函数。
+            异步执行命令函数。
 
             参数:
-                exec_func (str): 要在`bean`对象中调用的函数名称。
-                exec_args (list): 传递给函数的参数列表。
-                bean (object): 包含要调用函数的对象实例。
-                live_devices (dict): 当前活动设备的字典，用于在异常时从中移除设备。
+                - bean: 要操作的对象实例，通常包含需要调用的方法。
+                - live_devices: 活动设备的列表或字典，用于管理当前正在处理的设备。
+                - exec_func: 字符串类型，表示要调用的函数名称。
+                - exec_vals: 位置参数列表，传递给目标函数。
+                - exec_args: 额外的参数列表，与 `exec_vals` 一起传递给目标函数。
+                - exec_kwds: 关键字参数字典，传递给目标函数。
 
             功能说明:
-                1. 获取并验证指定的`exec_func`是否是`bean`对象的可调用方法。
-                2. 记录日志信息并展示在界面上，确保调用过程可视化。
-                3. 如果该方法是异步的（协程），则使用`await`调用并传递参数，处理并显示返回值。
-                4. 处理可能的异常，包括取消错误和其他异常，确保程序的稳定性。
-
-            处理步骤:
-                1. 使用`getattr`从`bean`对象中获取`exec_func`，并检查其是否为可调用方法。
-                2. 如果方法不可调用，则记录并显示错误信息。
-                3. 记录并展示要调用的方法和参数信息。
-                4. 如果方法是协程函数，使用`await`调用，并捕获返回值。如果返回值存在，则记录并显示。
-                5. 捕获`asyncio.CancelledError`异常，在设备被移除时记录并显示相应日志信息。
-                6. 捕获所有其他异常并返回异常对象，便于上层调用者处理。
+                1. 动态获取 `bean` 对象中的指定方法 (`exec_func`) 并检查其可调用性。
+                2. 如果方法不可调用，记录调试信息并显示提示。
+                3. 获取对象实例的序列号 (`sn`) 或类名，用于日志记录和显示。
+                4. 调用指定的可调用方法 (`function`) 并传递所有参数 (`exec_vals`, `exec_args`, `exec_kwds`)。
+                5. 处理异步函数的执行结果，记录和显示返回值。
+                6. 在捕获到 `asyncio.CancelledError` 异常时，将设备从 `live_devices` 中移除并记录退出信息。
+                7. 如果发生其他异常，捕获并返回异常对象。
 
             返回值:
-                任何: 该函数返回调用方法的结果或异常对象，便于上层处理。
+                - 成功时返回函数的执行结果。
+                - 如果方法不可调用或在执行过程中发生异常，返回异常对象。
+                - 如果发生取消错误 (`asyncio.CancelledError`)，从 `live_devices` 中移除设备并退出。
 
             注意:
-                - 确保`exec_func`为`bean`对象中的可调用方法，否则将直接返回错误信息。
-                - 在协程函数调用中处理返回值和异常，确保异步流程的正确性。
-                - 捕获`asyncio.CancelledError`以确保协程在被取消时正确处理。
+                - 确保 `exec_func` 对应 `bean` 对象中的一个有效且可调用的方法。
+                - 该方法适用于异步环境中的命令执行，尤其是在处理多个设备时。
             """
             if not (callable(function := getattr(bean, exec_func, None))):
                 logger.debug(tip := f"No callable {exec_func}")
@@ -1809,10 +1807,10 @@ class Missions(object):
 
             sn = getattr(bean, "sn", bean.__class__.__name__)
             try:
-                logger.debug(tip := f"{sn} {function.__name__} {exec_args}")
+                logger.debug(tip := f"{sn} {function.__name__} {exec_vals}")
                 Show.show_panel(self.level, tip, Wind.EXPLORER)
                 if inspect.iscoroutinefunction(function):
-                    if call_result := await function(*exec_args):
+                    if call_result := await function(*exec_vals, *exec_args, **exec_kwds):
                         logger.debug(tip := f"Returns: {call_result}")
                         return Show.show_panel(self.level, tip, Wind.EXPLORER)
             except asyncio.CancelledError:
@@ -1824,80 +1822,90 @@ class Missions(object):
 
         async def pack_commands(resolve_list):
             """
-            异步打包命令函数。
+            异步命令打包函数。
 
             参数:
-                resolve_list (list): 包含命令和参数的解析列表。每个元素是一个字典，包含`cmds`和`args`键。
+                - resolve_list (list): 包含解析信息的列表，每个元素是一个字典，通常包含`cmds`、`vals`、`args`和`kwds`等键。
 
             功能说明:
-                1. 遍历解析列表，将其中的每个命令及其对应的参数进行打包。
-                2. 对于每个解析项中的`cmds`（命令列表）和`args`（参数列表）进行处理，确保命令和参数的有效性。
-                3. 过滤空字符串并去重后，确保每个命令都有对应的参数列表进行配对。
-                4. 将配对后的命令和参数以元组形式打包，并将所有配对结果追加到`exec_pairs_list`列表中。
-
-            处理步骤:
-                1. 遍历`resolve_list`，检查并提取`cmds`和`args`列表。
-                2. 对`cmds`列表进行去重处理，确保每个命令唯一。
-                3. 对`args`列表进行规范化处理，确保每个参数是列表形式，且参数为空时转为空列表。
-                4. 使用`zip`将处理后的命令和参数列表进行配对，多余的命令补充空参数列表。
-                5. 将配对结果存储在`exec_pairs_list`列表中，最终返回。
+                1. 遍历 `resolve_list` 列表，处理每个解析项中的命令、值、参数和关键字参数。
+                2. 对 `cmds` 列表中的每个命令进行检查，确保它们是非空的字符串。
+                3. 对 `vals`、`args` 和 `kwds` 列表进行规范化处理，确保它们的每个元素符合预期的类型（列表或字典）。
+                4. 如果 `cmds` 列表长度与其他列表不匹配，使用空列表或空字典进行补充，以确保各列表长度一致。
+                5. 将处理后的命令、值、参数和关键字参数组合成元组，并追加到 `exec_pairs_list` 列表中。
 
             返回值:
-                list: 包含命令和参数配对的列表，每个元素是一个命令和对应参数的元组列表。
+                - list: 包含命令、值、参数和关键字参数配对的列表。每个元素都是一个四元组，格式为 `(cmd, vals, args, kwds)`。
 
             注意:
-                - `cmds`列表中的命令必须为非空字符串，否则将跳过处理。
-                - `args`列表中的每个参数也必须经过处理后转换为列表形式。
-                - 处理过程中确保命令与参数数量匹配，不足部分用空列表补充。
+                - `cmds` 列表中的命令必须为非空字符串，其他列表的元素需要与 `cmds` 列表长度匹配。
+                - `vals` 和 `args` 为空时会被转为空列表，`kwds` 为空时会被转为空字典。
+                - 如果 `kwds` 不是字典类型，将其包装为字典，以避免后续处理错误。
             """
             exec_pairs_list = []
             for resolve in resolve_list:
                 device_cmds_list = resolve.get("cmds", [])
                 if all(isinstance(device_cmds, str) and device_cmds != "" for device_cmds in device_cmds_list):
+                    # 去除重复命令
                     # device_cmds_list = list(dict.fromkeys(device_cmds_list))
+
+                    # 解析 vals 参数
+                    device_vals_list = resolve.get("vals", [])
+                    device_vals_list = [
+                        d_vals if isinstance(d_vals, list) else ([] if d_vals == "" else [d_vals])
+                        for d_vals in device_vals_list
+                    ]
+                    device_vals_list += [[]] * (len(device_cmds_list) - len(device_vals_list))
+
+                    # 解析 args 参数
                     device_args_list = resolve.get("args", [])
                     device_args_list = [
-                        device_args if isinstance(device_args, list) else ([] if device_args == "" else [device_args])
-                        for device_args in device_args_list
+                        d_args if isinstance(d_args, list) else ([] if d_args == "" else [d_args])
+                        for d_args in device_args_list
                     ]
                     device_args_list += [[]] * (len(device_cmds_list) - len(device_args_list))
-                    exec_pairs_list.append(list(zip(device_cmds_list, device_args_list)))
+
+                    # 解析 kwds 参数
+                    device_kwds_list = resolve.get("kwds", [])
+                    device_kwds_list = [
+                        d_kwds if isinstance(d_kwds, dict) else ({} if d_kwds == "" else {"None": d_kwds})
+                        for d_kwds in device_kwds_list
+                    ]
+                    device_kwds_list += [{}] * (len(device_cmds_list) - len(device_kwds_list))
+
+                    exec_pairs_list.append(
+                        list(zip(device_cmds_list, device_vals_list, device_args_list, device_kwds_list))
+                    )
 
             return exec_pairs_list
 
         async def exec_commands(exec_pairs_list, *change):
             """
-            执行一组命令，并根据设备列表进行处理。
+            异步执行命令函数。
 
             参数:
-                exec_pairs_list (list): 包含要执行的命令对的列表。
-                *change: 可选的替换参数，用于替换命令中的占位符。
+                - exec_pairs_list (list): 包含命令和其参数配对的列表。每个元素都是一个四元组，格式为 `(exec_func, exec_vals, exec_args, exec_kwds)`。
+                - *change: 可选的变化参数，用于在命令执行过程中动态替换某些值。
 
-            功能描述:
-                1. 定义一个用于替换命令中占位符的内部异步函数 `substitute_star`。
-                2. 创建一个包含活动设备的字典 `live_devices`。
-                3. 初始化两个列表，一个用于存储执行任务，一个用于存储停止任务。
-                4. 为每个设备创建一个停止任务。
-                5. 遍历命令对列表，为每个命令对执行以下操作：
-                    - 如果没有活动设备，则显示取消所有任务的消息并返回。
-                    - 遍历命令对中的每个命令和参数：
-                        - 调用 `substitute_star` 替换命令中的占位符。
-                        - 如果命令是 "audio_player"，则调用相应的命令处理函数。
-                        - 否则，为每个设备创建一个执行任务。
-                6. 使用 `asyncio.gather` 收集所有执行任务的状态。
-                7. 如果捕获到 `asyncio.CancelledError` 异常，则显示取消所有任务的消息并返回。
-                8. 清除执行任务字典。
-                9. 处理执行任务的状态，如果有异常，则记录异常并显示面板消息。
-                10. 取消所有停止任务。
+            功能说明:
+                1. 定义 `substitute_star` 内部函数，用于替换 `exec_args` 中的 "*" 为 `change` 中的相应值。
+                2. 初始化 `live_devices` 字典，包含当前活动设备的副本，以保证设备状态的一致性。
+                3. 创建用于停止任务的异步任务列表 `stop_tasks`，这些任务会在所有命令执行完毕后被取消。
+                4. 遍历 `exec_pairs_list`，对每对命令及其参数进行处理：
+                    - 如果 `exec_func` 是 "audio_player"，直接调用对应的 `call_commands` 方法处理。
+                    - 对于其他 `exec_func`，为每个设备创建异步任务，并使用 `asyncio.create_task` 启动这些任务。
+                5. 使用 `asyncio.gather` 并发执行所有任务，并捕获任务执行状态。
+                6. 在所有任务执行完成后，清空任务字典 `exec_tasks`，并记录或显示异常信息（如果有）。
+                7. 在任务结束后，取消所有停止任务，以确保所有异步操作都已安全终止。
+
+            注意:
+                - `substitute_star` 用于在执行过程中动态替换参数中的 "*"。
+                - 确保 `exec_func` 是设备对象或其他目标对象中的有效方法。
+                - 处理过程中会根据任务执行情况动态调整设备列表，保证任务的有效性。
+                - 异常处理机制确保在任务执行过程中遇到问题时能够妥善处理和记录。
             """
 
             async def substitute_star():
-                """
-                用于替换命令中占位符的内部异步函数。
-
-                返回:
-                    list: 替换后的命令参数列表。
-                """
                 substitute = iter(change)
                 return [
                     "".join(next(substitute, "*") if c == "*" else c for c in i)
@@ -1916,14 +1924,14 @@ class Missions(object):
             for exec_pairs in exec_pairs_list:
                 if len(live_devices) == 0:
                     return Show.notes(f"[bold #F0FFF0 on #000000]All tasks canceled[/]")
-                for exec_func, exec_args in exec_pairs:
-                    exec_args = await substitute_star()
+                for exec_func, exec_vals, exec_args, exec_kwds in exec_pairs:
+                    exec_vals = await substitute_star()
                     if exec_func == "audio_player":
-                        await call_commands(exec_func, exec_args, player, live_devices)
+                        await call_commands(player, live_devices, exec_func, exec_vals, exec_args, exec_kwds)
                     else:
                         for device in live_devices.values():
                             exec_tasks[device.sn] = asyncio.create_task(
-                                call_commands(exec_func, exec_args, device, live_devices))
+                                call_commands(device, live_devices, exec_func, exec_vals, exec_args, exec_kwds))
 
                 try:
                     exec_status_list = await asyncio.gather(*exec_tasks.values())

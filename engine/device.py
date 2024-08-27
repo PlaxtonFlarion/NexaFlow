@@ -36,13 +36,6 @@ class Device(_Phone):
     def __init__(self, adb: str, sn: str, *args):
         """
         初始化 Device 类的实例。
-
-        参数:
-        adb (str): ADB 路径。
-        sn (str): 设备的序列号。
-        *args: 其他可选参数。
-
-        该方法调用了父类 _Phone 的构造函数，并初始化用于等待设备连接的 ADB 命令。
         """
         super().__init__(sn, *args)
         self.__initial = [adb, "-s", self.sn, "wait-for-device"]
@@ -51,9 +44,6 @@ class Device(_Phone):
     def facilities(self) -> typing.Optional["u2.Device"]:
         """
         返回与设备的连接实例 (uiautomator2)。
-
-        Returns:
-        typing.Optional[u2.Device]: 返回设备连接实例，或如果未连接则返回 None。
         """
         return self.__facilities
 
@@ -61,34 +51,21 @@ class Device(_Phone):
     def facilities(self, value: typing.Optional["u2.Device"]):
         """
         设置设备的连接实例。
-
-        参数:
-        value (typing.Optional[u2.Device]): 设备连接实例，或 None。
         """
         self.__facilities = value
 
     @staticmethod
-    async def sleep(delay: float) -> None:
+    async def sleep(delay: float, *_, **__) -> None:
         """
         异步等待指定的时间。
-
-        参数:
-        delay (float): 需要等待的秒数。
         """
         await asyncio.sleep(delay)
 
 # platform-tools #######################################################################################################
 
-    async def deep_link(self, url: str, service: str) -> None:
+    async def deep_link(self, url: str, service: str, *_, **__) -> None:
         """
         通过深度链接启动指定的应用服务。
-
-        参数:
-        url (str): 应用的 URL。
-        service (str): 服务的参数。
-
-        该方法构建一个 Android Intent 命令来启动指定的服务，并通过 ADB 执行该命令。
-        如果命令中包含需要 URL 编码的文本，则进行编码处理。
         """
         compose = f"{url}?{service}"
         cmd = f"{' '.join(self.__initial)} shell am start -W -a android.intent.action.VIEW -d \"{compose}\""
@@ -97,14 +74,9 @@ class Device(_Phone):
                 cmd = re.sub(r"(?<=input_text=).*?(?=\\&)", quote(text), cmd)
         return resp if (resp := await Terminal.cmd_line_shell(cmd)) else None
 
-    async def activity(self) -> typing.Optional[str]:
+    async def activity(self, *_, **__) -> typing.Optional[str]:
         """
         获取当前设备活动的应用程序或窗口名称。
-
-        Returns:
-        typing.Optional[str]: 返回当前活动的应用或窗口名称，如果无法获取则返回 None。
-
-        该方法使用 ADB 命令 'dumpsys window' 来获取当前活动窗口的信息，并解析出活动窗口的名称。
         """
         cmd = self.__initial + [
             "shell", "dumpsys", "window", "|", "findstr", "mCurrentFocus"
@@ -113,82 +85,52 @@ class Device(_Phone):
             if match := re.search(r"(?<=Window\{).*?(?=})", resp):
                 return match.group().split()[-1]
 
-    async def screen_status(self) -> typing.Optional[bool]:
+    async def screen_status(self, *_, **__) -> typing.Optional[bool]:
         """
         检查设备屏幕是否处于打开状态。
-
-        Returns:
-        typing.Optional[bool]: 如果屏幕是打开的，返回 True；如果屏幕是关闭的，返回 False；如果无法确定，则返回 None。
-
-        该方法通过 ADB 命令 'dumpsys deviceidle' 来检查设备屏幕的状态。
         """
         cmd = self.__initial + [
             "shell", "dumpsys", "deviceidle", "|", "findstr", "mScreenOn"
         ]
         return bool(resp.split("=")[-1]) if (resp := await Terminal.cmd_line(*cmd)) else None
 
-    async def tap(self, x: int, y: int) -> None:
+    async def tap(self, x: int, y: int, *_, **__) -> None:
         """
         模拟在设备屏幕上点击指定坐标位置。
-
-        参数:
-        x (int): 点击的 x 坐标。
-        y (int): 点击的 y 坐标。
-
-        该方法使用 ADB 命令 'input tap' 在指定坐标模拟点击操作。
         """
         cmd = self.__initial + [
             "shell", "input", "tap", f"{x}", f"{y}"
         ]
         await Terminal.cmd_line(*cmd)
 
-    async def swipe(self, start_x: int, start_y: int, end_x: int, end_y: int, duration: int) -> None:
+    async def swipe(self, start_x: int, start_y: int, end_x: int, end_y: int, duration: int, *_, **__) -> None:
         """
         模拟在设备屏幕上从一个位置滑动到另一个位置。
-
-        参数:
-        start_x (int): 滑动起点的 x 坐标。
-        start_y (int): 滑动起点的 y 坐标。
-        end_x (int): 滑动终点的 x 坐标。
-        end_y (int): 滑动终点的 y 坐标。
-        duration (int): 滑动的持续时间，以毫秒为单位。
-
-        该方法使用 ADB 命令 'input touchscreen swipe' 在屏幕上执行滑动操作。
         """
         cmd = self.__initial + [
             "shell", "input", "touchscreen", "swipe", f"{start_x}", f"{start_y}", f"{end_x}", f"{end_y}", f"{duration}"
         ]
         await Terminal.cmd_line(*cmd)
 
-    async def key_event(self, key_code: int) -> None:
+    async def key_event(self, key_code: int, *_, **__) -> None:
         """
         模拟按下设备的硬件按键。
-
-        参数:
-        key_code (int): 按键的代码，例如返回键的代码为 4。
-
-        该方法使用 ADB 命令 'input keyevent' 来模拟按键操作。
         """
         cmd = self.__initial + [
             "shell", "input", "keyevent", f"{key_code}"
         ]
         await Terminal.cmd_line(*cmd)
 
-    async def force_stop(self, package: str) -> None:
+    async def force_stop(self, package: str, *_, **__) -> None:
         """
         强制停止指定包名的应用。
-
-        参数:
-        package (str): 需要强制停止的应用包名。
-
-        该方法使用 ADB 命令 'am force-stop' 来停止应用。
         """
         cmd = self.__initial + [
             "shell", "am", "force-stop", package
         ]
         await Terminal.cmd_line(*cmd)
 
-    async def notification(self) -> None:
+    async def notification(self, *_, **__) -> None:
         """
         打开设备的通知栏。
         """
@@ -197,110 +139,72 @@ class Device(_Phone):
         ]
         await Terminal.cmd_line(*cmd)
 
-    async def install(self, apk_source: str) -> None:
+    async def install(self, apk_source: str, *_, **__) -> None:
         """
         安装APK文件。
-
-        参数:
-        apk_source (str): APK文件的路径。
         """
         cmd = self.__initial + [
             "install", apk_source
         ]
         await Terminal.cmd_line(*cmd)
 
-    async def uninstall(self, package: str) -> None:
+    async def uninstall(self, package: str, *_, **__) -> None:
         """
         卸载指定的应用程序。
-
-        参数:
-        package (str): 应用程序的包名。
         """
         cmd = self.__initial + [
             "uninstall", package
         ]
         await Terminal.cmd_line(*cmd)
 
-    async def screenshot(self, destination: str) -> None:
+    async def screenshot(self, destination: str, *_, **__) -> None:
         """
         截取设备屏幕并保存到指定路径。
-
-        参数:
-        destination (str): 保存截屏文件的路径。
         """
         cmd = self.__initial + [
             "shell", "screencap", "-p", destination
         ]
         await Terminal.cmd_line(*cmd)
 
-    async def wifi(self, mode: str) -> None:
+    async def wifi(self, mode: str, *_, **__) -> None:
         """
         打开或关闭设备的 Wi-Fi。
-
-        参数:
-        mode (str): 'enable' 表示打开 Wi-Fi，'disable' 表示关闭 Wi-Fi。
-
-        该方法使用 ADB 命令 'svc wifi' 来控制 Wi-Fi 的状态。
         """
         cmd = self.__initial + [
             "shell", "svc", "wifi", mode
         ]
         await Terminal.cmd_line(*cmd)
 
-    async def hot_spot(self, mode: str, status: str) -> None:
+    async def hot_spot(self, mode: str, status: str, *_, **__) -> None:
         """
         控制设备的Wi-Fi或热点开关状态。
-
-        参数:
-        mode (str): 表示要控制的模式类型。例如 "wifi" 用于控制 Wi-Fi 模块。
-        status (str): 表示要执行的操作状态。例如 "enable" 或 "disable" 用于打开或关闭 Wi-Fi，"setapenabled true" 用于启用热点，"setapenabled false" 用于禁用热点。
-
-        该方法通过 ADB 命令 `svc wifi` 来控制 Android 设备上的 Wi-Fi 或热点的启用和禁用。
         """
         cmd = self.__initial + [
             "shell", "svc", "wifi", mode, status
         ]
         await Terminal.cmd_line(*cmd)
 
-    async def start_application(self, package: str) -> typing.Optional[str]:
+    async def start_application(self, package: str, *_, **__) -> typing.Optional[str]:
         """
         启动指定包名的应用。
-
-        参数:
-        package (str): 应用的包名及活动名称，格式为 'com.package/.MainActivity'。
-
-        Returns:
-        typing.Optional[str]: 返回启动应用的响应结果，如果失败则返回 None。
-
-        该方法使用 ADB 命令 'am start' 来启动应用。
         """
         cmd = self.__initial + [
             "shell", "am", "start", "-n", package
         ]
         return resp if (resp := await Terminal.cmd_line(*cmd)) else None
 
-    async def screen_size(self) -> typing.Optional[str]:
+    async def screen_size(self, *_, **__) -> typing.Optional[str]:
         """
         获取设备屏幕的分辨率。
-
-        Returns:
-        typing.Optional[str]: 返回屏幕的分辨率，例如 '1080x1920'，如果失败则返回 None。
-
-        该方法使用 ADB 命令 'wm size' 来获取设备屏幕的分辨率。
         """
         cmd = self.__initial + [
             "shell", "wm", "size"
         ]
         return resp if (resp := await Terminal.cmd_line(*cmd)) else None
 
-    async def screen_density(self) -> typing.Optional[str]:
+    async def screen_density(self, *_, **__) -> typing.Optional[str]:
         """
         获取设备屏幕的像素密度。
-
-        Returns:
-        typing.Optional[str]: 返回屏幕的像素密度，例如 '480'，如果失败则返回 None。
-
-        该方法使用 ADB 命令 'wm density' 来获取设备屏幕的像素密度。
         """
         cmd = self.__initial + [
             "shell", "wm", "density"
@@ -312,35 +216,44 @@ class Device(_Phone):
     async def automator_activation(self) -> None:
         """
         通过设备的序列号激活 uiautomator2 连接。
-
-        该方法通过调用 asyncio.to_thread 方法在后台线程中连接到设备。
         """
         self.facilities = await asyncio.to_thread(u2.connect, self.sn)
 
-    async def automator(self, method: str, selector: dict = None, *args) -> typing.Union[None, str, Exception]:
+    async def automator(
+            self,
+            method: str,
+            selector: typing.Optional[dict] = None,
+            *args,
+            **kwargs
+    ) -> typing.Union[None, str, Exception]:
         """
-        通过 uiautomator2 调用设备上的自动化方法。
+        自动化方法的异步调用函数。
 
         参数:
-        method (str): 要调用的方法名。
-        selector (dict, optional): 用于选择 UI 元素的选择器。
-        *args: 传递给方法的额外参数，可以是位置参数或字典参数。
+            - method (str): 要调用的目标方法名称，作为字符串传递。
+            - selector (dict, optional): 一个可选的字典，用于定位元素的选择器。默认值为 None。
+            - *args: 可变位置参数，传递给目标方法。
+            - **kwargs: 可变关键字参数，传递给目标方法。
 
-        Returns:
-        typing.Union[None, str, Exception]: 返回方法执行的结果，如果方法返回了响应则返回响应字符串，如果发生异常则返回异常。
+        功能说明:
+            1. 根据提供的 `selector` 查找元素。如果未提供选择器，则使用默认的设施对象。
+            2. 通过 `getattr` 动态获取 `element` 对象上对应的方法。
+            3. 如果该方法可调用，则将其与提供的参数一起异步执行。
+            4. 使用 `asyncio.to_thread` 将同步函数调用转换为异步调用，以避免阻塞事件循环。
+            5. 返回方法的执行结果。如果结果为空，则返回 None。
 
-        该方法使用 `getattr` 动态获取 `uiautomator2` 元素上的方法，并使用传递的参数调用它。
-        它首先尝试从 `args` 中分离出字典参数和非字典参数，最后将这些参数传递给目标方法执行。
+        返回值:
+            - 如果执行成功，返回方法的结果。
+            - 如果没有返回值或方法调用结果为空，则返回 None。
+            - 如果发生异常，返回异常对象。
+
+        注意:
+            - 该方法是异步方法，适用于需要在事件循环中调用的方法。
+            - 确保 `method` 是 `element` 对象上的有效方法名称，否则可能会引发 AttributeError。
         """
         element = self.facilities(**selector) if selector else self.facilities
         if callable(function := getattr(element, method)):
-            arg_list, arg_dict = [], {}
-            for arg in args:
-                if isinstance(arg, dict):
-                    arg_dict.update(arg)
-                else:
-                    arg_list.append(arg)
-            return resp if (resp := await asyncio.to_thread(function, *arg_list, **arg_dict)) else None
+            return resp if (resp := await asyncio.to_thread(function, *args, **kwargs)) else None
 
 
 if __name__ == '__main__':

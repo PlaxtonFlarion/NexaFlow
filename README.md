@@ -371,16 +371,16 @@ framix --fully script.json
                 "change": [],
                 "looper": 1,
                 "prefix": [
-                    {"cmds": ["key_event"], "args": [[3]]}, 
-                    {"cmds": ["sleep"], "args": [[1]]}
+                    {"cmds": ["key_event"], "vals": [[3]]}, 
+                    {"cmds": ["sleep"], "vals": [[1]]}
                 ],
                 "action": [
-                    {"cmds": ["automator"], "args": [["click", {"text": "text"}]]}, 
-                    {"cmds": ["sleep"], "args": [[3]]}
+                    {"cmds": ["automator"], "vals": [["click", {"text": "text"}]]}, 
+                    {"cmds": ["sleep"], "vals": [[3]]}
                 ],
                 "suffix": [
-                    {"cmds": ["force_stop"], "args": [["package_name"]]}, 
-                    {"cmds": ["sleep"], "args": [[1]]}
+                    {"cmds": ["force_stop"], "vals": [["package_name"]]}, 
+                    {"cmds": ["sleep"], "vals": [[1]]}
                 ]
             }
         }
@@ -398,14 +398,14 @@ framix --fully script.json
                 "change": [],
                 "looper": 1,
                 "prefix": [
-                    {"cmds": ["key_event", "sleep"], "args": [[3], [1]]}
+                    {"cmds": ["key_event", "sleep"], "vals": [[3], [1]]}
                 ],
                 "action": [
-                    {"cmds": ["automator"], "args": [["click", {"text": "text"}]]}, 
-                    {"cmds": ["sleep"], "args": [[3]]}
+                    {"cmds": ["automator"], "vals": [["click", {"text": "text"}]]}, 
+                    {"cmds": ["sleep"], "vals": [[3]]}
                 ],
                 "suffix": [
-                    {"cmds": ["force_stop", "sleep"], "args": [["package_name"], [1]]} 
+                    {"cmds": ["force_stop", "sleep"], "vals": [["package_name"], [1]]} 
                 ]
             }
         }
