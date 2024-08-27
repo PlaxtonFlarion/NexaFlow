@@ -222,7 +222,7 @@ class Device(_Phone):
     async def automator(
             self,
             method: str,
-            selector: typing.Optional[dict] = None,
+            choice: typing.Optional[dict] = None,
             *args,
             **kwargs
     ) -> typing.Union[None, str, Exception]:
@@ -231,7 +231,7 @@ class Device(_Phone):
 
         参数:
             - method (str): 要调用的目标方法名称，作为字符串传递。
-            - selector (dict, optional): 一个可选的字典，用于定位元素的选择器。默认值为 None。
+            - choice (dict, optional): 一个可选的字典，用于定位元素的选择器。默认值为 None。
             - *args: 可变位置参数，传递给目标方法。
             - **kwargs: 可变关键字参数，传递给目标方法。
 
@@ -251,7 +251,7 @@ class Device(_Phone):
             - 该方法是异步方法，适用于需要在事件循环中调用的方法。
             - 确保 `method` 是 `element` 对象上的有效方法名称，否则可能会引发 AttributeError。
         """
-        element = self.facilities(**selector) if selector else self.facilities
+        element = self.facilities(**choice) if choice else self.facilities
         if callable(function := getattr(element, method)):
             return resp if (resp := await asyncio.to_thread(function, *args, **kwargs)) else None
 
