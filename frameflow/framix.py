@@ -1825,7 +1825,7 @@ class Missions(object):
             异步命令打包函数。
 
             参数:
-                - resolve_list (list): 包含解析信息的列表，每个元素是一个字典，通常包含`cmds`、`vals`、`args`和`kwds`等键。
+                - resolve_list (list): 包含解析信息的列表，每个元素都是字典，通常包含`cmds`、`vals`、`args`和`kwds`等键。
 
             功能说明:
                 1. 遍历 `resolve_list` 列表，处理每个解析项中的命令、值、参数和关键字参数。
@@ -1984,8 +1984,9 @@ class Missions(object):
         titles_ = {"speed": "Speed", "basic": "Basic", "keras": "Keras"}
         input_title_ = next((title_ for key_, title_ in titles_.items() if getattr(self, key_)), "Video")
 
+        vs_ = await Terminal.cmd_line(*["scrcpy", "--version"])
         record = Record(
-            alone=self.alone, whist=self.whist, frate=deploy.frate
+            vs_, alone=self.alone, whist=self.whist, frate=deploy.frate
         )
         player = Player()
         source = SourceMonitor()

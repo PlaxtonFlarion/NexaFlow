@@ -7,6 +7,7 @@
 #
 
 import os
+import re
 import sys
 import time
 import random
@@ -28,8 +29,8 @@ class Record(object):
     record_events: dict[dict[str, asyncio.Event]] = {}
     melody_events: asyncio.Event = asyncio.Event()
 
-    def __init__(self, **kwargs):
-        self.platform = sys.platform
+    def __init__(self, version: str, **kwargs):
+        self.version, self.station = version, sys.platform
 
         self.alone = kwargs.get("alone", False)
         self.whist = kwargs.get("whist", False)
@@ -93,14 +94,21 @@ class Record(object):
         cmd = ["scrcpy", "-s", device.sn]
         cmd += [f"--display-id={device.id}"] if device.id != 0 else []
         cmd += location if location else []
-        cmd += ["--no-audio"]
+        cmd += ["--no-audio", "--mouse=disabled"]
         cmd += ["--video-bit-rate", "8M", "--max-fps", f"{self.frate}"]
-        cmd += ["-Nr" if self.whist else "--record", video_temp := f"{os.path.join(dst, 'screen')}_{video_flag}"]
+
+        try:
+            version = float(re.search(r"(?<=scrcpy\s)\d.*(?=\.\d\s)", self.version).group())
+        except (AttributeError, TypeError):
+            version = 2.5
+
+        cmd += (["--no-video"] if version <= 2.4 else ["--no-window"]) if self.whist else []
+        cmd += ["--record", video_temp := f"{os.path.join(dst, 'screen')}_{video_flag}"]
 
         transports = await Terminal.cmd_link(*cmd)
 
-        asyncio.create_task(input_stream())
-        asyncio.create_task(error_stream())
+        _ = asyncio.create_task(input_stream())
+        _ = asyncio.create_task(error_stream())
         await asyncio.sleep(1)
 
         return video_temp, transports
@@ -135,7 +143,7 @@ class Record(object):
         """
 
         async def find_child(pid):
-            if self.platform == "win32":
+            if self.station == "win32":
                 child_pids = await Terminal.cmd_line(
                     "powershell", "-Command", "Get-CimInstance", "Win32_Process", "|", "Where-Object",
                     f"{{ $_.ParentProcessId -eq {pid} }}", "|", "Select-Object", "-ExpandProperty", "ProcessId"
@@ -150,7 +158,7 @@ class Record(object):
             return []
 
         async def stop_child(pid):
-            if self.platform == "win32":
+            if self.station == "win32":
                 await Terminal.cmd_line(
                     "powershell", "-Command", "Stop-Process", "-Id", pid, "-Force"
                 )

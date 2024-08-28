@@ -221,8 +221,8 @@ class Device(_Phone):
 
     async def automator(
             self,
-            method: str,
-            choice: typing.Optional[dict] = None,
+            choice: typing.Optional[dict],
+            method: typing.Optional[str],
             *args,
             **kwargs
     ) -> typing.Union[None, str, Exception]:
@@ -230,8 +230,8 @@ class Device(_Phone):
         自动化方法的异步调用函数。
 
         参数:
-            - method (str): 要调用的目标方法名称，作为字符串传递。
-            - choice (dict, optional): 一个可选的字典，用于定位元素的选择器。默认值为 None。
+            - choice (dict, optional): 一个可选的字典，用于定位元素的选择器。
+            - method (str, optional): 要调用的目标方法名称，作为字符串传递。
             - *args: 可变位置参数，传递给目标方法。
             - **kwargs: 可变关键字参数，传递给目标方法。
 

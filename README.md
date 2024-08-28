@@ -375,7 +375,7 @@ framix --fully script.json
                     {"cmds": ["sleep"], "vals": [[1]]}
                 ],
                 "action": [
-                    {"cmds": ["automator"], "vals": [["click", {"text": "text"}]]}, 
+                    {"cmds": ["automator"], "vals": [[{"text": "text"}, "click"]]}, 
                     {"cmds": ["sleep"], "vals": [[3]]}
                 ],
                 "suffix": [
@@ -401,7 +401,7 @@ framix --fully script.json
                     {"cmds": ["key_event", "sleep"], "vals": [[3], [1]]}
                 ],
                 "action": [
-                    {"cmds": ["automator"], "vals": [["click", {"text": "text"}]]}, 
+                    {"cmds": ["automator"], "vals": [[{"text": "text"}, "click"]]}, 
                     {"cmds": ["sleep"], "vals": [[3]]}
                 ],
                 "suffix": [
