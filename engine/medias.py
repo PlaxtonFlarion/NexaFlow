@@ -88,21 +88,21 @@ class Record(object):
 
         video_flag = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
 
+        cmd = ["scrcpy", "-s", device.sn, "--no-audio", "--video-bit-rate=8M", f"--max-fps={self.frate}"]
+
+        if device.id != 0:
+            cmd += [f"--display-id={device.id}"]
+
         loc_name = ["--window-x", "--window-y", "--window-width", "--window-height"]
-        location = [f"{k}={v}" for k, v in zip(loc_name, loc)] if (loc := kwargs.get("location", ())) else []
+        cmd += [f"{k}={v}" for k, v in zip(loc_name, loc)] if (loc := kwargs.get("location", ())) else []
 
-        cmd = ["scrcpy", "-s", device.sn]
-        cmd += [f"--display-id={device.id}"] if device.id != 0 else []
-        cmd += location if location else []
-        cmd += ["--no-audio", "--mouse=disabled"]
-        cmd += ["--video-bit-rate", "8M", "--max-fps", f"{self.frate}"]
+        if self.whist:
+            try:
+                vs = float(re.search(r"(?<=scrcpy\s)\d.*(?=\.\d\s)", self.version).group())
+            except (AttributeError, TypeError):
+                vs = 2.5
+            cmd += ["--no-display"] if vs <= 2.4 else ["--no-window"]
 
-        try:
-            version = float(re.search(r"(?<=scrcpy\s)\d.*(?=\.\d\s)", self.version).group())
-        except (AttributeError, TypeError):
-            version = 2.5
-
-        cmd += (["--no-video"] if version <= 2.4 else ["--no-window"]) if self.whist else []
         cmd += ["--record", video_temp := f"{os.path.join(dst, 'screen')}_{video_flag}"]
 
         transports = await Terminal.cmd_link(*cmd)
