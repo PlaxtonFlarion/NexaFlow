@@ -184,7 +184,8 @@ except (ImportError, ModuleNotFoundError):
 #  |_|  |_|_|___/___/_|\___/|_| |_|___/
 class Missions(object):
 
-    def __init__(self, level: str, power: int, *args, **kwargs):
+    def __init__(self, wires: list, level: str, power: int, *args, **kwargs):
+        self.wires = wires  # 命令参数
         self.level = level  # 日志级别
         self.power = power  # 最大进程
 
@@ -2138,6 +2139,10 @@ class Missions(object):
                         for deploy_key_, deploy_value_ in deploy.deploys.items():
                             logger.debug(f"Current Key {deploy_key_}")
                             for d_key_, d_value_ in deploy_value_.items():
+                                # 以命令行参数为第一优先级
+                                if any(line_.lower().startswith(f"--{d_key_}") for line_ in self.wires):
+                                    logger.debug(f"    Line First <{d_key_}> = {getattr(deploy, d_key_)}")
+                                    continue
                                 if parser_arg_ := parser_.get(deploy_key_, {}).get(d_key_, {}):
                                     setattr(deploy, d_key_, parser_arg_)
                                     logger.debug(f"    Parser Set <{d_key_}>  {d_value_} -> {getattr(deploy, d_key_)}")
@@ -3158,6 +3163,7 @@ if __name__ == '__main__':
 
     # 初始化主要任务对象
     _missions = Missions(
+        _wires,
         _level,
         _power,
         _flick, _carry, _fully, _speed, _basic, _keras, _alone, _whist, _alike, _shine, _group,

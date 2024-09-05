@@ -7,6 +7,7 @@
 #
 
 import os
+import copy
 import json
 import typing
 import inspect
@@ -221,10 +222,11 @@ class Deploy(object):
         self.deploys["ALS"]["omits"] = Parser.parse_hooks(value)
 
     def dump_deploy(self, deploy_file: typing.Any) -> None:
+        deep_copy_deploys = copy.deepcopy(self.deploys)
         for attr in ["crops", "omits"]:
-            if len(self.deploys["ALS"][attr]) == 0:
-                self.deploys["ALS"][attr] = const.HOOKS
-        dump_parameters(deploy_file, self.deploys)
+            if len(deep_copy_deploys["ALS"][attr]) == 0:
+                deep_copy_deploys["ALS"][attr] = const.HOOKS
+        dump_parameters(deploy_file, deep_copy_deploys)
 
     def load_deploy(self, deploy_file: typing.Any) -> None:
         try:
