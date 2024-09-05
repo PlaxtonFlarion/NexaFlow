@@ -33,7 +33,7 @@
 - 打开命令提示符（Command Prompt）或 PowerShell。 
 - 导航到您的 Python 脚本所在的目录。
 
-### 运行 **Nuitka** 命令
+### 运行 Nuitka 命令
 ```
 python -m nuitka --standalone --windows-icon-from-ico=resources/icons/framix_icn_2.ico --nofollow-import-to=tensorflow,uiautomator2 --include-module=pdb,deprecation,xmltodict --include-package=ml_dtypes,distutils,site,google,absl,wrapt,gast,astunparse,termcolor,opt_einsum,flatbuffers,h5py,adbutils,apkutils2,cigam,pygments --show-progress --show-memory --output-dir=applications frameflow/framix.py
 ```
@@ -46,7 +46,11 @@ python -m nuitka --standalone --windows-icon-from-ico=resources/icons/framix_icn
       - **supports**
       - **templates**
     - **...**
+  - **framix.bat**
   - **Specially**
+    - **Framix_Model**
+      - **Keras_Gray_W256_H256**
+      - **Keras_Hued_W256_H256** 
 
 ---
 
@@ -55,7 +59,7 @@ python -m nuitka --standalone --windows-icon-from-ico=resources/icons/framix_icn
 - 打开终端（Terminal）。 
 - 导航到您的 Python 脚本所在的目录。
 
-### 运行 **Nuitka** 命令
+### 运行 Nuitka 命令
 ```
 python -m nuitka --standalone --macos-create-app-bundle --macos-app-icon=resources/icons/framix_icn_2.png --nofollow-import-to=tensorflow,uiautomator2 --include-module=pdb,deprecation,xmltodict --include-package=ml_dtypes,distutils,site,google,absl,wrapt,gast,astunparse,termcolor,opt_einsum,flatbuffers,h5py,adbutils,apkutils2,cigam,pygments --show-progress --show-memory --output-dir=applications frameflow/framix.py
 ```
@@ -70,9 +74,29 @@ python -m nuitka --standalone --macos-create-app-bundle --macos-app-icon=resourc
           - **resources**
           - **supports**
           - **templates**
+        - **framix.sh**
         - **...**
       - **Resources**
       - **Specially**
+        - **Framix_Model**
+          - **Keras_Gray_W256_H256**
+          - **Keras_Hued_W256_H256**
       - **Info.plist**
+
+### 修改 Info.plist 文件
+```
+<key>CFBundleExecutable</key>
+<string>framix.sh</string>
+```
+
+### 赋予执行权限
+```
+chmod +x /Applications/framix.app/Contents/MacOS/framix.sh
+```
+
+### 解除隔离标志
+```
+sudo xattr -rd com.apple.quarantine /Applications/framix.app
+```
 
 ---
