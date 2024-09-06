@@ -172,7 +172,7 @@ try:
     from nexaflow.hook import FrameSizeHook, FrameSaveHook
     from nexaflow.hook import PaintCropHook, PaintOmitHook
     from nexaflow.classifier.keras_classifier import KerasStruct
-except (ImportError, ModuleNotFoundError):
+except (ImportError, ModuleNotFoundError, RuntimeError):
     Show.console.print_exception()
     sys.exit(Show.fail())
 
