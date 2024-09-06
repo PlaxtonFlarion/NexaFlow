@@ -362,7 +362,7 @@ class KerasStruct(BaseModelClassifier):
         except AssertionError as e:
             return logger.error(e)
 
-        final_model: str = os.path.join(new_model_path, new_model_name)
+        final_model: str = os.path.join(new_model_path, new_model_name).format()
         os.makedirs(new_model_path, exist_ok=True)
 
         # self.model.save_weights(final_model, save_format="h5")

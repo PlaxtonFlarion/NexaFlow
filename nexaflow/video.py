@@ -144,7 +144,7 @@ class VideoObject(object):
 
     __repr__ = __str__
 
-    def sync_timestamp(self, frame_data: tuple["VideoFrame"]) -> None:
+    def sync_timestamp(self, frame_data: tuple["VideoFrame", ...]) -> None:
         assert frame_data, "load_frames() first"
         vid = mpy.VideoFileClip(self.path)
 

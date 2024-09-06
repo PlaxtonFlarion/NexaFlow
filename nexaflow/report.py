@@ -173,7 +173,7 @@ class Report(object):
 
         merge_name = f"{const.R_UNION_TAG}_{(merge_time := time.strftime('%Y%m%d%H%M%S'))}", const.R_COLLECTION
         if not os.path.exists(
-            merge_path := os.path.join(os.path.dirname(merge_list[0]), *merge_name)
+            merge_path := os.path.join(os.path.dirname(merge_list[0]), *merge_name).format()
         ):
             os.makedirs(merge_path, exist_ok=True)
 
@@ -186,7 +186,7 @@ class Report(object):
             if isinstance(m, Exception):
                 raise FramixReporterError(m)
             shutil.copytree(
-                os.path.join(m, const.R_COLLECTION),
+                os.path.join(m, const.R_COLLECTION).format(),
                 merge_path,
                 ignore=shutil.ignore_patterns(*ignore),
                 dirs_exist_ok=True
