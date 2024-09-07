@@ -94,7 +94,7 @@ python -m nuitka --standalone --windows-icon-from-ico=resources/icons/framix_icn
 
 ### 运行 Nuitka 命令
 ```
-python -m nuitka --standalone --macos-create-app-bundle --macos-app-icon=resources/icons/framix_icn_2.png --nofollow-import-to=tensorflow,uiautomator2 --include-module=pdb,deprecation,xmltodict --include-package=ml_dtypes,distutils,site,google,absl,wrapt,gast,astunparse,termcolor,opt_einsum,flatbuffers,h5py,adbutils,apkutils2,cigam,pygments --show-progress --show-memory --output-dir=applications frameflow/framix.py
+python -m nuitka --standalone --macos-create-app-bundle --macos-app-icon=resources/images/macos/framix_macos_icn.png --nofollow-import-to=tensorflow,uiautomator2 --include-module=pdb,deprecation,xmltodict --include-package=ml_dtypes,distutils,site,google,absl,wrapt,gast,astunparse,termcolor,opt_einsum,flatbuffers,h5py,adbutils,apkutils2,cigam,pygments --show-progress --show-memory --output-dir=applications frameflow/framix.py
 ```
 
 ### 目录结构
@@ -107,7 +107,7 @@ python -m nuitka --standalone --macos-create-app-bundle --macos-app-icon=resourc
         - **framix.sh**
         - **...**
       - **Resources**
-        - **framix_bg.png**
+        - **framix_macos_bg.png**
         - ...
       - **Specially**
         - **Framix_Model**
