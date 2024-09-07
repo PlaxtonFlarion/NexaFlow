@@ -107,6 +107,8 @@ python -m nuitka --standalone --macos-create-app-bundle --macos-app-icon=resourc
         - **framix.sh**
         - **...**
       - **Resources**
+        - **framix_bg.png**
+        - ...
       - **Specially**
         - **Framix_Model**
           - **Keras_Gray_W256_H256**
