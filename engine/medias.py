@@ -153,19 +153,19 @@ class Record(object):
                     "pgrep", "-P", pid
                 )
             Show.notes(f"{desc} PID={child_pids}")
-            if child_pids:
-                return [line.strip() for line in child_pids.splitlines() if line.strip().isdigit()]
-            return []
+
+            return [line.strip() for line in child_pids.splitlines() if line.strip().isdigit()] if child_pids else []
 
         async def stop_child(pid):
             if self.station == "win32":
-                await Terminal.cmd_line(
+                off = await Terminal.cmd_line(
                     "powershell", "-Command", "Stop-Process", "-Id", pid, "-Force"
                 )
             else:
-                await Terminal.cmd_line(
-                    "xargs", "kill", "-SIGINT", transmit="\n".join(pid).encode()
+                off = await Terminal.cmd_line(
+                    "xargs", "kill", "-SIGINT", transmit=pid.encode()
                 )
+            Show.notes(f"{desc} OFF={off}")
 
         desc = f"{device.tag} {device.sn} PPID={(record_pid := transports.pid)}"
 
@@ -178,7 +178,7 @@ class Record(object):
             )
 
         try:
-            await asyncio.wait_for(events["done"].wait(), 2)
+            await asyncio.wait_for(events["done"].wait(), 3)
         except asyncio.TimeoutError:
             return f"{desc} 视频录制失败", banner
         else:

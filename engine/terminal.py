@@ -42,7 +42,8 @@ class Terminal(object):
         """
         logger.debug(" ".join([os.path.basename(c) for c in cmd]))
         transports = await asyncio.create_subprocess_exec(
-            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, **kwargs
+            *cmd, stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, **kwargs
         )
 
         encode = "GBK" if sys.platform == "win32" else "UTF-8"
@@ -102,7 +103,8 @@ class Terminal(object):
         """
         logger.debug(" ".join([os.path.basename(c) for c in cmd.split()]))
         transports = await asyncio.create_subprocess_shell(
-            cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, **kwargs
+            cmd, stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, **kwargs
         )
 
         encode = "GBK" if sys.platform == "win32" else "UTF-8"
