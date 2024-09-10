@@ -24,6 +24,7 @@ __all__ = []
 
 import os
 import sys
+import signal
 import shutil
 # from frameflow
 from frameflow.skills.show import Show
@@ -31,11 +32,22 @@ from frameflow.argument import Wind
 # from nexaflow
 from nexaflow import const
 
+
+# 信号处理器
+def signal_processor(*_, **__) -> None:
+    Show.exit()
+    sys.exit(Show.closure())
+
+
+# 设置 Ctrl + C 信号处理方式
+signal.signal(signal.SIGINT, signal_processor)
+
 # 如果没有提供命令行参数，则显示应用程序标志和帮助文档，并退出程序
 if len(system_parameter_list := sys.argv) == 1:
     Show.minor_logo()
     Show.help_document()
-    sys.exit(Show.done())
+    Show.done()
+    sys.exit(Show.closure())
 
 # 获取命令行参数（去掉第一个参数，即脚本名称）
 _wires = system_parameter_list[1:]
@@ -60,7 +72,8 @@ else:
     # 如果应用名称不匹配，显示错误信息并退出程序
     Show.show_panel(const.SHOW_LEVEL, f"{const.DESC} compatible with {const.NAME}", Wind.KEEPER)
     Show.simulation_progress(f"{const.DESC} Exiting ...")
-    sys.exit(Show.fail())
+    Show.fail()
+    sys.exit(Show.closure())
 
 # 设置模板文件路径
 _atom_total_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_atom_total.html")
@@ -76,7 +89,8 @@ for _tmp in (_temps := [_atom_total_temp, _main_share_temp, _main_total_temp, _v
     _tmp_name = os.path.basename(_tmp)
     Show.show_panel(const.SHOW_LEVEL, f"{const.DESC} missing files {_tmp_name}", Wind.KEEPER)
     Show.simulation_progress(f"{const.DESC} Exiting ...")
-    sys.exit(Show.fail())
+    Show.fail()
+    sys.exit(Show.closure())
 
 # 设置工具源路径
 _turbo = os.path.join(_fx_work, const.F_SCHEMATIC, "supports").format()
@@ -96,7 +110,8 @@ else:
     # 如果平台不兼容，显示错误信息并退出程序
     Show.show_panel(const.SHOW_LEVEL, f"{const.DESC} compatible with [Win | Mac]", Wind.KEEPER)
     Show.simulation_progress(f"{const.DESC} Exiting ...")
-    sys.exit(Show.fail())
+    Show.fail()
+    sys.exit(Show.closure())
 
 """
 将工具路径添加到系统 PATH 环境变量中
@@ -114,7 +129,8 @@ for _tls in _tools:
         continue
     Show.show_panel(const.SHOW_LEVEL, f"{const.DESC} missing files {_tls_name}", Wind.KEEPER)
     Show.simulation_progress(f"{const.DESC} Exiting ...")
-    sys.exit(Show.fail())
+    Show.fail()
+    sys.exit(Show.closure())
 
 # 设置初始路径
 if not os.path.exists(
@@ -174,7 +190,8 @@ try:
     from nexaflow.classifier.keras_classifier import KerasStruct
 except (ImportError, ModuleNotFoundError, RuntimeError):
     Show.console.print_exception()
-    sys.exit(Show.fail())
+    Show.fail()
+    sys.exit(Show.closure())
 
 
 #   __  __ _         _
@@ -2040,7 +2057,8 @@ class Missions(object):
                             device_list = await manage_.another_device()
                             continue
                         elif select_ == "cancel":
-                            sys.exit(Show.exit())
+                            Show.exit()
+                            sys.exit(Show.closure())
                         elif "header" in select_:
                             if match_ := re.search(r"(?<=header\s).*", select_):
                                 if hd_ := match_.group().strip():
@@ -2977,7 +2995,8 @@ async def arithmetic(function: "typing.Callable", parameters: list[str]) -> None
     except (FramixAnalysisError, FramixAnalyzerError, FramixReporterError):
         # 处理异常并记录日志
         Show.console.print_exception()
-        sys.exit(Show.fail())
+        Show.fail()
+        sys.exit(Show.closure())
 
 
 async def scheduling() -> None:
@@ -3004,7 +3023,8 @@ async def scheduling() -> None:
         Show.show_panel(
             const.SHOW_LEVEL, "Install first https://github.com/Genymobile/scrcpy", Wind.KEEPER
         )
-        sys.exit(Show.fail())
+        Show.fail()
+        sys.exit(Show.closure())
 
     try:
         # 处理 flick, carry, fully 参数
@@ -3026,7 +3046,8 @@ async def scheduling() -> None:
     except (FramixAnalysisError, FramixAnalyzerError, FramixReporterError):
         # 处理异常并记录日志
         Show.console.print_exception()
-        sys.exit(Show.fail())
+        Show.fail()
+        sys.exit(Show.closure())
 
 
 #   __  __       _
@@ -3241,9 +3262,12 @@ if __name__ == '__main__':
             _main_loop.run_until_complete(scheduling())
 
     except KeyboardInterrupt:
-        sys.exit(Show.exit())
+        Show.exit()
+        sys.exit(Show.closure())
     except (OSError, RuntimeError, MemoryError, TypeError, ValueError, AttributeError):
         Show.console.print_exception()
-        sys.exit(Show.fail())
+        Show.fail()
+        sys.exit(Show.closure())
     else:
-        sys.exit(Show.done())
+        Show.done()
+        sys.exit(Show.closure())

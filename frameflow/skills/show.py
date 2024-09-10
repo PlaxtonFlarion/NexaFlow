@@ -106,36 +106,31 @@ class Show(object):
 
     @staticmethod
     def done():
-        return f"""
+        Show.console.print(f"""[bold]
     ╔════════════════════════════════╗
-    ║       \033[1;32mMissions  Complete\033[0m       ║
-    ╚════════════════════════════════╝
-
-    <*=> \033[1;35m{const.DESC}\033[0m will now automatically exit <=*>
-    <*=> \033[1;35m{const.DESC}\033[0m see you next <=*>
-    """
+    ║       [bold #00FF00]Missions  Complete[/]       ║
+    ╚════════════════════════════════╝""")
 
     @staticmethod
     def fail():
-        return f"""
+        Show.console.print(f"""[bold]
     ╔════════════════════════════════╗
-    ║        \033[1;31mMissions  Failed\033[0m        ║
-    ╚════════════════════════════════╝
-
-    <*=> \033[1;35m{const.DESC}\033[0m will now automatically exit <=*>
-    <*=> \033[1;35m{const.DESC}\033[0m see you next <=*>
-    """
+    ║        [bold #FF0000]Missions  Failed[/]        ║
+    ╚════════════════════════════════╝""")
 
     @staticmethod
     def exit():
-        return f"""
+        Show.console.print(f"""[bold]
     ╔════════════════════════════════╗
-    ║        \033[1;33mMissions  Exited\033[0m        ║
-    ╚════════════════════════════════╝
+    ║        [bold #FFFF00]Missions  Exited[/]        ║
+    ╚════════════════════════════════╝""")
 
-    <*=> \033[1;35m{const.DESC}\033[0m will now automatically exit <=*>
-    <*=> \033[1;35m{const.DESC}\033[0m see you next <=*>
-    """
+    @staticmethod
+    def closure():
+        return f"""
+    <*=> {const.DESC} will now automatically exit <=*>
+    <*=> {const.DESC} see you next <=*>
+        """
 
     @staticmethod
     def major_logo():
