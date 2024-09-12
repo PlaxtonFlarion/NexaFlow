@@ -5,7 +5,7 @@ set EXE_PATH="%~dp0framix.dist\framix.exe"
 
 :: 检查是否存在
 if not exist %EXE_PATH% (
-    echo WARN: not found %EXE_PATH%。
+    echo WARN: not found %EXE_PATH%
     pause
     exit /b
 )
