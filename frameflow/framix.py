@@ -2195,7 +2195,7 @@ class Missions(object):
                     # 遍历 header 并执行任务
                     for hd_ in header_:
                         report.title = f"{input_title_}_{script_key_}_{hd_}"
-                        extend_task_list = []
+                        extend_task_list_ = []
 
                         for _ in range(looper_):
                             # prefix 前置任务
@@ -2226,7 +2226,7 @@ class Missions(object):
 
                             # 根据参数判断是否分析视频以及使用哪种方式分析
                             if self.shine:
-                                extend_task_list.extend(task_list)
+                                extend_task_list_.extend(task_list)
                             else:
                                 await anything_well()
 
@@ -2234,8 +2234,7 @@ class Missions(object):
                             await asyncio.gather(*suffix_task_list_)
 
                         # 分析视频集合
-                        if self.shine:
-                            task_list = extend_task_list
+                        if task_list := (extend_task_list_ if self.shine else []):
                             await anything_well()
 
                 # 如果需要，结合多种模式生成最终报告
