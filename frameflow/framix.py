@@ -69,7 +69,6 @@ elif _software == f"{const.NAME}.py":
     _fx_work = os.path.dirname(os.path.abspath(__file__))
     _fx_feasible = os.path.dirname(_fx_work)
 else:
-    # 如果应用名称不匹配，显示错误信息并退出程序
     Show.show_panel(const.SHOW_LEVEL, f"{const.DESC} compatible with {const.NAME}", Wind.KEEPER)
     Show.simulation_progress(f"{const.DESC} Exiting ...")
     Show.fail()
@@ -95,7 +94,7 @@ for _tmp in (_temps := [_atom_total_temp, _main_share_temp, _main_total_temp, _v
 # 设置工具源路径
 _turbo = os.path.join(_fx_work, const.F_SCHEMATIC, "supports").format()
 
-# 根据平台设置 adb 和 ffmpeg 工具路径
+# 根据平台设置工具路径
 if _platform == "win32":
     # Windows
     _adb = os.path.join(_turbo, "Windows", "platform-tools", "adb.exe")
@@ -107,7 +106,6 @@ elif _platform == "darwin":
     _fmp = os.path.join(_turbo, "MacOS", "ffmpeg", "bin", "ffmpeg")
     _fpb = os.path.join(_turbo, "MacOS", "ffmpeg", "bin", "ffprobe")
 else:
-    # 如果平台不兼容，显示错误信息并退出程序
     Show.show_panel(const.SHOW_LEVEL, f"{const.DESC} compatible with [Win | Mac]", Wind.KEEPER)
     Show.simulation_progress(f"{const.DESC} Exiting ...")
     Show.fail()
@@ -116,9 +114,10 @@ else:
 """
 将工具路径添加到系统 PATH 环境变量中
 
-此代码块将 ffmpeg 和其他工具的路径添加到系统的 PATH 环境变量中。
-如果不先设置环境，可能会导致使用 imageio_ffmpeg 进行视频处理时出现环境错误。
-需要在导入 imageio_ffmpeg 之前使用该代码块，以确保工具路径正确设置在系统环境中。
+注意:
+    此代码块将 ffmpeg 和其他工具的路径添加到系统的 PATH 环境变量中。
+    如果不先设置环境，可能会导致使用 imageio_ffmpeg 进行视频处理时出现环境错误。
+    需要在导入 imageio_ffmpeg 之前使用该代码块，以确保工具路径正确设置在系统环境中。
 """
 for _tls in (_tools := [_adb, _fmp, _fpb]):
     os.environ["PATH"] = os.path.dirname(_tls) + _env_symbol + os.environ.get("PATH", "")
@@ -2459,6 +2458,7 @@ class Alynex(object):
         日志记录:
             记录视频帧长度、尺寸、加载过程及耗时等详细信息到日志中，并在控制台面板中显示。
         """
+
         # 开始计时
         start_time_ = time.time()
 
@@ -2471,22 +2471,7 @@ class Alynex(object):
         logger.debug(f"{(task_desc_ := '加载视频帧: ' f'{video.name}')}")
         Show.show_panel(self.extent, f"{task_name_}\n{task_info_}\n{task_desc_}", Wind.LOADER)
 
-        """
-        加载视频帧
-        
-        #### 步骤流程
-        1. **灰度处理（可选）**:
-            - 如果 `color` 为 `False` 或未提供，则将图像转换为灰度图像。
-        2. **目标尺寸（可选）**：
-            - 如果提供了目标尺寸 `shape`，则将图像调整为目标尺寸。
-        3. **比例缩放（可选）**：
-            - 如果未提供shape，但提供了压缩率 `scale`，则按压缩率缩放图像尺寸。
-
-        参数:
-            - scale (Optional[Union[int, float]]): 压缩率，图像尺寸将按此比例缩放。
-            - shape (Optional[tuple]): 目标尺寸，以 (width, height) 的形式指定。
-            - color (Optional[bool]): 如果为 True，则保持彩色图像，否则转换为灰度图像。
-        """
+        # 加载视频帧
         video.load_frames(
             scale=None, shape=None, color=self.deploy.color
         )
