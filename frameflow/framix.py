@@ -142,7 +142,7 @@ if not os.path.exists(
 if not os.path.exists(
     _src_model_place := os.path.join(_initial_source, const.F_SRC_MODEL_PLACE).format()
 ):
-    os.makedirs(os.path.dirname(_src_model_place), exist_ok=True)
+    os.makedirs(_src_model_place, exist_ok=True)
 
 # 设置报告路径
 if not os.path.exists(
