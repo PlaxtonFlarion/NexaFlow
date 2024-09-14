@@ -1967,25 +1967,8 @@ class Missions(object):
                 stop.cancel()
 
         """
-        此段代码主要负责一系列初始化操作，为后续的程序运行做准备。
-
-        - **管理对象初始化**:
-            创建一个 `Manage` 对象 `manage_`，并通过 `self.adb` 进行设备管理。随后，使用异步方法 `operate_device` 获取设备列表并存储在 `device_list` 中。
-
-        - **Clipix 和 Alynex 初始化**:
-            创建 `Clipix` 对象 `clipix`，用于处理 `fmp` 和 `fpb`。接下来，基于条件（`self.keras`）设置 `model_place` 的值，之后初始化 `Alynex` 对象 `alynex`，负责模型加载和部署。
-
-        - **模型加载与异常处理**:
-            使用 `ask_model_load` 异步方法尝试加载模型。如果加载过程中发生 `FramixAnalyzerError` 异常，捕获并记录该异常，同时显示错误信息面板。
-
-        - **标题初始化**:
-            根据不同的条件（`speed`, `basic`, `keras`）在字典 `titles_` 中查找对应的标题。如果没有匹配到，则默认标题为 "Video"。
-
-        - **记录和播放器初始化**:
-            初始化 `Record` 对象 `record`，用于记录各种状态信息和数据，配置参数包括 `alone`, `whist`, 和 `frate`。接着，初始化 `Player` 对象 `player` 以及 `SourceMonitor` 对象 `source`，分别用于播放和监控源数据。
+        初始化操作，为后续的程序运行做准备。
         """
-
-        # Initialization
         manage_ = Manage(self.adb)
         device_list = await manage_.operate_device()
 
@@ -2009,45 +1992,16 @@ class Missions(object):
         player = Player()
         source = SourceMonitor()
 
+        lower_bound_, upper_bound_ = (8, 300) if self.whist else (5, 300)
+
         # Flick Loop
         if self.flick:
             """
-            此段代码处理控制台应用程序中的复杂交互过程，主要负责管理设备显示、设置报告以及通过命令行界面处理各种用户输入。
-
-            - **flick 检查**: 
-                初始条件检查 `flick` 属性是否为 `True`。如果为真，则进入流程。
-
-            - **报告初始化**:
-                创建一个 `Report` 对象，并为其设置一个包含输入标题、当前时间戳和进程ID的标题。
-
-            - **定时器模式设置**:
-                进入一个无限循环，通过捕获用户输入进行交互。默认的计时器模式为5秒。
-
-            - **设备管理与操作**:
-                用户可以选择 "device" 来查看设备列表，或者选择 "cancel" 来退出程序。
-
-            - **标题设置**:
-                如果用户输入 "header"，则解析输入内容以设置新的报告标题。
-
-            - **创建或部署操作**:
-                如果用户输入 "create"，程序将调用 `self.combine` 方法以创建报告。
-                输入 "deploy" 则提示用户退出编辑器后执行部署操作，并通过 `deploy` 模块处理部署文件。
-
-            - **定时器调整**:
-                用户可以输入数字来调整定时器的时间，范围在5到300秒之间。如果输入不在范围内，将提示用户正确的时间范围。
-
-            - **异常处理**:
-                代码使用 `try-except` 块来捕获 `FramixAnalysisError` 异常，并在异常发生时提供提示文档。
-
-            - **任务执行与设备操作**:
-                如果没有发生异常，程序将继续执行一系列任务，并根据结果选择是否进行设备操作。
-
-            - **资源清理**:
-                在 `finally` 块中，无论之前的操作是否成功，都会调用 `record.clean_event` 方法来清理事件，确保资源的正确释放。
+            处理控制台应用程序中的复杂交互过程，主要负责管理设备显示、设置报告以及通过命令行界面处理各种用户输入。
             """
             report = Report(option.total_place)
             report.title = f"{input_title_}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
-            timer_mode = 5
+            timer_mode = lower_bound_
             while True:
                 try:
                     await manage_.display_device()
@@ -2080,8 +2034,8 @@ class Missions(object):
                             deploy.view_deploy()
                             continue
                         elif select_.isdigit():
-                            timer_value_, lower_bound_, upper_bound_ = int(select_), 5, 300
-                            if timer_value_ > 300 or timer_value_ < 5:
+                            timer_value_ = int(select_)
+                            if timer_value_ > upper_bound_ or timer_value_ < lower_bound_:
                                 bound_tips_ = f"{lower_bound_} <= [bold #FFD7AF]Time[/] <= {upper_bound_}"
                                 Show.notes(f"[bold #FFFF87]{bound_tips_}[/]")
                             timer_mode = max(lower_bound_, min(upper_bound_, timer_value_))
@@ -2104,15 +2058,6 @@ class Missions(object):
         elif self.carry or self.fully:
             """
             执行批量脚本任务，并根据脚本中的配置进行操作。
-
-            功能描述:
-                1. 显示设备信息。
-                2. 遍历脚本存储，执行每个脚本中的任务。
-                3. 根据脚本中的 `parser` 参数更新部署配置。
-                4. 处理脚本中的 `header`、`change`、`looper` 参数。
-                5. 根据 `prefix`、`action` 和 `suffix` 命令列表依次执行任务。
-                6. 记录任务执行情况，生成报告。
-                7. 如果需要，结合多种模式生成最终报告。
             """
             if self.carry:
                 load_script_data_ = await asyncio.gather(
@@ -2984,6 +2929,7 @@ async def arithmetic(function: "typing.Callable", parameters: list[str]) -> None
         捕获并处理 FramixAnalysisError, FramixAnalyzerError, FramixReporterError 异常。
         如果发生异常，记录异常信息并退出程序。
     """
+
     try:
         # 修正参数路径
         parameters = [(await Craft.revise_path(param)) for param in parameters]
@@ -2992,7 +2938,6 @@ async def arithmetic(function: "typing.Callable", parameters: list[str]) -> None
         # 执行函数
         await function(parameters, _option, _deploy)
     except (FramixAnalysisError, FramixAnalyzerError, FramixReporterError):
-        # 处理异常并记录日志
         Show.console.print_exception()
         Show.fail()
         sys.exit(Show.closure())
@@ -3026,24 +2971,22 @@ async def scheduling() -> None:
         sys.exit(Show.closure())
 
     try:
-        # 处理 flick, carry, fully 参数
         if _lines.flick or _lines.carry or _lines.fully:
             await _already_installed()
             await _missions.analysis(_option, _deploy)
-        # 处理 paint 参数
+
         elif _lines.paint:
             await _missions.painting(_option, _deploy)
-        # 处理 union 参数
+
         elif _lines.union:
             await _missions.combine_view(_lines.union)
-        # 处理 merge 参数
+
         elif _lines.merge:
             await _missions.combine_main(_lines.merge)
-        # 显示帮助文档
+
         else:
             Show.help_document()
     except (FramixAnalysisError, FramixAnalyzerError, FramixReporterError):
-        # 处理异常并记录日志
         Show.console.print_exception()
         Show.fail()
         sys.exit(Show.closure())
@@ -3086,22 +3029,14 @@ if __name__ == '__main__':
         支持键盘中断（Ctrl+C），优雅地退出程序。
     """
 
-    """
-    `freeze_support()` 主要用于在 Windows 平台上启动多进程时确保冻结的可执行文件可以正确运行。
-
-    1. **启动子进程**：
-        在 Windows 上，子进程是通过重新运行整个脚本来启动的，而不是像 Unix 系统那样通过 `fork()` 机制。这意味着在脚本重新运行时需要一些额外的处理来确保子进程按预期启动。
-
-    2. **支持冻结应用程序**：
-        当使用 `pyinstaller` 或类似工具将 Python 程序打包成独立的可执行文件时， `freeze_support()` 函数确保这些打包的程序在创建新进程时能够正确初始化子进程环境。
-    """
+    # 在 Windows 平台上启动多进程时确保冻结的可执行文件可以正确运行。
     freeze_support()
 
     """
     命令行参数解析器解析命令行参数
-
-    该代码块使用命令行参数解析器来解析传入的命令行参数，并将结果存储在变量 `_lines` 中。
-    请注意，此代码块必须在 `__main__` 块下调用，否则可能会导致多进程模块无法正确加载，从而出现类似于 'BrokenProcessPool: A process in the process pool was terminated abruptly while the future was running or pending' 的错误。
+    
+    注意:
+        此代码块必须在`__main__`块下调用，否则可能会导致多进程模块无法正确加载。
     """
     _lines = Parser.parse_cmd()
 
@@ -3171,9 +3106,10 @@ if __name__ == '__main__':
 
     """
     将命令行参数解析结果转换为基本数据类型
-
-    该代码块将命令行参数解析器解析得到的结果存储在基本数据类型的变量中。
-    这样做的目的是避免在多进程环境中向子进程传递不可序列化的对象，因为这些对象在传递过程中可能会导致`pickle.PicklingError`错误。
+    
+    注意:
+        该代码块将命令行参数解析器解析得到的结果存储在基本数据类型的变量中。
+        这样做的目的是避免在多进程环境中向子进程传递不可序列化的对象，因为这些对象在传递过程中可能会导致`pickle.PicklingError`错误。
     """
     _flick, _carry, _fully = _lines.flick, _lines.carry, _lines.fully
     _speed, _basic, _keras = _lines.speed, _lines.basic, _lines.keras
@@ -3183,9 +3119,7 @@ if __name__ == '__main__':
 
     # 初始化主要任务对象
     _missions = Missions(
-        _wires,
-        _level,
-        _power,
+        _wires, _level, _power,
         _flick, _carry, _fully, _speed, _basic, _keras, _alone, _whist, _alike, _shine, _group,
         atom_total_temp=_atom_total_temp,
         main_share_temp=_main_share_temp,
@@ -3195,9 +3129,7 @@ if __name__ == '__main__':
         initial_option=_initial_option,
         initial_deploy=_initial_deploy,
         initial_script=_initial_script,
-        adb=_adb,
-        fmp=_fmp,
-        fpb=_fpb
+        adb=_adb, fmp=_fmp, fpb=_fpb
     )
 
     # 显示应用程序标志和加载动画
@@ -3205,48 +3137,30 @@ if __name__ == '__main__':
     Show.load_animation()
 
     """
-    # 创建主事件循环
+    创建主事件循环
     
     注意: 
-        该事件循环对象 (_main_loop) 是不可序列化的，因此不能将其传递给子进程。
+        该事件循环对象`_main_loop`是不可序列化的，因此不能将其传递给子进程。
         在需要使用事件循环的类实例化或函数调用时，应当在子进程内创建新的事件循环。
-    
-    使用方法：
-        1. 在主进程中创建事件循环：
-            _main_loop: "asyncio.AbstractEventLoop" = asyncio.get_event_loop()
-    
-        2. 在子进程中创建事件循环：
-            import asyncio
-    
-            def run_in_subprocess():
-                loop = asyncio.get_event_loop()           
-                loop.run_until_complete(async_function())
-    
-        3. 确保不要将主事件循环 (_main_loop) 直接传递给子进程或与子进程共享。
-    
-        4. 获取事件循环：
-            loop = asyncio.get_event_loop()
     """
     _main_loop: "asyncio.AbstractEventLoop" = asyncio.get_event_loop()
 
-    # Main Process
     try:
-        # --video
         if _video_list := _lines.video:
             _main_loop.run_until_complete(
                 arithmetic(_missions.video_file_task, _video_list)
             )
-        # --stack
+
         elif _stack_list := _lines.stack:
             _main_loop.run_until_complete(
                 arithmetic(_missions.video_data_task, _stack_list)
             )
-        # --train
+
         elif _train_list := _lines.train:
             _main_loop.run_until_complete(
                 arithmetic(_missions.train_model, _train_list)
             )
-        # --build
+
         elif _build_list := _lines.build:
             _main_loop.run_until_complete(
                 arithmetic(_missions.build_model, _build_list)
