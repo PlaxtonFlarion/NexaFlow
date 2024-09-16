@@ -73,12 +73,15 @@ _env_symbol = os.path.pathsep
 
 # 根据应用名称确定工作目录和配置目录
 if _software == f"{const.NAME}.exe":
+    # Windows
     _fx_work = os.path.dirname(os.path.abspath(sys.argv[0]))
     _fx_feasible = os.path.dirname(_fx_work)
 elif _software == f"{const.NAME}":
+    # MacOS
     _fx_work = os.path.dirname(sys.executable)
     _fx_feasible = os.path.dirname(_fx_work)
 elif _software == f"{const.NAME}.py":
+    # IDE
     _fx_work = os.path.dirname(os.path.abspath(__file__))
     _fx_feasible = os.path.dirname(_fx_work)
 else:
@@ -306,11 +309,7 @@ class Missions(object):
         )
         return loop_complete
 
-    #   ____  ____
-    #  |  _ \| __ )
-    #  | | | |  _ \
-    #  | |_| | |_) |
-    #  |____/|____/
+    # """数据库"""
     @staticmethod
     async def enforce(db: "DB", style: str, total: str, title: str, nest: str) -> None:
         """
@@ -357,8 +356,7 @@ class Missions(object):
         """
         异步执行视频的处理追踪，包括内容提取和平衡视频长度等功能。
 
-        此函数用于根据指定的部署配置，提取视频内容，并尝试将多个视频的长度调整为一致。
-        主要处理包括解析视频信息、视频内容提取、时间平衡和删除临时文件。
+        此函数用于根据指定的部署配置，提取视频内容，并尝试将多个视频的长度调整为一致。主要处理包括解析视频信息、视频内容提取、时间平衡和删除临时文件。
 
         参数:
             deploy (Deploy): 配置信息对象，包含视频处理的起始、结束、限制时间和帧率等。
@@ -614,11 +612,11 @@ class Missions(object):
                 *(self.enforce(db, *ns) for ns in render_result)
             )
 
-    #   _  __
-    #  | |/ /___ _ __ __ _ ___
-    #  | ' // _ \ '__/ _` / __|
-    #  | . \  __/ | | (_| \__ \
-    #  |_|\_\___|_|  \__,_|___/
+    #   ____            _                     _  __
+    #  | __ )  __ _ ___(_) ___    ___  _ __  | |/ /___ _ __ __ _ ___
+    #  |  _ \ / _` / __| |/ __|  / _ \| '__| | ' // _ \ '__/ _` / __|
+    #  | |_) | (_| \__ \ | (__  | (_) | |    | . \  __/ | | (_| \__ \
+    #  |____/ \__,_|___/_|\___|  \___/|_|    |_|\_\___|_|  \__,_|___/
     async def als_keras(
             self,
             deploy: "Deploy",
@@ -2717,6 +2715,11 @@ class Alynex(object):
         return Review(*(await analytics_basic()))
 
 
+#   _____                 _   _
+#  |  ___|   _ _ __   ___| |_(_) ___  _ __
+#  | |_ | | | | '_ \ / __| __| |/ _ \| '_ \
+#  |  _|| |_| | | | | (__| |_| | (_) | | | |
+#  |_|   \__,_|_| |_|\___|\__|_|\___/|_| |_|
 async def arithmetic(function: "typing.Callable", parameters: list[str]) -> None:
     """
     异步执行函数，并处理参数路径修正和异常捕获。
@@ -2742,6 +2745,11 @@ async def arithmetic(function: "typing.Callable", parameters: list[str]) -> None
         sys.exit(Show.closure())
 
 
+#   _____                 _   _
+#  |  ___|   _ _ __   ___| |_(_) ___  _ __
+#  | |_ | | | | '_ \ / __| __| |/ _ \| '_ \
+#  |  _|| |_| | | | | (__| |_| | (_) | | | |
+#  |_|   \__,_|_| |_|\___|\__|_|\___/|_| |_|
 async def scheduling() -> None:
     """
     根据命令行参数调度并执行相应的任务。
