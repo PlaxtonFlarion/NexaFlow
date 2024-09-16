@@ -26,15 +26,28 @@ import os
 import sys
 import signal
 import shutil
-# from frameflow
+# from
 from frameflow.skills.show import Show
 from frameflow.argument import Wind
-# from nexaflow
 from nexaflow import const
 
 
 # 信号处理器
 def signal_processor(*_, **__) -> None:
+    """
+    处理信号，用于在特定情况下触发应用程序的退出。
+
+    参数:
+        *_: 接受并忽略所有传入的位置参数。
+        **__: 接受并忽略所有传入的关键字参数。
+
+    返回值:
+        None: 函数不会返回任何值，因为在 `sys.exit()` 调用后，程序会终止执行。
+
+    注意:
+        - 此函数的主要功能是接受外部传入的信号并在适当的条件下终止程序的运行。
+        - `_` 和 `__` 的命名表示这些参数未被使用。
+    """
     Show.exit()
     sys.exit(Show.closure())
 
@@ -111,14 +124,7 @@ else:
     Show.fail()
     sys.exit(Show.closure())
 
-"""
-将工具路径添加到系统 PATH 环境变量中
-
-注意:
-    此代码块将 ffmpeg 和其他工具的路径添加到系统的 PATH 环境变量中。
-    如果不先设置环境，可能会导致使用 imageio_ffmpeg 进行视频处理时出现环境错误。
-    需要在导入 imageio_ffmpeg 之前使用该代码块，以确保工具路径正确设置在系统环境中。
-"""
+# 将工具路径添加到系统 PATH 环境变量中
 for _tls in (_tools := [_adb, _fmp, _fpb]):
     os.environ["PATH"] = os.path.dirname(_tls) + _env_symbol + os.environ.get("PATH", "")
 
@@ -168,18 +174,18 @@ try:
     from rich.prompt import Prompt
     from multiprocessing import freeze_support
     from concurrent.futures import ProcessPoolExecutor
-    # from engine
+    # from
     from engine.tinker import FramixAnalysisError
     from engine.tinker import FramixAnalyzerError
     from engine.tinker import FramixReporterError
     from engine.tinker import Craft, Finder, Active, Review
     from engine.switch import Switch
     from engine.terminal import Terminal
-    # from frameflow
+    # from
     from frameflow.skills.parser import Parser
     from frameflow.skills.cubicle import DB
     from frameflow.skills.profile import Deploy, Option
-    # from nexaflow
+    # from
     from nexaflow import toolbox
     from nexaflow.report import Report
     from nexaflow.video import VideoObject, VideoFrame
@@ -192,6 +198,9 @@ except (ImportError, ModuleNotFoundError, RuntimeError):
     Show.fail()
     sys.exit(Show.closure())
 
+# 定义类型变量
+_T = typing.TypeVar("_T")
+
 
 #   __  __ _         _
 #  |  \/  (_)___ ___(_) ___  _ __  ___
@@ -200,6 +209,7 @@ except (ImportError, ModuleNotFoundError, RuntimeError):
 #  |_|  |_|_|___/___/_|\___/|_| |_|___/
 class Missions(object):
 
+    # """初始化"""
     def __init__(self, wires: list, level: str, power: int, *args, **kwargs):
         self.wires = wires  # 命令参数
         self.level = level  # 日志级别
@@ -220,8 +230,8 @@ class Missions(object):
         self.fmp = kwargs["fmp"]
         self.fpb = kwargs["fpb"]
 
-    # """Child Process"""
-    def amazing(self, option: "Option", deploy: "Deploy", vision: str, *args):
+    # """子进程"""
+    def amazing(self, option: "Option", deploy: "Deploy", vision: str, *args) -> _T:
         """
         异步分析视频的子进程方法。
 
@@ -260,8 +270,8 @@ class Missions(object):
         )
         return loop_complete
 
-    # """Child Process"""
-    def bizarre(self, option: "Option", deploy: "Deploy", vision: str, *args):
+    # """子进程"""
+    def bizarre(self, option: "Option", deploy: "Deploy", vision: str, *args) -> _T:
         """
         异步执行视频分析的子进程方法。
 
@@ -333,11 +343,11 @@ class Missions(object):
         await db.create(column_list := ["style", "total", "title", "nest"])
         await db.insert(column_list, [style, total, title, nest])
 
-    #      _    _     ____
-    #     / \  | |   / ___|
-    #    / _ \ | |   \___ \
-    #   / ___ \| |___ ___) |
-    #  /_/   \_\_____|____/
+    #      _    _     ____    _____               _
+    #     / \  | |   / ___|  |_   _| __ __ _  ___| | __
+    #    / _ \ | |   \___ \    | || '__/ _` |/ __| |/ /
+    #   / ___ \| |___ ___) |   | || | | (_| | (__|   <
+    #  /_/   \_\_____|____/    |_||_|  \__,_|\___|_|\_\
     async def als_track(
             self,
             deploy: "Deploy",
@@ -426,11 +436,11 @@ class Missions(object):
 
         return originals, indicates
 
-    #      _    _     ____
-    #     / \  | |   / ___|
-    #    / _ \ | |   \___ \
-    #   / ___ \| |___ ___) |
-    #  /_/   \_\_____|____/
+    #      _    _     ____   __        __
+    #     / \  | |   / ___|  \ \      / /_ ___   _____  ___
+    #    / _ \ | |   \___ \   \ \ /\ / / _` \ \ / / _ \/ __|
+    #   / ___ \| |___ ___) |   \ V  V / (_| |\ V /  __/\__ \
+    #  /_/   \_\_____|____/     \_/\_/ \__,_| \_/ \___||___/
     async def als_waves(
             self,
             deploy: "Deploy",
@@ -794,18 +804,18 @@ class Missions(object):
             - 根据 `self.speed` 配置，调用不同的报告生成方法 (`combine_view` 或 `combine_main`)。
             - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
         """
-        if len(report.range_list) == 0:
+        if not report.range_list:
             logger.debug(tip := f"没有可以生成的报告")
             return Show.show_panel(self.level, tip, Wind.KEEPER)
+
         function = getattr(self, "combine_view" if self.speed else "combine_main")
         return await function([os.path.dirname(report.total_path)])
 
-    #    ____                _     _
-    #   / ___|___  _ __ ___ | |__ (_)_ __   ___
-    #  | |   / _ \| '_ ` _ \| '_ \| | '_ \ / _ \
-    #  | |__| (_) | | | | | | |_) | | | | |  __/
-    #   \____\___/|_| |_| |_|_.__/|_|_| |_|\___|
-    #
+    #    ____                _     _               ____
+    #   / ___|___  _ __ ___ | |__ (_)_ __   ___   / ___|_ __ _   ___  __
+    #  | |   / _ \| '_ ` _ \| '_ \| | '_ \ / _ \ | |   | '__| | | \ \/ /
+    #  | |__| (_) | | | | | | |_) | | | | |  __/ | |___| |  | |_| |>  <
+    #   \____\___/|_| |_| |_|_.__/|_|_| |_|\___|  \____|_|   \__,_/_/\_\
     async def combine_crux(self, share_temp: str, total_temp: str, merge: list) -> None:
         """
         异步生成汇总报告的方法。
@@ -854,51 +864,25 @@ class Missions(object):
             Show.show_panel(self.level, tip_state, tip_style)
             Show.show_panel(self.level, state, tip_style)
 
-    # 时空纽带分析系统
+    # """时空纽带分析系统"""
     async def combine_view(self, merge: list) -> None:
         """
-        异步方法：合并视图数据
-
-        功能:
-            - `combine_view` 方法将调用 `combine_crux`，并传递 `view_share_temp`、`view_total_temp` 和 `merge` 列表进行处理。
-            - 将部分数据进行整合处理，并生成最终的合并结果。
-
-        参数:
-            - merge (list): 需要合并的数据列表。
-
-        返回:
-            None: 异步执行，不返回任何值。
-
-        异常:
-            - 如果 `combine_crux` 方法在处理过程中遇到异常，则会抛出并可能导致合并失败。
+        合并视图数据。
         """
         await self.combine_crux(
             self.view_share_temp, self.view_total_temp, merge
         )
 
-    # 时序融合分析系统
+    # """时序融合分析系统"""
     async def combine_main(self, merge: list) -> None:
         """
-        异步方法：合并视图数据
-
-        功能:
-            - `combine_main` 方法调用 `combine_crux`，并传递 `main_share_temp`、`main_total_temp` 和 `merge` 列表进行处理。
-            - 将部分数据进行整合处理，并生成最终的合并结果。
-
-        参数:
-            - merge (list): 需要合并的数据列表。
-
-        返回:
-            None: 异步执行，不返回任何值。
-
-        异常:
-            - 如果 `combine_crux` 方法在处理过程中遇到异常，则会抛出并可能导致合并失败。
+        合并视图数据。
         """
         await self.combine_crux(
             self.main_share_temp, self.main_total_temp, merge
         )
 
-    # 视频解析探索
+    # """视频解析探索"""
     async def video_file_task(self, video_file_list: list, option: "Option", deploy: "Deploy"):
         """
         异步处理视频文件任务，并根据配置选项进行分析。
@@ -930,9 +914,7 @@ class Missions(object):
             3. 根据配置执行相应的分析操作（快速分析或深度学习分析）。
             4. 生成并展示分析报告。
         """
-        if len(video_file_list := [
-            video_file for video_file in video_file_list if os.path.isfile(video_file)
-        ]) == 0:
+        if not (video_file_list := [video_file for video_file in video_file_list if os.path.isfile(video_file)]):
             logger.debug(tip := f"没有有效任务")
             return Show.show_panel(self.level, tip, Wind.KEEPER)
 
@@ -973,7 +955,7 @@ class Missions(object):
         # Create Report
         await self.combine(report)
 
-    # 影像堆叠导航
+    # """影像堆叠导航"""
     async def video_data_task(self, video_data_list: list, option: "Option", deploy: "Deploy"):
         """
         异步处理视频数据任务，并根据配置选项进行分析。
@@ -1004,22 +986,7 @@ class Missions(object):
 
         async def load_entries():
             """
-            异步生成器函数：加载视频数据条目
-
-            功能:
-                - 逐一处理给定的视频数据列表，并调用 finder.accelerate 进行加速分析。
-                - 如果分析结果是异常对象，记录异常信息并在面板上显示。
-                - 如果分析成功，打印分析结果的树形结构，并生成第一个集合列表项。
-
-            参数:
-                None: 该函数依赖于外部上下文中的 `video_data_list` 变量。
-
-            返回:
-                Generator[dict]: 生成视频数据集合列表的第一个条目。
-
-            异常:
-                - 如果 `finder.accelerate` 返回异常对象，则捕获并处理异常，继续处理下一个视频数据。
-                - 如果生成器中断或取消，可能会导致未处理的视频数据丢失。
+            加载视频数据条目。
             """
             for video_data in video_data_list:
                 finder_result = finder.accelerate(video_data)
@@ -1074,7 +1041,7 @@ class Missions(object):
                 # Create Report
                 await self.combine(report)
 
-    # 模型训练大师
+    # """模型训练大师"""
     async def train_model(self, video_file_list: list, option: "Option", deploy: "Deploy"):
         """
         异步模型训练任务。
@@ -1104,9 +1071,7 @@ class Missions(object):
             - 在多任务模式下，设置`self.level`为`ERROR`级别以确保多进程中的正确日志记录。
             - 临时文件在任务完成后被清理以释放存储空间。
         """
-        if len(video_file_list := [
-            video_file for video_file in video_file_list if os.path.isfile(video_file)
-        ]) == 0:
+        if not (video_file_list := [video_file for video_file in video_file_list if os.path.isfile(video_file)]):
             logger.debug(tip := f"没有有效任务")
             return Show.show_panel(self.level, tip, Wind.KEEPER)
 
@@ -1198,7 +1163,7 @@ class Missions(object):
             *(looper.run_in_executor(None, os.remove, target) for (_, target) in video_target_list)
         )
 
-    # 模型编译大师
+    # """模型编译大师"""
     async def build_model(self, video_data_list: list, option: "Option", deploy: "Deploy"):
         """
         异步模型构建任务。
@@ -1229,9 +1194,7 @@ class Missions(object):
             - 在多任务模式下，设置`self.level`为`ERROR`级别以确保多进程中的正确日志记录。
             - 处理过程中可能抛出的异常将记录并展示为错误信息。
         """
-        if len(video_data_list := [
-            video_data for video_data in video_data_list if os.path.isdir(video_data)
-        ]) == 0:
+        if not (video_data_list := [video_data for video_data in video_data_list if os.path.isdir(video_data)]):
             logger.debug(tip := f"没有有效任务")
             return Show.show_panel(self.level, tip, Wind.KEEPER)
 
@@ -1339,7 +1302,7 @@ class Missions(object):
             final_model_list.append(tip)
         Show.show_panel(self.level, "\n".join(final_model_list), Wind.DESIGNER)
 
-    # 线迹创造者
+    # """线迹创造者"""
     async def painting(self, option: "Option", deploy: "Deploy"):
         """
         使用设备截图进行绘制操作，并在图像上添加网格线。
@@ -1524,38 +1487,17 @@ class Missions(object):
                 tip_ = f"没有该选项,请重新输入\n"
                 Show.show_panel(self.level, tip_, Wind.KEEPER)
 
-    # 循环节拍器 | 脚本驱动者 | 全域执行者
+    # """循环节拍器 | 脚本驱动者 | 全域执行者"""
     async def analysis(self, option: "Option", deploy: "Deploy"):
 
         async def anything_film():
             """
-            异步函数：初始化并启动设备的视频录制任务
-
-            功能:
-                - 等待所有设备上线并准备就绪后，开始视频录制任务。
-                - 根据屏幕尺寸和设备的显示设置，计算每个设备的投屏位置，避免重叠。
-                - 为每个设备创建独立的视频录制任务，并将任务信息存储在列表中。
-
-            参数:
-                无。函数使用了全局或类范围内的 `device_list`、`source` 和 `report`。
-
-            返回:
-                list: 返回包含所有设备录制任务的 `todo_list` 列表。
-
-            异常:
-                - asyncio.CancelledError: 如果在等待设备上线或录制任务过程中任务被取消。
+            初始化并启动设备的视频录制任务。
             """
 
             async def wait_for_device(device):
                 """
-                异步函数：等待指定设备上线
-
-                功能:
-                    - 通过 ADB 命令等待指定设备上线，直到设备连接并准备就绪。
-                    - 在等待过程中，会记录设备的标签和序列号信息。
-
-                参数:
-                    device (Device): 设备对象，包含设备的标签和序列号。
+                等待设备上线
                 """
                 Show.notes(f"[bold #FAFAD2]Wait Device Online -> {device.tag} {device.sn}[/]")
                 await Terminal.cmd_line(self.adb, "-s", device.sn, "wait-for-device")
@@ -1583,19 +1525,24 @@ class Missions(object):
 
                 # 检查是否需要换行
                 if window_x + device_x + margin_x > media_screen_w:
-                    window_x = 50  # 重置当前行的开始位置
+                    # 重置当前行的开始位置
+                    window_x = 50
                     if (new_y_height := window_y + max_y_height) + device_y > media_screen_h:
-                        window_y += margin_y  # 如果新行加设备高度超出屏幕底部，则只增加一个 margin_y
+                        # 如果新行加设备高度超出屏幕底部，则只增加一个 margin_y
+                        window_y += margin_y
                     else:
-                        window_y = new_y_height  # 否则按计划设置新行的起始位置
-                    max_y_height = 0  # 重置当前行的最大高度
-                max_y_height = max(max_y_height, device_y)  # 更新当前行的最大高度
-
-                location = window_x, window_y, device_x, device_y  # 位置确认
-
-                window_x += device_x + margin_x  # 移动到下一个设备的起始位置
-
-                await asyncio.sleep(0.5)  # 延时投屏，避免性能瓶颈
+                        # 否则按计划设置新行的起始位置
+                        window_y = new_y_height
+                    # 重置当前行的最大高度
+                    max_y_height = 0
+                # 更新当前行的最大高度
+                max_y_height = max(max_y_height, device_y)
+                # 位置确认
+                location = window_x, window_y, device_x, device_y
+                # 移动到下一个设备的起始位置
+                window_x += device_x + margin_x
+                # 延时投屏
+                await asyncio.sleep(0.5)
 
                 report.query = os.path.join(format_folder, device.sn)
 
@@ -1611,22 +1558,7 @@ class Missions(object):
 
         async def anything_over():
             """
-            异步函数：完成任务后的处理
-
-            功能:
-                - 通过异步方式关闭视频录制任务，并收集处理结果。
-                - 遍历有效列表，根据视频录制的结果判断是否需要移除失败的任务，并记录成功或失败的信息。
-                - 最终将所有处理结果显示在面板上。
-
-            参数:
-                无。函数使用了全局或类范围内的 `device_list` 和 `task_list`。
-
-            返回:
-                None: 该函数不返回任何值。
-
-            异常:
-                - asyncio.CancelledError: 如果在任务执行过程中任务被取消。
-                - IndexError: 在移除失败任务时，可能因任务列表索引越界而抛出此异常。
+            完成任务后的处理。
             """
             effective_list = await asyncio.gather(
                 *(record.ask_close_record(device, video_temp, transports)
@@ -1650,20 +1582,6 @@ class Missions(object):
         async def anything_well():
             """
             执行任务处理，根据不同模式选择适当的分析方法。
-
-            功能:
-                - 判断 `task_list` 是否为空，如果为空，则输出提示信息并终止操作。
-                - 根据不同模式（speed, basic, keras）选择适当的分析方法。
-
-            参数:
-                无。
-
-            返回:
-                None: 该函数不返回任何值。
-
-            异常:
-                - 如果 `als_speed`, `als_keras` 函数内部抛出异常，则可能导致任务处理中断。
-                - asyncio.CancelledError: 如果任务在执行过程中被取消。
             """
             if len(task_list) == 0:
                 logger.debug(tip := f"没有有效任务")
@@ -1685,19 +1603,6 @@ class Missions(object):
         async def load_timer():
             """
             并行执行定时任务，对设备列表中的每个设备进行计时操作。
-
-            功能:
-                使用 asyncio.gather 并行执行 `check_timer` 函数，对设备列表中的每个设备进行计时。
-
-            参数:
-                无。
-
-            返回:
-                None: 该函数不返回任何值。
-
-            异常:
-                - 如果 `check_timer` 函数内部抛出异常，则可能导致部分设备的计时任务中断。
-                - asyncio.CancelledError: 如果任务在执行过程中被取消。
             """
             await asyncio.gather(
                 *(record.check_timer(device, timer_mode) for device in device_list)
@@ -1706,20 +1611,6 @@ class Missions(object):
         async def load_carry(carry):
             """
             加载并解析传入的 carry 字符串，返回包含执行指令的字典或异常。
-
-            参数:
-                carry (str): 包含路径和关键字的字符串，以逗号、分号、感叹号或空格分隔。
-
-            返回:
-                typing.Union[dict, Exception]:
-                    - 如果成功解析并加载，返回一个包含关键字和对应执行指令的字典。
-                    - 如果出现错误，返回相应的异常信息。
-
-            例外:
-                - FileNotFoundError: 如果指定的文件路径不存在。
-                - KeyError: 如果关键字不在加载的字典中。
-                - json.JSONDecodeError: 如果JSON文件格式不正确。
-                - ValueError: 如果传入的 carry 字符串格式不正确。
             """
             # 解析传入的 carry 字符串，分割为路径和关键字两部分
             if len(parts := re.split(r",|;|!|\s", carry, 1)) == 2:
@@ -1741,29 +1632,6 @@ class Missions(object):
         async def load_fully(fully):
             """
             异步加载和解析完整的命令文件。
-
-            参数:
-                fully (str): 文件路径，指向包含命令的JSON文件。
-
-            功能说明:
-                1. 异步加载和解析指定的JSON文件，提取命令信息。
-                2. 检查并提取每个命令块中的关键信息，包括`parser`、`header`、`change`、`looper`、`prefix`、`action`、`suffix`等。
-                3. 过滤掉没有定义`cmds`的部分，以确保最终字典只包含有效的命令。
-
-            处理步骤:
-                1. 调用`Craft.revise_path`对文件路径进行修正，确保路径有效。
-                2. 异步打开指定的文件，并读取其内容，使用JSON解析。
-                3. 从解析的JSON中提取`command`字段，并逐一处理每个命令块。
-                4. 构建包含有效命令的字典`exec_dict`，过滤掉空的`cmds`部分。
-                5. 捕获文件不存在、键错误和JSON解析错误等异常，并返回异常对象。
-
-            返回值:
-                dict: 包含有效命令的字典，如果过程中出现异常，则返回异常对象。
-
-            注意:
-                - 确保`fully`路径指向的文件存在且格式正确。
-                - 在读取和解析JSON文件时处理可能出现的异常情况，如文件不存在或JSON格式错误。
-                - 返回的字典`exec_dict`只包含有效的命令条目，空的命令部分会被过滤掉。
             """
             fully = await Craft.revise_path(fully)
             try:
@@ -1790,7 +1658,7 @@ class Missions(object):
 
         async def call_commands(bean, live_devices, exec_func, exec_vals, exec_args, exec_kwds):
             """
-            异步执行命令函数。
+            异步执行命令。
 
             参数:
                 - bean: 要操作的对象实例，通常包含需要调用的方法。
@@ -1813,10 +1681,6 @@ class Missions(object):
                 - 成功时返回函数的执行结果。
                 - 如果方法不可调用或在执行过程中发生异常，返回异常对象。
                 - 如果发生取消错误 (`asyncio.CancelledError`)，从 `live_devices` 中移除设备并退出。
-
-            注意:
-                - 确保 `exec_func` 对应 `bean` 对象中的一个有效且可调用的方法。
-                - 该方法适用于异步环境中的命令执行，尤其是在处理多个设备时。
             """
             if not (callable(function := getattr(bean, exec_func, None))):
                 logger.debug(tip := f"No callable {exec_func}")
@@ -1853,11 +1717,6 @@ class Missions(object):
 
             返回值:
                 - list: 包含命令、值、参数和关键字参数配对的列表。每个元素都是一个四元组，格式为 `(cmd, vals, args, kwds)`。
-
-            注意:
-                - `cmds` 列表中的命令必须为非空字符串，其他列表的元素需要与 `cmds` 列表长度匹配。
-                - `vals` 和 `args` 为空时会被转为空列表，`kwds` 为空时会被转为空字典。
-                - 如果 `kwds` 不是字典类型，将其包装为字典，以避免后续处理错误。
             """
             exec_pairs_list = []
             for resolve in resolve_list:
@@ -1914,12 +1773,6 @@ class Missions(object):
                 5. 使用 `asyncio.gather` 并发执行所有任务，并捕获任务执行状态。
                 6. 在所有任务执行完成后，清空任务字典 `exec_tasks`，并记录或显示异常信息（如果有）。
                 7. 在任务结束后，取消所有停止任务，以确保所有异步操作都已安全终止。
-
-            注意:
-                - `substitute_star` 用于在执行过程中动态替换参数中的 "*"。
-                - 确保 `exec_func` 是设备对象或其他目标对象中的有效方法。
-                - 处理过程中会根据任务执行情况动态调整设备列表，保证任务的有效性。
-                - 异常处理机制确保在任务执行过程中遇到问题时能够妥善处理和记录。
             """
 
             async def substitute_star(replaces):
@@ -1965,9 +1818,7 @@ class Missions(object):
             for stop in stop_tasks:
                 stop.cancel()
 
-        """
-        初始化操作，为后续的程序运行做准备。
-        """
+        # 初始化操作，为后续的程序运行做准备
         manage_ = Manage(self.adb)
         device_list = await manage_.operate_device()
 
@@ -2203,10 +2054,10 @@ class Clipix(object):
         初始化方法 `__init__` 用于设置 `Clipix` 对象的基础配置，接收两个参数 `fmp` 和 `fpb`。
 
         - **fmp**:
-          表示 `ffmpeg` 的路径，`ffmpeg` 是一个广泛使用的多媒体处理工具，用于视频、音频的编解码、转换、流媒体处理等功能。此路径用于定位 `ffmpeg` 可执行文件。
+            表示 `ffmpeg` 的路径，`ffmpeg` 是一个广泛使用的多媒体处理工具，用于视频、音频的编解码、转换、流媒体处理等功能。此路径用于定位 `ffmpeg` 可执行文件。
 
         - **fpb**:
-          表示 `ffprobe` 的路径，`ffprobe` 是 `ffmpeg` 套件中的一个工具，专门用于分析多媒体文件的格式、编码、比特率、元数据等信息。此路径用于定位 `ffprobe` 可执行文件。
+            表示 `ffprobe` 的路径，`ffprobe` 是 `ffmpeg` 套件中的一个工具，专门用于分析多媒体文件的格式、编码、比特率、元数据等信息。此路径用于定位 `ffprobe` 可执行文件。
 
         在初始化过程中，这两个路径被存储在对象的实例变量 `self.fmp` 和 `self.fpb` 中，以便后续在多媒体处理任务中调用。
         """
@@ -2238,11 +2089,6 @@ class Clipix(object):
                 - duration (float): 视频总时长（秒）。
                 - original (tuple): 原始视频分辨率和其他基础数据。
                 - vision_point (dict): 处理后的起始、结束和限制时间点（格式化为字符串如"00:00:10"）。
-
-        注意:
-            - 确保视频文件路径正确且视频文件可访问。
-            - 输入的时间格式应为字符串形式的标准时间表示（如"HH:MM:SS"），且应确保输入合法。
-            - 返回的时间点格式化为易读的字符串，方便直接使用或显示。
         """
         video_streams = await Switch.ask_video_stream(self.fpb, video_temp)
 
@@ -2269,8 +2115,7 @@ class Clipix(object):
         """
         异步调整视频时长以匹配指定的标准时长，通过裁剪视频的起始和结束时间。
 
-        此函数计算原视频与标准时长的差值，基于这一差值调整视频的开始和结束时间点，以生成新的视频文件，
-        保证其总时长接近标准时长。适用于需要统一视频播放长度的场景。
+        此函数计算原视频与标准时长的差值，基于这一差值调整视频的开始和结束时间点，以生成新的视频文件，保证其总时长接近标准时长。适用于需要统一视频播放长度的场景。
 
         参数:
             duration (float): 原视频的总时长（秒）。
@@ -2282,11 +2127,6 @@ class Clipix(object):
             tuple[str, str]: 包含两个元素：
                 - video_dst (str): 调整时长后生成的新视频文件的路径。
                 - video_blc (str): 描述视频时长调整详情的字符串。
-
-        注意:
-            - 确保原视频文件路径正确且文件可访问。
-            - 视频处理会生成新的文件，确保有足够的磁盘空间。
-            - 此函数使用异步方式进行视频处理，确保在适当的异步环境中调用。
         """
         start_time_point = (limit_time_point := duration) - standard
         start_delta = datetime.timedelta(seconds=start_time_point)
@@ -2318,10 +2158,6 @@ class Clipix(object):
         返回:
             - list: 包含所有过滤器命令的列表，包括用于调整尺寸的 'scale' 过滤器。
 
-        注意:
-            - 如果 `shape` 和 `scale` 都未指定，将使用默认的压缩比例。
-            - 此方法应确保传入的 `scale` 值在合法范围内，否则会自动调整至最接近的有效值。
-
         抛出:
             - ValueError: 如果输入的参数类型不符合预期。
         """
@@ -2349,10 +2185,6 @@ class Clipix(object):
 
         返回:
             tuple[str]: 包含处理结果的元组，通常包括处理日志或其他输出信息。
-
-        注意:
-            - 该方法依赖于提供的`function`能够异步执行并返回处理结果。
-            - 确保源视频和目标视频路径正确，且文件系统有足够权限读写文件。
         """
         return await function(self.fmp, video_filter, src, dst, **kwargs)
 
@@ -2369,7 +2201,7 @@ class Alynex(object):
 
     def __init__(self, option: "Option", deploy: "Deploy", extent: "typing.Any"):
         """
-        初始化方法，配置分析器的选项、部署信息和日志记录的详细程度。
+        初始化方法，配置分析器的选项、部署信息和日志记录的详细程度
 
         参数说明:
             - option (`Option`): 分析过程中的选项配置，通常包括模型路径、模型类型等。
@@ -2393,13 +2225,10 @@ class Alynex(object):
 
     async def ask_model_load(self) -> None:
         """
-        异步加载模型到 KerasStruct 实例。
+        异步加载模型到 KerasStruct 实例
 
         该方法主要用于加载训练好的模型，以便在后续分析过程中使用。
         根据配置选项选择彩色或灰度模型，并确保模型结构和输入数据的兼容性。
-
-        Raises:
-            FramixAnalyzerError: 当模型路径无效或加载失败时，抛出此异常。
 
         详细描述:
             1. 确认 `model_place` 路径存在，并且是一个有效的目录。
@@ -2414,6 +2243,7 @@ class Alynex(object):
             - ValueError: 当模型加载过程中发生数据错误时抛出。
             - AssertionError: 当模型通道不匹配或 `ks` 实例未正确初始化时抛出。
             - AttributeError: 当尝试访问未初始化的属性时抛出。
+            - FramixAnalyzerError: 当模型路径无效或加载失败时，抛出此异常。
         """
         try:
             if mp := self.option.model_place:
@@ -2451,12 +2281,6 @@ class Alynex(object):
             1. 创建 VideoObject 对象并记录视频的基本信息（帧长度、帧尺寸）。
             2. 调用 load_frames 方法加载视频帧。
             3. 记录视频帧加载完成后的详细信息和耗时。
-
-        异常处理:
-            捕获并记录任何在加载视频帧过程中的异常。
-
-        日志记录:
-            记录视频帧长度、尺寸、加载过程及耗时等详细信息到日志中，并在控制台面板中显示。
         """
 
         # 开始计时
@@ -2537,9 +2361,6 @@ class Alynex(object):
             3. 使用 VideoCutter 对视频进行分割和压缩。
             4. 获取视频中稳定和不稳定的帧范围。
             5. 提取并保存指定数量的稳定帧。
-
-        异常处理:
-            捕获并处理视频文件损坏或加载失败的情况，记录日志并返回相应的错误信息。
         """
         if (target_vision := await self.ask_frame_grid(vision)) is None:
             logger.debug(tip := f"视频文件损坏: {os.path.basename(vision)}")
@@ -2625,9 +2446,6 @@ class Alynex(object):
 
             返回:
                 tuple: 包含开始帧ID、结束帧ID和时间成本的元组。
-
-            异常处理:
-                捕获并处理索引错误和断言错误，确保在发生异常时，使用默认的第一个和最后一个重要帧。
             """
             begin_stage_index, begin_frame_index = self.deploy.begin
             final_stage_index, final_frame_index = self.deploy.final
@@ -2690,9 +2508,6 @@ class Alynex(object):
                 - 当视频帧结构（struct）为空时，直接返回视频的所有帧数据。
                 - 如果 boost 参数为真，则在获取所有关键帧的基础上，额外包含关键帧之间的非关键帧数据。
                 - 使用进度条显示帧处理进度。
-
-            异常:
-                - 任何处理异常将被记录并显示。
             """
             if struct is None:
                 return [i for i in video.frames_data]
@@ -2914,7 +2729,6 @@ async def arithmetic(function: "typing.Callable", parameters: list[str]) -> None
         捕获并处理 FramixAnalysisError, FramixAnalyzerError, FramixReporterError 异常。
         如果发生异常，记录异常信息并退出程序。
     """
-
     try:
         # 修正参数路径
         parameters = [(await Craft.revise_path(param)) for param in parameters]
@@ -2983,6 +2797,7 @@ async def scheduling() -> None:
 #  | |  | | (_| | | | | |
 #  |_|  |_|\__,_|_|_| |_|
 if __name__ == '__main__':
+    """
     # ***********************
     # *                     *
     # *  Welcome to Framix  *
@@ -2993,8 +2808,7 @@ if __name__ == '__main__':
     #           | |
     #         __| |__
     #        |_______|
-
-    """
+    
     应用程序入口点。根据命令行参数初始化并运行主进程。
 
     主要功能：
@@ -3018,10 +2832,10 @@ if __name__ == '__main__':
     freeze_support()
 
     """
-    命令行参数解析器解析命令行参数
+    命令行参数解析器解析命令行参数。
     
     注意:
-        此代码块必须在`__main__`块下调用，否则可能会导致多进程模块无法正确加载。
+        此代码块必须在 `__main__` 块下调用，否则可能会导致多进程模块无法正确加载。
     """
     _lines = Parser.parse_cmd()
 
@@ -3090,11 +2904,11 @@ if __name__ == '__main__':
                 logger.debug(f"  {_attr_key} Set <{_attr}> {_attribute} -> {getattr(_deploy, _attr)}")
 
     """
-    将命令行参数解析结果转换为基本数据类型
+    将命令行参数解析结果转换为基本数据类型。
     
     注意:
         该代码块将命令行参数解析器解析得到的结果存储在基本数据类型的变量中。
-        这样做的目的是避免在多进程环境中向子进程传递不可序列化的对象，因为这些对象在传递过程中可能会导致`pickle.PicklingError`错误。
+        这样做的目的是避免在多进程环境中向子进程传递不可序列化的对象，因为这些对象在传递过程中可能会导致 `pickle.PicklingError` 错误。
     """
     _flick, _carry, _fully = _lines.flick, _lines.carry, _lines.fully
     _speed, _basic, _keras = _lines.speed, _lines.basic, _lines.keras
@@ -3125,7 +2939,7 @@ if __name__ == '__main__':
     创建主事件循环
     
     注意: 
-        该事件循环对象`_main_loop`是不可序列化的，因此不能将其传递给子进程。
+        该事件循环对象 `_main_loop` 是不可序列化的，因此不能将其传递给子进程。
         在需要使用事件循环的类实例化或函数调用时，应当在子进程内创建新的事件循环。
     """
     _main_loop: "asyncio.AbstractEventLoop" = asyncio.get_event_loop()
