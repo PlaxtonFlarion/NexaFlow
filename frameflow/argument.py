@@ -133,8 +133,8 @@ class Args(object):
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
             "help": "尺寸定制",
-            "push": lambda x: [
-                f"[bold #87AFD7]{list(x.shape) if x.shape else 'Auto'}",
+            "push": lambda x, y: [
+                f"[bold #87AFD7]{x.shape if x.shape else 'Auto'}",
                 f"[bold][[bold #7FFFD4] ?  ? [/]]",
                 f"[bold]宽高 [bold #FFD700]{x.shape[0]} x {x.shape[1]}" if x.shape else f"[bold #A4D3EE]自动"
             ]
@@ -143,7 +143,7 @@ class Args(object):
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
             "help": "变幻缩放",
-            "push": lambda x: [
+            "push": lambda x, y: [
                 f"[bold #87AFD7]{x.scale if x.scale else 'Auto'}",
                 f"[bold][[bold #7FFFD4] 0  1 [/]]",
                 f"[bold]压缩 [bold #FFD700]{x.scale}[/]" if x.scale else f"[bold #A4D3EE]自动"
@@ -183,7 +183,7 @@ class Args(object):
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
             "help": "朦胧幻界",
-            "push": lambda x: [
+            "push": lambda x, y: [
                 f"[bold #87AFD7]{x.gauss if x.gauss else 'Auto'}",
                 f"[bold][[bold #7FFFD4] 0  10[/]]",
                 f"[bold]模糊 [bold #FFD700]{x.gauss}[/]" if x.gauss else f"[bold #A4D3EE]自动"
@@ -193,7 +193,7 @@ class Args(object):
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
             "help": "边缘觉醒",
-            "push": lambda x: [
+            "push": lambda x, y: [
                 f"[bold #87AFD7]{x.grind if x.grind else 'Auto'}",
                 f"[bold][[bold #7FFFD4]-2  5 [/]]",
                 f"[bold]锐化 [bold #FFD700]{x.grind}[/]" if x.grind else f"[bold #A4D3EE]自动"
@@ -203,7 +203,7 @@ class Args(object):
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
             "help": "频率探测",
-            "push": lambda x: [
+            "push": lambda x, y: [
                 f"[bold #87AFD7]{x.frate}",
                 f"[bold][[bold #7FFFD4] 1  60[/]]",
                 f"[bold]帧率 [bold #FFD700]{x.frate}[/]" if x.frate else f"[bold #A4D3EE]自动"
@@ -217,7 +217,7 @@ class Args(object):
             "args": {"action": "store_true"},
             "view": ["布尔", "一次"],
             "help": "加速跳跃",
-            "push": lambda x: [
+            "push": lambda x, y: [
                 f"[bold #87AFD7]{x.boost}",
                 f"[bold][[bold #7FFFD4] T  F [/]]",
                 f"[bold #CAFF70]开启" if x.boost else f"[bold #FFB6C1]关闭"
@@ -227,7 +227,7 @@ class Args(object):
             "args": {"action": "store_true"},
             "view": ["布尔", "一次"],
             "help": "彩绘世界",
-            "push": lambda x: [
+            "push": lambda x, y: [
                 f"[bold #87AFD7]{x.color}",
                 f"[bold][[bold #7FFFD4] T  F [/]]",
                 f"[bold #CAFF70]开启" if x.color else f"[bold #FFB6C1]关闭"
@@ -237,27 +237,27 @@ class Args(object):
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
             "help": "序章开启",
-            "push": lambda x: [
-                f"[bold #87AFD7]{list(x.begin)}",
+            "push": lambda x, y: [
+                f"[bold #87AFD7]{x.begin}",
                 f"[bold][[bold #7FFFD4] ?  ? [/]]",
-                f"[bold]非稳定阶段 [bold #FFD700]{list(x.begin)}[/]"
+                f"[bold]非稳定阶段 [bold #FFD700]{x.begin}[/]"
             ]
         },
         "--final": {
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
             "help": "终章落幕",
-            "push": lambda x: [
-                f"[bold #87AFD7]{list(x.final)}",
+            "push": lambda x, y: [
+                f"[bold #87AFD7]{x.final}",
                 f"[bold][[bold #7FFFD4] ?  ? [/]]",
-                f"[bold]非稳定阶段 [bold #FFD700]{list(x.final)}[/]"
+                f"[bold]非稳定阶段 [bold #FFD700]{x.final}[/]"
             ]
         },
         "--thres": {
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
             "help": "稳定阈值",
-            "push": lambda x: [
+            "push": lambda x, y: [
                 f"[bold #87AFD7]{x.thres}",
                 f"[bold][[bold #7FFFD4] 0  1 [/]]",
                 f"[bold]阈值超过 [bold #FFD700]{x.thres}[/] 的帧为稳定帧"
@@ -267,7 +267,7 @@ class Args(object):
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
             "help": "偏移调整",
-            "push": lambda x: [
+            "push": lambda x, y: [
                 f"[bold #87AFD7]{x.shift}",
                 f"[bold][[bold #7FFFD4] 0  10[/]]",
                 f"[bold]合并 [bold #FFD700]{x.shift}[/] 个变化不大的稳定区间"
@@ -277,7 +277,7 @@ class Args(object):
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["数值", "一次"],
             "help": "矩阵分割",
-            "push": lambda x: [
+            "push": lambda x, y: [
                 f"[bold #87AFD7]{x.block}",
                 f"[bold][[bold #7FFFD4] 1  10[/]]",
                 f"[bold]每个图像分割 [bold #FFD700]{x.block * x.block}[/] 块"
@@ -287,7 +287,7 @@ class Args(object):
             "args": {"action": "append"},
             "view": ["坐标", "多次"],
             "help": "视界探索",
-            "push": lambda x: [
+            "push": lambda x, y: [
                 f"[bold #87AFD7]{['!' for _ in range(len(x.crops))]}",
                 f"[bold][[bold #7FFFD4] 0  1 [/]]",
                 f"[bold]探索 [bold #FFD700]{len(x.crops)}[/] 个区域的图像"
@@ -297,7 +297,7 @@ class Args(object):
             "args": {"action": "append"},
             "view": ["坐标", "多次"],
             "help": "视界忽略",
-            "push": lambda x: [
+            "push": lambda x, y: [
                 f"[bold #87AFD7]{['!' for _ in range(len(x.omits))]}",
                 f"[bold][[bold #7FFFD4] 0  1 [/]]",
                 f"[bold]忽略 [bold #FFD700]{len(x.omits)}[/] 个区域的图像"

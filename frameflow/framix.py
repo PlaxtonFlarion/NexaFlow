@@ -2875,9 +2875,9 @@ if __name__ == '__main__':
     logger.debug(f"* 模版 * {'=' * 30}\n")
 
     # 设置初始配置文件路径
-    _initial_option = os.path.join(_initial_source, f"{const.DESC}_Mix", "option.json")
-    _initial_deploy = os.path.join(_initial_source, f"{const.DESC}_Mix", "deploy.json")
-    _initial_script = os.path.join(_initial_source, f"{const.DESC}_Mix", "script.json")
+    _initial_option = os.path.join(_initial_source, const.F_SRC_OPERA_PLACE, const.F_OPTION)
+    _initial_deploy = os.path.join(_initial_source, const.F_SRC_OPERA_PLACE, const.F_DEPLOY)
+    _initial_script = os.path.join(_initial_source, const.F_SRC_OPERA_PLACE, const.F_SCRIPT)
     logger.debug(f"配置文件路径: {_initial_option}")
     logger.debug(f"部署文件路径: {_initial_deploy}")
     logger.debug(f"脚本文件路径: {_initial_script}")

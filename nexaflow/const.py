@@ -79,8 +79,12 @@ COLOR_MODEL = "Keras_Hued_W256_H256"
 
 F_SCHEMATIC = f"schematic"
 F_SPECIALLY = f"Specially"
+F_SRC_OPERA_PLACE = f"{DESC}_Mix"
 F_SRC_MODEL_PLACE = f"{DESC}_Model"
 F_SRC_TOTAL_PLACE = f"{DESC}_Report"
+F_OPTION = f"option.json"
+F_DEPLOY = f"deploy.json"
+F_SCRIPT = f"script.json"
 
 NOTE_LEVEL = "DEBUG"
 SHOW_LEVEL = "INFO"

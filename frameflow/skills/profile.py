@@ -10,7 +10,6 @@ import os
 import copy
 import json
 import typing
-import inspect
 from loguru import logger
 from rich.table import Table
 from frameflow.skills.parser import Parser
@@ -236,10 +235,10 @@ class Deploy(object):
                     setattr(self, k, parameters.get(key, {}).get(k, v))
                     logger.debug(f"Load <{k}> = {v} -> {getattr(self, k)}")
         except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
-            logger.debug(f"Use DP Because {e}")
+            logger.debug(f"使用默认参数 {e}")
             self.dump_deploy(deploy_file)
         except Exception as e:
-            logger.debug(f"An unknown error occurred {e}")
+            logger.debug(f"未知错误 {e}")
 
     def view_deploy(self) -> None:
         deploys_group = {**Args.GROUP_FIRST, **Args.GROUP_EXTRA}
@@ -248,17 +247,16 @@ class Deploy(object):
             table = Table(
                 title=f"[bold #87CEFA]{const.DESC} Deploys {key}",
                 header_style=f"bold #B0C4DE",
-                title_justify="center",
+                title_justify=f"center",
                 show_header=True
             )
             table.add_column("配置", no_wrap=True, width=8)
             table.add_column("参数", no_wrap=True, width=12)
             table.add_column("范围", no_wrap=True, width=8)
             table.add_column("效果", no_wrap=True, min_width=30)
+
             information = [
-                [f"[bold #D75F87]{v['help']}"] + (func(self, Parser) if len(
-                    inspect.signature(func := v["push"]).parameters
-                ) == 2 else func(self))
+                [f"[bold #D75F87]{v['help']}"] + v["push"](self, Parser)
                 for k, v in deploys_group.items() if k.lstrip("--") in value
             ]
 
@@ -328,10 +326,10 @@ class Option(object):
                 setattr(self, k, parameters.get(k, v))
                 logger.debug(f"Load <{k}> = {v} -> {getattr(self, k)}")
         except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
-            logger.debug(f"Use DP Because {e}")
+            logger.debug(f"使用默认参数 {e}")
             self.dump_option(option_file)
         except Exception as e:
-            logger.debug(f"An unknown error occurred {e}")
+            logger.debug(f"未知错误 {e}")
 
     def dump_option(self, option_file: typing.Any) -> None:
         dump_parameters(option_file, self.options)
@@ -350,13 +348,13 @@ class Script(object):
                         "change": [],
                         "looper": 1,
                         "prefix": [
-                            {"cmds": [], "args": []}, {"cmds": [], "args": []}
+                            {"cmds": [], "vals": []}, {"cmds": [], "vals": []}
                         ],
                         "action": [
-                            {"cmds": [], "args": []}, {"cmds": [], "args": []}
+                            {"cmds": [], "vals": []}, {"cmds": [], "vals": []}
                         ],
                         "suffix": [
-                            {"cmds": [], "args": []}, {"cmds": [], "args": []}
+                            {"cmds": [], "vals": []}, {"cmds": [], "vals": []}
                         ]
                     }
                 }
