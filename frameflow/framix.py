@@ -2161,7 +2161,7 @@ class Clipix(object):
         """
         if shape:
             w, h, ratio = await Switch.ask_magic_frame(original, shape)
-            video_filter_list = filters + [f"scale={w}:{h}"]
+            video_filter_list = filters + [f"scale=trunc({w}/2)*2:trunc({h}/2)*2"]
         else:
             scale = max(0.1, min(1.0, scale)) if scale else const.COMPRESS
             video_filter_list = filters + [f"scale=iw*{scale}:ih*{scale}"]
