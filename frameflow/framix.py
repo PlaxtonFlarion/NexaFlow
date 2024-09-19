@@ -212,7 +212,7 @@ _T = typing.TypeVar("_T")
 #  |_|  |_|_|___/___/_|\___/|_| |_|___/
 class Missions(object):
 
-    # """初始化"""
+    # """Initialization"""
     def __init__(self, wires: list, level: str, power: int, *args, **kwargs):
         self.wires = wires  # 命令参数
         self.level = level  # 日志级别
@@ -233,7 +233,7 @@ class Missions(object):
         self.fmp = kwargs["fmp"]
         self.fpb = kwargs["fpb"]
 
-    # """子进程"""
+    # """Child Process"""
     def amazing(self, option: "Option", deploy: "Deploy", vision: str, *args) -> _T:
         """
         异步分析视频的子进程方法。
@@ -273,7 +273,7 @@ class Missions(object):
         )
         return loop_complete
 
-    # """子进程"""
+    # """Child Process"""
     def bizarre(self, option: "Option", deploy: "Deploy", vision: str, *args) -> _T:
         """
         异步执行视频分析的子进程方法。
@@ -309,7 +309,7 @@ class Missions(object):
         )
         return loop_complete
 
-    # """数据库"""
+    # """DB"""
     @staticmethod
     async def enforce(db: "DB", style: str, total: str, title: str, nest: str) -> None:
         """
@@ -342,12 +342,12 @@ class Missions(object):
         await db.create(column_list := ["style", "total", "title", "nest"])
         await db.insert(column_list, [style, total, title, nest])
 
-    #      _    _     ____    _____               _
-    #     / \  | |   / ___|  |_   _| __ __ _  ___| | __
-    #    / _ \ | |   \___ \    | || '__/ _` |/ __| |/ /
-    #   / ___ \| |___ ___) |   | || | | (_| | (__|   <
-    #  /_/   \_\_____|____/    |_||_|  \__,_|\___|_|\_\
-    async def als_track(
+    #   _____ ____ _____   _____               _
+    #  |  ___/ ___|_   _| |_   _| __ __ _  ___| | __
+    #  | |_  \___ \ | |     | || '__/ _` |/ __| |/ /
+    #  |  _|  ___) || |     | || | | (_| | (__|   <
+    #  |_|   |____/ |_|     |_||_|  \__,_|\___|_|\_\
+    async def fst_track(
             self,
             deploy: "Deploy",
             clipix: "Clipix",
@@ -434,12 +434,12 @@ class Missions(object):
 
         return originals, indicates
 
-    #      _    _     ____   __        __
-    #     / \  | |   / ___|  \ \      / /_ ___   _____  ___
-    #    / _ \ | |   \___ \   \ \ /\ / / _` \ \ / / _ \/ __|
-    #   / ___ \| |___ ___) |   \ V  V / (_| |\ V /  __/\__ \
-    #  /_/   \_\_____|____/     \_/\_/ \__,_| \_/ \___||___/
-    async def als_waves(
+    #   _____ ____ _____  __        __
+    #  |  ___/ ___|_   _| \ \      / /_ ___   _____  ___
+    #  | |_  \___ \ | |    \ \ /\ / / _` \ \ / / _ \/ __|
+    #  |  _|  ___) || |     \ V  V / (_| |\ V /  __/\__ \
+    #  |_|   |____/ |_|      \_/\_/ \__,_| \_/ \___||___/
+    async def fst_waves(
             self,
             deploy: "Deploy",
             clipix: "Clipix",
@@ -500,12 +500,12 @@ class Missions(object):
 
         return video_filter_list
 
-    #   ____                      _
-    #  / ___| _ __   ___  ___  __| |
-    #  \___ \| '_ \ / _ \/ _ \/ _` |
-    #   ___) | |_) |  __/  __/ (_| |
-    #  |____/| .__/ \___|\___|\__,_|
-    #        |_|
+    #      _    _     ____    ____                      _
+    #     / \  | |   / ___|  / ___| _ __   ___  ___  __| |
+    #    / _ \ | |   \___ \  \___ \| '_ \ / _ \/ _ \/ _` |
+    #   / ___ \| |___ ___) |  ___) | |_) |  __/  __/ (_| |
+    #  /_/   \_\_____|____/  |____/| .__/ \___|\___|\__,_|
+    #                              |_|
     async def als_speed(
             self,
             deploy: "Deploy",
@@ -552,9 +552,9 @@ class Missions(object):
         logger.debug(f"**<* 光速穿梭 *>**")
         Show.show_panel(self.level, Wind.SPEED_TEXT, Wind.SPEED)
 
-        originals, indicates = await self.als_track(deploy, clipix, task_list)
+        originals, indicates = await self.fst_track(deploy, clipix, task_list)
 
-        video_filter_list = await self.als_waves(deploy, clipix, task_list, originals)
+        video_filter_list = await self.fst_waves(deploy, clipix, task_list, originals)
 
         video_target_list = [
             (flt, frame_path) for flt, (*_, frame_path, _, _) in zip(video_filter_list, task_list)
@@ -611,11 +611,11 @@ class Missions(object):
                 *(self.enforce(db, *ns) for ns in render_result)
             )
 
-    #   ____            _                     _  __
-    #  | __ )  __ _ ___(_) ___    ___  _ __  | |/ /___ _ __ __ _ ___
-    #  |  _ \ / _` / __| |/ __|  / _ \| '__| | ' // _ \ '__/ _` / __|
-    #  | |_) | (_| \__ \ | (__  | (_) | |    | . \  __/ | | (_| \__ \
-    #  |____/ \__,_|___/_|\___|  \___/|_|    |_|\_\___|_|  \__,_|___/
+    #      _    _     ____    ____            _                     _  __
+    #     / \  | |   / ___|  | __ )  __ _ ___(_) ___    ___  _ __  | |/ /___ _ __ __ _ ___
+    #    / _ \ | |   \___ \  |  _ \ / _` / __| |/ __|  / _ \| '__| | ' // _ \ '__/ _` / __|
+    #   / ___ \| |___ ___) | | |_) | (_| \__ \ | (__  | (_) | |    | . \  __/ | | (_| \__ \
+    #  /_/   \_\_____|____/  |____/ \__,_|___/_|\___|  \___/|_|    |_|\_\___|_|  \__,_|___/
     async def als_keras(
             self,
             deploy: "Deploy",
@@ -672,9 +672,9 @@ class Missions(object):
             Wind.KERAS if alynex.ks.model else Wind.BASIC
         )
 
-        originals, indicates = await self.als_track(deploy, clipix, task_list)
+        originals, indicates = await self.fst_track(deploy, clipix, task_list)
 
-        video_filter_list = await self.als_waves(deploy, clipix, task_list, originals)
+        video_filter_list = await self.fst_waves(deploy, clipix, task_list, originals)
 
         video_target_list = [
             (flt, os.path.join(
@@ -801,12 +801,12 @@ class Missions(object):
             - 根据 `self.speed` 配置，调用不同的报告生成方法 (`combine_view` 或 `combine_main`)。
             - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
         """
-        if not report.range_list:
-            logger.debug(tip := f"没有可以生成的报告")
-            return Show.show_panel(self.level, tip, Wind.KEEPER)
+        if report.range_list:
+            function = getattr(self, "combine_view" if self.speed else "combine_main")
+            return await function([os.path.dirname(report.total_path)])
 
-        function = getattr(self, "combine_view" if self.speed else "combine_main")
-        return await function([os.path.dirname(report.total_path)])
+        logger.debug(tip := f"没有可以生成的报告")
+        return Show.show_panel(self.level, tip, Wind.KEEPER)
 
     #    ____                _     _               ____
     #   / ___|___  _ __ ___ | |__ (_)_ __   ___   / ___|_ __ _   ___  __
@@ -1091,9 +1091,9 @@ class Missions(object):
             )
 
         # Information
-        originals, indicates = await self.als_track(deploy, clipix, task_list)
+        originals, indicates = await self.fst_track(deploy, clipix, task_list)
 
-        video_filter_list = await self.als_waves(deploy, clipix, task_list, originals)
+        video_filter_list = await self.fst_waves(deploy, clipix, task_list, originals)
 
         video_target_list = [
             (flt, os.path.join(
@@ -2139,6 +2139,7 @@ class Clipix(object):
         await Switch.ask_video_tailor(
             self.fmp, src, video_dst, start=str(start_delta), limit=str(limit_delta)
         )
+
         return video_dst, video_blc
 
     @staticmethod
@@ -2815,10 +2816,10 @@ if __name__ == '__main__':
     #         __| |__
     #        |_______|
     
-    应用程序入口点。根据命令行参数初始化并运行主进程。
+    应用程序入口点，根据命令行参数初始化并运行主进程。
 
     主要功能：
-        1. 显示应用程序标志和帮助文档（如果没有提供命令行参数）。
+        1. 显示应用程序标志和帮助文档。
         2. 解析命令行参数。
         3. 设置日志级别和系统环境变量。
         4. 检查并加载必要的工具和模板文件。
@@ -2913,7 +2914,7 @@ if __name__ == '__main__':
     将命令行参数解析结果转换为基本数据类型。
     
     注意:
-        该代码块将命令行参数解析器解析得到的结果存储在基本数据类型的变量中。
+        将命令行参数解析器解析得到的结果存储在基本数据类型的变量中。
         这样做的目的是避免在多进程环境中向子进程传递不可序列化的对象，因为这些对象在传递过程中可能会导致 `pickle.PicklingError` 错误。
     """
     _flick, _carry, _fully = _lines.flick, _lines.carry, _lines.fully
@@ -2942,7 +2943,7 @@ if __name__ == '__main__':
     Show.load_animation()
 
     """
-    创建主事件循环
+    创建主事件循环。
     
     注意: 
         该事件循环对象 `_main_loop` 是不可序列化的，因此不能将其传递给子进程。
