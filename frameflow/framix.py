@@ -20,7 +20,8 @@ Copyright (c) 2024  Framix(画帧秀)
 This file is licensed under the Framix(画帧秀) License. See the LICENSE.md file for more details.
 """
 
-__all__ = []
+# 接口
+__all__ = ["Clipix", "Alynex"]
 
 import os
 import sys
@@ -309,7 +310,11 @@ class Missions(object):
         )
         return loop_complete
 
-    # """DB"""
+    #   ____  ____
+    #  |  _ \| __ )
+    #  | | | |  _ \
+    #  | |_| | |_) |
+    #  |____/|____/
     @staticmethod
     async def enforce(db: "DB", style: str, total: str, title: str, nest: str) -> None:
         """
@@ -2923,10 +2928,13 @@ if __name__ == '__main__':
     _alike, _shine = _lines.alike, _lines.shine
     _group = _lines.group
 
+    # 打包位置参数
+    _positions = _flick, _carry, _fully, _speed, _basic, _keras, _alone, _whist, _alike, _shine, _group
+
     # 初始化主要任务对象
     _missions = Missions(
         _wires, _level, _power,
-        _flick, _carry, _fully, _speed, _basic, _keras, _alone, _whist, _alike, _shine, _group,
+        *_positions,
         atom_total_temp=_atom_total_temp,
         main_share_temp=_main_share_temp,
         main_total_temp=_main_total_temp,
