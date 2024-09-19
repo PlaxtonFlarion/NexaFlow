@@ -122,7 +122,7 @@ elif _platform == "darwin":
     _fmp = os.path.join(_turbo, "MacOS", "ffmpeg", "bin", "ffmpeg")
     _fpb = os.path.join(_turbo, "MacOS", "ffmpeg", "bin", "ffprobe")
 else:
-    Show.show_panel(const.SHOW_LEVEL, f"{const.DESC} compatible with [Win | Mac]", Wind.KEEPER)
+    Show.show_panel(const.SHOW_LEVEL, f"{const.DESC} compatible with Windows or MacOS", Wind.KEEPER)
     Show.simulation_progress(f"{const.DESC} Exiting ...")
     Show.fail()
     sys.exit(Show.closure())
@@ -2359,7 +2359,7 @@ class Alynex(object):
             4. 获取视频中稳定和不稳定的帧范围。
             5. 提取并保存指定数量的稳定帧。
         """
-        if (target_vision := await self.ask_frame_grid(vision)) is None:
+        if not (target_vision := await self.ask_frame_grid(vision)):
             logger.debug(tip := f"视频文件损坏: {os.path.basename(vision)}")
             return Show.show_panel(self.extent, tip, Wind.KEEPER)
 
@@ -2506,7 +2506,7 @@ class Alynex(object):
                 - 如果 boost 参数为真，则在获取所有关键帧的基础上，额外包含关键帧之间的非关键帧数据。
                 - 使用进度条显示帧处理进度。
             """
-            if struct is None:
+            if not struct:
                 return [i for i in video.frames_data]
 
             frames_list = []
@@ -2692,7 +2692,7 @@ class Alynex(object):
             return begin_frame_id, final_frame_id, time_cost, scores, struct
 
         # 检查并获取有效的视频文件路径
-        if (target_vision := await self.ask_frame_grid(vision)) is None:
+        if not (target_vision := await self.ask_frame_grid(vision)):
             logger.debug(tip_ := f"视频文件损坏: {os.path.basename(vision)}")
             return Show.show_panel(self.extent, tip_, Wind.KEEPER)
 
