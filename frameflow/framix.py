@@ -489,8 +489,7 @@ class Missions(object):
         filters = filters + [f"unsharp=luma_amount={grind}"] if (grind := deploy.grind) else filters
 
         video_filter_list = await asyncio.gather(
-            *(clipix.vision_improve(
-                deploy.shape, deploy.scale, original, filters) for original in originals)
+            *(clipix.vision_improve(deploy, original, filters) for original in originals)
         )
 
         panel_filter_list = []
@@ -2143,13 +2142,12 @@ class Clipix(object):
         return video_dst, video_blc
 
     @staticmethod
-    async def vision_improve(shape: tuple, scale: float, original: tuple, filters: list) -> list:
+    async def vision_improve(deploy: "Deploy", original: tuple, filters: list) -> list:
         """
         异步方法，用于改进视频的视觉效果，通过调整视频尺寸和应用过滤器列表。
 
         参数:
-            - shape (tuple): 目标尺寸，格式为 (宽度, 高度)，如果未提供则根据 `scale` 调整尺寸。
-            - scale (float): 缩放比例，有效范围从 0.1 到 1.0。仅在 `shape` 为 None 时使用。如果未指定 `scale`，将使用默认压缩比例。
+            - deploy (Deploy): 包含处理参数的部署配置对象。
             - original (tuple): 原始视频的尺寸，格式为 (原始宽度, 原始高度)。
             - filters (list): 初始过滤器列表，可以包括例如 'blur', 'contrast' 等过滤器命令。
 
@@ -2159,12 +2157,12 @@ class Clipix(object):
         抛出:
             - ValueError: 如果输入的参数类型不符合预期。
         """
-        if shape:
-            w, h, ratio = await Switch.ask_magic_frame(original, shape)
-            video_filter_list = filters + [f"scale=trunc({w}/2)*2:trunc({h}/2)*2"]
+        if deploy.shape:
+            w, h, ratio = await Switch.ask_magic_frame(original, deploy.shape)
+            deploy.shape = [w := w - 1 if w % 2 != 0 else w, h := h - 1 if h % 2 != 0 else h]
+            video_filter_list = filters + [f"scale={w}:{h}"]
         else:
-            scale = max(0.1, min(1.0, scale)) if scale else const.COMPRESS
-            video_filter_list = filters + [f"scale=iw*{scale}:ih*{scale}"]
+            video_filter_list = filters + [f"scale=iw*{deploy.scale}:ih*{deploy.scale}"]
 
         return video_filter_list
 
