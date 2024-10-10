@@ -263,8 +263,8 @@ class Missions(object):
         """
         loop = asyncio.get_event_loop()
 
-        option.model_place = option.model_place if self.keras else None
-        alynex = Alynex(option, deploy, self.level)
+        matrix = option.model_place if self.keras else None
+        alynex = Alynex(matrix, option, deploy, self.level)
         try:
             loop.run_until_complete(alynex.ask_model_load())
         except FramixAnalyzerError:
@@ -302,8 +302,7 @@ class Missions(object):
         """
         loop = asyncio.get_event_loop()
 
-        option.model_place = None
-        alynex = Alynex(option, deploy, self.level)
+        alynex = Alynex(None, option, deploy, self.level)
 
         loop_complete = loop.run_until_complete(
             alynex.ask_exercise(vision, *args)
@@ -943,8 +942,8 @@ class Missions(object):
             await self.als_speed(*attack)
         else:
             # Initial Alynex
-            option.model_place = option.model_place if self.keras else None
-            alynex = Alynex(option, deploy, self.level)
+            matrix = option.model_place if self.keras else None
+            alynex = Alynex(matrix, option, deploy, self.level)
             try:
                 await alynex.ask_model_load()
             except FramixAnalyzerError as e:
@@ -1029,8 +1028,8 @@ class Missions(object):
                         await self.als_speed(*attack)
                     else:
                         # Initial Alynex
-                        option.model_place = option.model_place if self.keras else None
-                        alynex = Alynex(option, deploy, self.level)
+                        matrix = option.model_place if self.keras else None
+                        alynex = Alynex(matrix, option, deploy, self.level)
                         try:
                             await alynex.ask_model_load()
                         except FramixAnalyzerError as e:
@@ -1131,8 +1130,7 @@ class Missions(object):
         await asyncio.gather(*eliminate, return_exceptions=True)
 
         # Initial Alynex
-        option.model_place = None
-        alynex = Alynex(option, deploy, self.level)
+        alynex = Alynex(None, option, deploy, self.level)
 
         # Ask Analyzer
         if len(task_list) == 1:
@@ -1238,8 +1236,7 @@ class Missions(object):
                 return "grayscale", 1, f"Image: {list(image.shape)} is grayscale image, stored in RGB format"
             return "rgb", image.ndim, f"Image: {list(image.shape)} is color image"
 
-        option.model_place = None
-        alynex = Alynex(option, deploy, self.level)
+        alynex = Alynex(None, option, deploy, self.level)
         report = Report(option.total_place)
 
         task_list = []
@@ -1826,8 +1823,8 @@ class Missions(object):
 
         clipix = Clipix(self.fmp, self.fpb)
 
-        option.model_place = option.model_place if self.keras else None
-        alynex = Alynex(option, deploy, self.level)
+        matrix = option.model_place if self.keras else None
+        alynex = Alynex(matrix, option, deploy, self.level)
         try:
             await alynex.ask_model_load()
         except FramixAnalyzerError as e_:
@@ -2201,22 +2198,11 @@ class Alynex(object):
 
     __ks: typing.Optional["KerasStruct"] = KerasStruct()
 
-    def __init__(self, option: "Option", deploy: "Deploy", extent: "typing.Any"):
+    def __init__(self, matrix: typing.Optional[str], option: "Option", deploy: "Deploy", extent: "typing.Any"):
         """
-        初始化方法，配置分析器的选项、部署信息和日志记录的详细程度
-
-        参数说明:
-            - option (`Option`): 分析过程中的选项配置，通常包括模型路径、模型类型等。
-            - deploy (`Deploy`): 部署配置，可能涉及设备信息、工作模式等。
-            - extent (`typing.Any`): 日志等级或扩展设置，用于控制日志输出的详细程度或其他扩展功能。
-
-        详细描述:
-            1. `option`: 包含用户在分析过程中指定的各种配置选项。
-            2. `deploy`: 包含部署相关的配置信息，如设备和运行模式等。
-            3. `extent`: 用于控制日志输出的详细程度（例如 DEBUG、INFO、WARNING 等）或实现额外的日志功能。
-
-        用于初始化分析器实例，使其具备运行所需的配置信息和日志控制能力。
+        初始化方法，配置分析器的矩阵、选项、部署信息和日志记录的详细程度。
         """
+        self.matrix = matrix
         self.option = option
         self.deploy = deploy
         self.extent = extent
@@ -2227,7 +2213,7 @@ class Alynex(object):
 
     async def ask_model_load(self) -> None:
         """
-        异步加载模型到 KerasStruct 实例
+        异步加载模型到 KerasStruct 实例。
 
         该方法主要用于加载训练好的模型，以便在后续分析过程中使用。
         根据配置选项选择彩色或灰度模型，并确保模型结构和输入数据的兼容性。
@@ -2248,7 +2234,7 @@ class Alynex(object):
             - FramixAnalyzerError: 当模型路径无效或加载失败时，抛出此异常。
         """
         try:
-            if mp := self.option.model_place:
+            if mp := self.matrix:
                 assert os.path.isdir(self.option.model_place), f"Invalid Model {mp}"
                 assert self.ks, f"First Load KerasStruct()"
 
