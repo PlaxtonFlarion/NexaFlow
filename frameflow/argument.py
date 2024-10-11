@@ -134,7 +134,7 @@ class Args(object):
             "view": ["数值", "一次"],
             "help": "尺寸定制",
             "push": lambda x, y: [
-                f"[bold #87AFD7]{x.shape if x.shape else 'Auto'}",
+                f"[bold #87AFD7]{x.shape or 'Auto'}",
                 f"[bold][[bold #7FFFD4] ?  ? [/]]",
                 f"[bold]宽高 [bold #FFD700]{x.shape[0]} x {x.shape[1]}" if x.shape else f"[bold #A4D3EE]自动"
             ]
@@ -144,7 +144,7 @@ class Args(object):
             "view": ["数值", "一次"],
             "help": "变幻缩放",
             "push": lambda x, y: [
-                f"[bold #87AFD7]{x.scale if x.scale else 'Auto'}",
+                f"[bold #87AFD7]{x.scale or 'Auto'}",
                 f"[bold][[bold #7FFFD4] 0  1 [/]]",
                 f"[bold]压缩 [bold #FFD700]{x.scale}[/]" if x.scale else f"[bold #A4D3EE]自动"
             ]
@@ -154,7 +154,7 @@ class Args(object):
             "view": ["数值", "一次"],
             "help": "时刻启程",
             "push": lambda x, y: [
-                f"[bold #87AFD7]{getattr(y, 'parse_mills')(x.start) if x.start else 'Auto'}",
+                f"[bold #87AFD7]{getattr(y, 'parse_mills')(x.start) or 'Auto'}",
                 f"[bold][[bold #7FFFD4] 0  ? [/]]",
                 f"[bold]开始 [bold #FFD700]{x.start}[/]" if x.start else f"[bold #A4D3EE]自动"
             ]
@@ -164,7 +164,7 @@ class Args(object):
             "view": ["数值", "一次"],
             "help": "时光封印",
             "push": lambda x, y: [
-                f"[bold #87AFD7]{getattr(y, 'parse_mills')(x.close) if x.close else 'Auto'}",
+                f"[bold #87AFD7]{getattr(y, 'parse_mills')(x.close) or 'Auto'}",
                 f"[bold][[bold #7FFFD4] 0  ? [/]]",
                 f"[bold]结束 [bold #FFD700]{x.close}[/]" if x.close else f"[bold #A4D3EE]自动"
             ]
@@ -174,7 +174,7 @@ class Args(object):
             "view": ["数值", "一次"],
             "help": "持续历程",
             "push": lambda x, y: [
-                f"[bold #87AFD7]{getattr(y, 'parse_mills')(x.limit) if x.limit else 'Auto'}",
+                f"[bold #87AFD7]{getattr(y, 'parse_mills')(x.limit) or 'Auto'}",
                 f"[bold][[bold #7FFFD4] 0  ? [/]]",
                 f"[bold]持续 [bold #FFD700]{x.limit}[/]" if x.limit else f"[bold #A4D3EE]自动"
             ]
@@ -184,7 +184,7 @@ class Args(object):
             "view": ["数值", "一次"],
             "help": "朦胧幻界",
             "push": lambda x, y: [
-                f"[bold #87AFD7]{x.gauss if x.gauss else 'Auto'}",
+                f"[bold #87AFD7]{x.gauss or 'Auto'}",
                 f"[bold][[bold #7FFFD4] 0  10[/]]",
                 f"[bold]模糊 [bold #FFD700]{x.gauss}[/]" if x.gauss else f"[bold #A4D3EE]自动"
             ]
@@ -194,7 +194,7 @@ class Args(object):
             "view": ["数值", "一次"],
             "help": "边缘觉醒",
             "push": lambda x, y: [
-                f"[bold #87AFD7]{x.grind if x.grind else 'Auto'}",
+                f"[bold #87AFD7]{x.grind or 'Auto'}",
                 f"[bold][[bold #7FFFD4]-2  5 [/]]",
                 f"[bold]锐化 [bold #FFD700]{x.grind}[/]" if x.grind else f"[bold #A4D3EE]自动"
             ]
@@ -204,7 +204,7 @@ class Args(object):
             "view": ["数值", "一次"],
             "help": "频率探测",
             "push": lambda x, y: [
-                f"[bold #87AFD7]{x.frate}",
+                f"[bold #87AFD7]{x.frate or 'Auto'}",
                 f"[bold][[bold #7FFFD4] 1  60[/]]",
                 f"[bold]帧率 [bold #FFD700]{x.frate}[/]" if x.frate else f"[bold #A4D3EE]自动"
             ]

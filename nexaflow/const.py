@@ -36,7 +36,7 @@ SUC = "[bold #FFFFFF on #32CD32]"
 WRN = "[bold #000000 on #FFFF00]"
 ERR = "[bold #FFFFFF on #FF6347]"
 
-COMPRESS = 0.5
+DEFAULT_SCALE = 0.5
 
 SHAPE = None
 SCALE = None

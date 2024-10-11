@@ -1396,7 +1396,7 @@ class Missions(object):
                 if deploy.scale:
                     image_scale = max_scale if deploy.shape else max(min_scale, min(max_scale, deploy.scale))
                 else:
-                    image_scale = max_scale if deploy.shape else const.COMPRESS
+                    image_scale = max_scale if deploy.shape else const.DEFAULT_SCALE
 
                 new_w, new_h = int(twist_w * image_scale), int(twist_h * image_scale)
                 logger.debug(
@@ -2165,6 +2165,7 @@ class Clipix(object):
             deploy.shape = [w := w - 1 if w % 2 != 0 else w, h := h - 1 if h % 2 != 0 else h]
             video_filter_list = filters + [f"scale={w}:{h}"]
         else:
+            deploy.scale = deploy.scale or const.DEFAULT_SCALE
             video_filter_list = filters + [f"scale=iw*{deploy.scale}:ih*{deploy.scale}"]
 
         return video_filter_list

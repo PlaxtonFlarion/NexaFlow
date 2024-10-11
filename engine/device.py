@@ -31,7 +31,7 @@ class _Phone(object):
 
 class Device(_Phone):
 
-    __facilities: typing.Optional["u2.Device"] = None
+    __facilities: typing.Optional[typing.Union["u2.Device", "u2.UiObject"]] = None
 
     def __init__(self, adb: str, sn: str, *args):
         """
@@ -41,16 +41,16 @@ class Device(_Phone):
         self.__initial = [adb, "-s", self.sn, "wait-for-device"]
 
     @property
-    def facilities(self) -> typing.Optional["u2.Device"]:
+    def facilities(self) -> typing.Optional[typing.Union["u2.Device", "u2.UiObject"]]:
         """
-        返回与设备的连接实例 (uiautomator2)。
+        属性方法 `facilities`，用于获取当前实例的设施属性，可能为设备对象或 UI 控件对象。
         """
         return self.__facilities
 
     @facilities.setter
-    def facilities(self, value: typing.Optional["u2.Device"]):
+    def facilities(self, value: typing.Optional[typing.Union["u2.Device", "u2.UiObject"]]) -> None:
         """
-        设置设备的连接实例。
+        设置方法 `facilities`，用于将设备对象或 UI 控件对象赋值给设施属性。
         """
         self.__facilities = value
 
@@ -213,7 +213,7 @@ class Device(_Phone):
 
 # uiautomator2 #########################################################################################################
 
-    async def automator_activation(self) -> None:
+    async def automator_activation(self, *_, **__) -> None:
         """
         通过设备的序列号激活 uiautomator2 连接。
         """
@@ -225,35 +225,19 @@ class Device(_Phone):
             method: typing.Optional[str],
             *args,
             **kwargs
-    ) -> typing.Union[None, str, Exception]:
+    ) -> typing.Any:
         """
         自动化方法的异步调用函数。
-
-        参数:
-            - choice (dict, optional): 一个可选的字典，用于定位元素的选择器。
-            - method (str, optional): 要调用的目标方法名称，作为字符串传递。
-            - *args: 可变位置参数，传递给目标方法。
-            - **kwargs: 可变关键字参数，传递给目标方法。
-
-        功能说明:
-            1. 根据提供的 `selector` 查找元素。如果未提供选择器，则使用默认的设施对象。
-            2. 通过 `getattr` 动态获取 `element` 对象上对应的方法。
-            3. 如果该方法可调用，则将其与提供的参数一起异步执行。
-            4. 使用 `asyncio.to_thread` 将同步函数调用转换为异步调用，以避免阻塞事件循环。
-            5. 返回方法的执行结果。如果结果为空，则返回 None。
-
-        返回值:
-            - 如果执行成功，返回方法的结果。
-            - 如果没有返回值或方法调用结果为空，则返回 None。
-            - 如果发生异常，返回异常对象。
-
-        注意:
-            - 该方法是异步方法，适用于需要在事件循环中调用的方法。
-            - 确保 `method` 是 `element` 对象上的有效方法名称，否则可能会引发 AttributeError。
         """
-        element = self.facilities(**choice) if choice else self.facilities
-        if callable(function := getattr(element, method)):
-            return resp if (resp := await asyncio.to_thread(function, *args, **kwargs)) else None
+        if (element := self.facilities(**choice) if choice else self.facilities).exists():
+            if callable(function := getattr(element, method)):
+                try:
+                    resp = await asyncio.to_thread(function, *args, **kwargs)
+                except Exception as e:
+                    return e
+                return resp
+            raise AttributeError(f"{method} Not callable ...")
+        raise AttributeError(f"{choice or element.serial} Not found ...")
 
 
 if __name__ == '__main__':
