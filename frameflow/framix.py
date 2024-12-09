@@ -449,7 +449,7 @@ class Missions(object):
             clipix: "Clipix",
             task_list: list[list],
             originals: list
-    ) -> tuple:
+    ) -> list:
         """
         异步执行视频的过滤和改进操作。
 
@@ -850,7 +850,7 @@ class Missions(object):
 
         logger.debug(tip := f"正在生成汇总报告 ...")
         Show.show_panel(self.level, tip, Wind.REPORTER)
-        state_list: tuple[str | Exception] = await asyncio.gather(
+        state_list: list[str | Exception] = await asyncio.gather(
             *(Report.ask_create_total_report(m, self.group, share_form, total_form) for m in merge),
             return_exceptions=True
         )
@@ -2162,7 +2162,7 @@ class Clipix(object):
         """
         if deploy.shape:
             w, h, ratio = await Switch.ask_magic_frame(original, deploy.shape)
-            deploy.shape = [w := w - 1 if w % 2 != 0 else w, h := h - 1 if h % 2 != 0 else h]
+            w, h = w - 1 if w % 2 != 0 else w, h - 1 if h % 2 != 0 else h
             video_filter_list = filters + [f"scale={w}:{h}"]
         else:
             deploy.scale = deploy.scale or const.DEFAULT_SCALE
