@@ -1612,16 +1612,15 @@ class Missions(object):
             加载并解析传入的 carry 字符串，返回包含执行指令的字典或异常。
             """
             # 解析传入的 carry 字符串，分割为路径和关键字两部分
-            if len(parts := re.split(r",|;|!|\s", carry, 1)) == 2:
-                loc, key = parts
+            if len(parts := re.split(r",|;|!|\s", carry)) >= 2:
+                loc_file, *key_list = parts
                 # 异步加载执行字典
-                if isinstance(exec_dict := await load_fully(loc), Exception):
+                if isinstance(exec_dict := await load_fully(loc_file), Exception):
                     return exec_dict
 
                 try:
                     # 查找关键字对应的执行指令
-                    if current := exec_dict.get(key, None):
-                        return {key: current}
+                    return {key: value for key in key_list if (value := exec_dict.get(key, None))}
                 # 如果 carry 字符串格式不正确，抛出值错误
                 except (FileNotFoundError, KeyError, json.JSONDecodeError) as e:
                     return e
@@ -1955,9 +1954,8 @@ class Missions(object):
                                 if any(line_.lower().startswith(f"--{d_key_}") for line_ in self.wires):
                                     logger.debug(f"    Line First <{d_key_}> = {getattr(deploy, d_key_)}")
                                     continue
-                                if parser_arg_ := parser_.get(deploy_key_, {}).get(d_key_, {}):
-                                    setattr(deploy, d_key_, parser_arg_)
-                                    logger.debug(f"    Parser Set <{d_key_}>  {d_value_} -> {getattr(deploy, d_key_)}")
+                                setattr(deploy, d_key_, parser_.get(deploy_key_, {}).get(d_key_, {}))
+                                logger.debug(f"    Parser Set <{d_key_}>  {d_value_} -> {getattr(deploy, d_key_)}")
 
                     # 处理 script_value_ 中的 header 参数
                     header_ = header_ if type(

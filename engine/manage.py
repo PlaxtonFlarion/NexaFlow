@@ -180,15 +180,15 @@ class Manage(object):
             return Device(self.adb, sn, *information_list)
 
         device_dict = {}
-        device_list = await Terminal.cmd_line(self.adb, "devices")
-        if sn_list := [line.split()[0] for line in device_list.split("\n")[1:]]:
-            device_instance_list = await asyncio.gather(
-                *(_device_information(sn) for sn in sn_list), return_exceptions=True
-            )
-            for device_instance in device_instance_list:
-                if isinstance(device_instance, Exception):
-                    return device_dict
-            device_dict = {device.sn: device for device in device_instance_list}
+        if device_list := await Terminal.cmd_line(self.adb, "devices"):
+            if serial_list := [line.split()[0] for line in device_list.split("\n")[1:]]:
+                device_instance_list = await asyncio.gather(
+                    *(_device_information(serial) for serial in serial_list), return_exceptions=True
+                )
+                for device_instance in device_instance_list:
+                    if isinstance(device_instance, Exception):
+                        return device_dict
+                device_dict = {device.sn: device for device in device_instance_list}
         return device_dict
 
     async def operate_device(self) -> list["Device"]:
