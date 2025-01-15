@@ -335,8 +335,8 @@ class Report(object):
         html_temp = Template(style_loc).render(
             name=const.NAME, title=title, images_list=images_list
         )
-        teams = serial if serial else random.randint(10000, 99999)
-        html_path = Path(os.path.join(total, title, f"{title}_{teams}.html"))
+        team = serial if serial else random.randint(10000, 99999)
+        html_path = Path(os.path.join(total, title, f"{title}_{team}.html"))
         async with aiofiles.open(html_path, "w", encoding=const.CHARSET) as range_file:
             await range_file.write(html_temp)
 
@@ -348,7 +348,7 @@ class Report(object):
 
         href = os.path.join(total.name, title, html_path.name)
         single = {
-            "case": title, "cost_list": cost_list, "avg": f"{avg:.5f}", "href": href
+            "case": title, "team": team, "cost_list": cost_list, "avg": f"{avg:.5f}", "href": href
         }
         logger.debug("Recovery: " + json.dumps(single, ensure_ascii=False))
 
@@ -426,13 +426,14 @@ class Report(object):
 
         async def format_merged():
             parts_dict = defaultdict(lambda: defaultdict(list))
-            for case in create_total_result:
-                for key, value in case.items():
-                    if key != "case":
-                        parts_dict[case["case"]][key].append(value)
+            for rp in create_total_result:
+                for key, value in rp.items():
+                    if key not in ["case", "team"]:
+                        parts_dict[f"{rp['case']}-{rp['team']}"][key].append(value)
 
             return [
-                {"case": case, **{k: v for k, v in attrs.items()}} for case, attrs in parts_dict.items()
+                {"case": keys.split("-")[0], "team": keys.split("-")[1], **{k: v for k, v in attrs.items()}}
+                for keys, attrs in parts_dict.items()
             ]
 
         packed_dict = await format_packed()
@@ -456,7 +457,7 @@ class Report(object):
             for j in i["merge_list"]:
                 logger.debug(f"{j}")
 
-        if len(total_list := [single for single in merged_list if single]) == 0:
+        if not (total_list := [single for single in merged_list if single]):
             raise FramixReporterError(f"没有可以汇总的报告 ...")
 
         total_html_temp = Template(total_loc).render(

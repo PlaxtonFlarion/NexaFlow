@@ -100,8 +100,19 @@
 
         .case-other {
             display: flex;
+            justify-content: space-between;
+            padding: 8px 0 8px 0;
+        }
+
+        .device-info, .device-result {
+            display: flex;
             align-items: center;
-            justify-content: flex-end;
+        }
+
+        .team {
+            margin-left: 20px;
+            font-size: 20px;
+            background-color: #D3D3D3;
         }
 
         .cost-div {
@@ -109,7 +120,7 @@
             flex-wrap: wrap;
         }
 
-        .cost, .cost-avg {
+        .cost, .cost-avg, .team {
             padding: 5px 10px;
             border-radius: 10px;
             font-weight: bold;
@@ -226,9 +237,14 @@
             {% for href, avg, cost in total.merge_list %}
             <div class="device">
                 <div class="case-other">
-                    <p><span class="cost-avg">{{ avg }}</span></p>
-                    <button class="copy">Copy</button>
-                    <a class="link" href="{{ href }}" target="_blank">View More Details ...</a>
+                    <div class="device-info">
+                        <span class="team">{{ total.team }}</span>
+                    </div>
+                    <div class="device-result">
+                        <span class="cost-avg">{{ avg }}</span>
+                        <button class="copy">Copy</button>
+                        <a class="link" href="{{ href }}" target="_blank">View More Details ...</a>
+                    </div>
                 </div>
                 <hr class="line">
                 <div class="cost-div">
@@ -241,9 +257,14 @@
         {% else %}
             <div class="device">
                 <div class="case-other">
-                    <p><span class="cost-avg">{{ total.avg }}</span></p>
-                    <button class="copy">Copy</button>
-                    <a class="link" href="{{ total.href }}" target="_blank">View More Details ...</a>
+                    <div class="device-info">
+                        <span class="team">{{ total.team }}</span>
+                    </div>
+                    <div class="device-result">
+                        <span class="cost-avg">{{ total.avg }}</span>
+                        <button class="copy">Copy</button>
+                        <a class="link" href="{{ total.href }}" target="_blank">View More Details ...</a>
+                    </div>
                 </div>
                 <hr class="line">
                 <div class="cost-div">
