@@ -179,12 +179,12 @@ class Deploy(object):
 
     @boost.setter
     def boost(self, value: typing.Any):
-        if isinstance(bool, value):
+        if isinstance(value, bool):
             self.deploys["ALS"]["boost"] = value
 
     @color.setter
     def color(self, value: typing.Any):
-        if isinstance(bool, value):
+        if isinstance(value, bool):
             self.deploys["ALS"]["color"] = value
 
     @begin.setter

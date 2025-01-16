@@ -494,7 +494,7 @@ class Missions(object):
 
         video_filter_list = await asyncio.gather(
             *(clipix.vision_improve(deploy, original, filters) for original in originals)
-        )
+        ) if self.speed else [filters for _ in originals]
 
         panel_filter_list = []
         for flt, (video_temp, *_) in zip(video_filter_list, task_list):
@@ -716,8 +716,9 @@ class Missions(object):
         # Ask Analyzer
         if len(task_list) == 1:
             task = [
-                alynex.ask_analyzer(target, frame_path, extra_path)
-                for (_, target), (*_, frame_path, extra_path, _) in zip(video_target_list, task_list)
+                alynex.ask_analyzer(target, frame_path, extra_path, src_size)
+                for (_, target), src_size, (*_, frame_path, extra_path, _)
+                in zip(video_target_list, originals, task_list)
             ]
             futures = await asyncio.gather(*task)
 
@@ -727,8 +728,9 @@ class Missions(object):
             func = partial(self.amazing,  option, deploy)
             with ProcessPoolExecutor(self.power, None, Active.active, ("ERROR",)) as exe:
                 task = [
-                    looper.run_in_executor(exe, func, target, frame_path, extra_path)
-                    for (_, target), (*_, frame_path, extra_path, _) in zip(video_target_list, task_list)
+                    looper.run_in_executor(exe, func, target, frame_path, extra_path, src_size)
+                    for (_, target), src_size, (*_, frame_path, extra_path, _)
+                    in zip(video_target_list, originals, task_list)
                 ]
                 futures = await asyncio.gather(*task)
             self.level = this_level
@@ -1135,8 +1137,9 @@ class Missions(object):
         # Ask Analyzer
         if len(task_list) == 1:
             task = [
-                alynex.ask_exercise(target, query_path)
-                for (_, target), (_, _, _, _, query_path, *_) in zip(video_target_list, task_list)
+                alynex.ask_exercise(target, query_path, src_size)
+                for (_, target), src_size, (_, _, _, _, query_path, *_)
+                in zip(video_target_list, originals, task_list)
             ]
             futures = await asyncio.gather(*task)
 
@@ -1146,8 +1149,9 @@ class Missions(object):
             func = partial(self.bizarre, option, deploy)
             with ProcessPoolExecutor(self.power, None, Active.active, ("ERROR",)) as exe:
                 task = [
-                    looper.run_in_executor(exe, func, target, query_path)
-                    for (_, target), (_, _, _, _, query_path, *_) in zip(video_target_list, task_list)
+                    looper.run_in_executor(exe, func, target, query_path, src_size)
+                    for (_, target), src_size, (_, _, _, _, query_path, *_)
+                    in zip(video_target_list, originals, task_list)
                 ]
                 futures = await asyncio.gather(*task)
             self.level = this_level
@@ -2254,7 +2258,7 @@ class Alynex(object):
             self.ks.model = None
             raise FramixAnalyzerError(e)
 
-    async def ask_video_load(self, vision: str) -> "VideoObject":
+    async def ask_video_load(self, vision: str, src_size: tuple) -> "VideoObject":
         """
         加载并处理视频帧信息，返回 VideoObject 对象。
 
@@ -2282,9 +2286,17 @@ class Alynex(object):
         logger.debug(f"{(task_desc_ := '加载视频帧: ' f'{video.name}')}")
         Show.show_panel(self.extent, f"{task_name_}\n{task_info_}\n{task_desc_}", Wind.LOADER)
 
+        if self.deploy.shape:
+            w, h, ratio = await Switch.ask_magic_frame(src_size, self.deploy.shape)
+            shape, scale = (w, h), None
+        else:
+            shape, scale = None, self.deploy.scale or const.DEFAULT_SCALE
+
+        logger.debug(f"调整视频帧: Shape={shape} Scale={scale}")
+
         # 加载视频帧
         video.load_frames(
-            scale=None, shape=None, color=self.deploy.color
+            scale=scale, shape=shape, color=self.deploy.color
         )
 
         # 记录视频帧加载完成后的详细信息和耗时
@@ -2353,9 +2365,9 @@ class Alynex(object):
             logger.debug(tip := f"视频文件损坏: {os.path.basename(vision)}")
             return Show.show_panel(self.extent, tip, Wind.KEEPER)
 
-        query_path, *_ = args
+        query_path, src_size, *_ = args
 
-        video = await self.ask_video_load(target_vision)
+        video = await self.ask_video_load(target_vision, src_size)
 
         cutter = VideoCutter()
         logger.debug(f"{(cut_name := '视频帧长度: ' f'{video.frame_count}')}")
@@ -2687,10 +2699,10 @@ class Alynex(object):
             return Show.show_panel(self.extent, tip_, Wind.KEEPER)
 
         # 解包额外的参数
-        frame_path, extra_path, *_ = args
+        frame_path, extra_path, src_size, *_ = args
 
         # 加载视频帧信息
-        video = await self.ask_video_load(target_vision)
+        video = await self.ask_video_load(target_vision, src_size)
 
         # 根据是否有模型加载结果执行相应的视频处理流程
         struct = await frame_flow() if self.ks.model else None
