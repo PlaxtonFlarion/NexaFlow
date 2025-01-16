@@ -2264,6 +2264,7 @@ class Alynex(object):
 
         参数:
             vision (str): 视频文件路径。
+            src_size (tuple): 视频原始尺寸。
 
         返回:
             VideoObject: 包含视频帧信息的对象。
