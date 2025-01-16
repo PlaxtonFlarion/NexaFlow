@@ -425,15 +425,18 @@ class Report(object):
             }
 
         async def format_merged():
-            parts_dict = defaultdict(lambda: defaultdict(list))
+            parts_dict, segment = defaultdict(lambda: defaultdict(list)), "<@@@>"
             for rp in create_total_result:
                 for key, value in rp.items():
                     if key not in ["case", "team"]:
-                        parts_dict[f"{rp['case']}-{rp['team']}"][key].append(value)
+                        parts_dict[f"{rp['case']}{segment}{rp['team']}"][key].append(value)
 
             return [
-                {"case": keys.split("-")[0], "team": keys.split("-")[1], **{k: v for k, v in attrs.items()}}
-                for keys, attrs in parts_dict.items()
+                {
+                    "case": keys.split(f"{segment}")[0],
+                    "team": keys.split(f"{segment}")[1],
+                    **{k: v for k, v in attrs.items()}
+                } for keys, attrs in parts_dict.items()
             ]
 
         packed_dict = await format_packed()
