@@ -789,8 +789,6 @@
     <!--主页图片选择器-->
     <script>
         var containers = document.querySelectorAll('.image-container');
-        var markButtons = document.querySelectorAll(".mark-button");
-
         containers.forEach((container, idx) => {
             container.querySelectorAll('.mark-button').forEach(markButton => {
                 markButton.addEventListener('click', function(e) {
@@ -814,37 +812,17 @@
                     }
 
                     // 获取所有的结果标签
-                    var resContainers = Array.from(document.querySelectorAll('.result-container'));
-                    var resultDivs = Array.from(document.querySelectorAll('.time-difference'));
+                    let resContainers = Array.from(document.querySelectorAll('.result-container'));
+                    let timeDivs = Array.from(document.querySelectorAll('.time-difference'));
                     // 重新获取选中的元素
                     selectedInContainer = container.querySelectorAll('.selected');
                     let allImages = Array.from(containers[idx].querySelectorAll('.image-box img'));
                     let options = Array.from(document.querySelectorAll('.options'));
 
-                    // 如果选中的标记少于两个，清空结果显示
-                    if (selectedInContainer.length === 1) {
-                        resultDivs[idx].textContent = '0.00000';
-                        resultDivs[idx].classList.remove('effect-on');
-                        resultDivs[idx].classList.add('effect-off');
-                        options[idx].style.display = 'none';
-
-                    // 如果选中的标记等于0，隐藏对应容器的所有选项标签
-                    } else if (selectedInContainer.length === 0) {
-                        resultDivs[idx].classList.remove('effect-on');
-                        resultDivs[idx].classList.add('effect-off');
-                        resContainers[idx].style.display = 'none';
-                        options[idx].style.display = 'none';
-                        // 显示该容器的所有图片
-                        allImages.forEach(image => {
-                            if (image.parentElement.style.display === 'none') {
-                                image.parentElement.style.display = '';
-                            }
-                        });
-
                     // 如果有两个选中的元素，获取它们的帧数据并计算差值
-                    } else if (selectedInContainer.length === 2) {
-                        resultDivs[idx].classList.add('effect-on');
-                        resultDivs[idx].classList.remove('effect-off');
+                    if (selectedInContainer.length === 2) {
+                        timeDivs[idx].classList.add('effect-on');
+                        timeDivs[idx].classList.remove('effect-off');
                         options[idx].style.display = 'flex';
                         allImages.forEach(image => {
                             if (!image.parentElement.classList.contains('selected')) {
@@ -854,28 +832,39 @@
 
                         var timestamp1 = Number(selectedInContainer[0].querySelector('img').getAttribute('data-timestamp'));
                         var timestamp2 = Number(selectedInContainer[1].querySelector('img').getAttribute('data-timestamp'));
-                        var diff = Math.abs(timestamp2 - timestamp1);
-                        diff = diff.toFixed(5);
-                        resultDivs[idx].textContent = diff;
+                        timeDivs[idx].textContent = Math.abs(timestamp2 - timestamp1).toFixed(5);
                         resContainers[idx].style.display = 'flex';
+                    } else {
+                        // 如果选中的标记少于两个，清空结果显示
+                        timeDivs[idx].textContent = '0.00000';
+                        timeDivs[idx].classList.remove('effect-on');
+                        timeDivs[idx].classList.add('effect-off');
+                        resContainers[idx].style.display = 'none';
+                        options[idx].style.display = 'none';
+                        // 显示该容器的所有图片
+                        allImages.forEach(image => {
+                            if (image.parentElement.style.display === 'none') {
+                                image.parentElement.style.display = '';
+                            }
+                        });
                     }
                 });
             });
         });
 
         // 快速重选
-        var quickButton = document.querySelectorAll('.quick-reselect');
-        quickButton.forEach((quick, idx) => {
+        var quickButtons = document.querySelectorAll('.quick-reselect');
+        quickButtons.forEach((quick, idx) => {
             quick.addEventListener('click', function(e) {
                 let resContainers = Array.from(document.querySelectorAll('.result-container'));
-                let timeDiffs = Array.from(document.querySelectorAll('.time-difference'));
+                let timeDivs = Array.from(document.querySelectorAll('.time-difference'));
                 let options = Array.from(document.querySelectorAll('.options'));
                 resContainers[idx].style.display = 'none';
-                timeDiffs[idx].textContent = '0.00000';
-                timeDiffs[idx].classList.remove('effect-on');
-                timeDiffs[idx].classList.add('effect-off');
+                timeDivs[idx].textContent = '0.00000';
+                timeDivs[idx].classList.remove('effect-on');
+                timeDivs[idx].classList.add('effect-off');
                 options[idx].style.display = 'none';
-                setBoxDiff('0 -> 0', 'none', '0.00000', 'none');
+                boxSideBar('0 -> 0', 'none', '0.00000', 'none');
 
                 let quickParent = e.currentTarget.closest('.image-container');
                 marked = quickParent.querySelectorAll('.marked');
@@ -888,7 +877,7 @@
                 images = Array.from(quickParent.querySelectorAll('.image-box img'));
                 diffIndex = idx;  // 获取当前容器的索引
                 currentImageIndex = 0;  // 获取当前图片的索引
-                let firstImage = images[0];
+                let firstImage = images[currentImageIndex];
 
                 openLightbox();
                 lightboxImg.src = firstImage.src;
@@ -906,7 +895,7 @@
         });
 
         // 设置灯箱结果
-        function setBoxDiff(diff1, vision1, diff2, vision2) {
+        function boxSideBar(diff1, vision1, diff2, vision2) {
             let boxDiff1 = document.querySelector('#box-diff1');
             let boxDiff2 = document.querySelector('#box-diff2');
             boxDiff1.textContent = diff1;
@@ -916,8 +905,8 @@
         }
 
         // 灯箱结果标签的点击事件
-        var boxRes = document.querySelectorAll('.box-res:last-child');
-        boxRes.forEach((res, idx) => {
+        var boxResult = document.querySelectorAll('.box-res:last-child');
+        boxResult.forEach((res, idx) => {
             res.addEventListener('click', function(e) {
                 resp = res.querySelector('p');
                 let rawContent = resp.textContent;
@@ -979,12 +968,17 @@
                     currentImageIndex = index;  // 获取当前图片的索引
 
                     let selectedImage = Array.from(imageContainer.querySelectorAll('.selected'));
-                    if (selectedImage.length === 1) {
-                        // 隐藏缩略图
-                        images = currentImages.filter(img => img.parentElement.style.display === '');
+                    if (selectedImage.length === 0) {
+                        // 显示缩略图
+                        images = currentImages;
+                        boxSideBar('0 -> 0', 'none', '0.00000', 'none');
+                    
+                    } else if (selectedImage.length === 1) {
+                        // 显示缩略图
+                        images = currentImages;
                         currentImageIndex = images.indexOf(e.target);
                         let diff1 = selectedImage[0].querySelector('img');
-                        setBoxDiff(diff1.dataset.frame, '', '0.00000', 'none');
+                        boxSideBar(diff1.dataset.frame, '', '0.00000', 'none');
 
                     } else if (selectedImage.length === 2) {
                         // 隐藏缩略图
@@ -994,13 +988,8 @@
                         let frame2 = Number(selectedImage[1].querySelector('img').getAttribute('data-frame'));
                         let timestamp1 = Number(selectedImage[0].querySelector('img').getAttribute('data-timestamp'));
                         let timestamp2 = Number(selectedImage[1].querySelector('img').getAttribute('data-timestamp'));
-                        let diff = Math.abs(timestamp2 - timestamp1);
-                        diff = diff.toFixed(5);
-                        setBoxDiff(frame1 + ' -> ' + frame2, '', diff, '');
-
-                    } else {
-                        images = currentImages;
-                        setBoxDiff('0 -> 0', 'none', '0.00000', 'none');
+                        let diff = Math.abs(timestamp2 - timestamp1).toFixed(5);
+                        boxSideBar(frame1 + ' -> ' + frame2, '', diff, '');
                     }
 
                     originalImage = e.target;  // 获取原始图片的信息
@@ -1096,11 +1085,11 @@
 
         // 灯箱-更新主图标记效果
         function boxVision () {
-            let boxImg = document.getElementById('lightbox-img');
+            let boxImage = document.getElementById('lightbox-img');
             if (originalImage.parentElement.classList.contains('selected')) {
-                boxImg.classList.add('box-selected');
+                boxImage.classList.add('box-selected');
             } else {
-                boxImg.classList.remove('box-selected');
+                boxImage.classList.remove('box-selected');
             }
         }
 
@@ -1146,14 +1135,14 @@
                 mark.closest('.image-box').style.display = '';
             });
 
-            setBoxDiff('0 -> 0', 'none', '0.00000', 'none');
+            boxSideBar('0 -> 0', 'none', '0.00000', 'none');
 
-            let resultDivs = Array.from(document.querySelectorAll('.time-difference'));
+            let timeDivs = Array.from(document.querySelectorAll('.time-difference'));
             let resContainers = Array.from(document.querySelectorAll('.result-container'));
             let options = Array.from(document.querySelectorAll('.options'));
-            resultDivs[diffIndex].textContent = '0.00000';
-            resultDivs[diffIndex].classList.remove('effect-on');
-            resultDivs[diffIndex].classList.add('effect-off');
+            timeDivs[diffIndex].textContent = '0.00000';
+            timeDivs[diffIndex].classList.remove('effect-on');
+            timeDivs[diffIndex].classList.add('effect-off');
             resContainers[diffIndex].style.display = 'none';
             options[diffIndex].style.display = 'none';
 
@@ -1173,8 +1162,8 @@
             scrollToActive();
             updateButtonStatus();
 
-            let boxImg = document.getElementById('lightbox-img');
-            boxImg.classList.remove('box-selected');
+            let boxImage = document.getElementById('lightbox-img');
+            boxImage.classList.remove('box-selected');
         });
 
         // 灯箱-缩略图滚动条自动跟随
@@ -1204,25 +1193,25 @@
 
         // 灯箱-主图点击事件
         lightboxImg.addEventListener('click', function(e) {
-            calcTimeCost();
+            timeCost();
         });
 
-        function calcTimeCost() {
-            let parentImg = originalImage.parentElement;
-            let buttons = Array.from(parentImg.querySelectorAll('button'));
+        function timeCost() {
+            let parentImage = originalImage.parentElement;
+            let buttons = Array.from(parentImage.querySelectorAll('button'));
             let thumbActive = document.querySelector('.thumbnail.active');
 
-            if (parentImg.classList.contains('selected')) {
+            if (parentImage.classList.contains('selected')) {
                 lightboxImg.classList.remove('box-selected');
-                parentImg.classList.remove('selected');
+                parentImage.classList.remove('selected');
                 buttons.forEach(button => button.classList.remove('marked'));
                 thumbActive.classList.remove('thumb-selected');
 
             } else {
-                let resImg =  Array.from(parentImg.parentElement.querySelectorAll('.marked'));
-                if (resImg.length < 2) {
+                let resImages =  Array.from(parentImage.parentElement.querySelectorAll('.marked'));
+                if (resImages.length < 2) {
                     lightboxImg.classList.add('box-selected');
-                    parentImg.classList.add('selected');
+                    parentImage.classList.add('selected');
                     buttons.forEach(button => button.classList.add('marked'));
                     thumbActive.classList.add('thumb-selected');
                 } else {
@@ -1232,26 +1221,42 @@
             }
 
             let resContainers = Array.from(document.querySelectorAll('.result-container'));
-            let resDivs = Array.from(document.querySelectorAll('.time-difference'));
-            let resMark = parentImg.parentElement.querySelectorAll('.marked');
+            let timeDivs = Array.from(document.querySelectorAll('.time-difference'));
+            let resMark = parentImage.parentElement.querySelectorAll('.marked');
             let allImages = Array.from(imageContainers[diffIndex].querySelectorAll('.image-box img'));
             let options = Array.from(document.querySelectorAll('.options'));
 
-            if (resMark.length === 1) {
-                resDivs[diffIndex].textContent = '0.00000';
-                resDivs[diffIndex].classList.remove('effect-on');
-                resDivs[diffIndex].classList.add('effect-off');
-                options[diffIndex].style.display = 'none';
-                let diff1 = resMark[0].closest('.image-box').querySelector('img');
-                setBoxDiff(diff1.dataset.frame, '', '0.00000', 'none');
-
-            } else if (resMark.length === 0) {
-                allImages.forEach(image => {image.parentElement.style.display = ''});
-                resDivs[diffIndex].classList.remove('effect-on');
-                resDivs[diffIndex].classList.add('effect-off');
+            if (resMark.length === 0) {
+                allImages.forEach(image => {image.parentElement.style.display = ''}); // 显示所有图片
+                timeDivs[diffIndex].textContent = '0.00000';
+                timeDivs[diffIndex].classList.remove('effect-on');
+                timeDivs[diffIndex].classList.add('effect-off');
                 resContainers[diffIndex].style.display = 'none';
                 options[diffIndex].style.display = 'none';
-                setBoxDiff('0 -> 0', 'none', '0.00000', 'none');
+                
+                boxSideBar('0 -> 0', 'none', '0.00000', 'none');
+
+                images = allImages;
+
+                // 显示全部缩略图
+                let thumbs = Array.from(document.querySelectorAll('.thumbnail'));
+                thumbs.forEach(thumb => {thumb.style.display = ''});
+                updateIndex();
+
+                updateThumbnails();
+                scrollToActive();
+                updateButtonStatus();
+
+            } else if (resMark.length === 1) {
+                allImages.forEach(image => {image.parentElement.style.display = ''}); // 显示所有图片
+                timeDivs[diffIndex].textContent = '0.00000';
+                timeDivs[diffIndex].classList.remove('effect-on');
+                timeDivs[diffIndex].classList.add('effect-off');
+                resContainers[diffIndex].style.display = 'none';
+                options[diffIndex].style.display = 'none';
+                
+                let diff1 = resMark[0].closest('.image-box').querySelector('img');
+                boxSideBar(diff1.dataset.frame, '', '0.00000', 'none');
 
                 images = allImages;
 
@@ -1266,29 +1271,26 @@
 
             } else if (resMark.length === 2) {
                 allImages.forEach(image => {
-                    if (image.parentElement.classList.contains('selected')) {
-                        image.parentElement.style.display = '';
-                    } else {
-                        image.parentElement.style.display = 'none';
-                    }
+                    image.parentElement.style.display = image.parentElement.classList.contains('selected') ? '' : 'none';
                 });
                 let frame1 = Number(resMark[0].closest('.image-box').querySelector('img').getAttribute('data-frame'));
                 let frame2 = Number(resMark[1].closest('.image-box').querySelector('img').getAttribute('data-frame'));
                 let timestamp1 = Number(resMark[0].closest('.image-box').querySelector('img').getAttribute('data-timestamp'));
                 let timestamp2 = Number(resMark[1].closest('.image-box').querySelector('img').getAttribute('data-timestamp'));
-                let diff = Math.abs(timestamp2 - timestamp1);
-                diff = diff.toFixed(5);
-                setBoxDiff(frame1 + ' -> ' + frame2, '', diff, '');
+                let diff = Math.abs(timestamp2 - timestamp1).toFixed(5);
+                
+                boxSideBar(frame1 + ' -> ' + frame2, '', diff, '');
 
-                resDivs[diffIndex].textContent = diff;
-                resDivs[diffIndex].classList.add('effect-on');
-                resDivs[diffIndex].classList.remove('effect-off');
+                timeDivs[diffIndex].textContent = diff;
+                timeDivs[diffIndex].classList.add('effect-on');
+                timeDivs[diffIndex].classList.remove('effect-off');
                 options[diffIndex].style.display = 'flex';
                 resContainers[diffIndex].style.display = 'flex';
 
                 // 隐藏缩略图
                 images = allImages.filter(img => img.parentElement.style.display === '');
                 updateIndex();
+                
                 updateThumbnails();
                 scrollToActive();
                 updateButtonStatus();
@@ -1397,12 +1399,12 @@
         });
 
         // 全部复制按钮
-        var copyDivs = Array.from(document.querySelectorAll('.all-copy'));
-        copyDivs.forEach(copy => {
+        var copyButtons = Array.from(document.querySelectorAll('.all-copy'));
+        copyButtons.forEach(copy => {
             copy.addEventListener('click', function(e) {
-                let resDivs = Array.from(document.querySelectorAll('.time-difference'));
+                let timeDivs = Array.from(document.querySelectorAll('.time-difference'));
                 let textToCopy = '';
-                resDivs.forEach(res => {
+                timeDivs.forEach(res => {
                     if (res.classList.contains('effect-on')) {
                         let rawContent = res.textContent;
                         // 去除空格、换行和其他空白字符
@@ -1420,8 +1422,8 @@
         });
 
         // 全部重选按钮
-        var againDivs = Array.from(document.querySelectorAll('.all-reselect'));
-        againDivs.forEach((again, index) => {
+        var againButtons = Array.from(document.querySelectorAll('.all-reselect'));
+        againButtons.forEach((again, index) => {
             again.addEventListener('click', function(e) {
                 let resMarked = document.querySelectorAll('.marked');
                 resMarked.forEach(marked => {
@@ -1449,13 +1451,13 @@
                 options.forEach(option => {
                     option.style.display = 'none';
                 });
-                setBoxDiff('0 -> 0', '0.00000', 'none');
+                boxSideBar('0 -> 0', '0.00000', 'none');
             });
         });
 
         // 额外信息标签
-        var extraBtn = Array.from(document.querySelectorAll('.ex-info'));
-        extraBtn.forEach((ex, index) => {
+        var extraButtons = Array.from(document.querySelectorAll('.ex-info'));
+        extraButtons.forEach((ex, index) => {
             ex.addEventListener('click', function(e) {
                 const newWindow = window.open('', '_blank');
                 // 获取当前点击的按钮的父容器
@@ -1683,7 +1685,7 @@
                     break;
                 case "Enter":
                     // 回车键被按下时执行的代码
-                    calcTimeCost();
+                    timeCost();
                     break;
                 case "Escape":
                     // Escape键被按下时执行的代码
