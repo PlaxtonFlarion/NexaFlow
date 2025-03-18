@@ -1,3 +1,18 @@
+<!--
+  _____                    _      _____                    _       _
+ |  ___| __ __ _ _ __ ___ (_)_  _|_   _|__ _ __ ___  _ __ | | __ _| |_ ___
+ | |_ | '__/ _` | '_ ` _ \| \ \/ / | |/ _ \ '_ ` _ \| '_ \| |/ _` | __/ _ \
+ |  _|| | | (_| | | | | | | |>  <  | |  __/ | | | | | |_) | | (_| | ||  __/
+ |_|  |_|  \__,_|_| |_| |_|_/_/\_\ |_|\___|_| |_| |_| .__/|_|\__,_|\__\___|
+                                                    |_|
+
+版权所有 (c) 2024  Framix(画帧秀)
+此文件受 Framix(画帧秀) 许可证的保护。您可以在 LICENSE.md 文件中查看详细的许可条款。
+
+Copyright (c) 2024  Framix(画帧秀)
+This file is licensed under the Framix(画帧秀) License. See the LICENSE.md file for more details.
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -504,23 +519,32 @@
             margin-right: 10px;
         }
 
-        /* toast提示框 */
-        .toast {
-            visibility: hidden; /* 默认隐藏 */
-            padding: 10px 20px;
-            background-color: #4e72b8;
-            color: white;
-            position: fixed; /* 固定位置，这样不会影响其他元素 */
-            bottom: 50%; /* 从底部开始的位置 */
-            left: 50%; /* 居中显示 */
-            transform: translateX(-50%); /* 用于水平居中 */
-            border-radius: 10px;
+        /* 🔹 通知框基础样式 */
+        #notification {
+            display: none; /* 默认隐藏 */
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%); /* 完全居中 */
+            padding: 12px 20px;
+            font-size: 16px;
             font-weight: bold;
-            transition: visibility 0.5s, opacity 0.5s linear;
+            color: white;
+            background: linear-gradient(135deg, #28a745, #218838); /* 绿色渐变背景 */
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease;
         }
-        .toast.show {
-            visibility: visible;
+        /* 🔹 复制失败时的红色样式 */
+        #notification.error {
+            background: linear-gradient(135deg, #dc3545, #c82333); /* 红色渐变背景 */
+        }
+        /* 🔹 显示通知时的动画 */
+        #notification.show {
+            display: block;
             opacity: 1;
+            transform: translate(-50%, -50%) scale(1.1); /* 居中并放大一点 */
         }
 
         /* 选项标签 */
@@ -784,6 +808,9 @@
     <div id="tooltip"></div>
 
     <!--复制提示框-->
+    <div id="notification"></div>
+
+    <!--复制提示框-->
     <div id="toast" class="toast"></div>
 
     <!--主页图片选择器-->
@@ -917,8 +944,7 @@
                 }
                 // 去除换行、空白等格式
                 let cleanContent = rawContent.trim().replace(/\s+/g, ' ');
-                copyArea(cleanContent);
-                toastDisplay('已复制:' + ' ' + cleanContent);
+                copyAction(cleanContent);
             });
         });
     </script>
@@ -1320,25 +1346,31 @@
         function closeAlert() {
             document.getElementById('custom-alert').style.display = 'none';
         }
-
-        // toast提示框
-        function toastDisplay(text) {
-            let toast = document.getElementById('toast');
-                toast.textContent = text;
-                toast.classList.add('show');
-                setTimeout(function() {
-                    toast.classList.remove('show');
-            }, 2000);
+        
+        // 复制
+        async function copyAction(content) {
+            try {
+                await navigator.clipboard.writeText(content);
+                showNotification('✅ 复制成功！');
+            } catch (err) {
+                console.error('Clipboard API 复制失败:', err);
+                showNotification('❌ 复制失败，请手动复制', true);
+            }
         }
 
-        // 复制区域
-        function copyArea(content) {
-            let textarea = document.createElement('textarea');
-            textarea.textContent = content;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
+        // 显示通知
+        function showNotification(message, isError = false) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            
+            // 根据是否是错误状态，切换样式
+            notification.classList.toggle('error', isError);
+            notification.classList.add('show');
+
+            // 2 秒后隐藏
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 2000);
         }
 
         // 页面加载事件
@@ -1393,8 +1425,7 @@
                 }
                 // 去除换行、空白等格式
                 let cleanContent = rawContent.trim().replace(/\s+/g, ' ');
-                copyArea(cleanContent);
-                toastDisplay('已复制:' + ' ' + cleanContent);
+                copyAction(cleanContent);
             });
         });
 
@@ -1416,8 +1447,7 @@
                         textToCopy += rawContent + '\t';
                     }
                 });
-                copyArea(textToCopy);
-                toastDisplay('已复制全部结果');
+                copyAction(textToCopy);
             });
         });
 

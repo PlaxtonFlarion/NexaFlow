@@ -1,3 +1,18 @@
+<!--
+  _____                    _      _____                    _       _
+ |  ___| __ __ _ _ __ ___ (_)_  _|_   _|__ _ __ ___  _ __ | | __ _| |_ ___
+ | |_ | '__/ _` | '_ ` _ \| \ \/ / | |/ _ \ '_ ` _ \| '_ \| |/ _` | __/ _ \
+ |  _|| | | (_| | | | | | | |>  <  | |  __/ | | | | | |_) | | (_| | ||  __/
+ |_|  |_|  \__,_|_| |_| |_|_/_/\_\ |_|\___|_| |_| |_| .__/|_|\__,_|\__\___|
+                                                    |_|
+
+版权所有 (c) 2024  Framix(画帧秀)
+此文件受 Framix(画帧秀) 许可证的保护。您可以在 LICENSE.md 文件中查看详细的许可条款。
+
+Copyright (c) 2024  Framix(画帧秀)
+This file is licensed under the Framix(画帧秀) License. See the LICENSE.md file for more details.
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -196,6 +211,7 @@
             background-color: rgba(0,0,0,0.7);
             color: white;
             border-radius: 5px;
+            z-index: 9999;
         }
 
         .line {
@@ -321,7 +337,7 @@
                             toCopy += cost.textContent + '\t';
                             cost.classList.add('finish');
                         });
-                        copyRes(toCopy);
+                        copyAction(toCopy);
                     }
 
                     let completeDevice = Array.from(device.parentElement.querySelectorAll('.complete'));
@@ -333,18 +349,17 @@
         document.addEventListener("DOMContentLoaded", function() {
             showLoadingAnimation();
         });
-
-        function copyRes(content) {
-            navigator.clipboard.writeText(content).then(function() {
-                console.log('Data successfully copied to clipboard!');
+        
+        async function copyAction(content) {
+            try {
+                await navigator.clipboard.writeText(content);
+                console.log('Data successfully copied to clipboard!');               
                 const notification = document.getElementById('notification');
                 notification.style.display = 'block';
-                setTimeout(() => {
-                    notification.style.display = 'none';
-                }, 1000);
-            }).catch(err => {
+                setTimeout(() => notification.style.display = 'none', 1000);
+            } catch (err) {
                 console.error('Unable to copy data to clipboard:', err);
-            });
+            }
         }
     </script>
 </body>

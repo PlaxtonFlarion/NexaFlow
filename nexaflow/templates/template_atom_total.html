@@ -1,3 +1,18 @@
+<!--
+  _____                    _      _____                    _       _
+ |  ___| __ __ _ _ __ ___ (_)_  _|_   _|__ _ __ ___  _ __ | | __ _| |_ ___
+ | |_ | '__/ _` | '_ ` _ \| \ \/ / | |/ _ \ '_ ` _ \| '_ \| |/ _` | __/ _ \
+ |  _|| | | (_| | | | | | | |>  <  | |  __/ | | | | | |_) | | (_| | ||  __/
+ |_|  |_|  \__,_|_| |_| |_|_/_/\_\ |_|\___|_| |_| |_| .__/|_|\__,_|\__\___|
+                                                    |_|
+
+版权所有 (c) 2024  Framix(画帧秀)
+此文件受 Framix(画帧秀) 许可证的保护。您可以在 LICENSE.md 文件中查看详细的许可条款。
+
+Copyright (c) 2024  Framix(画帧秀)
+This file is licensed under the Framix(画帧秀) License. See the LICENSE.md file for more details.
+-->
+
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/html">
 
@@ -178,24 +193,18 @@
         margin-right: 10px;
     }
 
-    /* toast提示 */
-    .toast {
-        visibility: hidden; /* 默认隐藏 */
-        padding: 10px 20px;
-        background-color: #4e72b8;
+    /* 通知 */
+    #notification {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 15px;
+        background-color: rgba(0,0,0,0.7);
         color: white;
-        position: fixed; /* 固定位置，这样不会影响其他元素 */
-        bottom: 50%; /* 从底部开始的位置 */
-        left: 50%; /* 居中显示 */
-        transform: translateX(-50%); /* 用于水平居中 */
-        border-radius: 10px;
-        font-weight: bold;
-        transition: visibility 0.5s, opacity 0.5s linear;
+        border-radius: 5px;
         z-index: 9999;
-    }
-    .toast.show {
-        visibility: visible;
-        opacity: 1;
     }
 
     /* 灯箱查看器 */
@@ -409,7 +418,7 @@
     </div>
 </div>
 
-<div id="toast" class="toast"></div>
+<div id="notification">数据已复制到剪贴板</div>
 
 <footer class="footer">
     <div class="container-fluid">
@@ -512,7 +521,7 @@
         }
     });
 
-    // 复制结果
+    // 复制结果按钮
     var diffBtn = document.getElementById('difference')
     diffBtn.addEventListener('click', function(e) {
         let rawContent = diffBtn.textContent;
@@ -523,21 +532,21 @@
         }
         // 去除换行、空白等格式
         let cleanContent = rawContent.trim().replace(/\s+/g, ' ');
-
-        let textarea = document.createElement('textarea');
-        textarea.textContent = cleanContent;
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-
-        let toast = document.getElementById('toast');
-        toast.textContent = '已复制';
-        toast.classList.add('show');
-        setTimeout(function() {
-            toast.classList.remove('show');
-        }, 2000);
+        // 显示通知
+        copyAction(cleanContent);
     });
+    
+    async function copyAction(content) {
+        try {
+            await navigator.clipboard.writeText(content);
+            console.log('Data successfully copied to clipboard!');               
+            const notification = document.getElementById('notification');
+            notification.style.display = 'block';
+            setTimeout(() => notification.style.display = 'none', 1000);
+        } catch (err) {
+            console.error('Unable to copy data to clipboard:', err);
+        }
+    }
 
     // 开启警告提示框
     function showAlert(message) {
