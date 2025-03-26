@@ -67,11 +67,13 @@ class Device(_Phone):
         """
         通过深度链接启动指定的应用服务。
         """
+        pattern = r"(?<=input_text=).*?(?=\\$|\"$|\\\\$)"
         compose = f"{url}?{service}"
-        cmd = f"{' '.join(self.__initial)} shell am start -W -a android.intent.action.VIEW -d \"{compose}\""
-        if input_text := re.search(r"(?<=input_text=).*?(?=\\&)", cmd):
+        initial = [f'"{self.__initial[0]}"'] + (self.__initial[1:])
+        cmd = f"{' '.join(initial)} shell am start -W -a android.intent.action.VIEW -d \"{compose}\""
+        if input_text := re.search(pattern, cmd):
             if (text := input_text.group()) != "''":
-                cmd = re.sub(r"(?<=input_text=).*?(?=\\&)", quote(text), cmd)
+                cmd = re.sub(pattern, "\'" + quote(text) + "\'", cmd)
         return resp if (resp := await Terminal.cmd_line_shell(cmd)) else None
 
     async def activity(self, *_, **__) -> typing.Optional[str]:
