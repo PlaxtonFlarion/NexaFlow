@@ -7,18 +7,91 @@
 #
 
 import re
-import datetime
+import typing
 import argparse
+import datetime
+import textwrap
 from frameflow import argument
 from nexaflow import const
 
 
 class Parser(object):
 
-    @staticmethod
-    def parse_shape(dim_str):
+    __parse_engine: typing.Optional["argparse.ArgumentParser"] = None
 
-        def limited(loc):
+    def __init__(self):
+        custom_made_usage = f"""\
+        --------------------------------------------    
+        \033[1;35m{const.NAME}\033[0m --flick --speed --alone --scale 0.5 
+        \033[1;35m{const.NAME}\033[0m --paint --scale 0.5 --omits 0,0,0,0.1
+        \033[1;35m{const.NAME}\033[0m --union <file.path> --union <file.path>  
+        \033[1;35m{const.NAME}\033[0m --merge <file.path> --merge <file.path>     
+        \033[1;35m{const.NAME}\033[0m --speed --scale 0.5 --video <video.file>
+        \033[1;35m{const.NAME}\033[0m --speed --scale 0.5 --stack <file.dir> --stack <file.dir>  
+        \033[1;35m{const.NAME}\033[0m --train <video.file> --scale 0.5
+        \033[1;35m{const.NAME}\033[0m --build <file.path> --shape 200,200    
+        \033[1;35m{const.NAME}\033[0m --basic --shape 350,700 --gauss=1 --grind=-1 --video <video.file>        
+        \033[1;35m{const.NAME}\033[0m --keras --boost --whist --shine --shape 350,700 --carry <file.path,A,B,C> --total <file.dir>
+        \033[1;35m{const.NAME}\033[0m --keras --boost --whist --shine --shape 350,700 --fully <file.path> --total <file.dir>                
+        \033[1;35m{const.NAME}\033[0m --keras --boost --start 00:00:08 --close 00:00:10 --video <video.file>
+        \033[1;35m{const.NAME}\033[0m --keras --boost --start 00:00:00 --limit 00:00:02 --video <video.file>
+        \033[1;35m{const.NAME}\033[0m --keras --boost --color --alike --shine --group --scale 0.5 --video <video.file> --video <video.file>
+        \033[1;35m{const.NAME}\033[0m --keras --boost --scale 0.5 --begin=0,1 --final=-1,-1 --video <video.file>
+        \033[1;35m{const.NAME}\033[0m --keras --boost --scale 0.5 --thres 0.98 --shift 3 --block 3 --video <video.file>
+        \033[1;35m{const.NAME}\033[0m --keras --boost --scale 0.5 --crops 0,0,1,0.8 --omits 0,0,0,0.1 --video <video.file>
+        \033[1;35m{const.NAME}\033[0m --keras --boost --scale 0.5 --debug --video <video.file>
+        """
+        self.__parse_engine = argparse.ArgumentParser(
+            const.NAME,
+            usage=f" \033[1;35m{const.NAME}\033[0m [-h] [--help] View help documentation\n" + custom_made_usage,
+            description=textwrap.dedent(f'''\
+                \033[1;32m{const.DESC} · {const.ALIAS}\033[0m
+                \033[1m-----------------------------\033[0m
+                \033[1;32mCommand Line Arguments {const.DESC}\033[0m
+            '''),
+            formatter_class=argparse.RawTextHelpFormatter
+        )
+
+        for keys, values in argument.Args.ARGUMENT.items():
+            description = "参数兼容"
+            if keys in ["核心操控", "辅助利器", "视控精灵"]:
+                description = "参数互斥"
+                mutually_exclusive = self.__parse_engine.add_argument_group(
+                    title=f"\033[1m^* {keys} *^\033[0m",
+                    description=textwrap.dedent(f'''\
+                        \033[1;33m{description}\033[0m
+                    '''),
+                )
+                cmds = mutually_exclusive.add_mutually_exclusive_group()
+            else:
+                cmds = self.__parse_engine.add_argument_group(
+                    f"\033[1m^* {keys} *^\033[0m",
+                    description=textwrap.dedent(f'''\
+                        \033[1;32m{description}\033[0m
+                    '''),
+                )
+
+            for key, value in values.items():
+                cmds.add_argument(
+                    key, **value["args"], help=textwrap.dedent(f'''\
+                        \033[1;34m^*{value["help"]}*^\033[0m
+                        ----------------------
+                                           
+                    ''')
+                )
+
+    @property
+    def parse_cmd(self) -> typing.Optional["argparse.Namespace"]:
+        return self.__parse_engine.parse_args()
+
+    @property
+    def parse_engine(self) -> typing.Optional["argparse.ArgumentParser"]:
+        return self.__parse_engine
+
+    @staticmethod
+    def parse_shape(dim_str: typing.Any) -> typing.Optional[tuple[int, int]]:
+
+        def limited(loc: typing.Any) -> tuple[int, int]:
             return min(9999, max(0, loc[0])), min(9999, max(0, loc[1]))
 
         if type(dim_str) is list and len(dim_str) >= 2:
@@ -38,9 +111,9 @@ class Parser(object):
         return None
 
     @staticmethod
-    def parse_stage(dim_str):
+    def parse_stage(dim_str: typing.Any) -> typing.Optional[tuple[int, int]]:
 
-        def limited(loc):
+        def limited(loc: typing.Any) -> tuple[int, int]:
             return min(999, max(-999, loc[0])), min(999, max(-999, loc[1]))
 
         if type(dim_str) is list and len(dim_str) >= 2:
@@ -60,7 +133,7 @@ class Parser(object):
         return None
 
     @staticmethod
-    def parse_times(dim_str):
+    def parse_times(dim_str: typing.Any) -> typing.Optional[str]:
         hour_scope, second_scope = 24, 86400
         if type(dim_str) is int or type(dim_str) is float:
             if dim_str >= second_scope:
@@ -91,7 +164,7 @@ class Parser(object):
         return None
 
     @staticmethod
-    def parse_mills(dim_str):
+    def parse_mills(dim_str: typing.Any) -> typing.Optional[typing.Union[int, float]]:
         if type(dim_str) is int or type(dim_str) is float:
             return float(dim_str)
         elif type(dim_str) is str:
@@ -108,7 +181,7 @@ class Parser(object):
         return None
 
     @staticmethod
-    def parse_hooks(dim_str):
+    def parse_hooks(dim_str: typing.Any) -> list[dict]:
         effective_hook_list, requires = [], ["x", "y", "x_size", "y_size"]
         for hook in dim_str:
             if type(hook) is dict:
@@ -126,34 +199,15 @@ class Parser(object):
         return effective_hook_list
 
     @staticmethod
-    def parse_waves(dim_str, min_val: int | float, max_val: int | float, decimal_places: int):
+    def parse_waves(dim_str: typing.Any, min_v: int | float, max_v: int | float, decimal: int) -> typing.Optional[int]:
         try:
             value = float(dim_str)
         except (ValueError, TypeError):
             return None
-        limited_value = round(max(min_val, min(max_val, value)), decimal_places)
-        return int(limited_value) if decimal_places == 0 else limited_value
-
-    @staticmethod
-    def parse_cmd() -> argparse.Namespace:
-        parser = argparse.ArgumentParser(
-            const.NAME, usage=None, description=f"Command Line Arguments {const.DESC}"
-        )
-
-        for keys, values in argument.Args.ARGUMENT.items():
-            description = "兼容"
-            if keys in ["核心操控", "辅助利器", "视控精灵"]:
-                description = "互斥"
-                mutually_exclusive = parser.add_argument_group(title=keys, description=description)
-                cmds = mutually_exclusive.add_mutually_exclusive_group()
-            else:
-                cmds = parser.add_argument_group(title=keys, description=description)
-
-            for key, value in values.items():
-                cmds.add_argument(key, **value["args"], help=value["help"])
-
-        return parser.parse_args()
+        limited_value = round(max(min_v, min(max_v, value)), decimal)
+        return int(limited_value) if decimal == 0 else limited_value
 
 
 if __name__ == '__main__':
+    Parser().parse_engine.print_help()
     pass

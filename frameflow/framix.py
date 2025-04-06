@@ -2703,7 +2703,8 @@ if __name__ == '__main__':
     注意:
         此代码块必须在 `__main__` 块下调用，否则可能会导致多进程模块无法正确加载。
     """
-    _lines = Parser.parse_cmd()
+    _parser = Parser()
+    _lines = _parser.parse_cmd
 
     # 激活日志记录功能，设置日志级别
     Active.active(_level := "DEBUG" if _lines.debug else "INFO")
