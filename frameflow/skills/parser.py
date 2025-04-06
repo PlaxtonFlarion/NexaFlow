@@ -65,7 +65,7 @@ class Parser(object):
                 cmds = mutually_exclusive.add_mutually_exclusive_group()
             else:
                 cmds = self.__parse_engine.add_argument_group(
-                    f"\033[1m^* {keys} *^\033[0m",
+                    title=f"\033[1m^* {keys} *^\033[0m",
                     description=textwrap.dedent(f'''\
                         \033[1;32m{description}\033[0m
                     '''),
@@ -76,7 +76,7 @@ class Parser(object):
                     key, **value["args"], help=textwrap.dedent(f'''\
                         \033[1;34m^*{value["help"]}*^\033[0m
                         ----------------------
-                                           
+                                                                   
                     ''')
                 )
 
