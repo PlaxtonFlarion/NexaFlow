@@ -145,7 +145,7 @@ class Deploy(object):
 
     @scale.setter
     def scale(self, value: typing.Any):
-        if effective := Parser.parse_waves(value, min_val=0.0, max_val=1.0, decimal_places=1):
+        if effective := Parser.parse_waves(value, min_v=0.0, max_v=1.0, decimal=1):
             self.deploys["FST"]["scale"] = effective
 
     @start.setter
@@ -162,17 +162,17 @@ class Deploy(object):
 
     @gauss.setter
     def gauss(self, value: typing.Any):
-        if effective := Parser.parse_waves(value, min_val=0.0, max_val=10.0, decimal_places=1):
+        if effective := Parser.parse_waves(value, min_v=0.0, max_v=10.0, decimal=1):
             self.deploys["FST"]["gauss"] = effective
 
     @grind.setter
     def grind(self, value: typing.Any):
-        if effective := Parser.parse_waves(value, min_val=-2.0, max_val=5.0, decimal_places=1):
+        if effective := Parser.parse_waves(value, min_v=-2.0, max_v=5.0, decimal=1):
             self.deploys["FST"]["grind"] = effective
 
     @frate.setter
     def frate(self, value: typing.Any):
-        if effective := Parser.parse_waves(value, min_val=1, max_val=60, decimal_places=0):
+        if effective := Parser.parse_waves(value, min_v=1, max_v=60, decimal=0):
             self.deploys["FST"]["frate"] = effective
 
 # Setter ###############################################################################################################
@@ -199,19 +199,19 @@ class Deploy(object):
 
     @thres.setter
     def thres(self, value: typing.Any):
-        if not (effective := Parser.parse_waves(value, min_val=0.0, max_val=1.0, decimal_places=2)):
+        if not (effective := Parser.parse_waves(value, min_v=0.0, max_v=1.0, decimal=2)):
             effective = const.THRES
         self.deploys["ALS"]["thres"] = effective
 
     @shift.setter
     def shift(self, value: typing.Any):
-        if not (effective := Parser.parse_waves(value, min_val=0, max_val=10, decimal_places=0)):
+        if not (effective := Parser.parse_waves(value, min_v=0, max_v=10, decimal=0)):
             effective = const.SHIFT
         self.deploys["ALS"]["shift"] = effective
 
     @block.setter
     def block(self, value: typing.Any):
-        if effective := Parser.parse_waves(value, min_val=1, max_val=10, decimal_places=0):
+        if effective := Parser.parse_waves(value, min_v=1, max_v=10, decimal=0):
             self.deploys["ALS"]["block"] = effective
 
     @crops.setter
