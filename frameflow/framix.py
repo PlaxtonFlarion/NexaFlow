@@ -20,14 +20,12 @@ Copyright (c) 2024  Framix(画帧秀)
 This file is licensed under the Framix(画帧秀) License. See the LICENSE.md file for more details.
 """
 
-# 接口
-__all__ = ["Clipix", "Alynex"]
+__all__ = ["Clipix", "Alynex"]  # 接口
 
 import os
 import sys
 import signal
 import shutil
-# from
 from frameflow.skills.show import Show
 from frameflow.argument import Wind
 from nexaflow import const
@@ -74,15 +72,15 @@ _env_symbol = os.path.pathsep
 
 # 根据应用名称确定工作目录和配置目录
 if _software == f"{const.NAME}.exe":
-    # Windows
+    # 当前处于 Windows 操作系统
     _fx_work = os.path.dirname(os.path.abspath(sys.argv[0]))
     _fx_feasible = os.path.dirname(_fx_work)
 elif _software == f"{const.NAME}":
-    # MacOS
+    # 当前处于 MacOS 操作系统
     _fx_work = os.path.dirname(sys.executable)
     _fx_feasible = os.path.dirname(_fx_work)
 elif _software == f"{const.NAME}.py":
-    # IDE
+    # 当前处于 IDE 环境
     _fx_work = os.path.dirname(os.path.abspath(__file__))
     _fx_feasible = os.path.dirname(_fx_work)
 else:
@@ -113,12 +111,12 @@ _turbo = os.path.join(_fx_work, const.F_SCHEMATIC, "supports").format()
 
 # 根据平台设置工具路径
 if _platform == "win32":
-    # Windows
+    # 当前处于 Windows 操作系统
     _adb = os.path.join(_turbo, "Windows", "platform-tools", "adb.exe")
     _fmp = os.path.join(_turbo, "Windows", "ffmpeg", "bin", "ffmpeg.exe")
     _fpb = os.path.join(_turbo, "Windows", "ffmpeg", "bin", "ffprobe.exe")
 elif _platform == "darwin":
-    # MacOS
+    # 当前处于 MacOS 操作系统
     _adb = os.path.join(_turbo, "MacOS", "platform-tools", "adb")
     _fmp = os.path.join(_turbo, "MacOS", "ffmpeg", "bin", "ffmpeg")
     _fpb = os.path.join(_turbo, "MacOS", "ffmpeg", "bin", "ffprobe")
@@ -172,45 +170,37 @@ try:
     import tempfile
     import aiofiles
     import datetime
-    # from
     from loguru import logger
     from functools import partial
     from rich.prompt import Prompt
     from multiprocessing import freeze_support
     from concurrent.futures import ProcessPoolExecutor
-    # from
-    from engine.tinker import FramixAnalysisError
-    from engine.tinker import FramixAnalyzerError
-    from engine.tinker import FramixReporterError
-    from engine.tinker import Craft, Finder, Active, Review
+    from engine.tinker import (
+        Craft, Finder, Active, Review,
+        FramixAnalysisError, FramixAnalyzerError, FramixReporterError
+    )
     from engine.switch import Switch
     from engine.terminal import Terminal
-    # from
-    from frameflow.skills.parser import Parser
     from frameflow.skills.cubicle import DB
+    from frameflow.skills.parser import Parser
     from frameflow.skills.profile import Deploy, Option
-    # from
     from nexaflow import toolbox
     from nexaflow.report import Report
     from nexaflow.video import VideoObject, VideoFrame
     from nexaflow.cutter.cutter import VideoCutter
-    from nexaflow.hook import FrameSizeHook, FrameSaveHook
-    from nexaflow.hook import PaintCropHook, PaintOmitHook
+    from nexaflow.hook import (
+        FrameSizeHook, FrameSaveHook, PaintCropHook, PaintOmitHook
+    )
+    from nexaflow.classifier.base import ClassifierResult
     from nexaflow.classifier.keras_classifier import KerasStruct
 except (ImportError, ModuleNotFoundError, RuntimeError):
     Show.console.print_exception()
     Show.fail()
     sys.exit(Show.closure())
 
-# 定义类型变量
-_T = typing.TypeVar("_T")
+_T = typing.TypeVar("_T")  # 定义类型变量
 
 
-#   __  __ _         _
-#  |  \/  (_)___ ___(_) ___  _ __  ___
-#  | |\/| | / __/ __| |/ _ \| '_ \/ __|
-#  | |  | | \__ \__ \ | (_) | | | \__ \
-#  |_|  |_|_|___/___/_|\___/|_| |_|___/
 class Missions(object):
 
     # """Initialization"""
@@ -235,7 +225,7 @@ class Missions(object):
         self.fpb = kwargs["fpb"]
 
     # """Child Process"""
-    def amazing(self, option: "Option", deploy: "Deploy", vision: str, *args) -> _T:
+    def amazing(self, option: "Option", deploy: "Deploy", vision: str, *args) -> "_T":
         """
         异步分析视频的子进程方法。
 
@@ -275,7 +265,7 @@ class Missions(object):
         return loop_complete
 
     # """Child Process"""
-    def bizarre(self, option: "Option", deploy: "Deploy", vision: str, *args) -> _T:
+    def bizarre(self, option: "Option", deploy: "Deploy", vision: str, *args) -> "_T":
         """
         异步执行视频分析的子进程方法。
 
@@ -309,11 +299,6 @@ class Missions(object):
         )
         return loop_complete
 
-    #   ____  ____
-    #  |  _ \| __ )
-    #  | | | |  _ \
-    #  | |_| | |_) |
-    #  |____/|____/
     @staticmethod
     async def enforce(db: "DB", style: str, total: str, title: str, nest: str) -> None:
         """
@@ -346,16 +331,8 @@ class Missions(object):
         await db.create(column_list := ["style", "total", "title", "nest"])
         await db.insert(column_list, [style, total, title, nest])
 
-    #   _____ ____ _____   _____               _
-    #  |  ___/ ___|_   _| |_   _| __ __ _  ___| | __
-    #  | |_  \___ \ | |     | || '__/ _` |/ __| |/ /
-    #  |  _|  ___) || |     | || | | (_| | (__|   <
-    #  |_|   |____/ |_|     |_||_|  \__,_|\___|_|\_\
     async def fst_track(
-            self,
-            deploy: "Deploy",
-            clipix: "Clipix",
-            task_list: list[list],
+            self, deploy: "Deploy", clipix: "Clipix", task_list: list[list], *_, **__
     ) -> tuple[list, list]:
         """
         异步执行视频的处理追踪，包括内容提取和平衡视频长度等功能。
@@ -438,17 +415,8 @@ class Missions(object):
 
         return originals, indicates
 
-    #   _____ ____ _____  __        __
-    #  |  ___/ ___|_   _| \ \      / /_ ___   _____  ___
-    #  | |_  \___ \ | |    \ \ /\ / / _` \ \ / / _ \/ __|
-    #  |  _|  ___) || |     \ V  V / (_| |\ V /  __/\__ \
-    #  |_|   |____/ |_|      \_/\_/ \__,_| \_/ \___||___/
     async def fst_waves(
-            self,
-            deploy: "Deploy",
-            clipix: "Clipix",
-            task_list: list[list],
-            originals: list
+            self, deploy: "Deploy", clipix: "Clipix", task_list: list[list], originals: list, *_, **__
     ) -> list:
         """
         异步执行视频的过滤和改进操作。
@@ -504,18 +472,8 @@ class Missions(object):
 
         return video_filter_list
 
-    #      _    _     ____    ____                      _
-    #     / \  | |   / ___|  / ___| _ __   ___  ___  __| |
-    #    / _ \ | |   \___ \  \___ \| '_ \ / _ \/ _ \/ _` |
-    #   / ___ \| |___ ___) |  ___) | |_) |  __/  __/ (_| |
-    #  /_/   \_\_____|____/  |____/| .__/ \___|\___|\__,_|
-    #                              |_|
     async def als_speed(
-            self,
-            deploy: "Deploy",
-            clipix: "Clipix",
-            report: "Report",
-            task_list: list[list]
+            self, deploy: "Deploy", clipix: "Clipix", report: "Report", task_list: list[list], *_, **__
     ) -> None:
         """
         异步执行视频的速度分析和调整，包括视频过滤、尺寸调整等功能。
@@ -584,11 +542,12 @@ class Missions(object):
             Show.show_panel(self.level, "\n".join(message_list), Wind.METRIC)
 
         async def render_speed(todo_list: list[list]):
-            total_path: str
-            query_path: str
-            frame_path: str
-            extra_path: str
-            proto_path: str
+            total_path: typing.Any
+            query_path: typing.Any
+            frame_path: typing.Any
+            extra_path: typing.Any
+            proto_path: typing.Any
+
             start, end, cost, scores, struct = 0, 0, 0, None, None
             *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo_list
 
@@ -615,18 +574,8 @@ class Missions(object):
                 *(self.enforce(db, *ns) for ns in render_result)
             )
 
-    #      _    _     ____    ____            _                     _  __
-    #     / \  | |   / ___|  | __ )  __ _ ___(_) ___    ___  _ __  | |/ /___ _ __ __ _ ___
-    #    / _ \ | |   \___ \  |  _ \ / _` / __| |/ __|  / _ \| '__| | ' // _ \ '__/ _` / __|
-    #   / ___ \| |___ ___) | | |_) | (_| \__ \ | (__  | (_) | |    | . \  __/ | | (_| \__ \
-    #  /_/   \_\_____|____/  |____/ \__,_|___/_|\___|  \___/|_|    |_|\_\___|_|  \__,_|___/
     async def als_keras(
-            self,
-            deploy: "Deploy",
-            clipix: "Clipix",
-            report: "Report",
-            task_list: list[list],
-            **kwargs
+            self, deploy: "Deploy", clipix: "Clipix", report: "Report", task_list: list[list], *_, **kwargs
     ) -> None:
         """
         异步执行视频的 Keras 模式分析或基本模式分析，包括视频过滤、尺寸调整和动态模板渲染等功能。
@@ -639,6 +588,7 @@ class Missions(object):
             clipix (Clipix): 视频处理工具对象，负责具体的视频内容调整和分析操作。
             report (Report): 报告处理对象，负责记录和展示处理结果。
             task_list (list[list]): 包含视频和其他相关参数的任务列表。
+            *_: 接受并忽略所有传入的位置参数。
             **kwargs: 其他可选参数，包括以下关键字参数：
                 option (Option): 选项对象，包含各种运行时选项配置，用于控制分析和处理流程。
                 alynex (Alynex): 模型分析工具，决定使用 Keras 模型还是基础分析。
@@ -784,11 +734,6 @@ class Missions(object):
                 *(self.enforce(db, *ns) for ns in render_result)
             )
 
-    #    ____                _     _
-    #   / ___|___  _ __ ___ | |__ (_)_ __   ___
-    #  | |   / _ \| '_ ` _ \| '_ \| | '_ \ / _ \
-    #  | |__| (_) | | | | | | |_) | | | | |  __/
-    #   \____\___/|_| |_| |_|_.__/|_|_| |_|\___|
     async def combine(self, report: "Report") -> None:
         """
         异步生成组合报告的方法。
@@ -814,11 +759,6 @@ class Missions(object):
         logger.debug(tip := f"没有可以生成的报告")
         return Show.show_panel(self.level, tip, Wind.KEEPER)
 
-    #    ____                _     _               ____
-    #   / ___|___  _ __ ___ | |__ (_)_ __   ___   / ___|_ __ _   ___  __
-    #  | |   / _ \| '_ ` _ \| '_ \| | '_ \ / _ \ | |   | '__| | | \ \/ /
-    #  | |__| (_) | | | | | | |_) | | | | |  __/ | |___| |  | |_| |>  <
-    #   \____\___/|_| |_| |_|_.__/|_|_| |_|\___|  \____|_|   \__,_/_/\_\
     async def combine_crux(self, share_temp: str, total_temp: str, merge: list) -> None:
         """
         异步生成汇总报告的方法。
@@ -869,24 +809,20 @@ class Missions(object):
 
     # """时空纽带分析系统"""
     async def combine_view(self, merge: list) -> None:
-        """
-        合并视图数据。
-        """
+        # 合并视图数据。
         await self.combine_crux(
             self.view_share_temp, self.view_total_temp, merge
         )
 
     # """时序融合分析系统"""
     async def combine_main(self, merge: list) -> None:
-        """
-        合并视图数据。
-        """
+        # 合并视图数据。
         await self.combine_crux(
             self.main_share_temp, self.main_total_temp, merge
         )
 
     # """视频解析探索"""
-    async def video_file_task(self, video_file_list: list, option: "Option", deploy: "Deploy"):
+    async def video_file_task(self, video_file_list: list, option: "Option", deploy: "Deploy") -> None:
         """
         异步处理视频文件任务，并根据配置选项进行分析。
 
@@ -959,7 +895,7 @@ class Missions(object):
         await self.combine(report)
 
     # """影像堆叠导航"""
-    async def video_data_task(self, video_data_list: list, option: "Option", deploy: "Deploy"):
+    async def video_data_task(self, video_data_list: list, option: "Option", deploy: "Deploy") -> None:
         """
         异步处理视频数据任务，并根据配置选项进行分析。
 
@@ -988,9 +924,7 @@ class Missions(object):
         """
 
         async def load_entries():
-            """
-            加载视频数据条目。
-            """
+            # 加载视频数据条目。
             for video_data in video_data_list:
                 finder_result = finder.accelerate(video_data)
                 if isinstance(finder_result, Exception):
@@ -1045,7 +979,7 @@ class Missions(object):
                 await self.combine(report)
 
     # """模型训练大师"""
-    async def train_model(self, video_file_list: list, option: "Option", deploy: "Deploy"):
+    async def train_model(self, video_file_list: list, option: "Option", deploy: "Deploy") -> None:
         """
         异步模型训练任务。
 
@@ -1168,7 +1102,7 @@ class Missions(object):
         )
 
     # """模型编译大师"""
-    async def build_model(self, video_data_list: list, option: "Option", deploy: "Deploy"):
+    async def build_model(self, video_data_list: list, option: "Option", deploy: "Deploy") -> None:
         """
         异步模型构建任务。
 
@@ -1306,7 +1240,7 @@ class Missions(object):
         Show.show_panel(self.level, "\n".join(final_model_list), Wind.DESIGNER)
 
     # """线迹创造者"""
-    async def painting(self, option: "Option", deploy: "Deploy"):
+    async def painting(self, option: "Option", deploy: "Deploy") -> None:
         """
         使用设备截图进行绘制操作，并在图像上添加网格线。
 
@@ -1491,18 +1425,14 @@ class Missions(object):
                 Show.show_panel(self.level, tip_, Wind.KEEPER)
 
     # """循环节拍器 | 脚本驱动者 | 全域执行者"""
-    async def analysis(self, option: "Option", deploy: "Deploy"):
+    async def analysis(self, option: "Option", deploy: "Deploy") -> None:
 
         async def anything_film():
-            """
-            初始化并启动设备的视频录制任务。
-            """
 
+            # 初始化并启动设备的视频录制任务
             async def wait_for_device(device):
-                """
-                等待设备上线
-                """
-                Show.notes(f"[bold #FAFAD2]Wait Device Online -> {device.tag} {device.sn}[/]")
+                # 等待设备上线
+                Show.notes(f"[bold #FAFAD2]Wait Device Online -> {device.tag} {device.sn}")
                 await Terminal.cmd_line(self.adb, "-s", device.sn, "wait-for-device")
 
             Show.notes(f"**<* {('独立' if self.alone else '全局')}控制模式 *>**")
@@ -1560,9 +1490,7 @@ class Missions(object):
             return todo_list
 
         async def anything_over():
-            """
-            完成任务后的处理。
-            """
+            # 完成任务后的处理
             effective_list = await asyncio.gather(
                 *(record.ask_close_record(device, video_temp, transports)
                   for device, (video_temp, transports, *_) in zip(device_list, task_list))
@@ -1583,9 +1511,7 @@ class Missions(object):
             Show.show_panel(self.level, "\n".join(check_list), Wind.EXPLORER)
 
         async def anything_well():
-            """
-            执行任务处理，根据不同模式选择适当的分析方法。
-            """
+            # 执行任务处理，根据不同模式选择适当的分析方法
             if len(task_list) == 0:
                 logger.debug(tip := f"没有有效任务")
                 return Show.show_panel(self.level, tip, Wind.KEEPER)
@@ -1604,17 +1530,13 @@ class Missions(object):
                 Show.show_panel(self.level, tip, Wind.EXPLORER)
 
         async def load_timer():
-            """
-            并行执行定时任务，对设备列表中的每个设备进行计时操作。
-            """
+            # 并行执行定时任务，对设备列表中的每个设备进行计时操作
             await asyncio.gather(
                 *(record.check_timer(device, timer_mode) for device in device_list)
             )
 
+        # 加载并解析传入的 carry 字符串，返回包含执行指令的字典或异常
         async def load_carry(carry):
-            """
-            加载并解析传入的 carry 字符串，返回包含执行指令的字典或异常。
-            """
             # 解析传入的 carry 字符串，分割为路径和关键字两部分
             if len(parts := re.split(r",|;|!|\s", carry)) >= 2:
                 loc_file, *key_list = parts
@@ -1631,10 +1553,8 @@ class Missions(object):
 
             raise ValueError("参数错误")
 
+        # 异步加载和解析完整的命令文件
         async def load_fully(fully):
-            """
-            异步加载和解析完整的命令文件。
-            """
             fully = await Craft.revise_path(fully)
             try:
                 async with aiofiles.open(fully, "r", encoding=const.CHARSET) as f:
@@ -1795,7 +1715,7 @@ class Missions(object):
 
             for exec_pairs in exec_pairs_list:
                 if len(live_devices) == 0:
-                    return Show.notes(f"[bold #F0FFF0 on #000000]All tasks canceled[/]")
+                    return Show.notes(f"[bold #F0FFF0 on #000000]All tasks canceled")
                 for exec_func, exec_vals, exec_args, exec_kwds in exec_pairs:
                     exec_vals = await substitute_star(exec_vals)
                     if exec_func == "audio_player":
@@ -1808,7 +1728,7 @@ class Missions(object):
                 try:
                     exec_status_list = await asyncio.gather(*exec_tasks.values())
                 except asyncio.CancelledError:
-                    return Show.notes(f"[bold #F0FFF0 on #000000]All tasks canceled[/]")
+                    return Show.notes(f"[bold #F0FFF0 on #000000]All tasks canceled")
                 finally:
                     exec_tasks.clear()
 
@@ -1846,19 +1766,18 @@ class Missions(object):
 
         lower_bound_, upper_bound_ = (8, 300) if self.whist else (5, 300)
 
-        # Flick Loop
+        # Flick Loop 处理控制台应用程序中的复杂交互过程，主要负责管理设备显示、设置报告以及通过命令行界面处理各种用户输入
         if self.flick:
-            """
-            处理控制台应用程序中的复杂交互过程，主要负责管理设备显示、设置报告以及通过命令行界面处理各种用户输入。
-            """
             report = Report(option.total_place)
             report.title = f"{input_title_}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
+
             timer_mode = lower_bound_
+
             while True:
                 try:
                     await manage_.display_device()
                     start_tips_ = f"<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/] 秒>>>"
-                    if action_ := Prompt.ask(f"[bold #5FD7FF]{start_tips_}[/]", console=Show.console):
+                    if action_ := Prompt.ask(f"[bold #5FD7FF]{start_tips_}", console=Show.console):
                         if (select_ := action_.strip().lower()) == "device":
                             device_list = await manage_.another_device()
                             continue
@@ -1869,7 +1788,7 @@ class Missions(object):
                             if match_ := re.search(r"(?<=header\s).*", select_):
                                 if hd_ := match_.group().strip():
                                     src_hd_, a_, b_ = f"{input_title_}_{time.strftime('%Y%m%d_%H%M%S')}", 10000, 99999
-                                    Show.notes(f"{const.SUC}New title set successfully[/]")
+                                    Show.notes(f"{const.SUC}New title set successfully")
                                     report.title = f"{src_hd_}_{hd_}" if hd_ else f"{src_hd_}_{random.randint(a_, b_)}"
                                     continue
                             raise FramixAnalysisError
@@ -1877,7 +1796,7 @@ class Missions(object):
                             await self.combine(report)
                             break
                         elif select_ == "deploy":
-                            Show.notes(f"{const.WRN}请完全退出编辑器再继续操作[/]")
+                            Show.notes(f"{const.WRN}请完全退出编辑器再继续操作")
                             deploy.dump_deploy(self.initial_deploy)
                             first_ = ["Notepad"] if sys.platform == "win32" else ["open", "-W", "-a", "TextEdit"]
                             first_.append(self.initial_deploy)
@@ -1889,7 +1808,7 @@ class Missions(object):
                             timer_value_ = int(select_)
                             if timer_value_ > upper_bound_ or timer_value_ < lower_bound_:
                                 bound_tips_ = f"{lower_bound_} <= [bold #FFD7AF]Time[/] <= {upper_bound_}"
-                                Show.notes(f"[bold #FFFF87]{bound_tips_}[/]")
+                                Show.notes(f"[bold #FFFF87]{bound_tips_}")
                             timer_mode = max(lower_bound_, min(upper_bound_, timer_value_))
                         else:
                             raise FramixAnalysisError
@@ -1906,11 +1825,9 @@ class Missions(object):
                 finally:
                     await record.clean_event()
 
-        # Other Loop
+        # Other Loop 执行批量脚本任务，并根据脚本中的配置进行操作
         elif self.carry or self.fully:
-            """
-            执行批量脚本任务，并根据脚本中的配置进行操作。
-            """
+
             if self.carry:
                 load_script_data_ = await asyncio.gather(
                     *(load_carry(carry_) for carry_ in self.carry), return_exceptions=True
@@ -2042,35 +1959,14 @@ class Missions(object):
             raise FramixAnalysisError(f"Command does not exist")
 
 
-#    ____ _ _       _
-#   / ___| (_)_ __ (_)_  __
-#  | |   | | | '_ \| \ \/ /
-#  | |___| | | |_) | |>  <
-#   \____|_|_| .__/|_/_/\_\
-#            |_|
 class Clipix(object):
 
     def __init__(self, fmp: str, fpb: str):
-        """
-        初始化方法 `__init__` 用于设置 `Clipix` 对象的基础配置，接收两个参数 `fmp` 和 `fpb`。
-
-        - **fmp**:
-            表示 `ffmpeg` 的路径，`ffmpeg` 是一个广泛使用的多媒体处理工具，用于视频、音频的编解码、转换、流媒体处理等功能。此路径用于定位 `ffmpeg` 可执行文件。
-
-        - **fpb**:
-            表示 `ffprobe` 的路径，`ffprobe` 是 `ffmpeg` 套件中的一个工具，专门用于分析多媒体文件的格式、编码、比特率、元数据等信息。此路径用于定位 `ffprobe` 可执行文件。
-
-        在初始化过程中，这两个路径被存储在对象的实例变量 `self.fmp` 和 `self.fpb` 中，以便后续在多媒体处理任务中调用。
-        """
-        self.fmp = fmp
-        self.fpb = fpb
+        self.fmp = fmp  # 表示 `ffmpeg` 的路径
+        self.fpb = fpb  # 表示 `ffprobe` 的路径
 
     async def vision_content(
-            self,
-            video_temp: str,
-            start: typing.Optional[str],
-            close: typing.Optional[str],
-            limit: typing.Optional[str],
+            self, video_temp: str, start: typing.Optional[str], close: typing.Optional[str], limit: typing.Optional[str],
     ) -> tuple[str, str, float, tuple, dict]:
         """
         异步获取特定视频文件的内容分析，包括实际和平均帧率、视频时长及其视觉处理点。
@@ -2112,7 +2008,9 @@ class Clipix(object):
 
         return rlt, avg, duration, original, vision_point
 
-    async def vision_balance(self, duration: float, standard: float, src: str, frate: float) -> tuple[str, str]:
+    async def vision_balance(
+            self, duration: float, standard: float, src: str, frate: float
+    ) -> tuple[str, str]:
         """
         异步调整视频时长以匹配指定的标准时长，通过裁剪视频的起始和结束时间。
 
@@ -2147,7 +2045,9 @@ class Clipix(object):
         return video_dst, video_blc
 
     @staticmethod
-    async def vision_improve(deploy: "Deploy", original: tuple, filters: list) -> list:
+    async def vision_improve(
+            deploy: "Deploy", original: tuple, filters: list
+    ) -> list:
         """
         异步方法，用于改进视频的视觉效果，通过调整视频尺寸和应用过滤器列表。
 
@@ -2172,7 +2072,9 @@ class Clipix(object):
 
         return video_filter_list
 
-    async def pixels(self, function: "typing.Callable", video_filter: list, src: str, dst: str, **kwargs) -> tuple[str]:
+    async def pixels(
+            self, function: "typing.Callable", video_filter: list, src: str, dst: str, **kwargs
+    ) -> tuple[str]:
         """
         执行视频过滤处理函数，应用指定的视频过滤参数，从源视频生成目标视频。
 
@@ -2191,20 +2093,13 @@ class Clipix(object):
         return await function(self.fmp, video_filter, src, dst, **kwargs)
 
 
-#      _    _
-#     / \  | |_   _ _ __   _____  __
-#    / _ \ | | | | | '_ \ / _ \ \/ /
-#   / ___ \| | |_| | | | |  __/>  <
-#  /_/   \_\_|\__, |_| |_|\___/_/\_\
-#             |___/
 class Alynex(object):
 
     __ks: typing.Optional["KerasStruct"] = KerasStruct()
 
-    def __init__(self, matrix: typing.Optional[str], option: "Option", deploy: "Deploy", extent: "typing.Any"):
-        """
-        初始化方法，配置分析器的矩阵、选项、部署信息和日志记录的详细程度。
-        """
+    def __init__(
+            self, matrix: typing.Optional[str], option: "Option", deploy: "Deploy", extent: "typing.Any"
+    ):
         self.matrix = matrix
         self.option = option
         self.deploy = deploy
@@ -2275,11 +2170,9 @@ class Alynex(object):
             3. 记录视频帧加载完成后的详细信息和耗时。
         """
 
-        # 开始计时
-        start_time_ = time.time()
+        start_time_ = time.time()  # 开始计时
 
-        # 创建 VideoObject 对象
-        video = VideoObject(vision)
+        video = VideoObject(vision)  # 创建 VideoObject 对象
 
         # 记录视频帧长度和尺寸
         logger.debug(f"{(task_name_ := '视频帧长度: ' f'{video.frame_count}')}")
@@ -2305,8 +2198,7 @@ class Alynex(object):
         logger.debug(f"{(task_info := '视频帧加载耗时: ' f'{time.time() - start_time_:.2f} 秒')}")
         Show.show_panel(self.extent, f"{task_name}\n{task_info}", Wind.LOADER)
 
-        # 返回 VideoObject 对象
-        return video
+        return video  # 返回 VideoObject 对象
 
     @staticmethod
     async def ask_frame_grid(vision: str) -> typing.Optional[str]:
@@ -2417,7 +2309,7 @@ class Alynex(object):
             4. 根据处理流程返回视频分析结果。
         """
 
-        async def frame_forge(frame):
+        async def frame_forge(frame: "VideoFrame") -> typing.Union[dict, Exception]:
             """
             保存视频帧为图片文件。
 
@@ -2436,7 +2328,7 @@ class Alynex(object):
                 return e
             return {"id": frame.frame_id, "picture": os.path.join(os.path.basename(frame_path), picture)}
 
-        async def frame_flick():
+        async def frame_flick() -> tuple:
             """
             提取视频的关键帧信息。
 
@@ -2493,7 +2385,7 @@ class Alynex(object):
             # 返回关键帧信息和时间成本
             return begin_frame.frame_id, final_frame.frame_id, time_cost
 
-        async def frame_hold():
+        async def frame_hold() -> list:
             """
             获取并返回视频的所有帧数据。
 
@@ -2542,12 +2434,12 @@ class Alynex(object):
 
             return frames_list
 
-        async def frame_flow():
+        async def frame_flow() -> typing.Optional["ClassifierResult"]:
             """
             处理视频帧，包括裁剪和保存。
 
             返回:
-                list: 处理后的视频帧结构数据。
+                typing.Optional["ClassifierResult"]: 处理后的视频帧结构数据，没有获取则返回 None。
             """
             cutter = VideoCutter()
 
@@ -2635,9 +2527,10 @@ class Alynex(object):
             except AssertionError as e:
                 logger.debug(e)
                 return Show.show_panel(self.extent, e, Wind.KEEPER)
+
             return struct_data
 
-        async def analytics_basic():
+        async def analytics_basic() -> tuple:
             """
             执行基础视频分析，保存帧图片并计算时间成本。
 
@@ -2665,7 +2558,7 @@ class Alynex(object):
             time_cost = final_frame.timestamp - begin_frame.timestamp
             return begin_frame.frame_id, final_frame.frame_id, time_cost, scores, None
 
-        async def analytics_keras():
+        async def analytics_keras() -> tuple:
             """
             执行基于Keras模型的视频分析，保存帧图片并计算时间成本。
 
@@ -2717,11 +2610,6 @@ class Alynex(object):
         return Review(*(await analytics_basic()))
 
 
-#   _____                 _   _
-#  |  ___|   _ _ __   ___| |_(_) ___  _ __
-#  | |_ | | | | '_ \ / __| __| |/ _ \| '_ \
-#  |  _|| |_| | | | | (__| |_| | (_) | | | |
-#  |_|   \__,_|_| |_|\___|\__|_|\___/|_| |_|
 async def arithmetic(function: "typing.Callable", parameters: list[str]) -> None:
     """
     异步执行函数，并处理参数路径修正和异常捕获。
@@ -2734,6 +2622,7 @@ async def arithmetic(function: "typing.Callable", parameters: list[str]) -> None
         捕获并处理 FramixAnalysisError, FramixAnalyzerError, FramixReporterError 异常。
         如果发生异常，记录异常信息并退出程序。
     """
+
     try:
         # 修正参数路径
         parameters = [(await Craft.revise_path(param)) for param in parameters]
@@ -2747,11 +2636,6 @@ async def arithmetic(function: "typing.Callable", parameters: list[str]) -> None
         sys.exit(Show.closure())
 
 
-#   _____                 _   _
-#  |  ___|   _ _ __   ___| |_(_) ___  _ __
-#  | |_ | | | | '_ \ / __| __| |/ _ \| '_ \
-#  |  _|| |_| | | | | (__| |_| | (_) | | | |
-#  |_|   \__,_|_| |_|\___|\__|_|\___/|_| |_|
 async def scheduling() -> None:
     """
     根据命令行参数调度并执行相应的任务。
@@ -2768,9 +2652,7 @@ async def scheduling() -> None:
     """
 
     async def _already_installed():
-        """
-        检查 scrcpy 是否已安装，如果未安装则显示安装提示并退出程序。
-        """
+        # 检查 scrcpy 是否已安装，如果未安装则显示安装提示并退出程序
         if shutil.which("scrcpy"):
             return
         Show.show_panel(
@@ -2801,48 +2683,22 @@ async def scheduling() -> None:
         sys.exit(Show.closure())
 
 
-#   __  __       _
-#  |  \/  | __ _(_)_ __
-#  | |\/| |/ _` | | '_ \
-#  | |  | | (_| | | | | |
-#  |_|  |_|\__,_|_|_| |_|
 if __name__ == '__main__':
-    """
-    # ***********************
-    # *                     *
-    # *  Welcome to Framix  *
-    # *      Execution      *
-    # *                     *
-    # ***********************
-    #           | |
-    #           | |
-    #         __| |__
-    #        |_______|
-    
-    应用程序入口点，根据命令行参数初始化并运行主进程。
-
-    主要功能：
-        1. 显示应用程序标志和帮助文档。
-        2. 解析命令行参数。
-        3. 设置日志级别和系统环境变量。
-        4. 检查并加载必要的工具和模板文件。
-        5. 初始化配置和部署对象。
-        6. 根据命令行参数选择并运行相应的任务（视频处理、数据堆栈、模型训练、模型构建）。
-
-    环境变量:
-        PATH   系统路径，用于查找可执行文件。
-        CONST  应用程序常量。
-
-    异常处理:
-        捕获并处理常见的系统异常（如 OSError, RuntimeError, MemoryError, TypeError, ValueError, AttributeError）。
-        支持键盘中断（Ctrl+C），优雅地退出程序。
+    """   
+    **应用程序入口点，根据命令行参数初始化并运行主进程**
+                                        
+    ***********************
+    *                     *
+    *  Welcome to Framix  *
+    *                     *
+    ***********************    
     """
 
     # 在 Windows 平台上启动多进程时确保冻结的可执行文件可以正确运行。
     freeze_support()
 
     """
-    命令行参数解析器解析命令行参数。
+    **命令行参数解析器解析命令行参数**
     
     注意:
         此代码块必须在 `__main__` 块下调用，否则可能会导致多进程模块无法正确加载。
@@ -2914,7 +2770,7 @@ if __name__ == '__main__':
                 logger.debug(f"  {_attr_key} Set <{_attr}> {_attribute} -> {getattr(_deploy, _attr)}")
 
     """
-    将命令行参数解析结果转换为基本数据类型。
+    **将命令行参数解析结果转换为基本数据类型**
     
     注意:
         将命令行参数解析器解析得到的结果存储在基本数据类型的变量中。
@@ -2931,8 +2787,7 @@ if __name__ == '__main__':
 
     # 初始化主要任务对象
     _missions = Missions(
-        _wires, _level, _power,
-        *_positions,
+        _wires, _level, _power, *_positions,
         atom_total_temp=_atom_total_temp,
         main_share_temp=_main_share_temp,
         main_total_temp=_main_total_temp,
@@ -2949,7 +2804,7 @@ if __name__ == '__main__':
     Show.load_animation()
 
     """
-    创建主事件循环。
+    **创建主事件循环**
     
     注意: 
         该事件循环对象 `_main_loop` 是不可序列化的，因此不能将其传递给子进程。
@@ -2978,21 +2833,17 @@ if __name__ == '__main__':
                 arithmetic(_missions.build_model, _build_list)
             )
         else:
-            from engine.manage import ScreenMonitor
-            from engine.manage import SourceMonitor
-            from engine.manage import Manage
-            from engine.medias import Record
-            from engine.medias import Player
+            from engine.manage import ScreenMonitor, SourceMonitor, Manage
+            from engine.medias import Record, Player
 
             _main_loop.run_until_complete(scheduling())
 
     except KeyboardInterrupt:
         Show.exit()
-        sys.exit(Show.closure())
     except (OSError, RuntimeError, MemoryError, TypeError, ValueError, AttributeError):
         Show.console.print_exception()
         Show.fail()
-        sys.exit(Show.closure())
     else:
         Show.done()
+    finally:
         sys.exit(Show.closure())
