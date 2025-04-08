@@ -83,7 +83,7 @@ class Device(_Phone):
         cmd = self.__initial + [
             "shell", "dumpsys", "window", "|", "findstr", "mCurrentFocus"
         ]
-        if resp := await Terminal.cmd_line(*cmd):
+        if resp := await Terminal.cmd_line(cmd):
             if match := re.search(r"(?<=Window\{).*?(?=})", resp):
                 return match.group().split()[-1]
 
@@ -94,7 +94,7 @@ class Device(_Phone):
         cmd = self.__initial + [
             "shell", "dumpsys", "deviceidle", "|", "findstr", "mScreenOn"
         ]
-        return bool(resp.split("=")[-1]) if (resp := await Terminal.cmd_line(*cmd)) else None
+        return bool(resp.split("=")[-1]) if (resp := await Terminal.cmd_line(cmd)) else None
 
     async def tap(self, x: int, y: int, *_, **__) -> None:
         """
@@ -103,7 +103,7 @@ class Device(_Phone):
         cmd = self.__initial + [
             "shell", "input", "tap", f"{x}", f"{y}"
         ]
-        await Terminal.cmd_line(*cmd)
+        await Terminal.cmd_line(cmd)
 
     async def swipe(self, start_x: int, start_y: int, end_x: int, end_y: int, duration: int, *_, **__) -> None:
         """
@@ -112,7 +112,7 @@ class Device(_Phone):
         cmd = self.__initial + [
             "shell", "input", "touchscreen", "swipe", f"{start_x}", f"{start_y}", f"{end_x}", f"{end_y}", f"{duration}"
         ]
-        await Terminal.cmd_line(*cmd)
+        await Terminal.cmd_line(cmd)
 
     async def key_event(self, key_code: int, *_, **__) -> None:
         """
@@ -121,7 +121,7 @@ class Device(_Phone):
         cmd = self.__initial + [
             "shell", "input", "keyevent", f"{key_code}"
         ]
-        await Terminal.cmd_line(*cmd)
+        await Terminal.cmd_line(cmd)
 
     async def force_stop(self, package: str, *_, **__) -> None:
         """
@@ -130,7 +130,7 @@ class Device(_Phone):
         cmd = self.__initial + [
             "shell", "am", "force-stop", package
         ]
-        await Terminal.cmd_line(*cmd)
+        await Terminal.cmd_line(cmd)
 
     async def notification(self, *_, **__) -> None:
         """
@@ -139,7 +139,7 @@ class Device(_Phone):
         cmd = self.__initial + [
             "shell", "cmd", "statusbar", "expand-notifications"
         ]
-        await Terminal.cmd_line(*cmd)
+        await Terminal.cmd_line(cmd)
 
     async def install(self, apk_source: str, *_, **__) -> None:
         """
@@ -148,7 +148,7 @@ class Device(_Phone):
         cmd = self.__initial + [
             "install", apk_source
         ]
-        await Terminal.cmd_line(*cmd)
+        await Terminal.cmd_line(cmd)
 
     async def uninstall(self, package: str, *_, **__) -> None:
         """
@@ -157,7 +157,7 @@ class Device(_Phone):
         cmd = self.__initial + [
             "uninstall", package
         ]
-        await Terminal.cmd_line(*cmd)
+        await Terminal.cmd_line(cmd)
 
     async def screenshot(self, destination: str, *_, **__) -> None:
         """
@@ -166,7 +166,7 @@ class Device(_Phone):
         cmd = self.__initial + [
             "shell", "screencap", "-p", destination
         ]
-        await Terminal.cmd_line(*cmd)
+        await Terminal.cmd_line(cmd)
 
     async def wifi(self, mode: str, *_, **__) -> None:
         """
@@ -175,7 +175,7 @@ class Device(_Phone):
         cmd = self.__initial + [
             "shell", "svc", "wifi", mode
         ]
-        await Terminal.cmd_line(*cmd)
+        await Terminal.cmd_line(cmd)
 
     async def hot_spot(self, mode: str, status: str, *_, **__) -> None:
         """
@@ -184,7 +184,7 @@ class Device(_Phone):
         cmd = self.__initial + [
             "shell", "svc", "wifi", mode, status
         ]
-        await Terminal.cmd_line(*cmd)
+        await Terminal.cmd_line(cmd)
 
     async def start_application(self, package: str, *_, **__) -> typing.Optional[str]:
         """
@@ -193,7 +193,7 @@ class Device(_Phone):
         cmd = self.__initial + [
             "shell", "am", "start", "-n", package
         ]
-        return resp if (resp := await Terminal.cmd_line(*cmd)) else None
+        return resp if (resp := await Terminal.cmd_line(cmd)) else None
 
     async def screen_size(self, *_, **__) -> typing.Optional[str]:
         """
@@ -202,7 +202,7 @@ class Device(_Phone):
         cmd = self.__initial + [
             "shell", "wm", "size"
         ]
-        return resp if (resp := await Terminal.cmd_line(*cmd)) else None
+        return resp if (resp := await Terminal.cmd_line(cmd)) else None
 
     async def screen_density(self, *_, **__) -> typing.Optional[str]:
         """
@@ -211,7 +211,7 @@ class Device(_Phone):
         cmd = self.__initial + [
             "shell", "wm", "density"
         ]
-        return resp if (resp := await Terminal.cmd_line(*cmd)) else None
+        return resp if (resp := await Terminal.cmd_line(cmd)) else None
 
 # uiautomator2 #########################################################################################################
 

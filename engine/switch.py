@@ -17,12 +17,12 @@ class Switch(object):
     @staticmethod
     async def ask_audio_reform(ffmpeg, src: str, dst: str) -> str:
         cmd = [ffmpeg, "-i", src, "-ar", "44100", "-b:a", "128k", dst]
-        return await Terminal.cmd_line(*cmd)
+        return await Terminal.cmd_line(cmd)
 
     @staticmethod
     async def ask_video_reform(ffmpeg, fps: int, src: str, dst: str) -> str:
         cmd = [ffmpeg, "-i", src, "-r", f"{fps}", dst]
-        return await Terminal.cmd_line(*cmd)
+        return await Terminal.cmd_line(cmd)
 
     @staticmethod
     async def ask_video_change(ffmpeg, video_filter: list, src: str, dst: str, **kwargs) -> str:
@@ -41,7 +41,7 @@ class Switch(object):
         cmd += ["-i", src]
         cmd += ["-vf", ",".join(video_filter), "-c:v", "libx264", "-crf", "18", "-c:a", "copy", dst]
 
-        return await Terminal.cmd_line(*cmd)
+        return await Terminal.cmd_line(cmd)
 
     @staticmethod
     async def ask_video_detach(ffmpeg, video_filter: list, src: str, dst: str, **kwargs) -> str:
@@ -60,7 +60,7 @@ class Switch(object):
         cmd += ["-i", src]
         cmd += ["-vf", ",".join(video_filter), os.path.join(dst, "frame_%05d.png")]
 
-        return await Terminal.cmd_line(*cmd)
+        return await Terminal.cmd_line(cmd)
 
     @staticmethod
     async def ask_video_tailor(ffmpeg, src: str, dst: str, **kwargs) -> str:
@@ -79,7 +79,7 @@ class Switch(object):
         cmd += ["-i", src]
         cmd += ["-c", "copy", dst]
 
-        return await Terminal.cmd_line(*cmd)
+        return await Terminal.cmd_line(cmd)
 
     @staticmethod
     async def ask_video_stream(ffprobe, src: str) -> dict:
@@ -90,7 +90,7 @@ class Switch(object):
             "-show_entries", "frame=key_frame,pts_time,pict_type",
             "-of", "json", "-count_frames", src
         ]
-        result = await Terminal.cmd_line(*cmd)
+        result = await Terminal.cmd_line(cmd)
         try:
             json_file = json.loads(result)
             stream_dict = json_file["streams"][0]

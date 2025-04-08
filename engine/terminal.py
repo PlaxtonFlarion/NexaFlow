@@ -16,14 +16,14 @@ from loguru import logger
 class Terminal(object):
 
     @staticmethod
-    async def cmd_line(*cmd: str, transmit: typing.Optional[bytes] = None, **kwargs):
+    async def cmd_line(cmd: list[str], transmit: typing.Optional[bytes] = None, **kwargs) -> typing.Optional[typing.Any]:
         """
         异步执行命令行指令，并获取其输出。
 
         该方法使用异步子进程执行传入的命令行指令，支持传递输入数据，并返回标准输出或标准错误信息。
 
         参数:
-            *cmd (str): 命令行指令及其参数，作为不定长字符串参数传入。
+            cmd (list[str]): 要执行的命令及其参数列表，按顺序传入（非 shell 字符串形式）。
             transmit (Optional[bytes]): 传递给子进程的标准输入数据，默认为None。
             **kwargs: 传递给 asyncio.create_subprocess_exec 的其他关键字参数，例如cwd、env等。
 
@@ -39,7 +39,7 @@ class Terminal(object):
         异常处理:
             - 解码时忽略错误，确保不会因解码问题导致程序崩溃。
         """
-        logger.debug([c for c in cmd])
+        logger.debug(cmd)
         transports = await asyncio.create_subprocess_exec(
             *cmd, stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, **kwargs
@@ -54,14 +54,14 @@ class Terminal(object):
             return stderr.decode(encoding=encode, errors="ignore").strip()
 
     @staticmethod
-    async def cmd_link(*cmd: str, **kwargs):
+    async def cmd_link(cmd: list[str], **kwargs) -> typing.Optional[typing.Any]:
         """
         异步执行命令行指令，并返回子进程对象。
 
         该方法使用异步子进程执行传入的命令行指令，并返回子进程对象以便进一步处理。
 
         参数:
-            *cmd (str): 命令行指令及其参数，作为不定长字符串参数传入。
+            cmd (list[str]): 要执行的命令及其参数列表，按顺序传入（非 shell 字符串形式）。
             **kwargs: 传递给 asyncio.create_subprocess_exec 的其他关键字参数，例如cwd、env等。
 
         返回:
@@ -71,7 +71,7 @@ class Terminal(object):
             - 使用 asyncio.create_subprocess_exec 创建子进程，并将其标准输出和标准错误重定向到管道。
             - 执行命令后，返回子进程对象，便于后续操作如等待子进程完成或获取其输出。
         """
-        logger.debug([c for c in cmd])
+        logger.debug(cmd)
         transports = await asyncio.create_subprocess_exec(
             *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, **kwargs
         )
@@ -80,7 +80,7 @@ class Terminal(object):
 ########################################################################################################################
 
     @staticmethod
-    async def cmd_line_shell(cmd: str, transmit: typing.Optional[bytes] = None, **kwargs):
+    async def cmd_line_shell(cmd: str, transmit: typing.Optional[bytes] = None, **kwargs) -> typing.Optional[typing.Any]:
         """
         异步执行Shell命令，并返回命令输出。
 
@@ -115,7 +115,7 @@ class Terminal(object):
             return stderr.decode(encoding=encode, errors="ignore").strip()
 
     @staticmethod
-    async def cmd_link_shell(cmd: str, **kwargs):
+    async def cmd_link_shell(cmd: str, **kwargs) -> typing.Optional[typing.Any]:
         """
         异步执行Shell命令，并返回子进程对象。
 
@@ -141,7 +141,7 @@ class Terminal(object):
 ########################################################################################################################
 
     @staticmethod
-    def cmd_oneshot(cmd: list[str], **kwargs):
+    def cmd_oneshot(cmd: list[str], **kwargs) -> typing.Optional[typing.Any]:
         """
         同步执行命令，并返回执行结果。
 
@@ -158,7 +158,7 @@ class Terminal(object):
             - 使用 subprocess.run 同步执行命令，并将其标准输出和标准错误重定向到管道。
             - 如果命令返回码不为0，返回标准错误；否则返回标准输出。
         """
-        logger.debug([c for c in cmd])
+        logger.debug(cmd)
         transports = subprocess.run(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, **kwargs
         )
@@ -168,7 +168,7 @@ class Terminal(object):
         return transports.stdout
 
     @staticmethod
-    def cmd_connect(cmd: list[str], **kwargs):
+    def cmd_connect(cmd: list[str], **kwargs) -> typing.Optional[typing.Any]:
         """
         同步启动命令，并返回进程对象。
 
@@ -185,7 +185,7 @@ class Terminal(object):
             - 使用 subprocess.Popen 启动命令，并将其标准输出和标准错误重定向到管道。
             - 进程对象可以用于进一步的交互操作，如读取输出流、等待进程结束等。
         """
-        logger.debug([c for c in cmd])
+        logger.debug(cmd)
         transports = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", bufsize=1, **kwargs
         )

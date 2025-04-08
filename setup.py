@@ -1,3 +1,11 @@
+#   ____       _
+#  / ___|  ___| |_ _   _ _ __
+#  \___ \ / _ \ __| | | | '_ \
+#   ___) |  __/ |_| |_| | |_) |
+#  |____/ \___|\__|\__,_| .__/
+#                       |_|
+#
+
 from nexaflow import const
 from setuptools import setup, find_packages
 

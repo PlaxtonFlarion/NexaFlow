@@ -167,11 +167,11 @@ class Review(object):
 
     __material: tuple = tuple()
 
-    def __init__(self, *args):
+    def __init__(self, *args, **__):
         self.material = args
 
     @property
-    def material(self):
+    def material(self) -> typing.Optional[typing.Union[typing.Any, tuple]]:
         return self.__material
 
     @material.setter

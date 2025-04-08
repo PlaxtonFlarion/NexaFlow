@@ -209,5 +209,4 @@ class Parser(object):
 
 
 if __name__ == '__main__':
-    Parser().parse_engine.print_help()
     pass

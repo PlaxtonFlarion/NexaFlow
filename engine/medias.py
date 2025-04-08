@@ -105,7 +105,7 @@ class Record(object):
 
         cmd += ["--record", video_temp := f"{os.path.join(dst, 'screen')}_{video_flag}"]
 
-        transports = await Terminal.cmd_link(*cmd)
+        transports = await Terminal.cmd_link(cmd)
 
         _ = asyncio.create_task(input_stream())
         _ = asyncio.create_task(error_stream())
@@ -145,12 +145,14 @@ class Record(object):
         async def find_child(pid):
             if self.station == "win32":
                 child_pids = await Terminal.cmd_line(
-                    "powershell", "-Command", "Get-CimInstance", "Win32_Process", "|", "Where-Object",
-                    f"{{ $_.ParentProcessId -eq {pid} }}", "|", "Select-Object", "-ExpandProperty", "ProcessId"
+                    [
+                        "powershell", "-Command", "Get-CimInstance", "Win32_Process", "|", "Where-Object",
+                        f"{{ $_.ParentProcessId -eq {pid} }}", "|", "Select-Object", "-ExpandProperty", "ProcessId"
+                    ]
                 )
             else:
                 child_pids = await Terminal.cmd_line(
-                    "pgrep", "-P", pid
+                    ["pgrep", "-P", pid]
                 )
             Show.notes(f"{desc} PID={child_pids}")
 
@@ -159,11 +161,11 @@ class Record(object):
         async def stop_child(pid):
             if self.station == "win32":
                 off = await Terminal.cmd_line(
-                    "powershell", "-Command", "Stop-Process", "-Id", pid, "-Force"
+                    ["powershell", "-Command", "Stop-Process", "-Id", pid, "-Force"]
                 )
             else:
                 off = await Terminal.cmd_line(
-                    "xargs", "kill", "-SIGINT", transmit=pid.encode()
+                    ["xargs", "kill", "-SIGINT"], transmit=pid.encode()
                 )
             Show.notes(f"{desc} OFF={off}")
 

@@ -1282,19 +1282,19 @@ class Missions(object):
             image_folder = "/sdcard/Pictures/Shots"
             image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_" + "Shot.png"
             await Terminal.cmd_line(
-                self.adb, "-s", device.sn, "wait-for-device"
+                [self.adb, "-s", device.sn, "wait-for-device"]
             )
             await Terminal.cmd_line(
-                self.adb, "-s", device.sn, "shell", "mkdir", "-p", image_folder
+                [self.adb, "-s", device.sn, "shell", "mkdir", "-p", image_folder]
             )
             await Terminal.cmd_line(
-                self.adb, "-s", device.sn, "shell", "screencap", "-p", f"{image_folder}/{image}"
+                [self.adb, "-s", device.sn, "shell", "screencap", "-p", f"{image_folder}/{image}"]
             )
 
             with tempfile.TemporaryDirectory() as temp_dir:
                 image_save_path = os.path.join(temp_dir, image)
                 await Terminal.cmd_line(
-                    self.adb, "-s", device.sn, "pull", f"{image_folder}/{image}", image_save_path
+                    [self.adb, "-s", device.sn, "pull", f"{image_folder}/{image}", image_save_path]
                 )
 
                 if deploy.color:
@@ -1391,7 +1391,7 @@ class Missions(object):
                 resized.show()
 
             await Terminal.cmd_line(
-                self.adb, "-s", device.sn, "shell", "rm", f"{image_folder}/{image}"
+                [self.adb, "-s", device.sn, "shell", "rm", f"{image_folder}/{image}"]
             )
             return resized
 
@@ -1433,7 +1433,7 @@ class Missions(object):
             async def wait_for_device(device):
                 # 等待设备上线
                 Show.notes(f"[bold #FAFAD2]Wait Device Online -> {device.tag} {device.sn}")
-                await Terminal.cmd_line(self.adb, "-s", device.sn, "wait-for-device")
+                await Terminal.cmd_line([self.adb, "-s", device.sn, "wait-for-device"])
 
             Show.notes(f"**<* {('独立' if self.alone else '全局')}控制模式 *>**")
 
@@ -1757,7 +1757,7 @@ class Missions(object):
         titles_ = {"speed": "Speed", "basic": "Basic", "keras": "Keras"}
         input_title_ = next((title_ for key_, title_ in titles_.items() if getattr(self, key_)), "Video")
 
-        vs_ = await Terminal.cmd_line(*["scrcpy", "--version"])
+        vs_ = await Terminal.cmd_line(["scrcpy", "--version"])
         record = Record(
             vs_, alone=self.alone, whist=self.whist, frate=deploy.frate
         )
@@ -1798,9 +1798,11 @@ class Missions(object):
                         elif select_ == "deploy":
                             Show.notes(f"{const.WRN}请完全退出编辑器再继续操作")
                             deploy.dump_deploy(self.initial_deploy)
-                            first_ = ["Notepad"] if sys.platform == "win32" else ["open", "-W", "-a", "TextEdit"]
-                            first_.append(self.initial_deploy)
-                            await Terminal.cmd_line(*first_)
+                            if sys.platform == "win32":
+                                first_ = ["notepad++"] if shutil.which("notepad++") else ["Notepad"]
+                            else:
+                                first_ = ["open", "-W", "-a", "TextEdit"]
+                            await Terminal.cmd_line(first_ + self.initial_deploy)
                             deploy.load_deploy(self.initial_deploy)
                             deploy.view_deploy()
                             continue

@@ -128,13 +128,13 @@ class Manage(object):
             cmd = [
                 self.adb, "-s", sn, "wait-for-device", "shell", "cat", "/proc/cpuinfo", "|", "grep", "processor"
             ]
-            return len(re.findall(r"processor", cpu, re.S)) if (cpu := await Terminal.cmd_line(*cmd)) else None
+            return len(re.findall(r"processor", cpu, re.S)) if (cpu := await Terminal.cmd_line(cmd)) else None
 
         async def _device_ram(sn):
             cmd = [
                 self.adb, "-s", sn, "wait-for-device", "shell", "free"
             ]
-            if ram := await Terminal.cmd_line(*cmd):
+            if ram := await Terminal.cmd_line(cmd):
                 for line in ram.splitlines()[1:2]:
                     if match := re.search(r"\d+", line.split()[1]):
                         total_ram = int(match.group()) / 1024 / 1024 / 1024
@@ -145,20 +145,20 @@ class Manage(object):
             cmd = [
                 self.adb, "-s", sn, "wait-for-device", "shell", "getprop", "ro.product.brand"
             ]
-            return tag if (tag := await Terminal.cmd_line(*cmd)) else None
+            return tag if (tag := await Terminal.cmd_line(cmd)) else None
 
         async def _device_ver(sn):
             cmd = [
                 self.adb, "-s", sn, "wait-for-device", "shell", "getprop", "ro.build.version.release"
             ]
-            return ver if (ver := await Terminal.cmd_line(*cmd)) else None
+            return ver if (ver := await Terminal.cmd_line(cmd)) else None
 
         async def _device_display(sn):
             cmd = [
                 self.adb, "-s", sn, "wait-for-device", "shell", "dumpsys", "display", "|", "grep", "mViewports="
             ]
             screen_dict = {}
-            if information_list := await Terminal.cmd_line(*cmd):
+            if information_list := await Terminal.cmd_line(cmd):
                 if display_list := re.findall(r"DisplayViewport\{.*?}", information_list):
                     fit: typing.Any = lambda x: re.search(x, display)
                     for display in display_list:
@@ -180,7 +180,7 @@ class Manage(object):
             return Device(self.adb, sn, *information_list)
 
         device_dict = {}
-        if device_list := await Terminal.cmd_line(self.adb, "devices"):
+        if device_list := await Terminal.cmd_line([self.adb, "devices"]):
             if serial_list := [line.split()[0] for line in device_list.split("\n")[1:]]:
                 device_instance_list = await asyncio.gather(
                     *(_device_information(serial) for serial in serial_list), return_exceptions=True
@@ -191,7 +191,7 @@ class Manage(object):
                 device_dict = {device.sn: device for device in device_instance_list}
         return device_dict
 
-    async def operate_device(self) -> list["Device"]:
+    async def operate_device(self) -> typing.Optional[list["Device"]]:
         while True:
             if len(current_device_dict := await self.current_device()) == 0:
                 Show.simulation_progress(f"Wait for device to connect ...")
@@ -200,7 +200,7 @@ class Manage(object):
             self.device_dict = current_device_dict
             return list(self.device_dict.values())
 
-    async def another_device(self) -> list["Device"]:
+    async def another_device(self) -> typing.Optional[list["Device"]]:
         while True:
             if len(current_device_dict := await self.current_device()) == 0:
                 Show.simulation_progress(f"Wait for device to connect ...")
