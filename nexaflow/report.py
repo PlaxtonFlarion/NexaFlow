@@ -281,7 +281,7 @@ class Report(object):
                         "frames_id": image_idx
                     }
                 )
-            frame_list.sort(key=lambda x: int(x["idx"].split("(")[0]))
+            frame_list.sort(key=lambda x: int(x["frames_id"]))
             return frame_list
 
         async def transform(inform_part: dict) -> list[dict]:
