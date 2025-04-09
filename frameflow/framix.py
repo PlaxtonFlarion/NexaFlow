@@ -22,181 +22,60 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
 
 __all__ = ["Clipix", "Alynex"]  # 接口
 
+# ====[ 内置模块 ]====
 import os
+import re
 import sys
+import json
+import time
 import signal
 import shutil
-from frameflow.skills.show import Show
+import random
+import typing
+import inspect
+import asyncio
+import datetime
+import tempfile
+
+# ====[ 第三方库 ]====
+import cv2
+import numpy
+import aiofiles
+
+# ====[ from: 内置模块 ]====
+from functools import partial
+from multiprocessing import freeze_support
+from concurrent.futures import ProcessPoolExecutor
+
+# ====[ from: 第三方库 ]====
+from loguru import logger
+from rich.prompt import Prompt
+
+# ====[ from: 本地模块 ]====
+from engine.tinker import (
+    Craft, Finder, Active, Review, FramixError
+)
+from engine.switch import Switch
+from engine.terminal import Terminal
 from frameflow.argument import Wind
+from frameflow.skills.show import Show
+from frameflow.skills.cubicle import DB
+from frameflow.skills.parser import Parser
+from frameflow.skills.profile import (
+    Deploy, Option
+)
 from nexaflow import const
-
-
-# 信号处理器
-def signal_processor(*_, **__) -> None:
-    """
-    处理信号，用于在特定情况下触发应用程序的退出。
-
-    参数:
-        *_: 接受并忽略所有传入的位置参数。
-        **__: 接受并忽略所有传入的关键字参数。
-
-    返回值:
-        None: 函数不会返回任何值，因为在 `sys.exit()` 调用后，程序会终止执行。
-
-    注意:
-        - 此函数的主要功能是接受外部传入的信号并在适当的条件下终止程序的运行。
-        - `_` 和 `__` 的命名表示这些参数未被使用。
-    """
-    Show.exit()
-    sys.exit(Show.closure())
-
-
-# 设置 Ctrl + C 信号处理方式
-signal.signal(signal.SIGINT, signal_processor)
-
-# 如果没有提供命令行参数，则显示应用程序标志和帮助文档，并退出程序
-if len(system_parameter_list := sys.argv) == 1:
-    Show.minor_logo()
-    Show.help_document()
-    Show.done()
-    sys.exit(Show.closure())
-
-# 获取命令行参数（去掉第一个参数，即脚本名称）
-_wires = system_parameter_list[1:]
-
-# 获取当前操作系统平台和应用名称
-_platform = sys.platform.strip().lower()
-_software = os.path.basename(os.path.abspath(sys.argv[0])).strip().lower()
-_sys_symbol = os.sep
-_env_symbol = os.path.pathsep
-
-# 根据应用名称确定工作目录和配置目录
-if _software == f"{const.NAME}.exe":
-    # 当前处于 Windows 操作系统
-    _fx_work = os.path.dirname(os.path.abspath(sys.argv[0]))
-    _fx_feasible = os.path.dirname(_fx_work)
-elif _software == f"{const.NAME}":
-    # 当前处于 MacOS 操作系统
-    _fx_work = os.path.dirname(sys.executable)
-    _fx_feasible = os.path.dirname(_fx_work)
-elif _software == f"{const.NAME}.py":
-    # 当前处于 IDE 环境
-    _fx_work = os.path.dirname(os.path.abspath(__file__))
-    _fx_feasible = os.path.dirname(_fx_work)
-else:
-    Show.show_panel(const.SHOW_LEVEL, f"{const.DESC} compatible with {const.NAME}", Wind.KEEPER)
-    Show.simulation_progress(f"{const.DESC} Exiting ...")
-    Show.fail()
-    sys.exit(Show.closure())
-
-# 设置模板文件路径
-_atom_total_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_atom_total.html")
-_main_share_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_main_share.html")
-_main_total_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_main_total.html")
-_view_share_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_view_share.html")
-_view_total_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_view_total.html")
-
-# 检查每个模板文件是否存在，如果缺失则显示错误信息并退出程序
-for _tmp in (_temps := [_atom_total_temp, _main_share_temp, _main_total_temp, _view_share_temp, _view_total_temp]):
-    if os.path.isfile(_tmp) and os.path.basename(_tmp).endswith(".html"):
-        continue
-    _tmp_name = os.path.basename(_tmp)
-    Show.show_panel(const.SHOW_LEVEL, f"{const.DESC} missing files {_tmp_name}", Wind.KEEPER)
-    Show.simulation_progress(f"{const.DESC} Exiting ...")
-    Show.fail()
-    sys.exit(Show.closure())
-
-# 设置工具源路径
-_turbo = os.path.join(_fx_work, const.F_SCHEMATIC, "supports").format()
-
-# 根据平台设置工具路径
-if _platform == "win32":
-    # 当前处于 Windows 操作系统
-    _adb = os.path.join(_turbo, "Windows", "platform-tools", "adb.exe")
-    _fmp = os.path.join(_turbo, "Windows", "ffmpeg", "bin", "ffmpeg.exe")
-    _fpb = os.path.join(_turbo, "Windows", "ffmpeg", "bin", "ffprobe.exe")
-elif _platform == "darwin":
-    # 当前处于 MacOS 操作系统
-    _adb = os.path.join(_turbo, "MacOS", "platform-tools", "adb")
-    _fmp = os.path.join(_turbo, "MacOS", "ffmpeg", "bin", "ffmpeg")
-    _fpb = os.path.join(_turbo, "MacOS", "ffmpeg", "bin", "ffprobe")
-else:
-    Show.show_panel(const.SHOW_LEVEL, f"{const.DESC} compatible with Windows or MacOS", Wind.KEEPER)
-    Show.simulation_progress(f"{const.DESC} Exiting ...")
-    Show.fail()
-    sys.exit(Show.closure())
-
-# 将工具路径添加到系统 PATH 环境变量中
-for _tls in (_tools := [_adb, _fmp, _fpb]):
-    os.environ["PATH"] = os.path.dirname(_tls) + _env_symbol + os.environ.get("PATH", "")
-
-# 检查每个工具是否存在，如果缺失则显示错误信息并退出程序
-for _tls in _tools:
-    if shutil.which((_tls_name := os.path.basename(_tls))):
-        continue
-    Show.show_panel(const.SHOW_LEVEL, f"{const.DESC} missing files {_tls_name}", Wind.KEEPER)
-    Show.simulation_progress(f"{const.DESC} Exiting ...")
-    Show.fail()
-    sys.exit(Show.closure())
-
-# 设置初始路径
-if not os.path.exists(
-    _initial_source := os.path.join(_fx_feasible, const.F_SPECIALLY).format()
-):
-    os.makedirs(_initial_source, exist_ok=True)
-
-# 设置模型路径
-if not os.path.exists(
-    _src_model_place := os.path.join(_initial_source, const.F_SRC_MODEL_PLACE).format()
-):
-    os.makedirs(_src_model_place, exist_ok=True)
-
-# 设置报告路径
-if not os.path.exists(
-    _src_total_place := os.path.join(_initial_source, const.F_SRC_TOTAL_PLACE).format()
-):
-    os.makedirs(_src_total_place, exist_ok=True)
-
-try:
-    import re
-    import cv2
-    import json
-    import time
-    import numpy
-    import random
-    import typing
-    import inspect
-    import asyncio
-    import tempfile
-    import aiofiles
-    import datetime
-    from loguru import logger
-    from functools import partial
-    from rich.prompt import Prompt
-    from multiprocessing import freeze_support
-    from concurrent.futures import ProcessPoolExecutor
-    from engine.tinker import (
-        Craft, Finder, Active, Review,
-        FramixAnalysisError, FramixAnalyzerError, FramixReporterError
-    )
-    from engine.switch import Switch
-    from engine.terminal import Terminal
-    from frameflow.skills.cubicle import DB
-    from frameflow.skills.parser import Parser
-    from frameflow.skills.profile import Deploy, Option
-    from nexaflow import toolbox
-    from nexaflow.report import Report
-    from nexaflow.video import VideoObject, VideoFrame
-    from nexaflow.cutter.cutter import VideoCutter
-    from nexaflow.hook import (
-        FrameSizeHook, FrameSaveHook, PaintCropHook, PaintOmitHook
-    )
-    from nexaflow.classifier.base import ClassifierResult
-    from nexaflow.classifier.keras_classifier import KerasStruct
-except (ImportError, ModuleNotFoundError, RuntimeError):
-    Show.console.print_exception()
-    Show.fail()
-    sys.exit(Show.closure())
+from nexaflow import toolbox
+from nexaflow.report import Report
+from nexaflow.video import (
+    VideoObject, VideoFrame
+)
+from nexaflow.cutter.cutter import VideoCutter
+from nexaflow.hook import (
+    FrameSizeHook, FrameSaveHook, PaintCropHook, PaintOmitHook
+)
+from nexaflow.classifier.base import ClassifierResult
+from nexaflow.classifier.keras_classifier import KerasStruct
 
 _T = typing.TypeVar("_T")  # 定义类型变量
 
@@ -257,7 +136,7 @@ class Missions(object):
         alynex = Alynex(matrix, option, deploy, self.level)
         try:
             loop.run_until_complete(alynex.ask_model_load())
-        except FramixAnalyzerError:
+        except FramixError:
             pass
         loop_complete = loop.run_until_complete(
             alynex.ask_analyzer(vision, *args)
@@ -884,7 +763,7 @@ class Missions(object):
             alynex = Alynex(matrix, option, deploy, self.level)
             try:
                 await alynex.ask_model_load()
-            except FramixAnalyzerError as e:
+            except FramixError as e:
                 logger.debug(e)
                 Show.show_panel(self.level, e, Wind.KEEPER)
 
@@ -968,7 +847,7 @@ class Missions(object):
                         alynex = Alynex(matrix, option, deploy, self.level)
                         try:
                             await alynex.ask_model_load()
-                        except FramixAnalyzerError as e:
+                        except FramixError as e:
                             logger.debug(e)
                             Show.show_panel(self.level, e, Wind.KEEPER)
 
@@ -1750,7 +1629,7 @@ class Missions(object):
         alynex = Alynex(matrix, option, deploy, self.level)
         try:
             await alynex.ask_model_load()
-        except FramixAnalyzerError as e_:
+        except FramixError as e_:
             logger.debug(e_)
             Show.show_panel(self.level, e_, Wind.KEEPER)
 
@@ -1791,7 +1670,7 @@ class Missions(object):
                                     Show.notes(f"{const.SUC}New title set successfully")
                                     report.title = f"{src_hd_}_{hd_}" if hd_ else f"{src_hd_}_{random.randint(a_, b_)}"
                                     continue
-                            raise FramixAnalysisError
+                            raise FramixError
                         elif select_ == "create":
                             await self.combine(report)
                             break
@@ -1813,8 +1692,8 @@ class Missions(object):
                                 Show.notes(f"[bold #FFFF87]{bound_tips_}")
                             timer_mode = max(lower_bound_, min(upper_bound_, timer_value_))
                         else:
-                            raise FramixAnalysisError
-                except FramixAnalysisError:
+                            raise FramixError
+                except FramixError:
                     Show.tips_document()
                     continue
                 else:
@@ -1839,7 +1718,7 @@ class Missions(object):
                     *(load_fully(fully_) for fully_ in self.fully), return_exceptions=True
                 )
             else:
-                raise FramixAnalysisError(f"Script file does not exist")
+                raise FramixError(f"Script file does not exist")
 
             for device_ in device_list:
                 logger.debug(tip_ := f"{device_.sn} Automator Activating")
@@ -1850,7 +1729,7 @@ class Missions(object):
                     *(device_.automator_activation() for device_ in device_list)
                 )
             except Exception as e_:
-                raise FramixAnalysisError(e_)
+                raise FramixError(e_)
 
             for device_ in device_list:
                 logger.debug(tip_ := f"{device_.sn} Automator Activation Success")
@@ -1858,7 +1737,7 @@ class Missions(object):
 
             for script_data_ in load_script_data_:
                 if isinstance(script_data_, Exception):
-                    raise FramixAnalysisError(script_data_)
+                    raise FramixError(script_data_)
             script_storage_ = [script_data_ for script_data_ in load_script_data_]
 
             await manage_.display_device()
@@ -1958,7 +1837,7 @@ class Missions(object):
 
         # Empty Loop
         else:
-            raise FramixAnalysisError(f"Command does not exist")
+            raise FramixError(f"Command does not exist")
 
 
 class Clipix(object):
@@ -2153,7 +2032,7 @@ class Alynex(object):
                     assert channel == 1, f"灰度模式需要匹配灰度模型 Model Color Channel={channel}"
         except (OSError, TypeError, ValueError, AssertionError, AttributeError) as e:
             self.ks.model = None
-            raise FramixAnalyzerError(e)
+            raise FramixError(e)
 
     async def ask_video_load(self, vision: str, src_size: tuple) -> "VideoObject":
         """
@@ -2614,28 +2493,19 @@ class Alynex(object):
 
 async def arithmetic(function: "typing.Callable", parameters: list[str]) -> None:
     """
-    异步执行函数，并处理参数路径修正和异常捕获。
+    异步执行函数，并处理参数路径修正。
 
     参数:
         function (typing.Callable): 要执行的函数。
         parameters (list[str]): 参数列表。
-
-    异常处理:
-        捕获并处理 FramixAnalysisError, FramixAnalyzerError, FramixReporterError 异常。
-        如果发生异常，记录异常信息并退出程序。
     """
 
-    try:
-        # 修正参数路径
-        parameters = [(await Craft.revise_path(param)) for param in parameters]
-        # 去除重复参数
-        parameters = list(dict.fromkeys(parameters))
-        # 执行函数
-        await function(parameters, _option, _deploy)
-    except (FramixAnalysisError, FramixAnalyzerError, FramixReporterError):
-        Show.console.print_exception()
-        Show.fail()
-        sys.exit(Show.closure())
+    # 修正参数路径
+    parameters = [(await Craft.revise_path(param)) for param in parameters]
+    # 去除重复参数
+    parameters = list(dict.fromkeys(parameters))
+    # 执行函数
+    await function(parameters, _option, _deploy)
 
 
 async def scheduling() -> None:
@@ -2647,42 +2517,49 @@ async def scheduling() -> None:
         - 图像绘制
         - 合并视图
         - 合并主文件
-
-    异常处理:
-        捕获并处理 FramixAnalysisError, FramixAnalyzerError, FramixReporterError 异常。
-        如果发生异常，记录异常信息并退出程序。
     """
 
     async def _already_installed():
         # 检查 scrcpy 是否已安装，如果未安装则显示安装提示并退出程序
         if shutil.which("scrcpy"):
-            return
-        Show.show_panel(
-            const.SHOW_LEVEL, "Install first https://github.com/Genymobile/scrcpy", Wind.KEEPER
-        )
-        Show.fail()
-        sys.exit(Show.closure())
+            return None
+        raise FramixError("Install first https://github.com/Genymobile/scrcpy")
 
-    try:
-        if _lines.flick or _lines.carry or _lines.fully:
-            await _already_installed()
-            await _missions.analysis(_option, _deploy)
+    if _lines.flick or _lines.carry or _lines.fully:
+        await _already_installed()
+        await _missions.analysis(_option, _deploy)
 
-        elif _lines.paint:
-            await _missions.painting(_option, _deploy)
+    elif _lines.paint:
+        await _missions.painting(_option, _deploy)
 
-        elif _lines.union:
-            await _missions.combine_view(_lines.union)
+    elif _lines.union:
+        await _missions.combine_view(_lines.union)
 
-        elif _lines.merge:
-            await _missions.combine_main(_lines.merge)
+    elif _lines.merge:
+        await _missions.combine_main(_lines.merge)
 
-        else:
-            Show.help_document()
-    except (FramixAnalysisError, FramixAnalyzerError, FramixReporterError):
-        Show.console.print_exception()
-        Show.fail()
-        sys.exit(Show.closure())
+    else:
+        Show.help_document()
+
+
+# 信号处理器
+def signal_processor(*_, **__) -> None:
+    """
+    处理信号，用于在特定情况下触发应用程序的退出。
+
+    参数:
+        *_: 接受并忽略所有传入的位置参数。
+        **__: 接受并忽略所有传入的关键字参数。
+
+    返回值:
+        None: 函数不会返回任何值，因为在 `sys.exit()` 调用后，程序会终止执行。
+
+    注意:
+        - 此函数的主要功能是接受外部传入的信号并在适当的条件下终止程序的运行。
+        - `_` 和 `__` 的命名表示这些参数未被使用。
+    """
+    Show.exit()
+    sys.exit(Show.closure())
 
 
 if __name__ == '__main__':
@@ -2696,126 +2573,217 @@ if __name__ == '__main__':
     ***********************    
     """
 
-    # 在 Windows 平台上启动多进程时确保冻结的可执行文件可以正确运行。
-    freeze_support()
-
-    """
-    **命令行参数解析器解析命令行参数**
-    
-    注意:
-        此代码块必须在 `__main__` 块下调用，否则可能会导致多进程模块无法正确加载。
-    """
-    _parser = Parser()
-    _lines = _parser.parse_cmd
-
-    # 激活日志记录功能，设置日志级别
-    Active.active(_level := "DEBUG" if _lines.debug else "INFO")
-
-    # 输出调试信息
-    logger.debug(f"操作系统: {_platform}")
-    logger.debug(f"应用名称: {_software}")
-    logger.debug(f"系统路径: {_sys_symbol}")
-    logger.debug(f"环境变量: {_env_symbol}")
-    logger.debug(f"工具路径: {_turbo}")
-    logger.debug(f"命令参数: {_wires}")
-    logger.debug(f"日志等级: {_level}\n")
-
-    logger.debug(f"* 环境 * {'=' * 30}")
-    for _env in os.environ["PATH"].split(_env_symbol):
-        logger.debug(f"{_env}")
-    logger.debug(f"* 环境 * {'=' * 30}\n")
-
-    logger.debug(f"* 工具 * {'=' * 30}")
-    for _tls in _tools:
-        logger.debug(f"{os.path.basename(_tls):7}: {_tls}")
-    logger.debug(f"* 工具 * {'=' * 30}\n")
-
-    logger.debug(f"* 模版 * {'=' * 30}")
-    for _tmp in _temps:
-        logger.debug(f"Html-Template: {_tmp}")
-    logger.debug(f"* 模版 * {'=' * 30}\n")
-
-    # 设置初始配置文件路径
-    _initial_option = os.path.join(_initial_source, const.F_SRC_OPERA_PLACE, const.F_OPTION)
-    _initial_deploy = os.path.join(_initial_source, const.F_SRC_OPERA_PLACE, const.F_DEPLOY)
-    _initial_script = os.path.join(_initial_source, const.F_SRC_OPERA_PLACE, const.F_SCRIPT)
-    logger.debug(f"配置文件路径: {_initial_option}")
-    logger.debug(f"部署文件路径: {_initial_deploy}")
-    logger.debug(f"脚本文件路径: {_initial_script}")
-
-    # 加载初始配置
-    _option = Option(_initial_option)
-    _option.total_place = _option.total_place or _src_total_place
-    _option.model_place = _option.model_place or _src_model_place
-    _option.faint_model = _option.faint_model or const.FAINT_MODEL
-    _option.color_model = _option.color_model or const.COLOR_MODEL
-    for _attr_key, _attribute_value in _option.options.items():
-        logger.debug(f"{_option.__class__.__name__} Current Key {_attr_key}")
-        # 如果命令行中包含配置参数，无论是否存在配置文件，都将覆盖配置文件，以命令行参数为第一优先级
-        if any(_line.lower().startswith(f"--{(_attr_adapt := _attr_key.split('_')[0])}") for _line in _wires):
-            setattr(_option, _attr_key, getattr(_lines, _attr_adapt))
-            logger.debug(f"  Set <{_attr_key}> {_attribute_value} -> {getattr(_option, _attr_key)}")
-
-    logger.debug(f"报告文件路径: {_option.total_place}")
-    logger.debug(f"模型文件路径: {_option.model_place}")
-
-    # 获取处理器核心数
-    logger.debug(f"处理器核心数: {(_power := os.cpu_count())}")
-
-    # 从命令行参数覆盖部署配置
-    _deploy = Deploy(_initial_deploy)
-    for _attr_key, _attribute_value in _deploy.deploys.items():
-        logger.debug(f"{_deploy.__class__.__name__} Current Key {_attr_key}")
-        for _attr, _attribute in _attribute_value.items():
-            # 如果命令行中包含部署参数，无论是否存在部署文件，都将覆盖部署文件，以命令行参数为第一优先级
-            if any(_line.lower().startswith(f"--{_attr}") for _line in _wires):
-                setattr(_deploy, _attr, getattr(_lines, _attr))
-                logger.debug(f"  {_attr_key} Set <{_attr}> {_attribute} -> {getattr(_deploy, _attr)}")
-
-    """
-    **将命令行参数解析结果转换为基本数据类型**
-    
-    注意:
-        将命令行参数解析器解析得到的结果存储在基本数据类型的变量中。
-        这样做的目的是避免在多进程环境中向子进程传递不可序列化的对象，因为这些对象在传递过程中可能会导致 `pickle.PicklingError` 错误。
-    """
-    _flick, _carry, _fully = _lines.flick, _lines.carry, _lines.fully
-    _speed, _basic, _keras = _lines.speed, _lines.basic, _lines.keras
-    _alone, _whist = _lines.alone, _lines.whist
-    _alike, _shine = _lines.alike, _lines.shine
-    _group = _lines.group
-
-    # 打包位置参数
-    _positions = _flick, _carry, _fully, _speed, _basic, _keras, _alone, _whist, _alike, _shine, _group
-
-    # 初始化主要任务对象
-    _missions = Missions(
-        _wires, _level, _power, *_positions,
-        atom_total_temp=_atom_total_temp,
-        main_share_temp=_main_share_temp,
-        main_total_temp=_main_total_temp,
-        view_share_temp=_view_share_temp,
-        view_total_temp=_view_total_temp,
-        initial_option=_initial_option,
-        initial_deploy=_initial_deploy,
-        initial_script=_initial_script,
-        adb=_adb, fmp=_fmp, fpb=_fpb
-    )
-
-    # 显示应用程序标志和加载动画
-    Show.minor_logo()
-    Show.load_animation()
-
-    """
-    **创建主事件循环**
-    
-    注意: 
-        该事件循环对象 `_main_loop` 是不可序列化的，因此不能将其传递给子进程。
-        在需要使用事件循环的类实例化或函数调用时，应当在子进程内创建新的事件循环。
-    """
-    _main_loop: "asyncio.AbstractEventLoop" = asyncio.get_event_loop()
-
     try:
+        signal.signal(signal.SIGINT, signal_processor)  # 设置 Ctrl + C 信号处理方式
+
+        # 如果没有提供命令行参数，则显示应用程序标志和帮助文档，并退出程序
+        if len(system_parameter_list := sys.argv) == 1:
+            Show.minor_logo()
+            Show.help_document()
+            Show.done()
+            sys.exit(Show.closure())
+
+        _wires = system_parameter_list[1:]  # 获取命令行参数（去掉第一个参数，即脚本名称）
+
+        # 获取当前操作系统平台和应用名称
+        _platform = sys.platform.strip().lower()
+        _software = os.path.basename(os.path.abspath(sys.argv[0])).strip().lower()
+        _sys_symbol = os.sep
+        _env_symbol = os.path.pathsep
+
+        # 根据应用名称确定工作目录和配置目录
+        if _software == f"{const.NAME}.exe":
+            # Windows
+            _fx_work = os.path.dirname(os.path.abspath(sys.argv[0]))
+            _fx_feasible = os.path.dirname(_fx_work)
+        elif _software == f"{const.NAME}":
+            # MacOS
+            _fx_work = os.path.dirname(sys.executable)
+            _fx_feasible = os.path.dirname(_fx_work)
+        elif _software == f"{const.NAME}.py":
+            # IDE
+            _fx_work = os.path.dirname(os.path.abspath(__file__))
+            _fx_feasible = os.path.dirname(_fx_work)
+        else:
+            raise FramixError(f"{const.DESC} compatible with {const.NAME} command")
+
+        # 设置模板文件路径
+        _atom_total_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_atom_total.html")
+        _main_share_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_main_share.html")
+        _main_total_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_main_total.html")
+        _view_share_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_view_share.html")
+        _view_total_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_view_total.html")
+
+        # 检查每个模板文件是否存在，如果缺失则显示错误信息并退出程序
+        for _tmp in (_temps := [_atom_total_temp, _main_share_temp, _main_total_temp, _view_share_temp, _view_total_temp]):
+            if os.path.isfile(_tmp) and os.path.basename(_tmp).endswith(".html"):
+                continue
+            _tmp_name = os.path.basename(_tmp)
+            raise FramixError(f"{const.DESC} missing files {_tmp_name}")
+
+        _turbo = os.path.join(_fx_work, const.F_SCHEMATIC, "supports").format()  # 设置工具源路径
+
+        # 根据平台设置工具路径
+        if _platform == "win32":
+            # Windows
+            _adb = os.path.join(_turbo, "Windows", "platform-tools", "adb.exe")
+            _fmp = os.path.join(_turbo, "Windows", "ffmpeg", "bin", "ffmpeg.exe")
+            _fpb = os.path.join(_turbo, "Windows", "ffmpeg", "bin", "ffprobe.exe")
+        elif _platform == "darwin":
+            # MacOS
+            _adb = os.path.join(_turbo, "MacOS", "platform-tools", "adb")
+            _fmp = os.path.join(_turbo, "MacOS", "ffmpeg", "bin", "ffmpeg")
+            _fpb = os.path.join(_turbo, "MacOS", "ffmpeg", "bin", "ffprobe")
+        else:
+            raise FramixError(f"{const.DESC} tool compatible with Windows or MacOS")
+
+        # 将工具路径添加到系统 PATH 环境变量中
+        for _tls in (_tools := [_adb, _fmp, _fpb]):
+            os.environ["PATH"] = os.path.dirname(_tls) + _env_symbol + os.environ.get("PATH", "")
+
+        # 检查每个工具是否存在，如果缺失则显示错误信息并退出程序
+        for _tls in _tools:
+            if not shutil.which((_tls_name := os.path.basename(_tls))):
+                raise FramixError(f"{const.DESC} missing files {_tls_name}")
+
+        # 设置初始路径
+        if not os.path.exists(
+                _initial_source := os.path.join(_fx_feasible, const.F_SPECIALLY).format()
+        ):
+            os.makedirs(_initial_source, exist_ok=True)
+
+        # 设置模型路径
+        if not os.path.exists(
+                _src_model_place := os.path.join(_initial_source, const.F_SRC_MODEL_PLACE).format()
+        ):
+            os.makedirs(_src_model_place, exist_ok=True)
+
+        # 设置报告路径
+        if not os.path.exists(
+                _src_total_place := os.path.join(_initial_source, const.F_SRC_TOTAL_PLACE).format()
+        ):
+            os.makedirs(_src_total_place, exist_ok=True)
+
+        freeze_support()  # 在 Windows 平台上启动多进程时确保冻结的可执行文件可以正确运行。
+
+        """
+        **命令行参数解析器解析命令行参数**
+        
+        注意:
+            此代码块必须在 `__main__` 块下调用，否则可能会导致多进程模块无法正确加载。
+        """
+        _parser = Parser()
+        _lines = _parser.parse_cmd
+
+        # 激活日志记录功能，设置日志级别
+        Active.active(_level := "DEBUG" if _lines.debug else "INFO")
+
+        # 输出调试信息
+        logger.debug(f"操作系统: {_platform}")
+        logger.debug(f"应用名称: {_software}")
+        logger.debug(f"系统路径: {_sys_symbol}")
+        logger.debug(f"环境变量: {_env_symbol}")
+        logger.debug(f"工具路径: {_turbo}")
+        logger.debug(f"命令参数: {_wires}")
+        logger.debug(f"日志等级: {_level}\n")
+
+        logger.debug(f"* 环境 * {'=' * 30}")
+        for _env in os.environ["PATH"].split(_env_symbol):
+            logger.debug(f"{_env}")
+        logger.debug(f"* 环境 * {'=' * 30}\n")
+
+        logger.debug(f"* 工具 * {'=' * 30}")
+        for _tls in _tools:
+            logger.debug(f"{os.path.basename(_tls):7}: {_tls}")
+        logger.debug(f"* 工具 * {'=' * 30}\n")
+
+        logger.debug(f"* 模版 * {'=' * 30}")
+        for _tmp in _temps:
+            logger.debug(f"Html-Template: {_tmp}")
+        logger.debug(f"* 模版 * {'=' * 30}\n")
+
+        # 设置初始配置文件路径
+        _initial_option = os.path.join(_initial_source, const.F_SRC_OPERA_PLACE, const.F_OPTION)
+        _initial_deploy = os.path.join(_initial_source, const.F_SRC_OPERA_PLACE, const.F_DEPLOY)
+        _initial_script = os.path.join(_initial_source, const.F_SRC_OPERA_PLACE, const.F_SCRIPT)
+        logger.debug(f"配置文件路径: {_initial_option}")
+        logger.debug(f"部署文件路径: {_initial_deploy}")
+        logger.debug(f"脚本文件路径: {_initial_script}")
+
+        # 加载初始配置
+        _option = Option(_initial_option)
+        _option.total_place = _option.total_place or _src_total_place
+        _option.model_place = _option.model_place or _src_model_place
+        _option.faint_model = _option.faint_model or const.FAINT_MODEL
+        _option.color_model = _option.color_model or const.COLOR_MODEL
+        for _attr_key, _attribute_value in _option.options.items():
+            logger.debug(f"{_option.__class__.__name__} Current Key {_attr_key}")
+            # 如果命令行中包含配置参数，无论是否存在配置文件，都将覆盖配置文件，以命令行参数为第一优先级
+            if any(_line.lower().startswith(f"--{(_attr_adapt := _attr_key.split('_')[0])}") for _line in _wires):
+                setattr(_option, _attr_key, getattr(_lines, _attr_adapt))
+                logger.debug(f"  Set <{_attr_key}> {_attribute_value} -> {getattr(_option, _attr_key)}")
+
+        logger.debug(f"报告文件路径: {_option.total_place}")
+        logger.debug(f"模型文件路径: {_option.model_place}")
+
+        # 获取处理器核心数
+        logger.debug(f"处理器核心数: {(_power := os.cpu_count())}")
+
+        # 从命令行参数覆盖部署配置
+        _deploy = Deploy(_initial_deploy)
+        for _attr_key, _attribute_value in _deploy.deploys.items():
+            logger.debug(f"{_deploy.__class__.__name__} Current Key {_attr_key}")
+            for _attr, _attribute in _attribute_value.items():
+                # 如果命令行中包含部署参数，无论是否存在部署文件，都将覆盖部署文件，以命令行参数为第一优先级
+                if any(_line.lower().startswith(f"--{_attr}") for _line in _wires):
+                    setattr(_deploy, _attr, getattr(_lines, _attr))
+                    logger.debug(f"  {_attr_key} Set <{_attr}> {_attribute} -> {getattr(_deploy, _attr)}")
+
+        """
+        **将命令行参数解析结果转换为基本数据类型**
+        
+        注意:
+            将命令行参数解析器解析得到的结果存储在基本数据类型的变量中。
+            这样做的目的是避免在多进程环境中向子进程传递不可序列化的对象，因为这些对象在传递过程中可能会导致 `pickle.PicklingError` 错误。
+        """
+        _flick, _carry, _fully = _lines.flick, _lines.carry, _lines.fully
+        _speed, _basic, _keras = _lines.speed, _lines.basic, _lines.keras
+        _alone, _whist = _lines.alone, _lines.whist
+        _alike, _shine = _lines.alike, _lines.shine
+        _group = _lines.group
+
+        # 打包位置参数
+        _positions = _flick, _carry, _fully, _speed, _basic, _keras, _alone, _whist, _alike, _shine, _group
+
+        # 打包关键字参数
+        _keywords = {
+            "atom_total_temp": _atom_total_temp,
+            "main_share_temp": _main_share_temp,
+            "main_total_temp": _main_total_temp,
+            "view_share_temp": _view_share_temp,
+            "view_total_temp": _view_total_temp,
+            "initial_option": _initial_option,
+            "initial_deploy": _initial_deploy,
+            "initial_script": _initial_script,
+            "adb": _adb,
+            "fmp": _fmp,
+            "fpb": _fpb
+        }
+
+        _missions = Missions(_wires, _level, _power, *_positions, **_keywords)  # 初始化主要任务对象
+
+        Show.minor_logo()  # 显示应用程序标志
+        Show.load_animation()  # 显示应用程序加载动画
+
+        """
+        **创建主事件循环**
+        
+        注意: 
+            该事件循环对象 `_main_loop` 是不可序列化的，因此不能将其传递给子进程。
+            在需要使用事件循环的类实例化或函数调用时，应当在子进程内创建新的事件循环。
+        """
+        _main_loop: "asyncio.AbstractEventLoop" = asyncio.get_event_loop()
+
         if _video_list := _lines.video:
             _main_loop.run_until_complete(
                 arithmetic(_missions.video_file_task, _video_list)
@@ -2835,15 +2803,20 @@ if __name__ == '__main__':
             _main_loop.run_until_complete(
                 arithmetic(_missions.build_model, _build_list)
             )
+
         else:
-            from engine.manage import ScreenMonitor, SourceMonitor, Manage
-            from engine.medias import Record, Player
+            from engine.manage import (
+                ScreenMonitor, SourceMonitor, Manage
+            )
+            from engine.medias import (
+                Record, Player
+            )
 
             _main_loop.run_until_complete(scheduling())
 
     except KeyboardInterrupt:
         Show.exit()
-    except (OSError, RuntimeError, MemoryError, TypeError, ValueError, AttributeError):
+    except (OSError, RuntimeError, MemoryError, FramixError):
         Show.console.print_exception()
         Show.fail()
     else:

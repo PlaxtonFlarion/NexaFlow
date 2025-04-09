@@ -20,12 +20,17 @@ from tqdm import tqdm
 from loguru import logger
 from findit import FindIt
 from base64 import b64encode
-from PIL import Image, ImageDraw, ImageFont
-from skimage.feature import hog, local_binary_pattern
-from skimage.metrics import normalized_root_mse as compare_nrmse
-from skimage.metrics import peak_signal_noise_ratio as compare_psnr
-from skimage.metrics import structural_similarity as origin_compare_ssim
-
+from PIL import (
+    Image, ImageDraw, ImageFont
+)
+from skimage.feature import (
+    hog, local_binary_pattern
+)
+from skimage.metrics import (
+    normalized_root_mse as compare_nrmse,
+    peak_signal_noise_ratio as compare_psnr,
+    structural_similarity as origin_compare_ssim
+)
 from nexaflow import const
 
 
@@ -329,33 +334,30 @@ def match_template_with_path(
     return match_template_with_object(template_object, target, **kwargs)
 
 
-def show_progress(items=None, total=None, color=245):
-    """Wrap an iterable with a progress bar or initialize a progress bar with a total count.
+def show_progress(
+        items: typing.Optional[typing.Union[typing.Sized, typing.Iterable]] = None,
+        total: typing.Optional[int] = None,
+        color: typing.Optional[int] = 245
+) -> "tqdm":
+    """
+    用进度条包装可迭代对象或用总数初始化进度条。
 
     https://www.ditig.com/256-colors-cheat-sheet
-
-    Args:
-        items (iterable, optional): An iterable to be wrapped by a tqdm progress bar.
-        total (int, optional): The total number of iterations if not using an iterable.
-        color (int, optional): ANSI color code for the progress bar. Defaults to 245.
-
-    Returns:
-        tqdm: A tqdm progress bar object.
     """
 
-    # Set up the color scheme for the progress bar
+    # 设置进度条的配色方案
     desc, color_begin, color_final = f"{const.DESC} : Analyzer ", f"\033[1m\033[38;5;{color}m", "\033[0m"
     bar_format = f"{color_begin}{{l_bar}}%{{bar}}%|{{n_fmt:5}}/{{total_fmt:5}}{color_final}"
 
-    # Determine terminal size for progress bar width
+    # 确定进度条宽度的终端尺寸
     try:
         columns = shutil.get_terminal_size().columns
     except OSError:
-        columns = 150  # Fallback value in case the terminal size cannot be obtained
+        columns = 150  # 无法获取终端大小时的后备值
 
     progress_bar_length = int(columns * 0.8)
 
-    # Configure tqdm based on input arguments
+    # 根据输入参数配置 tqdm
     if items:
         tqdm_total = len(items) if hasattr(items, '__len__') else None
         return tqdm(
@@ -378,7 +380,10 @@ def show_progress(items=None, total=None, color=245):
         raise ValueError("Either 'items' or 'total' must be provided to show_progress.")
 
 
-def draw_line(image_path: str, save_path: str = None) -> None:
+def draw_line(
+        image_path: str,
+        save_path: typing.Optional[str] = None
+) -> None:
     # 打开图像
     image = Image.open(image_path)
     image = image.convert("RGB")

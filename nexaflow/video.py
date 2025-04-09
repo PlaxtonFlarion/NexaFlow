@@ -11,7 +11,6 @@ import cv2
 import typing
 import tempfile
 import numpy as np
-import imageio_ffmpeg
 import moviepy.editor as mpy
 from loguru import logger
 from nexaflow import toolbox
@@ -115,8 +114,8 @@ class VideoObject(object):
 
     def __init__(
         self,
-        path: typing.Union[str, os.PathLike],
-        fps: int = None,
+        path: typing.Union[str, "os.PathLike"],
+        fps: typing.Optional[int] = None,
     ):
         """
         初始化，检查文件路径是否有效，执行其他一些初始化操作
@@ -130,9 +129,7 @@ class VideoObject(object):
             video_path = os.path.join(tempfile.mkdtemp(), f"tmp_{fps}.mp4")
             logger.debug(f"convert video, and bind path to {video_path}")
             logger.info(f"转换视频: {video_path}")
-            toolbox.fps_convert(
-                fps, self.path, video_path, imageio_ffmpeg.get_ffmpeg_exe()
-            )
+            toolbox.fps_convert(fps, self.path, video_path)
             self.path = video_path
 
         with toolbox.video_capture(self.path) as cap:

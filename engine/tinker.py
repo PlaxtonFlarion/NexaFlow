@@ -17,26 +17,19 @@ from rich.logging import RichHandler
 from nexaflow import const
 
 
-class _FramixError(Exception):
+class _FramixBaseError(Exception):
     pass
 
 
-class FramixAnalysisError(_FramixError):
+class FramixError(_FramixBaseError):
 
     def __init__(self, msg: typing.Optional[typing.Any] = None):
         self.msg = msg
 
+    def __str__(self):
+        return f"<{const.DESC}Error> {self.msg}"
 
-class FramixAnalyzerError(_FramixError):
-
-    def __init__(self, msg: typing.Optional[typing.Any] = None):
-        self.msg = msg
-
-
-class FramixReporterError(_FramixError):
-
-    def __init__(self, msg: typing.Optional[typing.Any] = None):
-        self.msg = msg
+    __repr__ = __str__
 
 
 class _RichSink(RichHandler):
@@ -99,7 +92,7 @@ class Finder(object):
         video_folder_path = os.path.join(sequence_path, "video")
         return self.list_videos_in_directory(video_folder_path)
 
-    def find_subtitle(self, subtitle_path: str, subtitle_tree: "Tree"):
+    def find_subtitle(self, subtitle_path: str, subtitle_tree: "Tree") -> list[tuple[str, str]]:
         all_videos = []
         with os.scandir(subtitle_path) as sequences:
             for sequence_entry in sequences:
@@ -111,7 +104,7 @@ class Finder(object):
                         all_videos.append((sequence_entry.name, video))  # 保存序列号和视频路径
         return all_videos
 
-    def find_title(self, title_path: str, title_tree: "Tree"):
+    def find_title(self, title_path: str, title_tree: "Tree") -> "Entry":
         entry = Entry(title_path.split(os.path.sep)[-1])
         with os.scandir(title_path) as subtitles:
             for subtitle_entry in subtitles:
@@ -122,7 +115,7 @@ class Finder(object):
                         entry.update_video(subtitle_entry.name, sequence, video)
         return entry
 
-    def find_collection(self, collection_path: str, collection_tree: "Tree"):
+    def find_collection(self, collection_path: str, collection_tree: "Tree") -> list[Entry]:
         entries = []
         with os.scandir(collection_path) as titles:
             for title_entry in titles:
@@ -132,9 +125,9 @@ class Finder(object):
                     entries.append(entry)
         return entries
 
-    def accelerate(self, base_folder: str) -> typing.Union[tuple["Tree", list], "FramixAnalyzerError"]:
+    def accelerate(self, base_folder: str) -> typing.Union[tuple["Tree", list], "FramixError"]:
         if not os.path.exists(base_folder):
-            return FramixAnalyzerError(f"文件夹错误")
+            return FramixError(f"文件夹错误")
 
         root_tree = Tree(
             f"🌐 [bold #FFA54F]Video Library: {base_folder}[/]",
@@ -148,8 +141,8 @@ class Finder(object):
                     entries = self.find_collection(collection_entry.path, title_tree)
                     collection_list.append(entries)
 
-        if len(collection_list) == 0:
-            return FramixAnalyzerError(f"没有任何视频文件")
+        if not collection_list:
+            return FramixError(f"没有任何视频文件")
         return root_tree, collection_list
 
 

@@ -28,14 +28,14 @@ from nexaflow import const
 
 class Show(object):
 
-    console = Console()
+    console: typing.Optional["Console"] = Console()
 
     @staticmethod
-    def notes(text: typing.Any):
+    def notes(text: typing.Any) -> None:
         Show.console.print(f"[bold]{const.DESC} | Analyzer | {text}[/]")
 
     @staticmethod
-    def annal(text: typing.Any):
+    def annal(text: typing.Any) -> None:
         Show.console.print(f"[bold]{const.DESC} | Analyzer |[/]", Text(text, "bold"))
 
     @staticmethod
@@ -50,7 +50,7 @@ class Show(object):
     def show_tree(path: str) -> None:
         tree = Tree(f"[link file://{path}]📁 {os.path.basename(path)}[/]", guide_style="bold blue")
 
-        def add_nodes(current_node, current_path):
+        def add_nodes(current_node: "Tree", current_path: str) -> None:
             try:
                 with os.scandir(current_path) as scamper:
                     for cur in scamper:
@@ -69,7 +69,7 @@ class Show(object):
             Show.console.print(tree)
 
     @staticmethod
-    def show_progress():
+    def show_progress() -> "Progress":
         return Progress(
             TextColumn(text_format=f"[bold]{const.DESC} | {{task.description}} |", justify="right"),
             SpinnerColumn(
@@ -85,7 +85,7 @@ class Show(object):
         )
 
     @staticmethod
-    def simulation_progress(desc: str):
+    def simulation_progress(desc: str) -> None:
         with Progress(
             TextColumn(text_format="[bold #FFFFD7]{task.description}", justify="right"),
             SpinnerColumn(
@@ -105,35 +105,35 @@ class Show(object):
                 time.sleep(0.05)
 
     @staticmethod
-    def done():
+    def done() -> None:
         Show.console.print(f"""[bold]
-    ╔════════════════════════════════╗
-    ║       [bold #00FF00]Missions  Complete[/]       ║
-    ╚════════════════════════════════╝""")
+    ╔══════════════════════════════════╗
+    ║          [bold #00FF00]Missions  Done[/]          ║
+    ╚══════════════════════════════════╝""")
 
     @staticmethod
-    def fail():
+    def fail() -> None:
         Show.console.print(f"""[bold]
-    ╔════════════════════════════════╗
-    ║        [bold #FF0000]Missions  Failed[/]        ║
-    ╚════════════════════════════════╝""")
+    ╔══════════════════════════════════╗
+    ║          [bold #FF0000]Missions  Fail[/]          ║
+    ╚══════════════════════════════════╝""")
 
     @staticmethod
-    def exit():
+    def exit() -> None:
         Show.console.print(f"""[bold]
-    ╔════════════════════════════════╗
-    ║        [bold #FFFF00]Missions  Exited[/]        ║
-    ╚════════════════════════════════╝""")
+    ╔══════════════════════════════════╗
+    ║          [bold #FFFF00]Missions  Exit[/]          ║
+    ╚══════════════════════════════════╝""")
 
     @staticmethod
-    def closure():
+    def closure() -> str:
         return f"""
     <*=> {const.DESC} will now automatically exit <=*>
     <*=> {const.DESC} see you next <=*>
         """
 
     @staticmethod
-    def major_logo():
+    def major_logo() -> None:
         logo = """[bold #D0D0D0]
     ███╗   ██╗███████╗██╗  ██╗ █████╗   ███████╗██╗      ██████╗ ██╗    ██╗
     ██╔██╗ ██║██╔════╝╚██╗██╔╝██╔══██╗  ██╔════╝██║     ██╔═══██╗██║    ██║
@@ -145,7 +145,7 @@ class Show(object):
         Show.console.print(logo)
 
     @staticmethod
-    def minor_logo():
+    def minor_logo() -> None:
         logo = """[bold #D0D0D0]
             ███████╗ ██████╗   █████╗      ███╗   ███╗ ██╗ ██╗  ██╗
             ██╔════╝ ██╔══██╗ ██╔══██╗     ████╗ ████║ ██║ ╚██╗██╔╝
@@ -160,7 +160,7 @@ class Show(object):
         Show.console.print(const.DECLARE)
 
     @staticmethod
-    def help_document():
+    def help_document() -> None:
         for keys, values in argument.Args.ARGUMENT.items():
             description = "[bold #FFE4E1]互斥[/]" if keys in ["核心操控", "辅助利器", "视控精灵"] else "[bold #C1FFC1]兼容[/]"
             table = Table(
@@ -186,7 +186,7 @@ class Show(object):
             Show.console.print(table, "\t")
 
     @staticmethod
-    def tips_document():
+    def tips_document() -> None:
         table = Table(
             title=f"[bold #FFDAB9]{const.ITEM} {const.DESC} CLI",
             header_style="bold #FF851B",
@@ -210,7 +210,7 @@ class Show(object):
         Show.console.print(table)
 
     @staticmethod
-    def load_animation():
+    def load_animation() -> None:
 
         c = {
             1: "bold #D7AFAF", 2: "bold #5FD75F", 3: "bold #5FD7FF", 4: "bold #D7AF5F",
@@ -285,7 +285,11 @@ class Show(object):
         random.choice(stochastic)()
 
     @staticmethod
-    def content_pose(rlt, avg, dur, org, vd_start, vd_close, vd_limit, video_temp, frate):
+    def content_pose(
+            rlt: typing.Any, avg: typing.Any, dur: typing.Any,
+            org: typing.Any, vd_start: typing.Any, vd_close: typing.Any, vd_limit: typing.Any,
+            video_temp: typing.Any, frate: typing.Any
+    ) -> None:
         table_info = Table(
             title=f"[bold #F5F5DC]Video Info {os.path.basename(video_temp)}",
             header_style="bold #F5F5DC",
@@ -328,7 +332,9 @@ class Show(object):
         Show.console.print(table_clip)
 
     @staticmethod
-    def assort_frame(begin_fr, final_fr, stage_cs):
+    def assort_frame(
+            begin_fr: typing.Any, final_fr: typing.Any, stage_cs: typing.Any
+    ) -> None:
         table = Table(
             title=f"[bold #EED5D2]{const.DESC} Assort Frame",
             header_style="bold #D3D3D3",
