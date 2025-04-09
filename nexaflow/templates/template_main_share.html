@@ -741,7 +741,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
                     <button class="all-reselect">全部重选</button>
                     <button class="quick-reselect">快速重选</button>
                 </div>
-                {% if 'proto' in res %}
+                {% if res.get('proto') %}
                 <div class="option-two">
                     <button class="ex-info">额外帧</button>
                     <a href="{{ res.proto }}" target="_blank" class="proto-link">阶段帧</a>
@@ -750,13 +750,13 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
             </div>
 
             <!--额外帧-->
-            {% if 'extra_list' in res %}
+            {% if res.get('extra_list') %}
             <div class="extra" style="display: none;">
                 <div class="extra-container">
                     {% for extra in res.extra_list %}
                     <div class="extra-image">
                         <img src="{{ extra.src }}" class="img-extra" alt="extraImage">
-                        <p>{{ extra.idx }}</p>
+                        <p>{{ extra.frames_id }}</p>
                     </div>
                     {% endfor %}
                 </div>

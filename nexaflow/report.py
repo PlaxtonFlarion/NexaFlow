@@ -129,8 +129,7 @@ class Report(object):
 
     @staticmethod
     async def ask_merge_report(
-            merge_list: typing.Union[list, tuple],
-            template_file: str
+            merge_list: typing.Union[list, tuple], template_file: str
     ) -> str:
         """
         静态方法: `ask_merge_report`
@@ -147,7 +146,7 @@ class Report(object):
                 异步读取指定文件的内容，并提取出包含“Recovery”关键词的数据。
 
         异常处理:
-            FramixReporterError:
+            FramixError:
                 当无法找到可以合并的报告时，抛出此异常。
 
         操作流程:
@@ -160,7 +159,7 @@ class Report(object):
             report_html (str): 返回最终生成的HTML报告文件路径。
 
         异常:
-            如果在操作过程中遇到任何异常或错误，将抛出 `FramixReporterError` 以便处理。
+            如果在操作过程中遇到任何异常或错误，将抛出 `FramixError` 以便处理。
         """
 
         async def assemble(file):
@@ -210,11 +209,7 @@ class Report(object):
 
     @staticmethod
     async def ask_create_report(
-            total: "Path",
-            title: str,
-            serial: str,
-            parts_list: list,
-            style_loc: str
+            total: "Path", title: str, serial: str, parts_list: list, style_loc: str
     ) -> typing.Optional[dict]:
         """
         静态方法: `ask_create_report`
@@ -229,19 +224,6 @@ class Report(object):
             parts_list (list): 包含多个字典的列表，每个字典存储一个视频分析的详细信息。
             style_loc (str): HTML模板文件的路径，用于生成最终报告。
 
-        内部函数:
-            views_frame(query, frame):
-                根据`views`样式从指定路径加载并返回图像列表，按照帧编号排序。
-
-            major_frame(query, frame):
-                根据`major`样式从指定路径加载并返回图像列表，按照帧编号排序，并包含时间戳。
-
-            extra_frame(query, frame):
-                从指定路径加载`extra`样式的图像列表，并按照图像的索引排序。
-
-            transform(inform_part):
-                根据输入的分析部分信息`inform_part`，调用相应的图像加载函数并构建分析数据字典。
-
         操作流程:
             1. 根据分析样式，调用相应的图像加载函数生成图像列表。
             2. 将图像列表及其他相关数据渲染到HTML模板中，并保存为HTML文件。
@@ -255,51 +237,54 @@ class Report(object):
                 在计算平均耗时时，如果耗时列表为空，处理零除异常，返回平均耗时为`0.00000`。
         """
 
-        async def views_frame(query, frame):
+        async def views_frame(query: str, frame: str) -> list[dict]:
             frame_list = []
             for image in os.listdir(os.path.join(total, title, query, frame)):
                 image_src = os.path.join(query, frame, image)
-                image_idx = int(re.search(r"(?<=frame_)\d+", image).group())
-                frame_list.append(
-                    {
-                        "src": image_src,
-                        "frames_id": image_idx,
-                    }
-                )
-            frame_list.sort(key=lambda x: x["frames_id"])
-            return frame_list
 
-        async def major_frame(query, frame):
-            frame_list = []
-            for image in os.listdir(os.path.join(total, title, query, frame)):
-                image_src = os.path.join(query, frame, image)
-                image_idx = re.search(r"\d+(?=_)", image).group()
-                timestamp = float(re.search(r"(?<=_).+(?=\.)", image).group())
+                image_idx = re.search(r"(?<=frame_)\d+", image).group()
                 frame_list.append(
                     {
                         "src": image_src,
                         "frames_id": image_idx,
-                        "timestamp": f"{timestamp:.5f}"
                     }
                 )
             frame_list.sort(key=lambda x: int(x["frames_id"]))
             return frame_list
 
-        async def extra_frame(query, frame):
+        async def major_frame(query: str, frame: str) -> list[dict]:
             frame_list = []
             for image in os.listdir(os.path.join(total, title, query, frame)):
                 image_src = os.path.join(query, frame, image)
+
+                image_idx = re.search(r"\d+(?=_)", image).group()
+                timestamp = re.search(r"(?<=_).+(?=\.)", image).group()
+                frame_list.append(
+                    {
+                        "src": image_src,
+                        "frames_id": image_idx,
+                        "timestamp": f"{float(timestamp):.5f}"
+                    }
+                )
+            frame_list.sort(key=lambda x: int(x["frames_id"]))
+            return frame_list
+
+        async def extra_frame(query: str, frame: str) -> list[dict]:
+            frame_list = []
+            for image in os.listdir(os.path.join(total, title, query, frame)):
+                image_src = os.path.join(query, frame, image)
+
                 image_idx = image.split("(")[0]
                 frame_list.append(
                     {
                         "src": image_src,
-                        "idx": image_idx
+                        "frames_id": image_idx
                     }
                 )
             frame_list.sort(key=lambda x: int(x["idx"].split("(")[0]))
             return frame_list
 
-        async def transform(inform_part):
+        async def transform(inform_part: dict) -> list[dict]:
             inform_list = []
             style = inform_part.get("style", "")
             query = inform_part.get("query", "")
@@ -307,7 +292,8 @@ class Report(object):
             frame = inform_part.get("frame", "")
             extra = inform_part.get("extra", "")
             proto = inform_part.get("proto", "")
-            inform_dict: dict = {"query": query, "stage": stage}
+
+            inform_dict = {"query": query, "stage": stage}
 
             if style == "speed":
                 inform_dict["image_list"] = await views_frame(query, frame)
@@ -324,7 +310,7 @@ class Report(object):
             inform_list.append(inform_dict)
             return inform_list
 
-        if len(parts_list) == 0:
+        if not parts_list:
             return None
 
         transform_result = await asyncio.gather(
@@ -356,10 +342,7 @@ class Report(object):
 
     @staticmethod
     async def ask_create_total_report(
-            file_name: str,
-            group: bool,
-            style_loc: str,
-            total_loc: str
+            file_name: str, group: bool, style_loc: str, total_loc: str
     ) -> str:
         """
         静态方法: `ask_create_total_report`
@@ -385,10 +368,8 @@ class Report(object):
             total_html (str): 生成的总报告HTML文件的路径。
 
         异常:
-            FileNotFoundError:
-                如果无法找到指定的日志文件，将抛出此异常。
-            FramixReporterError:
-                如果在日志文件中无法找到符合条件的数据，或者在生成报告时发生错误，将抛出此异常。
+            FramixError:
+                如果无法找到指定的日志文件，如果在日志文件中无法找到符合条件的数据，或者在生成报告时发生错误，将抛出此异常。
         """
 
         try:
@@ -412,7 +393,7 @@ class Report(object):
             {(p.pop("total"), p.pop("title"), Path(p["query"]).name if group else ""): p} for p in parts_list
         ]
 
-        async def format_packed():
+        async def format_packed() -> dict:
             parts_dict = defaultdict(lambda: defaultdict(list))
             for parts in parts_list:
                 for key, value in parts.items():
@@ -424,7 +405,7 @@ class Report(object):
                 k: [dict(zip(v.keys(), entry)) for entry in zip(*v.values())] for k, v in normal_dict.items()
             }
 
-        async def format_merged():
+        async def format_merged() -> list[dict]:
             parts_dict, segment = defaultdict(lambda: defaultdict(list)), "<@@@>"
             for rp in create_total_result:
                 for key, value in rp.items():
@@ -474,11 +455,7 @@ class Report(object):
 
     @staticmethod
     async def ask_draw(
-            scores: dict,
-            struct_result: "ClassifierResult",
-            proto_path: str,
-            template_file: str,
-            boost: bool,
+            scores: dict, struct_result: "ClassifierResult", proto_path: str, template_file: str, boost: bool,
     ) -> str:
         """
         静态方法: `ask_draw`
