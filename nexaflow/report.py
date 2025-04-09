@@ -215,7 +215,8 @@ class Report(object):
         静态方法: `ask_create_report`
 
         功能:
-            生成视频分析的HTML报告，并返回包含分析结果的字典。该方法根据输入的分析数据，生成相应的图像列表和统计信息，最终输出一个HTML报告文件。
+            生成视频分析的HTML报告，并返回包含分析结果的字典。
+            该方法根据输入的分析数据，生成相应的图像列表和统计信息，最终输出一个HTML报告文件。
 
         参数:
             total (Path): 存放报告的根目录路径。
@@ -225,90 +226,71 @@ class Report(object):
             style_loc (str): HTML模板文件的路径，用于生成最终报告。
 
         操作流程:
-            1. 根据分析样式，调用相应的图像加载函数生成图像列表。
+            1. 调用图像加载函数生成图像列表。
             2. 将图像列表及其他相关数据渲染到HTML模板中，并保存为HTML文件。
             3. 计算图像处理的平均耗时，生成包含报告信息的字典并返回。
 
         返回值:
-            single (dict): 包含报告信息的字典，键包括`case`(报告标题)、`cost_list`(耗时列表)、`avg`(平均耗时)和`href`(HTML报告的路径)。
+            single (typing.Optional[dict]): 包含报告信息的字典，键包括`case`(报告标题)、`cost_list`(耗时列表)、`avg`(平均耗时)和`href`(HTML报告的路径)。
 
         异常:
             ZeroDivisionError:
                 在计算平均耗时时，如果耗时列表为空，处理零除异常，返回平均耗时为`0.00000`。
         """
 
-        async def views_frame(query: str, frame: str) -> list[dict]:
+        async def acquire(query: str, frame: typing.Optional[str]) -> typing.Optional[list[dict]]:
+            if not frame:
+                return None
+
             frame_list = []
             for image in os.listdir(os.path.join(total, title, query, frame)):
                 image_src = os.path.join(query, frame, image)
 
-                image_idx = re.search(r"(?<=frame_)\d+", image).group()
-                frame_list.append(
-                    {
-                        "src": image_src,
-                        "frames_id": image_idx,
-                    }
-                )
-            frame_list.sort(key=lambda x: int(x["frames_id"]))
-            return frame_list
+                """
+                Example:
+                    frame_00322.png
+                    79_1.30000.png
+                    219(3_6333333333333333).png
+                """
+                if fit_id := re.search(r"(?<=frame_)\d+", image):
+                    image_idx = fit_id.group()
+                elif fit_id := re.search(r"^(?!frame)(?!.*\().*?(\d+)(?=_)", image):
+                    image_idx = fit_id.group()
+                else:
+                    image_idx = image.split("(")[0]
 
-        async def major_frame(query: str, frame: str) -> list[dict]:
-            frame_list = []
-            for image in os.listdir(os.path.join(total, title, query, frame)):
-                image_src = os.path.join(query, frame, image)
+                image_source = {
+                    "src": image_src, "frames_id": int(image_idx)
+                }
 
-                image_idx = re.search(r"\d+(?=_)", image).group()
-                timestamp = re.search(r"(?<=_).+(?=\.)", image).group()
-                frame_list.append(
-                    {
-                        "src": image_src,
-                        "frames_id": image_idx,
-                        "timestamp": f"{float(timestamp):.5f}"
-                    }
-                )
-            frame_list.sort(key=lambda x: int(x["frames_id"]))
-            return frame_list
+                if fit_time := re.search(r"(?<=_)\d+\.\d+(?=\.)", image):
+                    image_source["timestamp"] = fit_time.group()
 
-        async def extra_frame(query: str, frame: str) -> list[dict]:
-            frame_list = []
-            for image in os.listdir(os.path.join(total, title, query, frame)):
-                image_src = os.path.join(query, frame, image)
+                frame_list.append(image_source)
 
-                image_idx = image.split("(")[0]
-                frame_list.append(
-                    {
-                        "src": image_src,
-                        "frames_id": image_idx
-                    }
-                )
-            frame_list.sort(key=lambda x: int(x["frames_id"]))
+            frame_list.sort(key=lambda x: x["frames_id"])
             return frame_list
 
         async def transform(inform_part: dict) -> list[dict]:
-            inform_list = []
-            style = inform_part.get("style", "")
             query = inform_part.get("query", "")
             stage = inform_part.get("stage", {})
             frame = inform_part.get("frame", "")
             extra = inform_part.get("extra", "")
             proto = inform_part.get("proto", "")
 
-            inform_dict = {"query": query, "stage": stage}
+            image_list, extra_list = await asyncio.gather(
+                *(acquire(query, i) for i in [frame, extra])
+            )
 
-            if style == "speed":
-                inform_dict["image_list"] = await views_frame(query, frame)
-            elif style == "basic":
-                inform_dict["image_list"] = await major_frame(query, frame)
-            elif style == "keras":
-                image_list, extra_list = await asyncio.gather(
-                    major_frame(query, frame), extra_frame(query, extra)
-                )
-                inform_dict["image_list"] = image_list
-                inform_dict["extra_list"] = extra_list
-                inform_dict["proto"] = os.path.join(query, proto)
-
-            inform_list.append(inform_dict)
-            return inform_list
+            return [
+                {
+                    "query": query,
+                    "stage": stage,
+                    "image_list": image_list,
+                    "extra_list": extra_list,
+                    "proto": os.path.join(query, proto) if proto else None
+                }
+            ]
 
         if not parts_list:
             return None
@@ -343,12 +325,13 @@ class Report(object):
     @staticmethod
     async def ask_create_total_report(
             file_name: str, group: bool, style_loc: str, total_loc: str
-    ) -> str:
+    ) -> typing.Union[typing.Any, str]:
         """
         静态方法: `ask_create_total_report`
 
         功能:
-            生成一个总报告，汇总多个分析报告的结果。该方法从指定文件中提取分析数据，按照一定的规则对数据进行分组和整理，最终生成一个包含所有分析结果的总报告HTML文件。
+            生成一个总报告，汇总多个分析报告的结果。
+            该方法从指定文件中提取分析数据，按照一定的规则对数据进行分组和整理，最终生成一个包含所有分析结果的总报告HTML文件。
 
         参数:
             file_name (str): 存放日志文件的根目录路径。
@@ -365,7 +348,7 @@ class Report(object):
             6. 渲染总报告模板，并生成总报告HTML文件。
 
         返回值:
-            total_html (str): 生成的总报告HTML文件的路径。
+            total_html (typing.Union[typing.Any, str]): 生成的总报告HTML文件的路径。
 
         异常:
             FramixError:
@@ -456,7 +439,7 @@ class Report(object):
     @staticmethod
     async def ask_draw(
             scores: dict, struct_result: "ClassifierResult", proto_path: str, template_file: str, boost: bool,
-    ) -> str:
+    ) -> typing.Union[typing.Any, str]:
         """
         静态方法: `ask_draw`
 
@@ -479,7 +462,7 @@ class Report(object):
             5. 将渲染后的HTML报告保存到指定路径。
 
         返回值:
-            report_path (str): 生成的HTML报告文件的路径。
+            report_path (typing.Union[typing.Any, str]): 生成的HTML报告文件的路径。
 
         异常:
             无直接异常处理，但`aiofiles`的文件操作可能引发I/O异常。

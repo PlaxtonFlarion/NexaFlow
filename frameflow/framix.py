@@ -81,6 +81,7 @@ _T = typing.TypeVar("_T")  # 定义类型变量
 
 
 class Missions(object):
+    """Missions"""
 
     # """Initialization"""
     def __init__(self, wires: list, level: str, power: int, *args, **kwargs):
@@ -1841,6 +1842,7 @@ class Missions(object):
 
 
 class Clipix(object):
+    """Clipix"""
 
     def __init__(self, fmp: str, fpb: str):
         self.fmp = fmp  # 表示 `ffmpeg` 的路径
@@ -1975,6 +1977,7 @@ class Clipix(object):
 
 
 class Alynex(object):
+    """Alynex"""
 
     __ks: typing.Optional["KerasStruct"] = KerasStruct()
 
@@ -2491,6 +2494,7 @@ class Alynex(object):
         return Review(*(await analytics_basic()))
 
 
+# 任务处理器
 async def arithmetic(function: "typing.Callable", parameters: list[str]) -> None:
     """
     异步执行函数，并处理参数路径修正。
@@ -2508,6 +2512,7 @@ async def arithmetic(function: "typing.Callable", parameters: list[str]) -> None
     await function(parameters, _option, _deploy)
 
 
+# 任务处理器
 async def scheduling() -> None:
     """
     根据命令行参数调度并执行相应的任务。
@@ -2516,7 +2521,7 @@ async def scheduling() -> None:
         - 视频分析
         - 图像绘制
         - 合并视图
-        - 合并主文件
+        - 合并文件
     """
 
     async def _already_installed():
