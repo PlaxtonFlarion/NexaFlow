@@ -19,36 +19,52 @@ from rich.progress import (
     Progress,
     BarColumn,
     TextColumn,
-    TimeRemainingColumn,
     SpinnerColumn,
+    TimeRemainingColumn
 )
 from frameflow import argument
 from nexaflow import const
 
 
 class Show(object):
+    """
+    负责 CLI 界面展示与美化输出的核心类。
+
+    Show 类提供丰富的终端展示方法，包括彩色日志输出、面板渲染、目录树展示、
+    进度条、动画加载、控制台表格等，依赖 `rich` 库实现高可读性和美学化的 CLI 交互体验。
+
+    Attributes
+    ----------
+    console : Optional[Console]
+        rich 控制台对象，用于渲染文本、表格、面板和动画。
+    """
 
     console: typing.Optional["Console"] = Console()
 
     @staticmethod
     def notes(text: typing.Any) -> None:
+        """输出常规日志信息，使用 bold 样式强调。"""
         Show.console.print(f"[bold]{const.DESC} | Analyzer | {text}[/]")
 
     @staticmethod
     def annal(text: typing.Any) -> None:
+        """输出结构化强调文本，适用于模型状态或分析摘要。"""
         Show.console.print(f"[bold]{const.DESC} | Analyzer |[/]", Text(text, "bold"))
 
     @staticmethod
     def show_panel(level: str, text: typing.Any, wind: dict) -> None:
+        """根据日志等级和样式参数渲染面板式输出。"""
         if level == const.SHOW_LEVEL:
             panel = Panel(
-                Text(f"{text}", **wind["文本"]), **wind["边框"], width=int(Show.console.width * 0.7)
+                Text(
+                    f"{text}", **wind["文本"]
+                ), **wind["边框"], width=int(Show.console.width * 0.7)
             )
             Show.console.print(panel)
 
     @staticmethod
-    def show_tree(path: str) -> None:
-        tree = Tree(f"[link file://{path}]📁 {os.path.basename(path)}[/]", guide_style="bold blue")
+    def show_tree(file_path: str) -> None:
+        """构建并展示文件夹结构树，支持视频文件和子目录的可视链接。"""
 
         def add_nodes(current_node: "Tree", current_path: str) -> None:
             try:
@@ -65,11 +81,15 @@ class Show(object):
             except PermissionError:
                 current_node.add("[red]Access denied[/]", style="bold red")
 
-            add_nodes(tree, path)
-            Show.console.print(tree)
+        tree = Tree(
+            f"[link file://{file_path}]📁 {os.path.basename(file_path)}[/]", guide_style="bold blue"
+        )
+        add_nodes(tree, file_path)
+        Show.console.print(tree)
 
     @staticmethod
     def show_progress() -> "Progress":
+        """创建并返回自定义进度条组件，适用于异步任务的状态展示。"""
         return Progress(
             TextColumn(text_format=f"[bold]{const.DESC} | {{task.description}} |", justify="right"),
             SpinnerColumn(
@@ -86,6 +106,7 @@ class Show(object):
 
     @staticmethod
     def simulation_progress(desc: str) -> None:
+        """启动模拟进度条，用于快速任务的视觉反馈。"""
         with Progress(
             TextColumn(text_format="[bold #FFFFD7]{task.description}", justify="right"),
             SpinnerColumn(
@@ -106,6 +127,7 @@ class Show(object):
 
     @staticmethod
     def done() -> None:
+        """显示任务完成状态的 ASCII 区块框提示。"""
         Show.console.print(f"""[bold]
     ╔══════════════════════════════════╗
     ║          [bold #00FF00]Missions  Done[/]          ║
@@ -113,6 +135,7 @@ class Show(object):
 
     @staticmethod
     def fail() -> None:
+        """显示任务失败状态的 ASCII 区块框提示。"""
         Show.console.print(f"""[bold]
     ╔══════════════════════════════════╗
     ║          [bold #FF0000]Missions  Fail[/]          ║
@@ -120,6 +143,7 @@ class Show(object):
 
     @staticmethod
     def exit() -> None:
+        """显示任务退出状态的 ASCII 区块框提示。"""
         Show.console.print(f"""[bold]
     ╔══════════════════════════════════╗
     ║          [bold #FFFF00]Missions  Exit[/]          ║
@@ -127,6 +151,7 @@ class Show(object):
 
     @staticmethod
     def closure() -> str:
+        """返回格式化的退出提示文本。"""
         return f"""
     <*=> {const.DESC} will now automatically exit <=*>
     <*=> {const.DESC} see you next <=*>
@@ -134,6 +159,7 @@ class Show(object):
 
     @staticmethod
     def major_logo() -> None:
+        """打印主 Logo（带 ASCII 图形和配色），适用于程序启动欢迎界面。"""
         logo = """[bold #D0D0D0]
     ███╗   ██╗███████╗██╗  ██╗ █████╗   ███████╗██╗      ██████╗ ██╗    ██╗
     ██╔██╗ ██║██╔════╝╚██╗██╔╝██╔══██╗  ██╔════╝██║     ██╔═══██╗██║    ██║
@@ -146,6 +172,7 @@ class Show(object):
 
     @staticmethod
     def minor_logo() -> None:
+        """打印次 Logo，逐行动态加载并附带版权信息。"""
         logo = """[bold #D0D0D0]
             ███████╗ ██████╗   █████╗      ███╗   ███╗ ██╗ ██╗  ██╗
             ██╔════╝ ██╔══██╗ ██╔══██╗     ████╗ ████║ ██║ ╚██╗██╔╝
@@ -161,8 +188,11 @@ class Show(object):
 
     @staticmethod
     def help_document() -> None:
+        """展示命令行参数文档（来自 ARGUMENT 配置），以表格形式高亮各类参数分组。"""
         for keys, values in argument.Args.ARGUMENT.items():
-            description = "[bold #FFE4E1]互斥[/]" if keys in ["核心操控", "辅助利器", "视控精灵"] else "[bold #C1FFC1]兼容[/]"
+            description = "[bold #FFE4E1]参数互斥[/]" if keys in [
+                "核心操控", "辅助利器", "视控精灵"] else "[bold #C1FFC1]参数兼容[/]"
+
             table = Table(
                 title=f"[bold #FFDAB9]{const.ITEM} {const.DESC} CLI [bold #66CDAA]<{keys}>[/] <{description}>",
                 header_style="bold #FF851B",
@@ -187,6 +217,7 @@ class Show(object):
 
     @staticmethod
     def tips_document() -> None:
+        """显示简化参数提示文档，适用于交互式命令输入提示。"""
         table = Table(
             title=f"[bold #FFDAB9]{const.ITEM} {const.DESC} CLI",
             header_style="bold #FF851B",
@@ -211,30 +242,31 @@ class Show(object):
 
     @staticmethod
     def load_animation() -> None:
+        """随机展示启动动画，包括多种渐进式加载风格（点阵、图解等）。"""
 
-        c = {
-            1: "bold #D7AFAF", 2: "bold #5FD75F", 3: "bold #5FD7FF", 4: "bold #D7AF5F",
+        colors = {
+            1: "bold #D7AFAF", 2: "bold #5FD75F", 3: "bold #5FD7FF", 4: "bold #D7AF5F"
         }
 
         def speed_engine(stage):
             engine_stages = [
-                Text("\n●", style=c[1]),
-                Text("●——●", style=c[2]),
-                Text("●——●——●", style=c[3]),
-                Text("●——●——●——●\n", style=c[4]),
+                Text("\n●", style=colors[1]),
+                Text("●——●", style=colors[2]),
+                Text("●——●——●", style=colors[3]),
+                Text("●——●——●——●\n", style=colors[4]),
             ]
             return engine_stages[stage % len(engine_stages)]
 
         def basic_engine(stage):
             engine_stages = [
-                Text("\n●", style=c[1]),
-                Text("●——●", style=c[2]),
-                Text("●——●——●", style=c[3]),
-                Text("●——●——●——●", style=c[4]),
-                Text("●——●——●——●——●", style=c[1]),
-                Text("●——●——●——●——●——●", style=c[2]),
-                Text("●——●——●——●——●——●——●", style=c[3]),
-                Text("●——●——●——●——●——●——●——●\n", style=c[4])
+                Text("\n●", style=colors[1]),
+                Text("●——●", style=colors[2]),
+                Text("●——●——●", style=colors[3]),
+                Text("●——●——●——●", style=colors[4]),
+                Text("●——●——●——●——●", style=colors[1]),
+                Text("●——●——●——●——●——●", style=colors[2]),
+                Text("●——●——●——●——●——●——●", style=colors[3]),
+                Text("●——●——●——●——●——●——●——●\n", style=colors[4])
             ]
             return engine_stages[stage % len(engine_stages)]
 
@@ -243,29 +275,29 @@ class Show(object):
                 Text("""                  
                   (●)
                    |
-                   |""", style=c[1]),
+                   |""", style=colors[1]),
                 Text("""         (●)------(●)
                    |       |
-                   |       |""", style=c[2]),
+                   |       |""", style=colors[2]),
                 Text("""         (●)------(●)
                    | \\     |
                    |  \\    |
-                  (●)---(●)""", style=c[3]),
+                  (●)---(●)""", style=colors[3]),
                 Text("""         (●)------(●)
                  / | \\   / |
                 (●) (●)---(●)
                      |     |
                     (●)---(●)
-                """, style=c[4])
+                """, style=colors[4])
             ]
             return engine_stages[stage % len(engine_stages)]
 
         def other_engine(stage):
             engine_stages = [
-                Text("\n○   ○", style=c[1]),
-                Text("○──┐○──┐", style=c[2]),
-                Text("○──┤○──┤", style=c[3]),
-                Text("○──┤○──┤◉\n", style=c[4])
+                Text("\n○   ○", style=colors[1]),
+                Text("○──┐○──┐", style=colors[2]),
+                Text("○──┤○──┤", style=colors[3]),
+                Text("○──┤○──┤◉\n", style=colors[4])
             ]
             return engine_stages[stage % len(engine_stages)]
 
@@ -285,11 +317,8 @@ class Show(object):
         random.choice(stochastic)()
 
     @staticmethod
-    def content_pose(
-            rlt: typing.Any, avg: typing.Any, dur: typing.Any,
-            org: typing.Any, vd_start: typing.Any, vd_close: typing.Any, vd_limit: typing.Any,
-            video_temp: typing.Any, frate: typing.Any
-    ) -> None:
+    def content_pose(rlt, avg, dur, org, vd_start, vd_close, vd_limit, video_temp, frate) -> None:
+        """展示当前视频处理过程中的关键帧率与时长信息。"""
         table_info = Table(
             title=f"[bold #F5F5DC]Video Info {os.path.basename(video_temp)}",
             header_style="bold #F5F5DC",
@@ -332,9 +361,8 @@ class Show(object):
         Show.console.print(table_clip)
 
     @staticmethod
-    def assort_frame(
-            begin_fr: typing.Any, final_fr: typing.Any, stage_cs: typing.Any
-    ) -> None:
+    def assort_frame(begin_fr, final_fr, stage_cs) -> None:
+        """输出帧片段处理的起止帧号及耗时统计。"""
         table = Table(
             title=f"[bold #EED5D2]{const.DESC} Assort Frame",
             header_style="bold #D3D3D3",

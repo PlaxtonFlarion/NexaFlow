@@ -569,7 +569,7 @@ class Missions(object):
         else:
             this_level = self.level
             self.level = "ERROR"
-            func = partial(self.amazing,  option, deploy)
+            func = partial(self.amazing, option, deploy)
             with ProcessPoolExecutor(self.power, None, Active.active, ("ERROR",)) as exe:
                 task = [
                     looper.run_in_executor(exe, func, target, frame_path, extra_path, src_size)
@@ -1858,7 +1858,8 @@ class Clipix(object):
         self.fpb = fpb  # 表示 `ffprobe` 的路径
 
     async def vision_content(
-            self, video_temp: str, start: typing.Optional[str], close: typing.Optional[str], limit: typing.Optional[str],
+            self, video_temp: str, start: typing.Optional[str], close: typing.Optional[str],
+            limit: typing.Optional[str],
     ) -> tuple[str, str, float, tuple, dict]:
         """
         异步获取特定视频文件的内容分析，包括实际和平均帧率、视频时长及其视觉处理点。
@@ -2610,7 +2611,7 @@ def signal_processor(*_, **__) -> None:
 if __name__ == '__main__':
     """   
     **应用程序入口点，根据命令行参数初始化并运行主进程**
-                                        
+
     ***********************
     *                     *
     *  Welcome to Framix  *
@@ -2660,7 +2661,11 @@ if __name__ == '__main__':
         _view_total_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_view_total.html")
 
         # 检查每个模板文件是否存在，如果缺失则显示错误信息并退出程序
-        for _tmp in (_temps := [_atom_total_temp, _main_share_temp, _main_total_temp, _view_share_temp, _view_total_temp]):
+        for _tmp in (
+                _temps := [
+                    _atom_total_temp, _main_share_temp, _main_total_temp, _view_share_temp, _view_total_temp
+                ]
+        ):
             if os.path.isfile(_tmp) and os.path.basename(_tmp).endswith(".html"):
                 continue
             _tmp_name = os.path.basename(_tmp)
@@ -2713,7 +2718,7 @@ if __name__ == '__main__':
 
         """
         **命令行参数解析器解析命令行参数**
-        
+
         注意:
             此代码块必须在 `__main__` 块下调用，否则可能会导致多进程模块无法正确加载。
         """
@@ -2786,7 +2791,7 @@ if __name__ == '__main__':
 
         """
         **将命令行参数解析结果转换为基本数据类型**
-        
+
         注意:
             将命令行参数解析器解析得到的结果存储在基本数据类型的变量中。
             这样做的目的是避免在多进程环境中向子进程传递不可序列化的对象，因为这些对象在传递过程中可能会导致 `pickle.PicklingError` 错误。
@@ -2822,7 +2827,7 @@ if __name__ == '__main__':
 
         """
         **创建主事件循环**
-        
+
         注意: 
             该事件循环对象 `_main_loop` 是不可序列化的，因此不能将其传递给子进程。
             在需要使用事件循环的类实例化或函数调用时，应当在子进程内创建新的事件循环。
