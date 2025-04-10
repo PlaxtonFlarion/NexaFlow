@@ -53,7 +53,7 @@ from rich.prompt import Prompt
 
 # ====[ from: 本地模块 ]====
 from engine.tinker import (
-    Craft, Finder, Active, Review, FramixError
+    Craft, Search, Active, Review, FramixError
 )
 from engine.switch import Switch
 from engine.terminal import Terminal
@@ -109,27 +109,33 @@ class Missions(object):
         """
         异步分析视频的子进程方法。
 
-        该方法在异步进程执行器中执行，用于加载 Keras 模型并分析视频。
+        在异步任务调度器中运行，负责加载 Keras 模型并调用分析器执行视频分析任务。
+        该方法应在子进程中运行，以避免阻塞主事件循环。
 
-        参数:
-            option (Option): 选项对象，包含模型路径和其他运行时选项配置。
-            deploy (Deploy): 配置信息对象，包含视频处理的各项配置。
-            vision (str): 视频文件路径。
-            *args: 传递给分析器的其他参数。
+        Parameters
+        ----------
+        option : Option
+            包含模型路径与执行选项的配置对象。
 
-        返回:
-            处理完成的结果。
+        deploy : Deploy
+            视频处理相关配置对象，封装各类路径与处理参数。
 
-        注意:
-            避免传递复杂对象，或者传递的对象是可以序列化的，或者传递基本数据类型。
-            该方法需要在异步进程执行器中执行。
+        vision : str
+            待分析的视频文件路径。
 
-        代码逻辑:
-            1. 获取当前事件循环。
-            2. 根据 `option` 和 `self.keras` 决定模型路径，并创建 Alynex 实例。
-            3. 尝试加载 Keras 模型，如果失败则捕获并处理异常。
-            4. 运行 Alynex 的 `ask_analyzer` 方法，传递视频路径和其他参数。
-            5. 等待异步操作完成，并返回结果。
+        *args : Any
+            传递给分析器的附加参数，需为基本类型或可序列化对象。
+
+        Returns
+        -------
+        Any
+            视频分析任务的执行结果，返回值取决于分析器的实现。
+
+        Notes
+        -----
+        - 推荐传入参数为字符串、数字、列表等基本数据类型，避免复杂对象。
+        - 该方法应在 `asyncio.subprocess` 或 `ProcessPoolExecutor` 中调用，用于并行分析任务。
+        - 内部使用 Alynex 实例加载 Keras 模型，并异步调用其 `ask_analyzer` 方法处理视频数据。
         """
         loop = asyncio.get_event_loop()
 
@@ -149,26 +155,33 @@ class Missions(object):
         """
         异步执行视频分析的子进程方法。
 
-        该方法在异步进程执行器中执行，用于分析视频，并利用 Alynex 工具进行处理。
+        该方法由异步进程执行器调用，使用 Alynex 工具对指定视频进行分析处理。
+        适用于批量视频分析、模型推理任务的异步分发场景。
 
-        参数:
-            option (Option): 选项对象，包含模型路径和其他运行时选项配置。
-            deploy (Deploy): 配置信息对象，包含视频处理的各项配置。
-            vision (str): 视频文件路径。
-            *args: 传递给分析器的其他参数。
+        Parameters
+        ----------
+        option : Option
+            含有模型路径、任务模式等运行时配置的选项对象。
 
-        返回:
-            处理完成的结果。
+        deploy : Deploy
+            视频处理相关的配置对象，包含路径、分辨率等参数。
 
-        注意:
-            避免传递复杂对象，或者传递的对象是可以序列化的，或者传递基本数据类型。
-            该方法需要在异步进程执行器中执行。
+        vision : str
+            需要分析的视频文件路径。
 
-        代码逻辑:
-            1. 获取当前事件循环。
-            2. 创建 Alynex 实例，使用提供的配置进行初始化。
-            3. 运行 Alynex 的 `ask_exercise` 方法，传递视频路径和其他参数。
-            4. 等待异步操作完成，并返回结果。
+        *args : Any
+            传递给 Alynex 分析器的其他附加参数，须确保可序列化。
+
+        Returns
+        -------
+        Any
+            视频处理后的分析结果，类型由 Alynex 工具返回值决定。
+
+        Notes
+        -----
+        - 请避免传入复杂或不可序列化的对象。
+        - 方法内部基于配置初始化 Alynex 实例，并调用其 `ask_exercise()` 进行视频处理。
+        - 适用于异步任务池、子进程调度环境。
         """
         loop = asyncio.get_event_loop()
 
@@ -212,12 +225,13 @@ class Missions(object):
         await db.insert(column_list, [style, total, title, nest])
 
     async def fst_track(
-            self, deploy: "Deploy", clipix: "Clipix", task_list: list[list], *_, **__
+            self, deploy: "Deploy", clipix: "Clipix", task_list: list[list]
     ) -> tuple[list, list]:
         """
         异步执行视频的处理追踪，包括内容提取和平衡视频长度等功能。
 
-        此函数用于根据指定的部署配置，提取视频内容，并尝试将多个视频的长度调整为一致。主要处理包括解析视频信息、视频内容提取、时间平衡和删除临时文件。
+        此函数用于根据指定的部署配置，提取视频内容，并尝试将多个视频的长度调整为一致。
+        主要处理包括解析视频信息、视频内容提取、时间平衡和删除临时文件。
 
         参数:
             deploy (Deploy): 配置信息对象，包含视频处理的起始、结束、限制时间和帧率等。
@@ -296,12 +310,13 @@ class Missions(object):
         return originals, indicates
 
     async def fst_waves(
-            self, deploy: "Deploy", clipix: "Clipix", task_list: list[list], originals: list, *_, **__
+            self, deploy: "Deploy", clipix: "Clipix", task_list: list[list], originals: list
     ) -> list:
         """
         异步执行视频的过滤和改进操作。
 
-        根据提供的配置参数，应用一系列过滤器对视频进行处理，改进视频质量。处理包括调整帧率、颜色、模糊和锐化等操作。
+        根据提供的配置参数，应用一系列过滤器对视频进行处理，改进视频质量。
+        处理包括调整帧率、颜色、模糊和锐化等操作。
 
         参数:
             deploy (Deploy): 包含处理参数的部署配置对象。
@@ -353,7 +368,7 @@ class Missions(object):
         return video_filter_list
 
     async def als_speed(
-            self, deploy: "Deploy", clipix: "Clipix", report: "Report", task_list: list[list], *_, **__
+            self, deploy: "Deploy", clipix: "Clipix", report: "Report", task_list: list[list]
     ) -> None:
         """
         异步执行视频的速度分析和调整，包括视频过滤、尺寸调整等功能。
@@ -455,7 +470,7 @@ class Missions(object):
             )
 
     async def als_keras(
-            self, deploy: "Deploy", clipix: "Clipix", report: "Report", task_list: list[list], *_, **kwargs
+            self, deploy: "Deploy", clipix: "Clipix", report: "Report", task_list: list[list], **kwargs
     ) -> None:
         """
         异步执行视频的 Keras 模式分析或基本模式分析，包括视频过滤、尺寸调整和动态模板渲染等功能。
@@ -468,7 +483,6 @@ class Missions(object):
             clipix (Clipix): 视频处理工具对象，负责具体的视频内容调整和分析操作。
             report (Report): 报告处理对象，负责记录和展示处理结果。
             task_list (list[list]): 包含视频和其他相关参数的任务列表。
-            *_: 接受并忽略所有传入的位置参数。
             **kwargs: 其他可选参数，包括以下关键字参数：
                 option (Option): 选项对象，包含各种运行时选项配置，用于控制分析和处理流程。
                 alynex (Alynex): 模型分析工具，决定使用 Keras 模型还是基础分析。
@@ -565,10 +579,8 @@ class Missions(object):
                 futures = await asyncio.gather(*task)
             self.level = this_level
 
-        # Template
-        if isinstance(atom_tmp := await Craft.achieve(self.atom_total_temp), Exception):
-            logger.debug(tip := f"{atom_tmp}")
-            return Show.show_panel(self.level, tip, Wind.KEEPER)
+        # Html Template
+        atom_tmp = await Craft.achieve(self.atom_total_temp)
 
         async def render_keras(future: "Review", todo_list: list[list]):
             total_path: str
@@ -660,13 +672,8 @@ class Missions(object):
             - 生成汇总报告，并记录和展示处理结果。
         """
         template_list = await asyncio.gather(
-            Craft.achieve(share_temp), Craft.achieve(total_temp),
-            return_exceptions=True
+            *(Craft.achieve(i) for i in (share_temp, total_temp))
         )
-
-        if isinstance(template_list, Exception):
-            logger.debug(tip := f"{template_list}")
-            return Show.show_panel(self.level, tip, Wind.KEEPER)
 
         share_form, total_form = template_list
 
@@ -689,14 +696,14 @@ class Missions(object):
 
     # """时空纽带分析系统"""
     async def combine_view(self, merge: list) -> None:
-        # 合并视图数据。
+        """合并视图数据。"""
         await self.combine_crux(
             self.view_share_temp, self.view_total_temp, merge
         )
 
     # """时序融合分析系统"""
     async def combine_main(self, merge: list) -> None:
-        # 合并视图数据。
+        """合并视图数据。"""
         await self.combine_crux(
             self.main_share_temp, self.main_total_temp, merge
         )
@@ -785,7 +792,7 @@ class Missions(object):
             deploy (Deploy): 部署配置对象，包含视频处理的具体参数。
 
         功能说明:
-            1. 使用`finder`对象加速搜索视频数据文件。
+            1. 使用`search`对象加速搜索视频数据文件。
             2. 对每个有效的搜索结果生成对应的报告和任务列表。
             3. 根据speed选项决定执行何种分析方式:
                 - 如果启用speed选项，调用`als_speed`进行快速分析。
@@ -793,21 +800,20 @@ class Missions(object):
             4. 每次任务完成后，生成最终报告。
 
         注意:
-            - 如果`finder`搜索结果返回异常，将记录日志并显示错误信息。
+            - 如果`search`搜索结果返回异常，将记录日志并显示错误信息。
             - 在执行Keras分析时，若模型加载失败，将捕获异常并记录。
 
         主要流程:
-            1. 使用`finder`加速搜索视频数据，并过滤有效结果。
+            1. 使用`search`加速搜索视频数据，并过滤有效结果。
             2. 生成对应的报告对象并初始化任务列表。
             3. 根据配置执行相应的分析操作（快速分析或深度学习分析）。
             4. 生成并展示分析报告。
         """
 
         async def load_entries():
-            # 加载视频数据条目。
+            """加载视频数据条目。"""
             for video_data in video_data_list:
-                finder_result = finder.accelerate(video_data)
-                if isinstance(finder_result, Exception):
+                if isinstance(finder_result := search.accelerate(video_data), Exception):
                     logger.debug(finder_result)
                     Show.show_panel(self.level, finder_result, Wind.KEEPER)
                     continue
@@ -815,7 +821,7 @@ class Missions(object):
                 Show.console.print(tree)
                 yield collection_list[0]
 
-        finder = Finder()
+        search = Search()
         clipix = Clipix(self.fmp, self.fpb)
 
         # Profession
@@ -892,6 +898,7 @@ class Missions(object):
             logger.debug(tip := f"没有有效任务")
             return Show.show_panel(self.level, tip, Wind.KEEPER)
 
+        # ====[ 内置模块 ]====
         import uuid
 
         looper = asyncio.get_event_loop()
@@ -1138,9 +1145,10 @@ class Missions(object):
             3. 处理完成后，询问用户是否保存图片，并根据用户选择保存图片。
         """
 
-        import PIL.Image
-        import PIL.ImageDraw
-        import PIL.ImageFont
+        # ====[ from: 第三方库 ]====
+        from PIL import (
+            Image, ImageDraw, ImageFont
+        )
 
         async def paint_lines(device):
             """
@@ -1201,7 +1209,7 @@ class Missions(object):
 
                 cv2.imencode(".png", new_image.data)[1].tofile(image_save_path)
 
-                image_file = PIL.Image.open(image_save_path)
+                image_file = Image.open(image_save_path)
                 image_file = image_file.convert("RGB")
 
                 original_w, original_h = image_file.size
@@ -1231,8 +1239,8 @@ class Missions(object):
 
                 resized = image_file.resize((new_w, new_h))
 
-                draw = PIL.ImageDraw.Draw(resized)
-                font = PIL.ImageFont.load_default()
+                draw = ImageDraw.Draw(resized)
+                font = ImageFont.load_default()
 
                 if y_line_num > 0:
                     for i in range(1, y_line_num):
@@ -1284,8 +1292,7 @@ class Missions(object):
 
         while True:
             action = Prompt.ask(
-                f"[bold]保存图片([bold #5FD700]Y[/]/[bold #FF87AF]N[/])?[/]",
-                console=Show.console, default="Y"
+                f"[bold]保存图片([bold #5FD700]Y[/]/[bold #FF87AF]N[/])?[/]", console=Show.console, default="Y"
             )
             if action.strip().upper() == "Y":
                 report = Report(option.total_place)
@@ -1308,10 +1315,10 @@ class Missions(object):
     async def analysis(self, option: "Option", deploy: "Deploy") -> None:
 
         async def anything_film():
+            """初始化并启动设备的视频录制任务"""
 
-            # 初始化并启动设备的视频录制任务
             async def wait_for_device(device):
-                # 等待设备上线
+                """等待设备上线"""
                 Show.notes(f"[bold #FAFAD2]Wait Device Online -> {device.tag} {device.sn}")
                 await Terminal.cmd_line([self.adb, "-s", device.sn, "wait-for-device"])
 
@@ -1370,7 +1377,7 @@ class Missions(object):
             return todo_list
 
         async def anything_over():
-            # 完成任务后的处理
+            """完成任务后的处理"""
             effective_list = await asyncio.gather(
                 *(record.ask_close_record(device, video_temp, transports)
                   for device, (video_temp, transports, *_) in zip(device_list, task_list))
@@ -1391,7 +1398,7 @@ class Missions(object):
             Show.show_panel(self.level, "\n".join(check_list), Wind.EXPLORER)
 
         async def anything_well():
-            # 执行任务处理，根据不同模式选择适当的分析方法
+            """执行任务处理，根据不同模式选择适当的分析方法"""
             if len(task_list) == 0:
                 logger.debug(tip := f"没有有效任务")
                 return Show.show_panel(self.level, tip, Wind.KEEPER)
@@ -1410,14 +1417,15 @@ class Missions(object):
                 Show.show_panel(self.level, tip, Wind.EXPLORER)
 
         async def load_timer():
-            # 并行执行定时任务，对设备列表中的每个设备进行计时操作
+            """并行执行定时任务，对设备列表中的每个设备进行计时操作"""
             await asyncio.gather(
                 *(record.check_timer(device, timer_mode) for device in device_list)
             )
 
-        # 加载并解析传入的 carry 字符串，返回包含执行指令的字典或异常
         async def load_carry(carry):
-            # 解析传入的 carry 字符串，分割为路径和关键字两部分
+            """加载并解析传入的 carry 字符串，返回包含执行指令的字典或异常"""
+
+            # 分割为路径和关键字两部分
             if len(parts := re.split(r",|;|!|\s", carry)) >= 2:
                 loc_file, *key_list = parts
                 # 异步加载执行字典
@@ -1433,8 +1441,8 @@ class Missions(object):
 
             raise ValueError("参数错误")
 
-        # 异步加载和解析完整的命令文件
         async def load_fully(fully):
+            """异步加载和解析完整的命令文件"""
             fully = await Craft.revise_path(fully)
             try:
                 async with aiofiles.open(fully, "r", encoding=const.CHARSET) as f:
@@ -1577,7 +1585,8 @@ class Missions(object):
                 7. 在任务结束后，取消所有停止任务，以确保所有异步操作都已安全终止。
             """
 
-            async def substitute_star(replaces):
+            async def substitute_star(replaces: typing.Any):
+                """内部函数，用于替换 `exec_args` 中的 "*" 为 `change` 中的相应值。"""
                 substitute = iter(change)
                 return [
                     "".join(next(substitute, "*") if c == "*" else c for c in i)
@@ -2497,11 +2506,25 @@ class Alynex(object):
 # 任务处理器
 async def arithmetic(function: "typing.Callable", parameters: list[str]) -> None:
     """
-    异步执行函数，并处理参数路径修正。
+    执行通用异步任务函数，并预处理参数路径。
 
-    参数:
-        function (typing.Callable): 要执行的函数。
-        parameters (list[str]): 参数列表。
+    该函数用于统一调度框架中的任务执行流程。它在调用目标函数前，
+    先对传入的参数列表进行路径字符清洗与去重处理，然后以标准格式调用。
+
+    适用于需要传入文件路径或命令参数的异步任务场景。
+
+    Parameters
+    ----------
+    function : Callable
+        目标异步函数，接受 (parameters, _option, _deploy) 作为标准参数签名。
+
+    parameters : list[str]
+        原始字符串参数列表，通常为路径或文件名，执行前将被去除控制符并去重。
+
+    Returns
+    -------
+    None
+        异步执行，无返回值。
     """
 
     # 修正参数路径
@@ -2515,17 +2538,32 @@ async def arithmetic(function: "typing.Callable", parameters: list[str]) -> None
 # 任务处理器
 async def scheduling() -> None:
     """
-    根据命令行参数调度并执行相应的任务。
+    命令分发调度器，根据命令行参数执行对应任务模块。
 
-    任务包括:
-        - 视频分析
-        - 图像绘制
-        - 合并视图
-        - 合并文件
+    根据解析到的 `_lines` 参数判断用户指定的任务类型，并调用对应的执行逻辑。
+    若任务类型需要依赖 `scrcpy` 工具，则进行安装检查；否则根据具体参数执行
+    分析、图像生成、视图合并等不同子任务。若未指定任务，则输出帮助文档。
+
+    Subtasks
+    --------
+    - flick / carry / fully : 启动视频分析流程
+    - paint                 : 启动图像渲染模块
+    - union                 : 合并子视图（多任务时间线拼接）
+    - merge                 : 合并主任务视频（帧与音频同步）
+
+    Returns
+    -------
+    None
+        所有任务均为异步执行，无返回值。
+
+    Raises
+    ------
+    FramixError
+        若未检测到 scrcpy 安装，在依赖场景下将主动抛出异常。
     """
 
     async def _already_installed():
-        # 检查 scrcpy 是否已安装，如果未安装则显示安装提示并退出程序
+        """检查 scrcpy 是否已安装，如果未安装则显示安装提示并退出程序。"""
         if shutil.which("scrcpy"):
             return None
         raise FramixError("Install first https://github.com/Genymobile/scrcpy")
@@ -2550,18 +2588,20 @@ async def scheduling() -> None:
 # 信号处理器
 def signal_processor(*_, **__) -> None:
     """
-    处理信号，用于在特定情况下触发应用程序的退出。
+    程序信号处理函数，用于响应中断（如 Ctrl+C）时的清理与退出操作。
 
-    参数:
-        *_: 接受并忽略所有传入的位置参数。
-        **__: 接受并忽略所有传入的关键字参数。
+    该函数通常注册为信号处理器，用于在用户主动中止程序执行时，
+    优雅地清理状态、打印退出提示，并安全终止进程。
 
-    返回值:
-        None: 函数不会返回任何值，因为在 `sys.exit()` 调用后，程序会终止执行。
+    Parameters
+    ----------
+    *_, **__ : Any
+        占位参数，用于兼容 signal.signal 的回调签名要求。
 
-    注意:
-        - 此函数的主要功能是接受外部传入的信号并在适当的条件下终止程序的运行。
-        - `_` 和 `__` 的命名表示这些参数未被使用。
+    Returns
+    -------
+    None
+        无返回值，调用后程序将终止。
     """
     Show.exit()
     sys.exit(Show.closure())
@@ -2810,6 +2850,7 @@ if __name__ == '__main__':
             )
 
         else:
+            # ====[ from: 本地模块 ]====
             from engine.manage import (
                 ScreenMonitor, SourceMonitor, Manage
             )
@@ -2821,8 +2862,11 @@ if __name__ == '__main__':
 
     except KeyboardInterrupt:
         Show.exit()
-    except (OSError, RuntimeError, MemoryError, FramixError):
+    except (OSError, RuntimeError, MemoryError):
         Show.console.print_exception()
+        Show.fail()
+    except FramixError as _error:
+        Show.show_panel(const.SHOW_LEVEL, _error, Wind.KEEPER)
         Show.fail()
     else:
         Show.done()

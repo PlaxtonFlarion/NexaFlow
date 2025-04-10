@@ -89,6 +89,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
 
     /* 主体部分 */
     .container {
+        max-width: 80%;
         margin: 20px;
         background-color: {{ background_color }};
     }
@@ -335,7 +336,6 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
                         <div class="thumbnails">
                             <p class="frame">{{ info.frame_id }}</p>
                             <p class="timestamp">{{ info.timestamp }}</p>
-<!--                            <img class="thumbnail" src="data:image/png;base64,{{ info.image }}"/>-->
                             <img class="thumbnail" src="{{ info.image }}"/>
                         </div>
                         {% endfor %}
@@ -359,9 +359,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
                     {% for name, result in cost_dict.items() %}
                     <h4> 阶段 {{ name }} </h4>
                     <ul>
-                        <li>范围: {{ result[0].frame_id }} - {{ result[1].frame_id }} ({{ result[0].timestamp }} - {{
-                            result[1].timestamp }})
-                        </li>
+                        <li>范围: {{ result[0].frame_id }} - {{ result[1].frame_id }} ({{ result[0].timestamp }} - {{ result[1].timestamp }})</li>
                         <li>耗时: {{ result[1].timestamp - result[0].timestamp }}</li>
                     </ul>
                     {% endfor %}
