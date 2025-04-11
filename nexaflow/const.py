@@ -24,7 +24,7 @@ DECLARE = f"""[bold]^* {DESC} ({ALIAS}) *^
 Version [bold #FFD75F]{VERSION}[/] - Licensed under the [bold #FF00FF]{LICENSE}[/] License.[/]
 """
 
-CHARSET = r"utf-8"
+CHARSET = r"UTF-8"
 CUT_RESULT_FILE_NAME = r"cut_result.json"
 REPORT_FILE_NAME = r"report.html"
 BACKGROUND_COLOR = r"#fffaf4"

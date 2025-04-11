@@ -6,11 +6,11 @@
 #    |_|\___|_|  |_| |_| |_|_|_| |_|\__,_|_|
 #
 
-import sys
 import typing
 import asyncio
 import subprocess
 from loguru import logger
+from nexaflow import const
 
 
 class Terminal(object):
@@ -32,26 +32,27 @@ class Terminal(object):
 
         注意:
             - 使用 asyncio.create_subprocess_exec 创建子进程，并将其标准输出和标准错误重定向到管道。
-            - 根据操作系统，选择适当的编码方式（Windows使用GBK，其他系统使用UTF-8）。
             - 执行命令后，等待子进程完成并读取其标准输出和标准错误内容。
             - 若标准输出有内容，返回解码后的标准输出；否则，返回解码后的标准错误。
 
         异常处理:
             - 解码时忽略错误，确保不会因解码问题导致程序崩溃。
         """
+
         logger.debug(cmd)
+
         transports = await asyncio.create_subprocess_exec(
-            *cmd, stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, **kwargs
+            *cmd,
+            stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            **kwargs
         )
 
-        encode = "GBK" if sys.platform == "win32" else "UTF-8"
         stdout, stderr = await transports.communicate(transmit)
 
         if stdout:
-            return stdout.decode(encoding=encode, errors="ignore").strip()
+            return stdout.decode(encoding=const.CHARSET, errors="ignore").strip()
         if stderr:
-            return stderr.decode(encoding=encode, errors="ignore").strip()
+            return stderr.decode(encoding=const.CHARSET, errors="ignore").strip()
 
     @staticmethod
     async def cmd_link(cmd: list[str], **kwargs) -> typing.Optional[typing.Any]:
@@ -71,10 +72,15 @@ class Terminal(object):
             - 使用 asyncio.create_subprocess_exec 创建子进程，并将其标准输出和标准错误重定向到管道。
             - 执行命令后，返回子进程对象，便于后续操作如等待子进程完成或获取其输出。
         """
+
         logger.debug(cmd)
+
         transports = await asyncio.create_subprocess_exec(
-            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, **kwargs
+            *cmd,
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            **kwargs
         )
+
         return transports
 
 ########################################################################################################################
@@ -96,23 +102,24 @@ class Terminal(object):
 
         注意:
             - 使用 asyncio.create_subprocess_shell 创建子进程，并将其标准输出和标准错误重定向到管道。
-            - 根据系统平台选择合适的编码方式（Windows使用GBK，其他平台使用UTF-8）。
             - 执行命令后，等待子进程完成并获取其输出。
             - 如果标准输出不为空，则返回标准输出的解码结果；否则，返回标准错误的解码结果。
         """
+
         logger.debug(cmd)
+
         transports = await asyncio.create_subprocess_shell(
-            cmd, stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, **kwargs
+            cmd,
+            stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            **kwargs
         )
 
-        encode = "GBK" if sys.platform == "win32" else "UTF-8"
         stdout, stderr = await transports.communicate(transmit)
 
         if stdout:
-            return stdout.decode(encoding=encode, errors="ignore").strip()
+            return stdout.decode(encoding=const.CHARSET, errors="ignore").strip()
         if stderr:
-            return stderr.decode(encoding=encode, errors="ignore").strip()
+            return stderr.decode(encoding=const.CHARSET, errors="ignore").strip()
 
     @staticmethod
     async def cmd_link_shell(cmd: str, **kwargs) -> typing.Optional[typing.Any]:
@@ -132,10 +139,15 @@ class Terminal(object):
             - 使用 asyncio.create_subprocess_shell 创建子进程，并将其标准输出和标准错误重定向到管道。
             - 子进程对象可以用于进一步与子进程交互，例如读取输出或等待其完成。
         """
+
         logger.debug(cmd)
+
         transports = await asyncio.create_subprocess_shell(
-            cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, **kwargs
+            cmd,
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            **kwargs
         )
+
         return transports
 
 ########################################################################################################################
@@ -158,14 +170,16 @@ class Terminal(object):
             - 使用 subprocess.run 同步执行命令，并将其标准输出和标准错误重定向到管道。
             - 如果命令返回码不为0，返回标准错误；否则返回标准输出。
         """
+
         logger.debug(cmd)
+
         transports = subprocess.run(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, **kwargs
+            cmd,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            **kwargs
         )
 
-        if transports.returncode != 0:
-            return transports.stderr
-        return transports.stdout
+        return transports.stderr if transports.returncode != 0 else transports.stdout
 
     @staticmethod
     def cmd_connect(cmd: list[str], **kwargs) -> typing.Optional[typing.Any]:
@@ -185,10 +199,15 @@ class Terminal(object):
             - 使用 subprocess.Popen 启动命令，并将其标准输出和标准错误重定向到管道。
             - 进程对象可以用于进一步的交互操作，如读取输出流、等待进程结束等。
         """
+
         logger.debug(cmd)
+
         transports = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", bufsize=1, **kwargs
+            cmd,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", bufsize=1,
+            **kwargs
         )
+
         return transports
 
 
