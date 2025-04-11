@@ -20,12 +20,19 @@
 # Copyright (c) 2024  Framix(画帧秀)
 # This file is licensed under the Framix(画帧秀) License. See the LICENSE.md file for more details.
 
+# ==== Note: ライセンス ====
+# Copyright (c) 2024  Framix(画帧秀)
+# このファイルは Framix(画帧秀) ライセンスの下でライセンスされています。詳細は LICENSE.md ファイルを参照してください。
+
 """
 版权所有 (c) 2024  Framix(画帧秀)
 此文件受 Framix(画帧秀) 许可证的保护。您可以在 LICENSE.md 文件中查看详细的许可条款。
 
 Copyright (c) 2024  Framix(画帧秀)
 This file is licensed under the Framix(画帧秀) License. See the LICENSE.md file for more details.
+
+# Copyright (c) 2024  Framix(画帧秀)
+# このファイルは Framix(画帧秀) ライセンスの下でライセンスされています。詳細は LICENSE.md ファイルを参照してください。
 """
 
 __all__ = ["Clipix", "Alynex"]  # 接口
@@ -3683,13 +3690,13 @@ if __name__ == '__main__':
 
     except KeyboardInterrupt:
         Design.exit()
-        Design.closure()
+        sys.exit(Design.closure())
     except (OSError, RuntimeError, MemoryError):
         Design.console.print_exception()
-        Design.fail()
+        sys.exit(Design.fail())
     except FramixError as _error:
         Design.console.print(_error)
-        Design.fail()
+        sys.exit(Design.fail())
     else:
         Design.done()
-        Design.closure()
+        sys.exit(Design.closure())
