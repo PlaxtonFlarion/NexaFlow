@@ -16,9 +16,13 @@
 > **NexaFlow**
 >> **requirements.txt**
 - 确保您的 **Python** 环境中安装了所有依赖包
-  - 导航到您的 **Python** 脚本所在的目录
+  - **海外** 导航到您的 **Python** 脚本所在的目录
     ```
     pip install -r requirements.txt
+    ```
+  - **大陆** 导航到您的 **Python** 脚本所在的目录
+    ```
+    pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
     ```
 - 在 **Python** 脚本所在的目录新建 `applications` 目录
 > **NexaFlow**

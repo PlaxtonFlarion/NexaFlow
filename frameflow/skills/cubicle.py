@@ -11,31 +11,41 @@ from nexaflow import const
 
 
 class DB(object):
+    """
+    异步 SQLite 数据库操作类。
+
+    该类封装了 SQLite 的异步连接、表创建、数据插入与查询等基本功能，主要用于在分析任务中进行数据持久化存储。
+
+    Parameters
+    ----------
+    db : str
+        SQLite 数据库文件的路径。
+
+    Notes
+    -----
+    - 使用 `async with` 管理数据库连接和资源释放。
+    - 所有操作默认在 `const.DB_TABLE_NAME` 表中进行。
+    """
 
     def __init__(self, db: str):
         """
-        数据库操作类，封装了异步数据库连接和基本地增删查改功能。
+        初始化数据库路径。
 
-        用法:
-            该类支持使用 `async with` 语句，确保在操作完成后自动关闭数据库连接。
-
-        参数:
-            db (str): 数据库文件的路径。
+        Parameters
+        ----------
+        db : str
+            SQLite 数据库文件路径。
         """
         self.db = db
 
     async def __aenter__(self) -> "DB":
         """
-        异步上下文管理器入口方法。
+        异步上下文管理器入口，建立数据库连接。
 
-        功能:
-            打开数据库连接并创建游标，用于执行 SQL 操作。
-
-        返回:
-            DB: 返回当前实例，允许在 `async with` 块中调用其他方法。
-
-        异常:
-            aiosqlite.Error: 如果连接数据库失败，可能抛出数据库相关异常。
+        Returns
+        -------
+        DB
+            返回当前数据库操作对象。
         """
         self.conn = await aiosqlite.connect(self.db)
         self.cursor = await self.conn.cursor()
@@ -43,34 +53,41 @@ class DB(object):
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """
-        异步上下文管理器退出方法。
+        异步上下文管理器退出，关闭数据库连接。
 
-        功能:
-            关闭数据库游标和连接，确保资源释放。
+        Parameters
+        ----------
+        exc_type : Type[BaseException]
+            异常类型。
 
-        参数:
-            exc_type: 异常类型。
-            exc_val: 异常值。
-            exc_tb: 异常追踪信息。
+        exc_val : BaseException
+            异常实例。
 
-        异常:
-            aiosqlite.Error: 如果关闭游标或连接失败，可能抛出数据库相关异常。
+        exc_tb : TracebackType
+            异常堆栈信息。
         """
         await self.cursor.close()
         await self.conn.close()
 
     async def create(self, column_list: list) -> None:
         """
-        创建数据库表，如果表不存在。
+        创建表结构（如果尚不存在）。
 
-        功能:
-            根据提供的列名列表创建表结构。如果表已存在，则不会重复创建。
+        Parameters
+        ----------
+        column_list : list
+            表字段列表（不含主键 id）。
 
-        参数:
-            column_list (list): 包含要创建的表列名的列表，每个元素格式为 "<column_name> <data_type>"。
+        Notes
+        -----
+        - 会自动添加自增主键字段 `id`。
+        - 若表已存在，则跳过创建。
 
-        异常:
-            aiosqlite.Error: 如果创建表的 SQL 执行失败，可能抛出数据库相关异常。
+        Workflow
+        --------
+        1. 拼接字段语句。
+        2. 构造 CREATE TABLE SQL 语句。
+        3. 执行并提交事务。
         """
         columns = ", ".join(column_list)
         sql = f"CREATE TABLE IF NOT EXISTS {const.DB_TABLE_NAME} (id INTEGER PRIMARY KEY AUTOINCREMENT, {columns})"
@@ -79,17 +96,25 @@ class DB(object):
 
     async def insert(self, column_list: list, values: list) -> None:
         """
-        插入数据记录到数据库表中。
+        插入数据到表中。
 
-        功能:
-            根据列名列表和对应的值，将一条记录插入到数据库表中。
+        Parameters
+        ----------
+        column_list : list
+            列名列表，顺序应与 values 一致。
+        values : list
+            待插入的数据列表。
 
-        参数:
-            column_list (list): 包含要插入的列名的列表。
-            values (list): 包含要插入的值的列表，顺序应与列名对应。
+        Raises
+        ------
+        ValueError
+            如果 `column_list` 和 `values` 长度不一致。
 
-        异常:
-            aiosqlite.Error: 如果插入数据的 SQL 执行失败，可能抛出数据库相关异常。
+        Workflow
+        --------
+        1. 拼接 INSERT INTO SQL 语句。
+        2. 使用参数化方式插入数据。
+        3. 提交事务。
         """
         placeholders = ", ".join(["?"] * len(values))
         columns = ", ".join(column_list)
@@ -99,16 +124,17 @@ class DB(object):
 
     async def demand(self) -> tuple:
         """
-        查询数据库表中的所有记录。
+        查询当前表中的所有记录。
 
-        功能:
-            执行查询操作，返回表中的所有记录。
+        Returns
+        -------
+        tuple
+            包含数据库所有行的元组列表。
 
-        返回:
-            tuple: 包含所有记录的元组，每条记录为一个元组。
-
-        异常:
-            aiosqlite.Error: 如果查询数据的 SQL 执行失败，可能抛出数据库相关异常。
+        Workflow
+        --------
+        1. 执行 SELECT * 查询。
+        2. 异步提取所有结果。
         """
         async with self.conn.execute(f"SELECT * FROM {const.DB_TABLE_NAME}") as cursor:
             return await cursor.fetchall()

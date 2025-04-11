@@ -240,7 +240,7 @@ class Search(object):
                     entries.append(entry)
         return entries
 
-    def accelerate(self, base_folder: str) -> typing.Union[tuple["Tree", list], "FramixError"]:
+    def accelerate(self, base_folder: str) -> typing.Union[list, "FramixError"]:
         """快速加载指定目录下的视频集合结构，返回可视化树与视频数据。"""
         if not os.path.exists(base_folder):
             return FramixError(f"文件夹不存在 {base_folder}")
@@ -249,6 +249,7 @@ class Search(object):
             f"🌐 [bold #FFA54F]Video Library: {base_folder}[/]",
             guide_style="bold #AEEEEE"
         )
+
         collection_list = []
         with os.scandir(base_folder) as collection:
             for collection_entry in collection:
@@ -259,7 +260,9 @@ class Search(object):
 
         if not collection_list:
             return FramixError(f"没有视频文件 {base_folder}")
-        return root_tree, collection_list
+
+        Design.console.print(root_tree)
+        return collection_list
 
 
 class Active(object):

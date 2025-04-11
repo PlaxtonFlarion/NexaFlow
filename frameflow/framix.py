@@ -12,6 +12,14 @@
 #                                                         #
 ###########################################################
 
+# ==== Note: 版权申明 ====
+# 版权所有 (c) 2024  Framix(画帧秀)
+# 此文件受 Framix(画帧秀) 许可证的保护。您可以在 LICENSE.md 文件中查看详细的许可条款。
+
+# ==== Note: License ====
+# Copyright (c) 2024  Framix(画帧秀)
+# This file is licensed under the Framix(画帧秀) License. See the LICENSE.md file for more details.
+
 """
 版权所有 (c) 2024  Framix(画帧秀)
 此文件受 Framix(画帧秀) 许可证的保护。您可以在 LICENSE.md 文件中查看详细的许可条款。
@@ -52,11 +60,12 @@ from loguru import logger
 from rich.prompt import Prompt
 
 # ====[ from: 本地模块 ]====
+from engine.device import Device
+from engine.switch import Switch
+from engine.terminal import Terminal
 from engine.tinker import (
     Craft, Search, Active, Review, FramixError
 )
-from engine.switch import Switch
-from engine.terminal import Terminal
 from frameflow.argument import Wind
 from frameflow.skills.cubicle import DB
 from frameflow.skills.design import Design
@@ -175,8 +184,7 @@ class Missions(object):
         - 该方法应在 `asyncio.subprocess` 或 `ProcessPoolExecutor` 中调用，用于并行分析任务。
         - 内部使用 Alynex 实例加载 Keras 模型，并异步调用其 `ask_analyzer` 方法处理视频数据。
         """
-
-        loop = asyncio.new_event_loop()
+        loop = asyncio.new_event_loop()  # Note: 子进程内必须创建新的事件循环
 
         matrix = option.model_place if self.keras else None
 
@@ -225,8 +233,7 @@ class Missions(object):
         - 方法内部基于配置初始化 Alynex 实例，并调用其 `ask_exercise()` 进行视频处理。
         - 适用于异步任务池、子进程调度环境。
         """
-
-        loop = asyncio.new_event_loop()
+        loop = asyncio.new_event_loop()  # Note: 子进程内必须创建新的事件循环
 
         alynex = Alynex(None, option, deploy, Design(self.level))
 
@@ -239,33 +246,50 @@ class Missions(object):
     @staticmethod
     async def enforce(db: "DB", style: str, total: str, title: str, nest: str) -> None:
         """
-        将分析数据插入数据库表中，并确保表结构存在。
+        异步插入分析数据到数据库，并确保表结构已创建。
 
-        参数:
-            db (DB): 数据库连接对象，必须实现 `create` 和 `insert` 方法。
-            style (str): 分析方式，用于指定数据处理或分析的类型。
-            total (str): 报告的根目录，表示存储分析结果的根文件夹路径。
-            title (str): 标题信息，通常是数据集的名称。
-            nest (str): 嵌套信息，表示可能包含的子结构或子数据的标识。
+        此方法会根据提供的信息（分析方式、报告路径、标题、嵌套标识）将数据写入数据库，
+        在写入前自动检查并创建所需的表结构。
 
-        返回:
-            None: 此方法不返回任何内容。
+        Parameters
+        ----------
+        db : DB
+            数据库连接对象，必须实现 `create` 和 `insert` 方法。
 
-        异常:
-            TypeError: 如果 `db` 对象未实现 `create` 或 `insert` 方法。
-            DatabaseError: 如果数据库操作失败，可能抛出特定的数据库异常。
-            ValueError: 如果任何参数的值不符合预期的格式或范围。
+        style : str
+            分析方式的标识，用于标注数据的来源或处理流程类型。
 
-        功能:
-            1. 创建一个包含 `style`、`total`、`title` 和 `nest` 列的表结构。如果表已存在，跳过创建步骤。
-            2. 将提供的分析方式、报告根目录、标题和嵌套信息插入到数据库的对应列中。
+        total : str
+            报告存储的根目录路径，用于记录结果输出位置。
 
-        说明:
-            - 此方法是异步的，在调用时不会阻塞主线程或事件循环。
-            - 数据库对象 `db` 必须具有 `create` 和 `insert` 方法。
-            - 在插入数据之前，此方法将确保表结构已经创建。
+        title : str
+            数据集标题或报告名，通常用于标识当前分析任务。
+
+        nest : str
+            嵌套标识，用于记录子任务、子路径或层级结构。
+
+        Returns
+        -------
+        None
+            此方法不返回任何值，数据写入后直接完成异步操作。
+
+        Raises
+        ------
+        TypeError
+            若传入的 `db` 对象不包含 `create` 或 `insert` 方法。
+
+        DatabaseError
+            若数据库执行过程中出现语法、连接或写入失败等错误。
+
+        ValueError
+            若输入参数不符合格式要求或出现非法值。
+
+        Notes
+        -----
+        - 此方法为异步函数，不会阻塞主事件循环。
+        - 数据表结构若已存在，将跳过创建过程。
+        - `db` 对象需提供标准的 `create()` 与 `insert()` 接口。
         """
-
         await db.create(column_list := ["style", "total", "title", "nest"])
         await db.insert(column_list, [style, total, title, nest])
 
@@ -273,47 +297,46 @@ class Missions(object):
             self, deploy: "Deploy", clipix: "Clipix", task_list: list[list]
     ) -> tuple[list, list]:
         """
-        异步执行视频的处理追踪，包括内容提取和平衡视频长度等功能。
+        异步执行视频处理与追踪，包括内容提取与长度平衡操作。
 
-        此函数用于根据指定的部署配置，提取视频内容，并尝试将多个视频的长度调整为一致。
-        主要处理包括解析视频信息、视频内容提取、时间平衡和删除临时文件。
+        根据部署参数从多个视频中提取必要信息，并在需要时统一其播放长度。
+        处理结束后返回原始视频与处理状态信息。
 
-        参数:
-            deploy (Deploy): 配置信息对象，包含视频处理的起始、结束、限制时间和帧率等。
-            clipix (Clipix): 视频处理工具对象，负责具体的视频内容提取和平衡操作。
-            task_list (list[list]): 包含视频信息的任务列表，每个列表项包括视频模板和其他参数。
+        Parameters
+        ----------
+        deploy : Deploy
+            部署配置对象，包含起始时间、结束时间、限制时长、帧率等视频处理参数。
 
-        返回:
-            tuple[list, list]: 返回处理后的原始视频列表和指示信息列表。
+        clipix : Clipix
+            视频处理工具对象，提供内容提取与长度平衡等方法。
 
-        注意:
-            - 该函数为异步函数，需要在异步环境中运行。
-            - 函数内部使用了多个异步 gather 来并行处理视频操作，提高效率。
-            - 确保提供的每个视频都符合 `Deploy` 中定义的处理标准。
-            - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
+        task_list : list of list
+            视频处理任务列表，每项包含视频路径及其处理上下文参数。
 
-        处理流程:
-            1. 初始化事件循环并解析视频处理的起始、结束和限制时间。
-            2. 异步提取视频内容，获取视频尺寸、实际帧率、平均帧率、视频时长等信息。
-            3. 如果需要，将多个视频的长度调整为一致，并记录相关日志信息。
-            4. 删除临时文件，确保资源被妥善释放。
+        Returns
+        -------
+        tuple of list
+            返回两个列表：
+            - 原始视频提取信息列表。
+            - 指示处理状态或长度平衡信息的结果列表。
 
-        功能细节:
-            - 提取视频内容：调用 `clipix.vision_content` 方法解析视频信息，包括帧率、视频时长等。
-            - 平衡视频长度：如果需要，将多个视频的长度调整为一致。
-            - 日志记录：记录视频处理的详细信息，并在控制台输出。
-            - 删除临时文件：确保在处理完成后删除不再需要的临时文件。
+        Notes
+        -----
+        - 此函数为异步函数，需在异步事件循环中运行。
+        - 内部使用 `asyncio.gather()` 并行处理多个视频。
+        - 要求每个视频符合 `Deploy` 所定义的帧率与时间限制标准。
+        - 临时文件将在处理后被自动清理。
+        - 所有异常应在处理过程中被捕获，避免中断任务流程。
 
-        代码逻辑:
-            1. 获取事件循环，并解析视频处理的时间参数。
-            2. 使用 `clipix.vision_content` 方法异步提取视频内容。
-            3. 记录视频处理的详细信息，包括视频尺寸、帧率、时长等。
-            4. 如果需要，调用 `clipix.vision_balance` 方法平衡视频长度。
-            5. 删除临时文件，释放资源。
-            6. 返回处理后的原始视频列表和指示信息列表。
+        Workflow
+        --------
+        1. 解析部署配置中的时间范围与帧率。
+        2. 异步调用 `clipix.vision_content()` 提取视频信息。
+        3. 可选调用 `clipix.vision_balance()` 对视频长度进行统一处理。
+        4. 删除处理过程中产生的临时文件。
+        5. 汇总并返回所有视频的处理结果。
         """
-
-        looper = asyncio.new_event_loop()
+        looper = asyncio.get_running_loop()
 
         # Video information
         start_ms = Parser.parse_mills(deploy.start)
@@ -364,42 +387,44 @@ class Missions(object):
             self, deploy: "Deploy", clipix: "Clipix", task_list: list[list], originals: list
     ) -> list:
         """
-        异步执行视频的过滤和改进操作。
+        异步执行视频的过滤与改进操作。
 
-        根据提供的配置参数，应用一系列过滤器对视频进行处理，改进视频质量。
-        处理包括调整帧率、颜色、模糊和锐化等操作。
+        根据部署配置，对原始视频应用帧率、色彩、模糊、锐化等多个视频增强过滤器，
+        以提升视频质量或适应后续分析要求。
 
-        参数:
-            deploy (Deploy): 包含处理参数的部署配置对象。
-            clipix (Clipix): 视频处理工具对象，负责具体的视频内容调整操作。
-            task_list (list[list]): 包含视频任务信息的列表，每个列表项包括视频路径和其他相关参数。
-            originals (list): 原始视频列表，用于提取和处理视频内容。
+        Parameters
+        ----------
+        deploy : Deploy
+            视频处理配置对象，定义帧率、模糊、锐化等过滤器参数。
 
-        返回:
-            Tuple: 包含处理后的视频过滤列表。
+        clipix : Clipix
+            视频处理工具类，封装底层 `ffmpeg` 命令，执行实际的视频增强操作。
 
-        处理流程:
-            1. 根据配置参数初始化过滤器列表。
-            2. 异步执行视频过滤操作，对每个原始视频应用过滤器。
-            3. 记录和显示过滤操作的日志信息。
+        task_list : list of list
+            视频任务参数列表，每项包含视频路径和相关任务配置。
 
-        注意:
-            - 该方法是异步的，需要在异步环境中调用。
-            - 确保提供的每个视频都符合 Deploy 中定义的处理标准。
-            - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
+        originals : list
+            原始视频文件路径列表，用于提取与增强处理。
 
-        功能细节:
-            - 初始化过滤器：根据 deploy 配置中的帧率、颜色格式、高斯模糊和锐化参数设置过滤器列表。
-            - 异步处理：使用 `asyncio.gather` 并行执行视频过滤操作，对每个原始视频应用过滤器。
-            - 日志记录：记录每个过滤操作的详细信息，并在控制台输出。
+        Returns
+        -------
+        tuple
+            包含一个处理后的视频列表，表示增强处理完成的视频路径或状态信息。
 
-        代码逻辑:
-            1. 根据 `deploy` 配置初始化过滤器列表，包括帧率调整、颜色格式转换、模糊和锐化操作。
-            2. 使用 `clipix.vision_improve` 方法异步处理每个原始视频，应用过滤器。
-            3. 记录并显示过滤操作的日志信息。
-            4. 返回处理后的视频过滤列表。
+        Notes
+        -----
+        - 本函数为异步函数，应在异步事件循环中调用。
+        - 使用 `asyncio.gather()` 并发执行多个视频过滤任务。
+        - 所有视频必须符合 `Deploy` 中定义的处理标准。
+        - 异常在内部被捕获和处理，确保流程稳定不中断。
+
+        Workflow
+        --------
+        1. 根据 `deploy` 参数初始化过滤器列表（如帧率、模糊、色彩等）。
+        2. 异步执行每个视频的 `clipix.vision_improve()` 操作。
+        3. 记录每个过滤任务的处理日志。
+        4. 返回处理后的视频结果列表。
         """
-
         filters = [f"fps={deploy.frate}"]
         if self.speed:
             filters += [] if deploy.color else [f"format=gray"]
@@ -423,42 +448,46 @@ class Missions(object):
             self, deploy: "Deploy", clipix: "Clipix", report: "Report", task_list: list[list]
     ) -> None:
         """
-        异步执行视频的速度分析和调整，包括视频过滤、尺寸调整等功能。
+        异步执行视频的内容优化与速度适配处理。
 
-        此函数根据指定的部署配置（deploy）处理视频内容，进行视频尺寸和帧率的调整，并记录视频处理过程中的关键信息。
-        主要操作包括应用视频过滤器，改变视频尺寸和帧率，以及处理并输出视频处理的细节和结果。
+        此函数根据部署配置对一批视频执行滤镜处理、尺寸调整、帧率转换等操作，
+        并通过报告对象记录每一步的处理进度与统计信息。
 
-        参数:
-            deploy (Deploy): 配置信息对象，包含视频处理的帧率、颜色格式、尺寸等配置。
-            clipix (Clipix): 视频处理工具对象，负责具体的视频内容调整操作。
-            report (Report): 报告处理对象，负责记录和展示处理结果。
-            task_list (list[list]): 包含视频和其他相关参数的任务列表。
-            originals (list): 原始视频列表，用于提取和处理视频内容。
-            indicates (list): 指示信息列表，包含视频处理的具体指标和参数。
+        Parameters
+        ----------
+        deploy : Deploy
+            视频处理参数配置，定义帧率、画面尺寸、滤镜强度等调整行为。
 
-        返回:
-            None: 此函数没有返回值，所有结果通过日志和报告对象进行记录和展示。
+        clipix : Clipix
+            视频引擎工具，提供底层的图像处理与帧生成能力。
 
-        注意:
-            - 该函数为异步函数，需要在异步环境中运行。
-            - 函数内部使用了多个异步gather来并行处理视频操作，提高效率。
-            - 确保提供的每个视频都符合Deploy中定义的处理标准。
-            - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
-        功能细节:
-            - 初始设置：通过 `deploy` 和 `clipix` 对象进行初始设置和参数调整。
-            - 视频过滤：调用 `als_waves` 函数对视频进行预处理和过滤。
-            - 视频拆帧：根据 `task_list` 中的任务配置，对视频进行拆帧操作。
-            - 结果处理：使用 `asyncio.gather` 并行处理视频操作，生成分析报告。
+        report : Report
+            报告管理器，负责收集处理数据并生成最终可视化分析报告。
 
-        代码逻辑:
-            1. 获取事件循环，并初始化相关对象。
-            2. 使用 `als_track` 函数获取原始视频和指示信息。
-            3. 使用 `als_waves` 函数对视频进行过滤处理。
-            4. 设置视频目标路径，并调用 `clipix.pixels` 函数处理视频帧。
-            5. 处理拆帧结果，并记录相关信息。
-            6. 渲染分析结果并生成报告，存储在指定路径中。
+        task_list : list of list
+            视频任务列表，每项包含视频路径及其对应的处理参数集。
+
+        Returns
+        -------
+        None
+            无返回值，所有中间产出通过日志与报告对象完成落地。
+
+        Notes
+        -----
+        - 本方法为异步方法，建议在 `asyncio` 事件循环中调用。
+        - 处理过程自动并发执行多个视频任务，提升整体效率。
+        - 支持自动检测视频的格式、维度，并根据配置标准进行统一化输出。
+        - 所有异常将在处理阶段内部捕获，确保主流程稳定不中断。
+
+        Workflow
+        --------
+        1. 初始化部署参数与处理路径。
+        2. 调用 `als_track` 执行视频信息提取。
+        3. 使用 `als_waves` 应用帧率、色彩与模糊等滤镜处理。
+        4. 使用 `clipix.pixels()` 对视频执行帧提取与尺寸调整。
+        5. 并发处理所有任务，收集处理结果。
+        6. 调用 `report.render()` 渲染分析图表，输出到指定报告目录。
         """
-
         logger.debug(f"**<* 光速穿梭 *>**")
         self.design.show_panel(Wind.SPEED_TEXT, Wind.SPEED)
 
@@ -489,12 +518,12 @@ class Missions(object):
                     self.design.show_panel("\n".join(message_list), Wind.KEEPER)
             self.design.show_panel("\n".join(message_list), Wind.METRIC)
 
-        async def render_speed(todo_list: list[list]):
-            total_path: typing.Any
-            query_path: typing.Any
-            frame_path: typing.Any
-            extra_path: typing.Any
-            proto_path: typing.Any
+        async def render_speed(todo_list: list[list]) -> tuple:
+            total_path: typing.Any | str
+            query_path: typing.Any | str
+            frame_path: typing.Any | str
+            extra_path: typing.Any | str
+            proto_path: typing.Any | str
 
             start, end, cost, scores, struct = 0, 0, 0, None, None
             *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo_list
@@ -522,47 +551,59 @@ class Missions(object):
                 *(self.enforce(db, *ns) for ns in render_result)
             )
 
-    async def als_keras(
+    async def als_basic_or_keras(
             self, deploy: "Deploy", clipix: "Clipix", report: "Report", task_list: list[list], **kwargs
     ) -> None:
         """
-        异步执行视频的 Keras 模式分析或基本模式分析，包括视频过滤、尺寸调整和动态模板渲染等功能。
+        异步执行视频的 Keras 模型分析或基础模式分析任务。
 
-        此函数根据部署配置（deploy）调整视频帧率和尺寸，执行视频分析，并根据分析结果采用不同模式处理视频。
-        如果启用了 Keras 模型，执行深度学习模型分析；否则执行基本分析。
+        根据部署参数执行视频预处理与分析流程，可选择基于深度学习模型（Keras）或传统分析方式处理。
+        处理过程包括帧率调整、滤镜应用、尺寸标准化、拆帧及报告生成。
 
-        参数:
-            deploy (Deploy): 配置信息对象，包含视频处理的帧率、颜色格式、尺寸等配置。
-            clipix (Clipix): 视频处理工具对象，负责具体的视频内容调整和分析操作。
-            report (Report): 报告处理对象，负责记录和展示处理结果。
-            task_list (list[list]): 包含视频和其他相关参数的任务列表。
-            **kwargs: 其他可选参数，包括以下关键字参数：
-                option (Option): 选项对象，包含各种运行时选项配置，用于控制分析和处理流程。
-                alynex (Alynex): 模型分析工具，决定使用 Keras 模型还是基础分析。
+        Parameters
+        ----------
+        deploy : Deploy
+            视频处理配置对象，包含帧率、尺寸、色彩等调整参数。
 
-        注意:
-            - 该函数为异步函数，需要在异步环境中运行。
-            - 函数内部使用了多个异步 gather 来并行处理视频操作，提高效率。
-            - 函数的执行路径依赖于 `alynex.ks.model` 的状态，确保 Alynex 实例正确初始化。
-            - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
+        clipix : Clipix
+            视频处理引擎，提供滤镜、拆帧与像素提取等核心功能。
 
-        功能细节:
-            - 初始设置：通过 `deploy` 和 `clipix` 对象进行初始设置和参数调整。
-            - 视频过滤：调用 `als_waves` 函数对视频进行预处理和过滤。
-            - 视频拆帧：根据 `task_list` 中的任务配置，对视频进行拆帧操作。
-            - 结果处理：使用 `asyncio.gather` 并行处理视频操作，生成分析报告。
+        report : Report
+            报告引擎对象，用于汇总分析数据并生成 HTML 报告。
 
-        代码逻辑:
-            1. 获取事件循环，并从 kwargs 中提取选项和分析工具实例。
-            2. 使用 `als_track` 函数获取原始视频和指示信息。
-            3. 使用 `als_waves` 函数对视频进行过滤处理。
-            4. 设置视频目标路径，并调用 `clipix.pixels` 函数处理视频帧。
-            5. 处理拆帧结果，并使用 `os.remove` 删除临时文件。
-            6. 根据 `alynex.ks.model` 的状态决定调用深度学习分析模型还是基础分析。
-            7. 渲染分析结果并生成报告，存储在指定路径中。
+        task_list : list of list
+            待分析的视频任务列表，每项包含视频路径及对应配置。
+
+        **kwargs : dict
+            额外配置项，包括：
+                option : Option
+                    全局运行参数，控制分析方式与行为。
+                alynex : Alynex
+                    分析工具实例，包含 Keras 模型状态与分析方法。
+
+        Returns
+        -------
+        None
+            函数不返回值，所有分析结果通过日志与报告系统输出。
+
+        Notes
+        -----
+        - 本方法需在异步环境下运行。
+        - 若 `alynex.ks.model` 存在，将优先使用深度模型执行视频分析。
+        - 所有中间视频文件将在处理结束后自动清除。
+        - 并发任务通过 `asyncio.gather` 实现，提升性能。
+
+        Workflow
+        --------
+        1. 提取 `option` 和 `alynex` 实例。
+        2. 执行 `als_track` 获取原始视频和指示信息。
+        3. 应用 `als_waves` 对视频进行帧率与滤镜预处理。
+        4. 使用 `clipix.pixels()` 拆解视频帧并标准化尺寸。
+        5. 清除中间缓存文件。
+        6. 根据模型状态执行 Keras 模型或基础分析流程。
+        7. 渲染图表并生成完整分析报告。
         """
-
-        looper = asyncio.new_event_loop()
+        looper = asyncio.get_running_loop()
 
         option: "Option" = kwargs["option"]
         alynex: "Alynex" = kwargs["alynex"]
@@ -635,12 +676,13 @@ class Missions(object):
         # Html Template
         atom_tmp = await Craft.achieve(self.atom_total_temp)
 
-        async def render_keras(future: "Review", todo_list: list[list]):
-            total_path: str
-            query_path: str
-            frame_path: str
-            extra_path: str
-            proto_path: str
+        async def render_keras(future: "Review", todo_list: list[list]) -> tuple:
+            total_path: typing.Any | str
+            query_path: typing.Any | str
+            frame_path: typing.Any | str
+            extra_path: typing.Any | str
+            proto_path: typing.Any | str
+
             start, end, cost, scores, struct = future.material
             *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo_list
 
@@ -682,23 +724,35 @@ class Missions(object):
 
     async def combine(self, report: "Report") -> None:
         """
-        异步生成组合报告的方法。
+        异步生成组合报告。
 
-        该方法用于检查报告对象的范围列表，并根据配置调用适当的报告生成方法来创建组合报告。
+        根据报告对象中提供的数据范围与配置参数，动态选择合适的合并方法生成综合分析报告。
+        支持多场景对比与汇总视图，适用于复杂测试或多源视频任务。
 
-        参数:
-            report (Report): 报告处理对象，包含处理和展示结果的路径和范围列表。
+        Parameters
+        ----------
+        report : Report
+            报告引擎对象，包含报告路径、数据范围以及合并配置。
 
-        返回:
-            None: 此函数没有返回值，所有结果通过日志和报告对象进行记录和展示。
+        Returns
+        -------
+        None
+            无返回值，分析结果通过日志与报告系统落地输出。
 
-        注意:
-            - 该函数为异步函数，需要在异步环境中运行。
-            - 如果范围列表为空，则记录并展示没有可生成的报告信息。
-            - 根据 `self.speed` 配置，调用不同的报告生成方法 (`combine_view` 或 `combine_main`)。
-            - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
+        Notes
+        -----
+        - 方法为异步函数，需在协程环境中运行。
+        - 若 `report.scope` 为空，则跳过处理并输出提示信息。
+        - 根据 `self.speed` 配置动态调用 `combine_view()` 或 `combine_main()`。
+        - 所有异常将在执行期间捕获并输出，避免流程中断。
+
+        Workflow
+        --------
+        1. 检查报告对象的有效性及范围列表。
+        2. 输出提示信息（如无可处理数据）。
+        3. 根据配置参数选择合适的组合方法。
+        4. 异步生成组合报告，落地到指定目录。
         """
-
         if report.range_list:
             function = getattr(self, "combine_view" if self.speed else "combine_main")
             return await function([os.path.dirname(report.total_path)])
@@ -708,25 +762,41 @@ class Missions(object):
 
     async def combine_crux(self, share_temp: str, total_temp: str, merge: list) -> None:
         """
-        异步生成汇总报告的方法。
+        异步生成汇总报告。
 
-        该方法用于根据共享模板和汇总模板生成汇总报告，并将多个子报告合并成一个总报告。
+        根据共享模板与总模板路径，整合多个子报告内容，最终生成完整的汇总分析文档。
 
-        参数:
-            share_temp (str): 共享模板路径，用于生成部分共享报告内容。
-            total_temp (str): 汇总模板路径，用于生成完整的汇总报告。
-            merge (list): 需要合并的子报告列表。
+        Parameters
+        ----------
+        share_temp : str
+            共享内容模板路径，用于插入所有子报告中共通的页面或描述元素。
 
-        返回:
-            None: 此函数没有返回值，所有结果通过日志和报告对象进行记录和展示。
+        total_temp : str
+            汇总页面模板路径，用于构建最终的总报告布局与展示结构。
 
-        注意:
-            - 该函数为异步函数，需要在异步环境中运行。
-            - 异步获取模板内容，并确保模板获取成功。
-            - 异常处理：确保处理过程中捕获并妥善处理可能发生的任何异常，以避免程序中断。
-            - 生成汇总报告，并记录和展示处理结果。
+        merge : list of str
+            子报告路径列表，所有待整合的报告资源将统一纳入汇总流程中。
+
+        Returns
+        -------
+        None
+            函数无返回值，生成结果将通过日志与报告系统落地呈现。
+
+        Notes
+        -----
+        - 此函数需在异步环境中执行。
+        - 所有模板加载操作均通过异步文件读取完成。
+        - 若模板文件缺失或格式错误，将抛出异常并记录日志。
+        - 支持多源报告的批量合并，适用于跨任务、跨模型的统一视图整合。
+
+        Workflow
+        --------
+        1. 异步读取共享模板和汇总模板内容。
+        2. 加载并解析所有待合并的子报告内容。
+        3. 拼接共享内容与各子报告片段，构造统一报告体。
+        4. 渲染汇总模板并生成最终 HTML 报告。
+        5. 记录汇总路径与操作日志。
         """
-
         template_list = await asyncio.gather(
             *(Craft.achieve(i) for i in (share_temp, total_temp))
         )
@@ -756,14 +826,18 @@ class Missions(object):
 
     # """时空纽带分析系统"""
     async def combine_view(self, merge: list) -> None:
-        """合并视图数据。"""
+        """
+        合并视图数据。
+        """
         await self.combine_crux(
             self.view_share_temp, self.view_total_temp, merge
         )
 
     # """时序融合分析系统"""
     async def combine_main(self, merge: list) -> None:
-        """合并视图数据。"""
+        """
+        合并视图数据。
+        """
         await self.combine_crux(
             self.main_share_temp, self.main_total_temp, merge
         )
@@ -771,36 +845,43 @@ class Missions(object):
     # """视频解析探索"""
     async def video_file_task(self, video_file_list: list, option: "Option", deploy: "Deploy") -> None:
         """
-        异步处理视频文件任务，并根据配置选项进行分析。
+        异步处理视频文件任务，并根据配置选项执行相应的分析流程。
 
-        参数:
-            video_file_list (list): 包含视频文件路径的列表。
-            option (Option): 配置选项对象，包含分析任务的相关配置。
-            deploy (Deploy): 部署配置对象，包含视频处理的具体参数。
+        通过分析视频列表，执行基本或深度学习分析操作，并最终生成分析报告。
 
-        返回:
-            None: 任务完成后没有返回值，结果将通过日志和报告面板展示。
+        Parameters
+        ----------
+        video_file_list : list of str
+            视频文件路径列表，包含所有待分析的原始视频资源。
 
-        功能说明:
-            1. 检查视频文件列表中的有效文件，如果没有有效文件，将记录并显示错误信息。
-            2. 初始化Clipix和Report对象，用于视频处理和报告生成。
-            3. 将视频文件复制到报告目录中，并生成相关任务列表。
-            4. 根据speed选项决定执行何种分析方式:
-                - 如果启用speed选项，调用`als_speed`进行快速分析。
-                - 否则，初始化Alynex并加载模型，调用`als_keras`进行深度学习分析。
-            5. 任务结束后，生成最终报告。
+        option : Option
+            配置选项对象，定义任务运行的各类参数与模型选型策略。
 
-        注意:
-            - 如果视频文件列表为空，将直接返回并记录相应的日志信息。
-            - 在执行Keras分析时，若模型加载失败，将捕获异常并记录。
+        deploy : Deploy
+            部署配置对象，提供具体的处理规则，如帧率、剪辑时长、输出格式等。
 
-        主要流程:
-            1. 过滤有效视频文件并复制到目标目录。
-            2. 创建和配置Clipix和Report对象。
-            3. 根据配置执行相应的分析操作（快速分析或深度学习分析）。
-            4. 生成并展示分析报告。
+        Returns
+        -------
+        None
+            无返回值。处理结果通过日志记录和报告面板进行呈现。
+
+        Notes
+        -----
+        - 若视频列表为空，函数将直接中止并记录日志信息。
+        - 分析模式由 `option.speed` 控制：
+            - 若启用，执行快速分析路径（als_speed）。
+            - 否则使用 Keras 模型进行深度分析（als_keras）。
+        - 所有模型加载及处理操作均封装为异步任务。
+        - 支持异常捕获与错误日志打印，确保运行稳定性。
+
+        Workflow
+        --------
+        1. 过滤并验证视频文件有效性。
+        2. 初始化 Clipix 和 Report 对象，用于处理与结果管理。
+        3. 将视频复制到报告路径中，生成任务队列。
+        4. 根据配置执行快速分析或 Keras 深度分析。
+        5. 渲染最终分析报告并完成任务。
         """
-
         if not (video_file_list := [
             video_file for video_file in video_file_list if os.path.isfile(video_file)]
         ):
@@ -839,7 +920,7 @@ class Missions(object):
                 self.design.show_panel(e, Wind.KEEPER)
 
             # Keras Analyzer
-            await self.als_keras(*attack, option=option, alynex=alynex)
+            await self.als_basic_or_keras(*attack, option=option, alynex=alynex)
 
         # Create Report
         await self.combine(report)
@@ -847,42 +928,52 @@ class Missions(object):
     # """影像堆叠导航"""
     async def video_data_task(self, video_data_list: list, option: "Option", deploy: "Deploy") -> None:
         """
-        异步处理视频数据任务，并根据配置选项进行分析。
+        异步处理视频数据任务，并根据配置执行快速或深度分析流程。
 
-        参数:
-            video_data_list (list): 包含视频数据路径的列表。
-            option (Option): 配置选项对象，包含分析任务的相关配置。
-            deploy (Deploy): 部署配置对象，包含视频处理的具体参数。
+        通过 Search 工具定位视频数据源，组织分析任务并输出处理报告。
 
-        功能说明:
-            1. 使用`search`对象加速搜索视频数据文件。
-            2. 对每个有效的搜索结果生成对应的报告和任务列表。
-            3. 根据speed选项决定执行何种分析方式:
-                - 如果启用speed选项，调用`als_speed`进行快速分析。
-                - 否则，初始化Alynex并加载模型，调用`als_keras`进行深度学习分析。
-            4. 每次任务完成后，生成最终报告。
+        Parameters
+        ----------
+        video_data_list : list of str
+            视频数据路径组成的列表，表示待处理的输入数据源。
 
-        注意:
-            - 如果`search`搜索结果返回异常，将记录日志并显示错误信息。
-            - 在执行Keras分析时，若模型加载失败，将捕获异常并记录。
+        option : Option
+            分析配置对象，包含模型选择、运行参数等选项控制信息。
 
-        主要流程:
-            1. 使用`search`加速搜索视频数据，并过滤有效结果。
-            2. 生成对应的报告对象并初始化任务列表。
-            3. 根据配置执行相应的分析操作（快速分析或深度学习分析）。
-            4. 生成并展示分析报告。
+        deploy : Deploy
+            视频处理部署对象，定义处理参数，如时间区间、输出格式、帧率限制等。
+
+        Returns
+        -------
+        None
+            无返回值。分析结果通过报告对象记录并输出。
+
+        Notes
+        -----
+        - 利用 `Search` 类对输入路径加速检索，自动组织数据结构。
+        - 每项任务对应一个报告输出目录，支持并行处理多个数据集。
+        - 若 `option.speed=True`，使用快速路径分析 (`als_speed`)。
+        - 若使用 Keras 模型，则通过 `als_keras` 启动深度学习分析流程。
+        - 所有异常（如搜索失败或模型加载异常）都将被记录且不中断整体流程。
+
+        Workflow
+        --------
+        1. 使用 `Search` 工具解析并验证数据源结构。
+        2. 为每项视频数据创建对应的报告目录和任务清单。
+        3. 判断当前配置，选择快速分析或 Keras 深度分析流程。
+        4. 执行任务分析并生成 HTML 报告。
         """
 
         async def load_entries():
-            """加载视频数据条目。"""
+            """
+            加载视频数据条目。
+            """
             for video_data in video_data_list:
-                if isinstance(finder_result := search.accelerate(video_data), Exception):
-                    logger.debug(finder_result)
-                    self.design.show_panel(finder_result, Wind.KEEPER)
+                if isinstance(search_result := search.accelerate(video_data), Exception):
+                    logger.debug(search_result)
+                    self.design.show_panel(search_result, Wind.KEEPER)
                     continue
-                tree, collection_list = finder_result
-                Design.console.print(tree)
-                yield collection_list[0]
+                yield search_result[0]
 
         search = Search()
 
@@ -923,7 +1014,7 @@ class Missions(object):
                             self.design.show_panel(e, Wind.KEEPER)
 
                         # Keras Analyzer
-                        await self.als_keras(*attack, option=option, alynex=alynex)
+                        await self.als_basic_or_keras(*attack, option=option, alynex=alynex)
 
                 # Create Report
                 await self.combine(report)
@@ -931,34 +1022,42 @@ class Missions(object):
     # """模型训练大师"""
     async def train_model(self, video_file_list: list, option: "Option", deploy: "Deploy") -> None:
         """
-        异步模型训练任务。
+        异步执行模型训练任务，对输入视频进行预处理后启动单任务或多任务训练流程。
 
-        参数:
-            video_file_list (list): 包含视频文件路径的列表。
-            option (Option): 配置选项对象，包含模型训练的相关配置。
-            deploy (Deploy): 部署配置对象，包含视频处理的具体参数。
+        Parameters
+        ----------
+        video_file_list : list of str
+            待训练的视频文件路径列表，需为有效的媒体文件。
 
-        功能说明:
-            1. 过滤无效视频文件，并生成对应的报告和任务列表。
-            2. 根据部署配置，执行视频跟踪、过滤和调整操作。
-            3. 调用Alynex执行模型训练任务，并根据任务数量选择单任务或多任务模式。
-            4. 处理视频转换后的结果，并清理临时文件。
+        option : Option
+            配置选项对象，包含模型路径、训练模式、日志等级等选项参数。
 
-        处理步骤:
-            1. 验证并过滤有效的视频文件路径。
-            2. 使用`Clipix`对象和`Report`对象对视频进行处理，并生成任务列表。
-            3. 执行视频跟踪(`als_track`)、过滤(`als_waves`)和视频调整操作。
-            4. 根据任务数量选择合适的分析方式:
-                - 单任务模式下直接调用`Alynex`进行分析。
-                - 多任务模式下，使用多进程池执行分析任务，并处理返回结果。
-            5. 记录分析结果并清理临时生成的视频文件。
+        deploy : Deploy
+            部署配置对象，定义训练过程中涉及的视频处理参数，如帧率、剪辑时间、输出路径等。
 
-        注意:
-            - 如果视频文件列表为空，将记录日志并显示错误信息。
-            - 在多任务模式下，设置`self.level`为`ERROR`级别以确保多进程中的正确日志记录。
-            - 临时文件在任务完成后被清理以释放存储空间。
+        Returns
+        -------
+        None
+            无返回值。训练结果通过日志和报告系统进行记录与展示。
+
+        Notes
+        -----
+        - 所有无效或不存在的视频路径将被自动过滤。
+        - 使用 `Clipix` 处理视频结构，生成任务清单后依赖 `als_track` 与 `als_waves` 进行预处理。
+        - 若任务仅包含一个视频，则采用直接异步训练模式。
+        - 若任务数量大于 1，则采用多进程训练方式，并设置日志等级为 ERROR，避免输出干扰。
+        - 所有临时视频文件将在训练完成后清理，节省存储空间。
+
+        Workflow
+        --------
+        1. 验证输入路径并构建处理任务列表。
+        2. 初始化 `Clipix` 与 `Report`，并准备视频分析任务。
+        3. 执行视频追踪和过滤操作，准备训练输入。
+        4. 根据任务数量选择训练模式：
+            - 单任务直接调用 `Alynex.ask_analyzer`
+            - 多任务使用进程池并发执行训练任务
+        5. 分析结束后清除中间产物，记录训练日志。
         """
-
         if not (video_file_list := [
             video_file for video_file in video_file_list if os.path.isfile(video_file)]
         ):
@@ -968,9 +1067,10 @@ class Missions(object):
         # ====[ 内置模块 ]====
         import uuid
 
-        looper = asyncio.new_event_loop()
+        looper = asyncio.get_running_loop()
 
         clipix = Clipix(self.fmp, self.fpb)
+
         report = Report(option.total_place)
 
         # Profession
@@ -1059,42 +1159,47 @@ class Missions(object):
     # """模型编译大师"""
     async def build_model(self, video_data_list: list, option: "Option", deploy: "Deploy") -> None:
         """
-        异步模型构建任务。
+        异步执行模型构建任务，从视频数据目录中提取图像信息并构建模型结构。
 
-        参数:
-            video_data_list (list): 包含视频数据文件夹路径的列表。
-            option (Option): 配置选项对象，包含模型构建的相关配置。
-            deploy (Deploy): 部署配置对象，包含视频处理的具体参数。
+        Parameters
+        ----------
+        video_data_list : list of str
+            包含视频数据文件夹路径的列表，每个路径下需包含结构化的图像数据。
 
-        功能说明:
-            1. 过滤无效的视频数据文件夹，生成报告和任务列表。
-            2. 执行视频数据的文件夹搜索、图片通道分析和模型构建操作。
-            3. 根据任务数量选择单任务或多任务模式进行模型构建。
-            4. 记录构建结果并显示模型构建的详细信息。
+        option : Option
+            模型构建选项，包含路径设置、日志等级、模型输出参数等配置。
 
-        处理步骤:
-            1. 验证并过滤有效的视频数据文件夹路径。
-            2. 使用`conduct`函数搜索文件夹中的数据，根据子文件夹的命名规则排序并生成列表。
-            3. 使用`channel`函数对文件夹中的图片进行通道分析，确定图片的色彩信息和图像形状。
-            4. 根据分析结果生成模型构建任务列表，并调用Alynex的`ks.build`函数进行模型构建。
-            5. 根据任务数量选择合适地执行模式:
-                - 单任务模式下直接在主进程中执行模型构建。
-                - 多任务模式下使用多进程池进行并行构建。
-            6. 记录和展示模型构建的成功信息。
+        deploy : Deploy
+            视频部署配置对象，用于提供图像格式、尺寸要求、路径约束等信息。
 
-        注意:
-            - 如果视频数据文件夹列表为空，将记录日志并显示错误信息。
-            - 在多任务模式下，设置`self.level`为`ERROR`级别以确保多进程中的正确日志记录。
-            - 处理过程中可能抛出的异常将记录并展示为错误信息。
+        Returns
+        -------
+        None
+            无返回值。所有构建信息将通过日志系统记录并展示。
+
+        Notes
+        -----
+        - 提供的数据目录需为有效的结构化图像路径，通常包含多个子序列。
+        - 使用 `conduct` 函数检索图像路径，并按规则构建训练输入集。
+        - 使用 `channel` 函数分析图片通道信息，推导图像维度和模型输入结构。
+        - 支持自动选择构建模式：单任务模式或多进程并发构建。
+        - 多进程模式下将日志等级提升至 ERROR，以避免并发输出干扰。
+
+        Workflow
+        --------
+        1. 检查并过滤无效路径，生成合法任务列表。
+        2. 检索每个路径下的图像结构，提取图像维度与通道信息。
+        3. 构建模型构建参数，并调用 `Alynex.ks.build` 进行模型生成。
+        4. 如果任务量大于 1，使用多进程池并发构建模型。
+        5. 构建完成后输出成功信息或错误报告。
         """
-
         if not (video_data_list := [
             video_data for video_data in video_data_list if os.path.isdir(video_data)]
         ):
             logger.debug(tip := f"没有有效任务")
             return self.design.show_panel(tip, Wind.KEEPER)
 
-        looper = asyncio.new_event_loop()
+        looper = asyncio.get_running_loop()
 
         async def conduct():
             search_file_list, search_dirs_list = [], []
@@ -1133,6 +1238,7 @@ class Missions(object):
             return "rgb", image.ndim, f"Image: {list(image.shape)} is color image"
 
         alynex = Alynex(None, option, deploy, self.design)
+
         report = Report(option.total_place)
 
         task_list = []
@@ -1200,20 +1306,35 @@ class Missions(object):
     # """线迹创造者"""
     async def painting(self, option: "Option", deploy: "Deploy") -> None:
         """
-        使用设备截图进行绘制操作，并在图像上添加网格线。
+        使用设备截图进行绘制，并在图像上添加网格辅助信息。
 
-        参数:
-            deploy ("Deploy"): 部署对象，包含绘制配置。
+        Parameters
+        ----------
+        option : Option
+            选项配置对象，包含运行时选项设置，如模型路径、输出控制等。
 
-        功能描述:
-            1. 初始化绘图所需的库和路径。
-            2. 获取设备列表，并对每个设备进行以下操作:
-                - 获取设备截图并保存到本地临时目录。
-                - 根据配置将图像转换为灰度或保持彩色。
-                - 对图像进行裁剪或省略操作。
-                - 调整图像大小并添加网格线。
-                - 显示最终处理的图像。
-            3. 处理完成后，询问用户是否保存图片，并根据用户选择保存图片。
+        deploy : Deploy
+            绘图部署配置对象，包含颜色模式、图像尺寸、裁剪方式以及保存选项等参数。
+
+        Returns
+        -------
+        None
+            无返回值，图像处理和结果保存过程在函数内部完成。
+
+        Notes
+        -----
+        - 支持处理多设备截图，自动适配每台设备执行相同的绘制逻辑。
+        - 可选择彩色或灰度模式，依据部署参数自动进行图像裁剪、缩放和格式调整。
+        - 图像将以网格形式展示，适用于视觉验证或调试用途。
+        - 最后通过控制台交互询问用户是否保存处理结果。
+
+        Workflow
+        --------
+        1. 加载运行选项和部署参数。
+        2. 枚举已连接设备，逐一进行截图抓取。
+        3. 执行图像转换：灰度/彩色选择、裁剪、省略边缘、缩放等。
+        4. 添加标准网格线以增强图像可读性。
+        5. 展示图像预览，支持用户交互式选择是否保存。
         """
 
         # ====[ from: 第三方库 ]====
@@ -1221,26 +1342,47 @@ class Missions(object):
             Image, ImageDraw, ImageFont
         )
 
-        async def paint_lines(device):
+        async def paint_lines(device: "Device") -> "Image":
             """
-            处理单个设备的截图，进行图像操作并添加网格线。
+            从指定设备获取屏幕截图，并进行图像处理和网格绘制。
 
-            参数:
-                device (object): 设备对象，包含设备的相关信息。
+            该函数会从设备截取屏幕图像，对其进行可选的裁剪、省略、灰度转换和尺寸缩放，最后在图像上绘制辅助网格线并展示。
 
-            返回:
-                PIL.Image: 处理后的图像对象。
+            Parameters
+            ----------
+            device : Device
+                表示目标设备的实例，包含唯一标识（如 serial）用于操作 ADB。
 
-            功能描述:
-                1. 获取设备截图并保存到本地临时目录。
-                2. 根据配置将图像转换为灰度或保持彩色。
-                3. 对图像进行裁剪或省略操作。
-                4. 调整图像大小并添加网格线。
-                5. 显示最终处理的图像。
+            Returns
+            -------
+            Image.Image
+                最终处理完成的 PIL 图像对象，包含裁剪、省略和网格线效果。
+
+            Notes
+            -----
+            - 本方法在临时目录中执行所有图像处理，处理后图像自动展示。
+            - 所有绘图比例和尺寸自动适配图像实际宽高。
+            - 所需配置通过全局变量 `deploy` 和 `self.design` 获取。
+
+            Workflow
+            --------
+            1. 截图采集：
+                - 使用 ADB 命令将设备当前屏幕截图保存至设备端并拉取到本地临时目录。
+            2. 图像加载与预处理：
+                - 加载图像并根据 `deploy.color` 决定是否转为灰度。
+                - 应用裁剪（crops）或省略（omits）区域调整图像。
+            3. 图像缩放与尺寸调整：
+                - 依据 `deploy.shape` 获取目标尺寸。
+                - 按 `deploy.scale` 配置对图像进行缩放。
+            4. 绘制网格线：
+                - 根据图像宽高比自动决定网格行列数。
+                - 绘制水平与垂直线，附带百分比文本标注。
+            5. 图像展示与清理：
+                - 显示最终图像。
+                - 删除设备端的临时截图。
             """
-
             image_folder = "/sdcard/Pictures/Shots"
-            image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_" + "Shot.png"
+            image = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}_Shot.png"
 
             await Terminal.cmd_line(
                 [self.adb, "-s", device.sn, "wait-for-device"]
@@ -1386,12 +1528,92 @@ class Missions(object):
 
     # """循环节拍器 | 脚本驱动者 | 全域执行者"""
     async def analysis(self, option: "Option", deploy: "Deploy") -> None:
+        """
+        分析入口函数，用于根据不同模式执行视频录制、控制命令、自动化脚本及模型分析任务。
 
-        async def anything_film():
-            """初始化并启动设备的视频录制任务"""
+        该异步方法是 Framix 分析流程的核心入口，根据用户配置和命令行选项自动识别分析模式（录制、脚本或批量），
+        并协调录屏、执行指令、处理设备、多进程分析和报告生成等任务。
 
-            async def wait_for_device(device):
-                """等待设备上线"""
+        Parameters
+        ----------
+        option : Option
+            分析配置选项对象，提供模型路径、输出路径等参数。
+
+        deploy : Deploy
+            视频处理部署配置对象，包含帧率、分辨率、裁剪等视觉处理参数。
+
+        Returns
+        -------
+        None
+            此函数没有返回值，所有分析结果将通过报告模块记录或控制台展示。
+
+        Raises
+        ------
+        FramixError
+            如果设备连接失败、模型加载异常、脚本格式错误或命令无效等情况将抛出。
+
+        Notes
+        -----
+        - 方法支持三种模式：手动交互式录制（flick）、自动执行脚本（carry/fully）、批量分析（shine）。
+        - 使用异步机制控制设备连接、事件监听和命令执行，最大化多设备并行效率。
+        - 分析流程将根据 speed/basic/keras 参数自动切换分析模型，自动生成报告。
+        - 函数内部封装多个协程函数，如 anything_film、exec_commands 等，确保逻辑清晰模块化。
+
+        Workflow
+        --------
+        1. 初始化组件：
+            - 创建设备管理器 Manage 和分析引擎 Alynex。
+            - 初始化 Clipix（视频处理器）、Report（报告器）和 Record（录屏管理器）。
+        2. 判断分析模式：
+            - Flick 模式（录制并分析）：
+                a. 展示设备列表，等待用户输入时间或命令。
+                b. 启动录屏任务并计时。
+                c. 完成录制后关闭录屏，分析视频并生成报告。
+            - Carry/Fully 模式（读取 JSON 脚本）：
+                a. 异步加载脚本命令集。
+                b. 激活 UI 自动化。
+                c. 按照 header/change/looper 执行 prefix-action-suffix 三阶段任务。
+                d. 可选地启用 shine 合并任务后再统一分析。
+        3. 命令执行流程：
+            - pack_commands：解析并组合命令列表为可执行格式。
+            - exec_commands：异步并发执行所有命令。
+            - call_commands：调用指定对象的命令函数，并处理结果。
+        4. 视频分析：
+            - 根据 speed/basic/keras 参数自动选择分析方式（als_speed / als_basic_or_keras）。
+            - 支持模型加载、失败回退与结果展示。
+        5. 生成报告：
+            - 所有分析结果通过 Report 模块记录，支持 HTML 渲染、汇总报告合并等。
+            - 脚本模式下支持 batch 多轮循环执行与自动命名。
+        """
+
+        async def anything_film() -> list:
+            """
+            初始化并启动设备的视频录制任务。
+
+            Returns
+            -------
+            list
+                返回任务列表，每个元素包含录制视频的相关信息（包括临时路径、传输对象、报告路径等）。
+
+            Notes
+            -----
+            - 遍历所有连接的设备，根据其显示尺寸动态调整窗口布局；
+            - 对每个设备调用 `ask_start_record` 方法开始录制，并生成对应的任务信息；
+            - 支持自动排列设备窗口，避免屏幕重叠；
+            - 将视频任务信息封装为列表，后续用于收集、分析和生成报告。
+
+            Workflow
+            --------
+            1. 获取屏幕分辨率并初始化坐标；
+            2. 计算设备显示位置，处理屏幕换行逻辑；
+            3. 调用录制函数生成任务；
+            4. 返回任务信息列表。
+            """
+
+            async def wait_for_device(device: "Device") -> None:
+                """
+                等待设备上线
+                """
                 Design.notes(f"[bold #FAFAD2]Wait Device Online -> {device.tag} {device.sn}")
                 await Terminal.cmd_line([self.adb, "-s", device.sn, "wait-for-device"])
 
@@ -1449,8 +1671,26 @@ class Missions(object):
 
             return todo_list
 
-        async def anything_over():
-            """完成任务后的处理"""
+        async def anything_over() -> None:
+            """
+            完成任务后的处理逻辑，包括录制终止和无效任务的剔除。
+
+            Returns
+            -------
+            None
+
+            Notes
+            -----
+            - 结束所有设备的视频录制任务；
+            - 检查返回结果中是否有录制失败的视频，并将其从任务列表中移除；
+            - 通过日志展示保留或剔除的记录信息。
+
+            Workflow
+            --------
+            1. 并发执行所有设备的 `ask_close_record`；
+            2. 处理返回结果，筛除无效任务；
+            3. 展示每个任务的执行情况。
+            """
             effective_list = await asyncio.gather(
                 *(record.ask_close_record(device, video_temp, transports)
                   for device, (video_temp, transports, *_) in zip(device_list, task_list))
@@ -1470,8 +1710,26 @@ class Missions(object):
                     check_list.append(tip)
             self.design.show_panel("\n".join(check_list), Wind.EXPLORER)
 
-        async def anything_well():
-            """执行任务处理，根据不同模式选择适当的分析方法"""
+        async def anything_well() -> None:
+            """
+            执行任务处理，根据选择的分析模式决定调用哪种分析逻辑。
+
+            Returns
+            -------
+            None
+
+            Notes
+            -----
+            - 当任务列表为空时，直接终止执行；
+            - 根据配置项（speed, basic, keras）决定使用哪种分析方式；
+            - 若无配置项匹配，则表示为录制模式，仅提示当前模式。
+
+            Workflow
+            --------
+            1. 判断任务列表是否为空；
+            2. 根据分析模式调用对应的处理方法（als_speed / als_basic_or_keras）；
+            3. 否则进入默认提示流程。
+            """
             if len(task_list) == 0:
                 logger.debug(tip := f"没有有效任务")
                 return self.design.show_panel(tip, Wind.KEEPER)
@@ -1484,39 +1742,41 @@ class Missions(object):
                 await self.als_speed(*attack)
             elif self.basic or self.keras:
                 # Keras Analyzer
-                await self.als_keras(*attack, option=option, alynex=alynex)
+                await self.als_basic_or_keras(*attack, option=option, alynex=alynex)
             else:
                 logger.debug(tip := f"**<* 录制模式 *>**")
                 self.design.show_panel(tip, Wind.EXPLORER)
 
-        async def load_timer():
-            """并行执行定时任务，对设备列表中的每个设备进行计时操作"""
+        async def load_timer() -> None:
+            """
+            并行执行定时任务，对设备列表中的每个设备进行计时操作
+            """
             await asyncio.gather(
                 *(record.check_timer(device, timer_mode) for device in device_list)
             )
 
-        async def load_carry(carry):
-            """加载并解析传入的 carry 字符串，返回包含执行指令的字典或异常"""
-
-            # 分割为路径和关键字两部分
+        async def load_carry(carry: str) -> dict:
+            """
+            加载并解析传入的 carry 字符串，返回包含执行指令的字典或异常
+            """
             if len(parts := re.split(r",|;|!|\s", carry)) >= 2:
                 loc_file, *key_list = parts
-                # 异步加载执行字典
-                if isinstance(exec_dict := await load_fully(loc_file), Exception):
-                    return exec_dict
+
+                exec_dict = await load_fully(loc_file)
 
                 try:
-                    # 查找关键字对应的执行指令
                     return {key: value for key in key_list if (value := exec_dict.get(key, None))}
-                # 如果 carry 字符串格式不正确，抛出值错误
                 except (FileNotFoundError, KeyError, json.JSONDecodeError) as e:
-                    return e
+                    raise FramixError(e)
 
             raise FramixError(f"参数错误: {carry}")
 
-        async def load_fully(fully):
-            """异步加载和解析完整的命令文件"""
+        async def load_fully(fully: str) -> dict:
+            """
+            异步加载和解析完整的命令文件
+            """
             fully = await Craft.revise_path(fully)
+
             try:
                 async with aiofiles.open(fully, "r", encoding=const.CHARSET) as f:
                     file_list = json.loads(await f.read())["command"]
@@ -1536,36 +1796,63 @@ class Missions(object):
                         if any(c["cmds"] for c in cmds.get("action", []))
                     }
             except (FileNotFoundError, KeyError, json.JSONDecodeError) as e:
-                return e
+                raise FramixError(e)
+
             return exec_dict
 
-        async def call_commands(bean, live_devices, exec_func, exec_vals, exec_args, exec_kwds):
+        async def call_commands(
+                bean: typing.Any, live_devices: dict,
+                exec_func: str, exec_vals: list, exec_args: list, exec_kwds: dict
+        ) -> typing.Any:
             """
-            异步执行命令。
+            异步执行设备或工具对象中的指定命令函数。
 
-            参数:
-                - bean: 要操作的对象实例，通常包含需要调用的方法。
-                - live_devices: 活动设备的列表或字典，用于管理当前正在处理的设备。
-                - exec_func: 字符串类型，表示要调用的函数名称。
-                - exec_vals: 位置参数列表，传递给目标函数。
-                - exec_args: 额外的参数列表，与 `exec_vals` 一起传递给目标函数。
-                - exec_kwds: 关键字参数字典，传递给目标函数。
+            该方法用于从传入对象中动态获取方法名并执行，支持异步调用，可用于统一管理多设备或外部对象的行为调用。
 
-            功能说明:
-                1. 动态获取 `bean` 对象中的指定方法 (`exec_func`) 并检查其可调用性。
-                2. 如果方法不可调用，记录调试信息并显示提示。
-                3. 获取对象实例的序列号 (`sn`) 或类名，用于日志记录和显示。
-                4. 调用指定的可调用方法 (`function`) 并传递所有参数 (`exec_vals`, `exec_args`, `exec_kwds`)。
-                5. 处理异步函数的执行结果，记录和显示返回值。
-                6. 在捕获到 `asyncio.CancelledError` 异常时，将设备从 `live_devices` 中移除并记录退出信息。
-                7. 如果发生其他异常，捕获并返回异常对象。
+            Parameters
+            ----------
+            bean : Any
+                要调用方法的目标对象实例，通常是设备或功能模块。
 
-            返回值:
-                - 成功时返回函数的执行结果。
-                - 如果方法不可调用或在执行过程中发生异常，返回异常对象。
-                - 如果发生取消错误 (`asyncio.CancelledError`)，从 `live_devices` 中移除设备并退出。
+            live_devices : dict
+                活跃设备的字典，用于管理当前活跃状态的设备对象。
+
+            exec_func : str
+                要调用的方法名字符串。
+
+            exec_vals : list
+                方法调用时的主要位置参数。
+
+            exec_args : list
+                附加的位置参数。
+
+            exec_kwds : dict
+                关键字参数，作为方法调用时的可选参数。
+
+            Returns
+            -------
+            Any
+                方法调用的返回值。如果方法不可调用或发生异常，则返回异常对象。
+
+            Raises
+            ------
+            asyncio.CancelledError
+                如果当前任务被取消，会将设备从活跃列表中移除，并退出当前指令执行。
+
+            Notes
+            -----
+            - 如果目标方法不是协程函数，则不会执行；
+            - 如果方法返回有效结果，将打印日志和执行结果；
+            - 若执行过程中发生取消或异常，将优雅地处理错误并返回异常对象。
+
+            Workflow
+            --------
+            1. 使用 `getattr` 获取目标方法并判断是否可调用；
+            2. 打印调用日志并确认方法为协程函数；
+            3. 异步执行该方法，传入组合参数；
+            4. 捕获取消或执行异常，并处理相关逻辑（如设备移除、日志记录）；
+            5. 返回调用结果或异常信息。
             """
-
             if not (callable(function := getattr(bean, exec_func, None))):
                 logger.debug(tip := f"No callable {exec_func}")
                 return self.design.show_panel(tip, Wind.KEEPER)
@@ -1585,27 +1872,40 @@ class Missions(object):
                 logger.debug(tip := f"{sn} Call Commands Exit")
                 self.design.show_panel(tip, Wind.EXPLORER)
             except Exception as e:
-                return e
+                return FramixError(e)
 
-        async def pack_commands(resolve_list):
+        async def pack_commands(resolve_list: list) -> list:
             """
-            异步命令打包函数。
+            解析并标准化脚本中的命令配置，生成统一结构的执行参数列表。
 
-            参数:
-                - resolve_list (list): 包含解析信息的列表，每个元素都是字典，通常包含`cmds`、`vals`、`args`和`kwds`等键。
+            该函数用于将脚本中携带的命令 (`cmds`)、参数 (`vals`)、附加参数 (`args`) 和关键字参数 (`kwds`) 整理为可执行形式的四元组列表。
 
-            功能说明:
-                1. 遍历 `resolve_list` 列表，处理每个解析项中的命令、值、参数和关键字参数。
-                2. 对 `cmds` 列表中的每个命令进行检查，确保它们是非空的字符串。
-                3. 对 `vals`、`args` 和 `kwds` 列表进行规范化处理，确保它们的每个元素符合预期的类型（列表或字典）。
-                4. 如果 `cmds` 列表长度与其他列表不匹配，使用空列表或空字典进行补充，以确保各列表长度一致。
-                5. 将处理后的命令、值、参数和关键字参数组合成元组，并追加到 `exec_pairs_list` 列表中。
+            Parameters
+            ----------
+            resolve_list : list
+                待解析的命令配置列表。每个元素为 dict，通常包含 `cmds`、`vals`、`args` 和 `kwds` 字段。
 
-            返回值:
-                - list: 包含命令、值、参数和关键字参数配对的列表。每个元素都是一个四元组，格式为 `(cmd, vals, args, kwds)`。
+            Returns
+            -------
+            list
+                包含解析完成的命令参数列表。每个元素是一个四元组列表，结构为 `(cmd: str, vals: list, args: list, kwds: dict)`。
+
+            Notes
+            -----
+            - 该函数用于构建批量自动化脚本任务的参数清单；
+            - 所有缺失字段将自动补齐为默认空值，确保指令长度对齐；
+            - 支持动态嵌套结构，便于统一处理异步调度任务。
+
+            Workflow
+            --------
+            1. 遍历 `resolve_list` 中每一项，提取并验证 `cmds` 是否有效；
+            2. 对 `vals`、`args`、`kwds` 进行数据结构补齐，确保每个命令项都有对应参数；
+            3. 将每条命令与其参数打包为 `(cmd, vals, args, kwds)` 四元组；
+            4. 将打包后的命令集合追加至总列表中；
+            5. 返回命令集合列表，用于后续调度执行。
             """
-
             exec_pairs_list = []
+
             for resolve in resolve_list:
                 device_cmds_list = resolve.get("cmds", [])
                 if all(isinstance(device_cmds, str) and device_cmds != "" for device_cmds in device_cmds_list):
@@ -1642,28 +1942,54 @@ class Missions(object):
 
             return exec_pairs_list
 
-        async def exec_commands(exec_pairs_list, *change):
+        async def exec_commands(exec_pairs_list: list, *change) -> None:
             """
-            异步执行命令函数。
+            执行批量命令的异步控制函数。
 
-            参数:
-                - exec_pairs_list (list): 包含命令和其参数配对的列表。每个元素都是一个四元组，格式为 `(exec_func, exec_vals, exec_args, exec_kwds)`。
-                - *change: 可选的变化参数，用于在命令执行过程中动态替换某些值。
+            该方法用于并发调度设备或播放器的功能方法，支持动态参数替换和任务执行生命周期管理。适用于多设备自动化执行场景。
 
-            功能说明:
-                1. 定义 `substitute_star` 内部函数，用于替换 `exec_args` 中的 "*" 为 `change` 中的相应值。
-                2. 初始化 `live_devices` 字典，包含当前活动设备的副本，以保证设备状态的一致性。
-                3. 创建用于停止任务的异步任务列表 `stop_tasks`，这些任务会在所有命令执行完毕后被取消。
-                4. 遍历 `exec_pairs_list`，对每对命令及其参数进行处理：
-                    - 如果 `exec_func` 是 "audio_player"，直接调用对应的 `call_commands` 方法处理。
-                    - 对于其他 `exec_func`，为每个设备创建异步任务，并使用 `asyncio.create_task` 启动这些任务。
-                5. 使用 `asyncio.gather` 并发执行所有任务，并捕获任务执行状态。
-                6. 在所有任务执行完成后，清空任务字典 `exec_tasks`，并记录或显示异常信息（如果有）。
-                7. 在任务结束后，取消所有停止任务，以确保所有异步操作都已安全终止。
+            Parameters
+            ----------
+            exec_pairs_list : list
+                包含命令及其参数组合的列表。每项为一个四元组 `(exec_func, exec_vals, exec_args, exec_kwds)`，分别表示待执行的方法名、位置参数、附加参数和关键字参数。
+
+            *change : Any
+                用于替换参数中的通配符 "*" 的动态值。可传入多个值用于匹配多个 "*"。
+
+            Returns
+            -------
+            None
+                函数不返回值。所有执行结果通过日志记录或界面展示输出。
+
+            Raises
+            ------
+            asyncio.CancelledError
+                若任务在执行中被主动取消，将中断调度并触发该异常。
+
+            Notes
+            -----
+            - 方法支持对 "*" 进行参数替换，可在执行时动态注入参数；
+            - 所有命令将并发执行，并根据设备状态自动处理取消和清理；
+            - `audio_player` 为特殊函数，默认绑定播放器，不遍历设备；
+            - 所有设备异常或任务失败将通过控制台展示，并保持任务日志。
+
+            Workflow
+            --------
+            1. 初始化 `live_devices` 以保存当前活跃设备；
+            2. 为每个设备注册 `stop` 任务，用于监听中断事件；
+            3. 遍历每个命令组 (`exec_pairs`)，按以下规则执行：
+               a. 替换参数中所有的 "*"；
+               b. 若为 `audio_player` 指令，直接执行播放器方法；
+               c. 否则对所有活跃设备并发调用方法；
+            4. 使用 `asyncio.gather` 并发等待所有设备命令执行；
+            5. 捕获并记录执行中出现的异常；
+            6. 所有任务完成后取消 `stop` 事件监听器，完成清理。
             """
 
             async def substitute_star(replaces: typing.Any):
-                """内部函数，用于替换 `exec_args` 中的 "*" 为 `change` 中的相应值。"""
+                """
+                内部函数，用于替换 `exec_args` 中的 "*" 为 `change` 中的相应值。
+                """
                 substitute = iter(change)
                 return [
                     "".join(next(substitute, "*") if c == "*" else c for c in i)
@@ -1692,7 +2018,7 @@ class Missions(object):
                                 call_commands(device, live_devices, exec_func, exec_vals, exec_args, exec_kwds))
 
                 try:
-                    exec_status_list = await asyncio.gather(*exec_tasks.values())
+                    exec_status_list = await asyncio.gather(*exec_tasks.values(), return_exceptions=True)
                 except asyncio.CancelledError:
                     return self.design.notes(f"[bold #F0FFF0 on #000000]All tasks canceled")
                 finally:
@@ -1706,8 +2032,9 @@ class Missions(object):
             for stop in stop_tasks:
                 stop.cancel()
 
-        # 初始化操作，为后续的程序运行做准备
+        # 初始化操作
         manage_ = Manage(self.adb)
+
         device_list = await manage_.operate_device()
 
         clipix = Clipix(self.fmp, self.fpb)
@@ -1798,14 +2125,17 @@ class Missions(object):
 
             if self.carry:
                 load_script_data_ = await asyncio.gather(
-                    *(load_carry(carry_) for carry_ in self.carry), return_exceptions=True
+                    *(load_carry(carry_) for carry_ in self.carry)
                 )
             elif self.fully:
                 load_script_data_ = await asyncio.gather(
-                    *(load_fully(fully_) for fully_ in self.fully), return_exceptions=True
+                    *(load_fully(fully_) for fully_ in self.fully)
                 )
             else:
                 raise FramixError(f"Script file does not exist")
+
+            if not (script_storage_ := [script_data_ for script_data_ in load_script_data_]):
+                raise FramixError(f"Script content is empty")
 
             for device_ in device_list:
                 logger.debug(tip_ := f"{device_.sn} Automator Activating")
@@ -1822,12 +2152,8 @@ class Missions(object):
                 logger.debug(tip_ := f"{device_.sn} Automator Activation Success")
                 self.design.show_panel(tip_, Wind.EXPLORER)
 
-            for script_data_ in load_script_data_:
-                if isinstance(script_data_, Exception):
-                    raise FramixError(script_data_)
-            script_storage_ = [script_data_ for script_data_ in load_script_data_]
-
             await manage_.display_device()
+
             for script_dict_ in script_storage_:
                 report = Report(option.total_place)
                 for script_key_, script_value_ in script_dict_.items():
@@ -1955,25 +2281,56 @@ class Clipix(object):
             limit: typing.Optional[str],
     ) -> tuple[str, str, float, tuple, dict]:
         """
-        异步获取特定视频文件的内容分析，包括实际和平均帧率、视频时长及其视觉处理点。
+        异步提取视频的关键内容信息，并计算可视时间点。
 
-        此函数分析视频文件，提供关键视频流参数，如帧率和时长，并根据输入的起始、结束和限制时间点计算处理后的视觉时间点。
+        该函数分析指定的视频文件，提取实际与平均帧率、视频总时长、原始分辨率等元数据，
+        并根据起止时间与限制时间推导出处理区域的时间范围。
 
-        参数:
-            video_temp (str): 视频文件的路径。
-            start (Optional[str]): 视频处理的起始时间点（如 "00:00:10" 表示从第10秒开始）。如果为None，则从视频开始处处理。
-            close (Optional[str]): 视频处理的结束时间点。如果为None，则处理到视频结束。
-            limit (Optional[str]): 处理视频的最大时长限制。如果为None，则没有时间限制。
+        Parameters
+        ----------
+        video_temp : str
+            视频文件的路径。
 
-        返回:
-            tuple[str, str, float, tuple, dict]: 返回一个包含以下元素的元组：
-                - rlt (str): 实际帧率。
-                - avg (str): 平均帧率。
-                - duration (float): 视频总时长（秒）。
-                - original (tuple): 原始视频分辨率和其他基础数据。
-                - vision_point (dict): 处理后的起始、结束和限制时间点（格式化为字符串如"00:00:10"）。
+        start : Optional[str]
+            起始时间点，格式为 HH:MM:SS。如果为 None，则从视频开头开始处理。
+
+        close : Optional[str]
+            结束时间点，格式为 HH:MM:SS。如果为 None，则处理到视频结尾。
+
+        limit : Optional[str]
+            限制处理的最大时长，格式为 HH:MM:SS。如果为 None，则不限制时长。
+
+        Returns
+        -------
+        tuple
+            包含以下五项的数据元组：
+
+            - rlt : str
+                实际帧率字符串（例如 "30/1"）。
+            - avg : str
+                平均帧率字符串（例如 "29/1"）。
+            - duration : float
+                视频总时长（单位为秒）。
+            - original : tuple
+                视频的原始分辨率及其他元信息（如宽高）。
+            - vision_point : dict
+                包含处理区域的起始、结束、时长限制点，格式化为字符串（如 "00:01:23"）。
+
+        Notes
+        -----
+        - 此函数主要用于视频处理前的预分析，用于指导后续的剪辑与分析流程。
+        - 使用 `Parser.parse_mills` 将时间字符串转换为毫秒数，用于精准时间计算。
+        - 所有返回时间点均为格式化字符串，便于在日志与报告中呈现。
+        - 若输入时间超出视频实际时长，`Switch.ask_magic_point` 将自动进行容错处理。
+
+        Workflow
+        --------
+        1. 调用 `Switch.ask_video_stream` 获取视频帧率、时长、原始分辨率等信息。
+        2. 将传入的 start / close / limit 转换为毫秒数。
+        3. 使用 `Switch.ask_magic_point` 对齐计算真实的处理时间点范围。
+        4. 格式化时间点为字符串表示，并打包成 vision_point 字典。
+        5. 返回分析结果。
         """
-
         video_streams = await Switch.ask_video_stream(self.fpb, video_temp)
 
         rlt = video_streams.get("rlt_frame_rate", "0/0")
@@ -2001,20 +2358,44 @@ class Clipix(object):
         """
         异步调整视频时长以匹配指定的标准时长，通过裁剪视频的起始和结束时间。
 
-        此函数计算原视频与标准时长的差值，基于这一差值调整视频的开始和结束时间点，以生成新的视频文件，保证其总时长接近标准时长。适用于需要统一视频播放长度的场景。
+        此函数计算原视频与标准时长的差值，基于这一差值调整视频的开始和结束时间点，以生成新的视频文件，保证其总时长接近标准时长。
+        适用于需要统一视频播放长度的场景，例如批量训练数据处理、对齐播放时长或模型输入长度统一化等任务。
 
-        参数:
-            duration (float): 原视频的总时长（秒）。
-            standard (float): 目标视频的标准时长（秒）。
-            src (str): 原视频文件的路径。
-            frate (float): 目标视频的帧率。
+        Parameters
+        ----------
+        duration : float
+            原视频的总时长（秒）。
 
-        返回:
-            tuple[str, str]: 包含两个元素：
-                - video_dst (str): 调整时长后生成的新视频文件的路径。
-                - video_blc (str): 描述视频时长调整详情的字符串。
+        standard : float
+            目标视频的标准时长（秒）。
+
+        src : str
+            原视频文件的路径。
+
+        frate : float
+            目标视频的帧率。
+
+        Returns
+        -------
+        tuple[str, str]
+            包含两个元素：
+            - video_dst：调整后生成的新视频文件路径。
+            - video_blc：对视频时长裁剪操作的描述字符串。
+
+        Notes
+        -----
+        - 如果原始视频小于标准时长，将无法进行裁剪，请提前判断。
+        - 输出文件将保存在原路径目录中，文件名中包含帧率和随机编号以避免覆盖。
+        - 使用 `Switch.ask_video_tailor` 执行实际的视频裁剪操作。
+
+        Workflow
+        --------
+        1. 计算应从何时开始裁剪以满足目标时长；
+        2. 构建裁剪时间段（start ~ limit）；
+        3. 构造输出文件路径及裁剪描述；
+        4. 调用视频裁剪方法生成新视频；
+        5. 返回新视频路径和裁剪描述信息。
         """
-
         start_time_point = (limit_time_point := duration) - standard
         start_delta = datetime.timedelta(seconds=start_time_point)
         limit_delta = datetime.timedelta(seconds=limit_time_point)
@@ -2037,20 +2418,43 @@ class Clipix(object):
             deploy: "Deploy", original: tuple, filters: list
     ) -> list:
         """
-        异步方法，用于改进视频的视觉效果，通过调整视频尺寸和应用过滤器列表。
+        异步方法，用于改进视频的视觉效果，通过调整尺寸并组合过滤器列表。
 
-        参数:
-            - deploy (Deploy): 包含处理参数的部署配置对象。
-            - original (tuple): 原始视频的尺寸，格式为 (原始宽度, 原始高度)。
-            - filters (list): 初始过滤器列表，可以包括例如 'blur', 'contrast' 等过滤器命令。
+        根据提供的目标尺寸（shape）或缩放因子（scale），自动计算输出分辨率，并将其添加到过滤器列表中。
+        最终返回一个完整的过滤器命令集合，用于后续视频处理流程。
 
-        返回:
-            - list: 包含所有过滤器命令的列表，包括用于调整尺寸的 'scale' 过滤器。
+        Parameters
+        ----------
+        deploy : Deploy
+            视频处理配置对象，包含尺寸调整（shape）或缩放比例（scale）等参数。
+        original : tuple
+            原始视频的分辨率，格式为 (width, height)。
+        filters : list
+            初始过滤器命令列表，如 ["eq=contrast=1.2", "unsharp"]。
 
-        抛出:
-            - ValueError: 如果输入的参数类型不符合预期。
+        Returns
+        -------
+        list
+            组合后的完整过滤器命令列表，包含尺寸调整指令。
+
+        Raises
+        ------
+        ValueError
+            如果传入的原始尺寸不是元组类型，或过滤器列表不是列表类型。
+
+        Notes
+        -----
+        - 若 `shape` 参数存在，则优先使用该参数进行尺寸转换；
+        - 若未指定 `shape`，则使用 `scale` 缩放比例对原始尺寸进行调整；
+        - 所有输出分辨率将自动转换为偶数，以满足编码器要求。
+
+        Workflow
+        --------
+        1. 判断是否指定 `shape`，调用 `ask_magic_frame` 获取目标尺寸；
+        2. 调整为偶数尺寸并生成 scale 过滤器；
+        3. 若未指定 `shape`，则回退为缩放比例处理；
+        4. 返回合并后的过滤器列表。
         """
-
         if deploy.shape:
             w, h, ratio = await Switch.ask_magic_frame(original, deploy.shape)
             w, h = w - 1 if w % 2 != 0 else w, h - 1 if h % 2 != 0 else h
@@ -2067,21 +2471,44 @@ class Clipix(object):
             video_filter: list, src: str, dst: str, **kwargs
     ) -> tuple[str]:
         """
-        执行视频过滤处理函数，应用指定的视频过滤参数，从源视频生成目标视频。
+        执行视频过滤处理函数，应用指定的过滤器列表，将源视频转换为目标视频。
 
-        此方法用于调用具体的视频处理函数，该函数根据提供的过滤参数列表，源视频路径和目标视频路径进行视频处理。
+        本方法封装了视频处理调用逻辑，通过提供的函数与过滤器配置，实现视频的转码、调整或增强等处理操作。
 
-        参数:
-            function (typing.Callable): 要执行的视频处理函数，接收视频处理器、过滤参数、源视频路径和目标视频路径等参数。
-            video_filter (list): 视频过滤参数列表，每个参数为字符串形式。
-            src (str): 源视频文件路径。
-            dst (str): 目标视频文件路径。
-            **kwargs: 传递给视频处理函数的额外关键字参数。
+        Parameters
+        ----------
+        function : typing.Callable
+            视频处理函数，必须接受过滤器、源路径、目标路径等参数，并异步执行。
 
-        返回:
-            tuple[str]: 包含处理结果的元组，通常包括处理日志或其他输出信息。
+        video_filter : list
+            字符串形式的过滤器列表，例如 ["scale=1280:720", "eq=contrast=1.2"]。
+
+        src : str
+            源视频的完整路径。
+
+        dst : str
+            目标视频的输出路径。
+
+        **kwargs : dict
+            传递给处理函数的额外关键字参数，如帧率、编码选项等。
+
+        Returns
+        -------
+        tuple[str]
+            包含处理结果信息的元组，例如执行日志、输出路径、状态描述等。
+
+        Notes
+        -----
+        - 该方法本身不包含视频处理逻辑，仅作为封装调用器；
+        - `function` 必须为异步函数，且支持过滤器和路径参数；
+        - 返回结果依赖于 `function` 的实现，通常为处理状态说明。
+
+        Workflow
+        --------
+        1. 接收处理函数和参数；
+        2. 异步调用目标处理函数，传入 ffmpeg 路径和过滤器；
+        3. 返回其执行结果。
         """
-
         return await function(self.fmp, video_filter, src, dst, **kwargs)
 
 
@@ -2160,27 +2587,52 @@ class Alynex(object):
 
     async def ask_model_load(self) -> None:
         """
-        异步加载模型到 KerasStruct 实例。
+        异步加载模型到 KerasStruct 实例中。
 
-        该方法主要用于加载训练好的模型，以便在后续分析过程中使用。
-        根据配置选项选择彩色或灰度模型，并确保模型结构和输入数据的兼容性。
+        该方法用于在分析任务执行前加载指定路径下的 Keras 模型，并根据部署参数验证模型输入通道的正确性。
+        若加载失败或验证不通过，将抛出异常并清除模型状态。
 
-        详细描述:
-            1. 确认 `model_place` 路径存在，并且是一个有效的目录。
-            2. 确认 `ks` (KerasStruct 实例) 已初始化。
-            3. 根据用户选择的模型类型（彩色或灰度），构造模型的最终路径并尝试加载。
-            4. 验证模型的输入通道是否与选定的模型类型匹配。
-            5. 若加载或验证过程中发生错误，清空 `ks.model` 并抛出 `FramixAnalyzerError`。
+        Returns
+        -------
+        None
+            本方法不返回值。模型状态通过 `self.ks.model` 保持。
 
-        异常处理:
-            - OSError: 当模型路径无效或无法访问时抛出。
-            - TypeError: 当模型文件类型不正确时抛出。
-            - ValueError: 当模型加载过程中发生数据错误时抛出。
-            - AssertionError: 当模型通道不匹配或 `ks` 实例未正确初始化时抛出。
-            - AttributeError: 当尝试访问未初始化的属性时抛出。
-            - FramixAnalyzerError: 当模型路径无效或加载失败时，抛出此异常。
+        Raises
+        ------
+        OSError
+            模型路径无效或无法访问。
+
+        TypeError
+            模型文件类型不正确或读取错误。
+
+        ValueError
+            模型加载过程中数据异常。
+
+        AssertionError
+            未初始化 `ks` 或模型通道数不符合部署要求。
+
+        AttributeError
+            属性访问失败，例如未初始化 `ks.model`。
+
+        FramixError
+            封装上述异常并作为统一的模型加载错误抛出。
+
+        Notes
+        -----
+        - `self.matrix` 表示模型基础路径；
+        - 模型路径根据 `deploy.color` 区分为彩色或灰度模型；
+        - 使用 `KerasStruct.load_model()` 加载模型；
+        - 如果模型的通道数不匹配部署需求，将触发断言失败；
+        - 异常统一包装为 `FramixError` 抛出，并清空模型状态防止后续误用。
+
+        Workflow
+        --------
+        1. 读取并校验模型基础路径 `self.option.model_place` 是否存在；
+        2. 确认 `self.ks` 已初始化为有效的 `KerasStruct` 实例；
+        3. 根据部署颜色配置，拼接最终模型路径并尝试加载模型；
+        4. 检查模型输入形状中的通道数是否与彩色或灰度预期一致；
+        5. 若以上步骤出现异常，清空模型并抛出 `FramixError`。
         """
-
         try:
             if mp := self.matrix:
                 assert os.path.isdir(self.option.model_place), f"Invalid Model {mp}"
@@ -2205,21 +2657,39 @@ class Alynex(object):
 
     async def ask_video_load(self, vision: str, src_size: tuple) -> "VideoObject":
         """
-        加载并处理视频帧信息，返回 VideoObject 对象。
+        异步加载视频帧并返回 VideoObject 实例。
 
-        参数:
-            vision (str): 视频文件路径。
-            src_size (tuple): 视频原始尺寸。
+        该方法用于从指定路径读取视频文件，根据配置调整视频尺寸或缩放比例，并加载视频的所有帧数据，
+        生成包含帧信息的 `VideoObject` 实例。
 
-        返回:
-            VideoObject: 包含视频帧信息的对象。
+        Parameters
+        ----------
+        vision : str
+            视频文件的绝对路径。
+        src_size : tuple
+            原始视频的宽高尺寸，格式为 (width, height)。
 
-        功能描述:
-            1. 创建 VideoObject 对象并记录视频的基本信息（帧长度、帧尺寸）。
-            2. 调用 load_frames 方法加载视频帧。
-            3. 记录视频帧加载完成后的详细信息和耗时。
+        Returns
+        -------
+        VideoObject
+            返回加载后的视频对象，包含全部帧数据及视频元信息。
+
+        Notes
+        -----
+        - 当 `deploy.shape` 被定义时，将以固定尺寸 `shape=(width, height)` 加载视频帧；
+        - 否则使用 `deploy.scale` 执行等比缩放；
+        - 视频帧将根据配置决定是否保留彩色；
+        - 加载完成后会显示帧总数、尺寸、加载耗时等信息。
+
+        Workflow
+        --------
+        1. 初始化计时器，并创建 `VideoObject` 对象；
+        2. 如果启用了尺寸设置 (`deploy.shape`)，使用 `Switch.ask_magic_frame()` 计算目标尺寸；
+        3. 如果未指定尺寸，则根据 `deploy.scale` 使用缩放比例加载；
+        4. 调用 `video.load_frames()` 执行帧的读取与变换；
+        5. 日志与面板记录：加载进度、帧数量、尺寸、耗时等信息；
+        6. 返回包含帧数据的 `VideoObject` 实例。
         """
-
         start_time_ = time.time()  # 开始计时
 
         video = VideoObject(vision)  # 创建 VideoObject 对象
@@ -2253,20 +2723,38 @@ class Alynex(object):
     @staticmethod
     async def ask_frame_grid(vision: str) -> typing.Optional[str]:
         """
-        检查视频文件或目录，返回可用的视频文件路径。
+        检查视频文件或文件夹，返回首个可成功打开的视频路径。
 
-        参数:
-            vision (str): 视频文件路径或包含视频文件的目录路径。
+        该方法用于判断传入路径是视频文件还是包含视频的目录，并尝试使用 OpenCV 打开首个可用视频。
+        如果成功打开，则返回对应路径，否则返回 None。
 
-        返回:
-            typing.Optional[str]: 如果存在可用的视频文件，返回视频文件路径，否则返回 None。
+        Parameters
+        ----------
+        vision : str
+            视频文件路径或包含视频文件的目录路径。
 
-        功能描述:
-            1. 检查 vision 是否为文件路径，如果是则尝试打开该文件。
-            2. 如果 vision 为目录路径，则获取目录中的第一个文件并尝试打开。
-            3. 如果视频文件成功打开，返回该文件的路径。
+        Returns
+        -------
+        Optional[str]
+            若找到可成功打开的视频文件，返回该文件路径；否则返回 None。
+
+        Raises
+        ------
+        None
+
+        Notes
+        -----
+        - 此方法使用 `cv2.VideoCapture` 尝试加载视频；
+        - 对目录的处理仅检查第一个可用的文件，未对文件类型做扩展名判断；
+        - 无法打开的视频不会抛出异常，只返回 None。
+
+        Workflow
+        --------
+        1. 如果 `vision` 是视频文件，尝试直接打开；
+        2. 如果 `vision` 是目录，则获取目录下首个文件并尝试打开；
+        3. 若打开成功则返回该文件路径；
+        4. 打开失败则返回 None。
         """
-
         target_screen = None
 
         # 检查 vision 是否为文件路径
@@ -2275,6 +2763,7 @@ class Alynex(object):
             if screen.isOpened():
                 target_screen = vision
             screen.release()
+
         # 检查 vision 是否为目录路径
         elif os.path.isdir(vision):
             file_list = [
@@ -2285,27 +2774,48 @@ class Alynex(object):
                 if screen.isOpened():
                     target_screen = open_file
                 screen.release()
+
         return target_screen
 
     async def ask_exercise(self, vision: str, *args) -> typing.Optional[str]:
         """
-        执行视频分析任务，提取并保存视频中的关键帧。
+        执行视频分析任务，提取并保存关键帧。
 
-        参数:
-            vision (str): 视频文件路径或目录。
-            *args: 其他附加参数，其中第一个参数应为保存提取帧的路径。
+        该方法主要用于分析指定视频文件，获取稳定区域，通过压缩和切片的方式提取出若干具有代表性的帧图像，并将其保存到指定目录。
 
-        返回:
-            typing.Optional[str]: 保存提取帧的路径，如果视频文件损坏则返回 None。
+        Parameters
+        ----------
+        vision : str
+            视频文件路径或包含视频文件的目录路径。
 
-        功能描述:
-            1. 检查并获取目标视频文件或目录。
-            2. 加载视频帧信息。
-            3. 使用 VideoCutter 对视频进行分割和压缩。
-            4. 获取视频中稳定和不稳定的帧范围。
-            5. 提取并保存指定数量的稳定帧。
+        *args : Any
+            附加参数列表，其中第一个参数应为关键帧的保存路径，第二个为原始视频尺寸等分析配置。
+
+        Returns
+        -------
+        Optional[str]
+            若成功提取帧并保存，返回保存目录路径；若视频损坏或分析失败，返回 None。
+
+        Raises
+        ------
+        FramixError
+            视频加载或帧处理过程中可能抛出 FramixError，自定义异常未在此方法中主动抛出但可能间接发生。
+
+        Notes
+        -----
+        - 此方法会自动判断输入是文件还是目录；
+        - 视频帧压缩通过 VideoCutter 实现，并根据稳定性分析选出关键帧；
+        - 提取过程不会修改原视频文件，所有输出保存在 query_path 路径中。
+
+        Workflow
+        --------
+        1. 使用 `ask_frame_grid` 判断并获取有效视频文件；
+        2. 通过 `ask_video_load` 加载视频帧信息；
+        3. 初始化 VideoCutter 并执行 `cut` 方法压缩视频帧；
+        4. 调用 `get_range` 获取稳定帧和不稳定帧的区间；
+        5. 使用 `pick_and_save` 方法提取关键帧图像，保存至指定路径；
+        6. 返回保存路径，供后续分析或模型训练使用。
         """
-
         if not (target_vision := await self.ask_frame_grid(vision)):
             logger.debug(tip := f"视频文件损坏: {os.path.basename(vision)}")
             return self.design.show_panel(tip, Wind.KEEPER)
@@ -2351,52 +2861,95 @@ class Alynex(object):
         """
         分析视频文件，提取视频帧并进行处理，返回分析结果。
 
-        参数:
-            vision (str): 视频文件路径或包含视频文件的目录路径。
-            *args: 额外的参数，用于路径和其他配置信息。
+        Parameters
+        ----------
+        vision : str
+            视频文件路径或包含视频文件的目录路径。
 
-        返回:
-            typing.Optional["Review"]: 包含分析结果的 Review 对象，如果失败则返回 None。
+        *args : Any
+            可变参数，包含帧保存路径、额外图片路径、原始尺寸等。
 
-        功能描述:
-            1. 检查并获取有效的视频文件路径。
-            2. 加载视频帧信息。
-            3. 根据是否有模型加载结果执行相应的视频处理流程。
-            4. 根据处理流程返回视频分析结果。
+        Returns
+        -------
+        typing.Optional[Review]
+            包含分析结果的 Review 对象，如果失败则返回 None。
+
+        Notes
+        -----
+        - 若 Keras 模型已加载，将执行结构化处理和分类分析。
+        - 若无模型，则只进行基础帧提取并分析。
+
+        Workflow
+        --------
+        1. 检查并确定有效视频路径；
+        2. 加载视频帧信息；
+        3. 执行 frame_flow（模型场景）或跳过（基础模式）；
+        4. 获取所有帧数据；
+        5. 调用 analytics_keras 或 analytics_basic 执行帧处理和分析；
+        6. 封装为 Review 返回。
         """
 
-        async def frame_forge(frame: "VideoFrame") -> typing.Union[dict, Exception]:
+        async def frame_forge(frame: "VideoFrame") -> typing.Any:
             """
             保存视频帧为图片文件。
 
-            参数:
-                frame: 视频帧对象。
+            Parameters
+            ----------
+            frame : VideoFrame
+                视频帧对象，包含帧数据和元信息。
 
-            返回:
-                dict: 包含帧ID和图片路径的字典。
+            Returns
+            -------
+            dict
+                如果成功，返回包含帧 ID 和图片保存路径的字典。
+
+            Exception
+                如果保存过程中发生异常，则返回异常对象。
+
+            Notes
+            -----
+            每帧保存为 PNG 格式，文件名包含帧 ID 和时间戳。
             """
-
             try:
+                # 构建图片文件名：帧ID + 帧时间戳（精确到小数点后5位）
                 picture = f"{frame.frame_id}_{format(round(frame.timestamp, 5), '.5f')}.png"
+                # 将帧图像数据编码为 PNG 格式的二进制数据
                 _, codec = cv2.imencode(".png", frame.data)
+                # 使用 aiofiles 异步写入文件（避免阻塞主线程）
                 async with aiofiles.open(os.path.join(frame_path, picture), "wb") as f:
                     await f.write(codec.tobytes())
             except Exception as e:
-                return e
+                # 捕获异常并返回异常对象用于上层处理
+                return FramixError(e)
+
+            # 返回帧信息，图像文件相对路径用于后续展示
             return {"id": frame.frame_id, "picture": os.path.join(os.path.basename(frame_path), picture)}
 
         async def frame_flick() -> tuple:
             """
             提取视频的关键帧信息。
 
-            功能:
-                - 提取并记录视频的关键帧（begin_frame 和 final_frame），以及它们的时间戳和帧 ID。
-                - 计算关键帧之间的时间成本。
+            Returns
+            -------
+            tuple
+                返回 (开始帧ID, 结束帧ID, 时间成本) 三元组，分别表示关键帧范围及其持续时间。
 
-            返回:
-                tuple: 包含开始帧ID、结束帧ID和时间成本的元组。
+            Notes
+            -----
+            - 起始与结束关键帧基于 `self.deploy.begin` 和 `self.deploy.final` 配置索引。
+            - 如果索引无效（如越界或顺序错误），将回退到默认关键帧范围。
+            - 展示帧信息面板，便于终端可视化关键帧提取结果。
+
+            Workflow
+            --------
+            1. 获取配置中的起始与结束阶段索引；
+            2. 获取非稳定帧段落，定位起止关键帧；
+            3. 若索引越界或顺序错误，使用默认首尾帧；
+            4. 计算起止帧间的时间差；
+            5. 打印并展示起始帧、结束帧及耗时信息。
             """
 
+            # 从 deploy 配置中提取起始帧索引 (阶段索引, 阶段内帧索引)
             begin_stage_index, begin_frame_index = self.deploy.begin
             final_stage_index, final_frame_index = self.deploy.final
 
@@ -2410,84 +2963,99 @@ class Alynex(object):
                 # 获取视频的阶段信息并打印
                 logger.debug(f"{(stage_name := f'阶段划分: {struct.get_ordered_stage_set()}')}")
                 self.design.show_panel(stage_name, Wind.FASTER)
-                # 获取视频的不稳定阶段范围
+                # 获取所有非稳定阶段的帧范围（二维数组，按阶段分组）
                 unstable_stage_range = struct.get_not_stable_stage_range()
-                # 获取起始帧和结束帧
+                # 获取起始帧与结束帧对象
                 begin_frame = unstable_stage_range[begin_stage_index][begin_frame_index]
                 final_frame = unstable_stage_range[final_stage_index][final_frame_index]
             except (AssertionError, IndexError) as e:
-                # 捕获异常并记录日志，使用默认的第一个和最后一个重要帧
+                # 如果索引无效，使用默认首尾关键帧
                 logger.debug(e)
                 self.design.show_panel(e, Wind.KEEPER)
                 begin_frame = struct.get_important_frame_list()[0]
                 final_frame = struct.get_important_frame_list()[-1]
 
-            # 检查是否开始帧的ID小于等于结束帧的ID，若是则使用默认的第一个和最后一个帧
+            # 若起始帧 ID 大于等于结束帧 ID，说明取值顺序出错，回退为完整帧范围
             if final_frame.frame_id <= begin_frame.frame_id:
                 logger.debug(tip := f"{final_frame} <= {begin_frame}")
                 self.design.show_panel(tip, Wind.KEEPER)
                 begin_frame, end_frame = struct.data[0], struct.data[-1]
 
-            # 计算起始帧和结束帧之间的时间成本
+            # 计算帧间耗时（单位：秒）
             time_cost = final_frame.timestamp - begin_frame.timestamp
 
-            # 获取起始帧和结束帧的ID和时间戳
+            # 获取帧 ID 和时间戳
             begin_id, begin_ts = begin_frame.frame_id, begin_frame.timestamp
             final_id, final_ts = final_frame.frame_id, final_frame.timestamp
 
-            # 打印开始帧和结束帧的详细信息以及总时间成本
+            # 组织并展示格式化输出
             begin_fr, final_fr = f"{begin_id} - {begin_ts:.5f}", f"{final_id} - {final_ts:.5f}"
             logger.debug(f"开始帧:[{begin_fr}] 结束帧:[{final_fr}] 总耗时:[{(stage_cs := f'{time_cost:.5f}')}]")
             self.design.assort_frame(begin_fr, final_fr, stage_cs)
 
-            # 返回关键帧信息和时间成本
+            # 返回关键帧 ID 和持续时间
             return begin_frame.frame_id, final_frame.frame_id, time_cost
 
         async def frame_hold() -> list:
             """
-            获取并返回视频的所有帧数据。
+            获取并返回视频的所有帧数据列表。
 
-            功能:
-                如果视频帧结构（struct）为空，则直接返回视频的所有帧数据。
-                否则，获取视频的所有关键帧，并根据配置参数（boost）决定是否包含非关键帧数据。
+            Returns
+            -------
+            list
+                视频帧列表，每个元素为一个 `VideoFrame` 对象。
 
-            返回:
-                list: 包含视频帧对象的列表。
+            Notes
+            -----
+            - 若 `struct` 不存在（即未进行结构分析），则直接返回原始帧；
+            - 若启用 `boost` 参数，则额外添加非关键帧（如不稳定片段）以增强数据覆盖；
+            - 使用 `toolbox.show_progress` 展示处理进度条。
 
-            详细说明:
-                - 当视频帧结构（struct）为空时，直接返回视频的所有帧数据。
-                - 如果 boost 参数为真，则在获取所有关键帧的基础上，额外包含关键帧之间的非关键帧数据。
-                - 使用进度条显示帧处理进度。
+            Workflow
+            --------
+            1. 判断是否存在结构分析结果 (`struct`)；
+            2. 若无结构，则直接返回原始帧；
+            3. 若有结构，提取关键帧；
+            4. 若启用 `boost`，则在关键帧之间插入非关键帧；
+            5. 返回最终帧序列。
             """
 
+            # 如果 struct 不存在，说明没有结构分析，直接返回原始帧列表
             if not struct:
                 return [i for i in video.frames_data]
 
-            frames_list = []
-            important_frames = struct.get_important_frame_list()
+            frames_list = []  # 最终帧列表
+
+            important_frames = struct.get_important_frame_list()  # 获取关键帧列表
+
+            # 如果启用了 boost 模式，将忽略连续地稳定帧
             if self.deploy.boost:
-                # 使用进度条显示帧处理进度
+                # 使用进度条展示帧处理进度
                 pbar = toolbox.show_progress(total=struct.get_length(), color=50)
-                # 将第一个关键帧添加到帧列表中
+
+                # 添加第一个关键帧
                 frames_list.append(previous := important_frames[0])
                 pbar.update(1)
-                # 遍历剩余的关键帧
+
+                # 遍历其余关键帧
                 for current in important_frames[1:]:
-                    # 将当前关键帧添加到帧列表中
+                    # 添加当前关键帧
                     frames_list.append(current)
                     pbar.update(1)
-                    # 计算当前帧与前一帧之间的帧差
+
+                    # 计算前后关键帧之间的帧距
                     frames_diff = current.frame_id - previous.frame_id
-                    # 如果前后帧都不稳定且帧差大于1，则添加中间的关键帧
+                    # 如果两帧都是不稳定帧，并且之间有空隙，则添加中间帧
                     if not previous.is_stable() and not current.is_stable() and frames_diff > 1:
                         for sample in struct.data[previous.frame_id: current.frame_id - 1]:
                             frames_list.append(sample)
                             pbar.update(1)
-                    # 更新前一帧为当前帧
-                    previous = current
-                # 关闭进度条
-                pbar.close()
+
+                    previous = current  # 更新上一帧
+                pbar.close()  # 关闭进度条
+
             else:
+                # 若未启用 boost，则直接返回所有结构帧
                 for current in toolbox.show_progress(items=struct.data, color=50):
                     frames_list.append(current)
 
@@ -2495,16 +3063,33 @@ class Alynex(object):
 
         async def frame_flow() -> typing.Optional["ClassifierResult"]:
             """
-            处理视频帧，包括裁剪和保存。
+            处理视频帧的裁剪、过滤与分类操作。
 
-            返回:
-                typing.Optional["ClassifierResult"]: 处理后的视频帧结构数据，没有获取则返回 None。
+            Returns
+            -------
+            Optional[ClassifierResult]
+                包含分类结果的结构化数据对象，若处理失败则返回 None。
+
+            Notes
+            -----
+            - 使用 VideoCutter 添加多个 Hook 对视频帧进行裁剪与保存；
+            - 支持尺寸调整、裁剪区域、忽略区域、保存图片等操作；
+            - 过滤后的帧将被保存到 `extra_path` 指定目录；
+            - 若启用了 Keras 模型，将对帧序列执行分类操作。
+
+            Workflow
+            --------
+            1. 初始化视频帧裁剪器并添加各类 Hook（尺寸、裁剪、忽略、保存）；
+            2. 使用 `VideoCutter.cut` 提取视频帧块；
+            3. 按阈值划分稳定与不稳定帧段；
+            4. 保留若干关键帧图片并绘制网格；
+            5. 使用模型分类器（若启用）进行分类并返回结构结果。
             """
-
             cutter = VideoCutter()
 
-            panel_hook_list = []
+            panel_hook_list = []  # 用于记录所有 hook 描述信息并展示
 
+            # 添加尺寸调整 Hook（统一处理为等比例缩放）
             size_hook = FrameSizeHook(1.0, None, True)
             cutter.add_hook(size_hook)
             logger.debug(
@@ -2512,6 +3097,7 @@ class Alynex(object):
             )
             panel_hook_list.append(cut_size)
 
+            # 遍历 deploy 中配置的裁剪区域，添加裁剪 Hook
             if len(crop_list := self.deploy.crops) > 0 and sum([j for i in crop_list for j in i.values()]) > 0:
                 for crop in crop_list:
                     x, y, x_size, y_size = crop.values()
@@ -2522,6 +3108,7 @@ class Alynex(object):
                     )
                     panel_hook_list.append(cut_crop)
 
+            # 遍历 deploy 中配置的忽略区域，添加忽略 Hook
             if len(omit_list := self.deploy.omits) > 0 and sum([j for i in omit_list for j in i.values()]) > 0:
                 for omit in omit_list:
                     x, y, x_size, y_size = omit.values()
@@ -2532,6 +3119,7 @@ class Alynex(object):
                     )
                     panel_hook_list.append(cut_omit)
 
+            # 添加保存 Hook，将处理后的帧图像保存到 extra_path
             save_hook = FrameSaveHook(extra_path)
             cutter.add_hook(save_hook)
             logger.debug(
@@ -2539,8 +3127,10 @@ class Alynex(object):
             )
             panel_hook_list.append(cut_save)
 
+            # 输出所有 Hook 配置面板信息
             self.design.show_panel("\n".join(panel_hook_list), Wind.CUTTER)
 
+            # 打印视频基础信息
             logger.debug(f"{(cut_name := '视频帧长度: ' f'{video.frame_count}')}")
             logger.debug(f"{(cut_part := '视频帧片段: ' f'{video.frame_count - 1}')}")
             logger.debug(f"{(cut_info := '视频帧尺寸: ' f'{video.frame_size}')}")
@@ -2550,22 +3140,27 @@ class Alynex(object):
             )
             cut_start_time = time.time()
 
+            # 开始裁剪视频帧块
             cut_range = cutter.cut(
                 video=video, block=self.deploy.block
             )
 
+            # 裁剪完成后展示信息
             logger.debug(f"{(cut_name := '视频帧压缩完成: ' f'{video.name}')}")
             logger.debug(f"{(cut_info := '视频帧压缩耗时: ' f'{time.time() - cut_start_time:.2f} 秒')}")
             self.design.show_panel(f"{cut_name}\n{cut_info}", Wind.CUTTER)
 
+            # 根据阈值与偏移值获取稳定与不稳定帧段
             stable, unstable = cut_range.get_range(
                 threshold=self.deploy.thres, offset=self.deploy.shift
             )
 
+            # 获取裁剪后保存的所有图片文件
             file_list = os.listdir(extra_path)
             file_list.sort(key=lambda n: int(n.split("(")[0]))
             total_images, desired_count = len(file_list), 12
 
+            # 保留目标数量的图片索引
             if total_images <= desired_count:
                 retain_indices = range(total_images)
             else:
@@ -2575,14 +3170,17 @@ class Alynex(object):
                 elif len(retain_indices) > desired_count:
                     retain_indices = retain_indices[:desired_count]
 
+            # 删除不在保留列表中的图片文件
             for index, file in enumerate(file_list):
                 if index not in retain_indices:
                     os.remove(os.path.join(extra_path, file))
 
+            # 依次绘制裁剪图片文件的网格辅助线
             for draw in toolbox.show_progress(items=os.listdir(extra_path), color=146):
                 toolbox.draw_line(os.path.join(extra_path, draw).format())
 
             try:
+                # 使用 keras 模型进行结构分类
                 struct_data = self.ks.classify(
                     video=video, valid_range=stable, keep_data=True
                 )
@@ -2596,10 +3194,30 @@ class Alynex(object):
             """
             执行基础视频分析，保存帧图片并计算时间成本。
 
-            返回:
-                tuple: 包含开始帧ID、结束帧ID、时间成本、评分和结构数据的元组。
-            """
+            Returns
+            -------
+            tuple
+                返回一个元组，包含以下信息：
+                - 开始帧 ID（int）
+                - 结束帧 ID（int）
+                - 分析耗时（float）
+                - 帧 ID 与图片路径的映射字典（dict）
+                - None：表示未使用模型结构分析
 
+            Notes
+            -----
+            - 该函数将所有帧按每100张进行分块，并发保存为 PNG 图片。
+            - 分析结果中不会包含结构体或模型输出，仅返回原始帧范围及对应图片路径。
+            - 遇到保存失败时将记录异常，但整体流程不中断。
+
+            Workflow
+            --------
+            1. 按 100 帧为一组对视频帧进行分块。
+            2. 使用 asyncio 并发保存所有帧为图片。
+            3. 收集所有帧 ID 与图片路径映射结果。
+            4. 获取首尾帧，计算耗时。
+            5. 返回帧 ID、耗时、图片路径映射。
+            """
             forge_tasks = [
                 [frame_forge(frame) for frame in chunk] for chunk in
                 [frames[i:i + 100] for i in range(0, len(frames), 100)]
@@ -2625,12 +3243,33 @@ class Alynex(object):
 
         async def analytics_keras() -> tuple:
             """
-            执行基于Keras模型的视频分析，保存帧图片并计算时间成本。
+            执行基于 Keras 模型的视频分析，保存帧图片并计算时间成本。
 
-            返回:
-                tuple: 包含开始帧ID、结束帧ID、时间成本、评分和结构数据的元组。
+            Returns
+            -------
+            tuple
+                返回一个元组，包含以下信息：
+                - 开始帧 ID（int）
+                - 结束帧 ID（int）
+                - 分析耗时（float）
+                - 帧 ID 与图片路径的映射字典（dict）
+                - 分析结构体（ClassifierResult）
+
+            Notes
+            -----
+            - 使用 Keras 模型结构提取关键帧，并生成结构体用于后续分析。
+            - 帧保存操作与基础分析类似，也采用分块并发保存。
+            - `frame_flick()` 负责返回关键帧范围及耗时，在异步中提前调度以节省时间。
+
+            Workflow
+            --------
+            1. 创建 `frame_flick()` 的异步任务，预提取关键帧范围。
+            2. 按 100 帧为一组对视频帧进行分块。
+            3. 并发保存所有帧为 PNG 图片。
+            4. 收集帧 ID 与图片路径映射结果。
+            5. 等待关键帧提取结果完成。
+            6. 返回帧 ID、耗时、图片路径映射及结构体。
             """
-
             flick_tasks = asyncio.create_task(frame_flick())
 
             forge_tasks = [
@@ -2660,19 +3299,19 @@ class Alynex(object):
             logger.debug(tip_ := f"视频文件损坏: {os.path.basename(vision)}")
             return self.design.show_panel(tip_, Wind.KEEPER)
 
-        # 解包额外的参数
+        # 解包 args，依次是帧图片保存路径、额外图片保存路径、原始尺寸
         frame_path, extra_path, src_size, *_ = args
 
-        # 加载视频帧信息
+        # 加载视频帧对象 VideoObject，包含解码后所有帧
         video = await self.ask_video_load(target_vision, src_size)
 
-        # 根据是否有模型加载结果执行相应的视频处理流程
+        # 如果存在模型，则执行 frame_flow（分类并裁剪视频）
         struct = await frame_flow() if self.ks.model else None
 
-        # 获取帧数据
+        # 获取帧数据，如果存在 struct，则使用其结构提取关键帧与非关键帧
         frames = await frame_hold()
 
-        # 根据处理流程返回视频分析结果
+        # 根据是否有模型结构，选择执行 keras 模式或 basic 分析
         return Review(
             *(await analytics_keras())
         ) if struct else Review(*(await analytics_basic()))
@@ -2738,7 +3377,9 @@ async def scheduling() -> None:
     """
 
     async def _already_installed():
-        """检查 scrcpy 是否已安装，如果未安装则显示安装提示并退出程序。"""
+        """
+        检查 scrcpy 是否已安装，如果未安装则显示安装提示并退出程序。
+        """
         if shutil.which("scrcpy"):
             return None
         raise FramixError("Install first https://github.com/Genymobile/scrcpy")
@@ -2778,13 +3419,12 @@ def signal_processor(*_, **__) -> None:
     None
         无返回值，调用后程序将终止。
     """
-
     Design.exit()
     sys.exit(Design.closure())
 
 
 if __name__ == '__main__':
-    """   
+    """  
     **应用程序入口点，根据命令行参数初始化并运行主进程**
 
     ***********************
@@ -2969,7 +3609,8 @@ if __name__ == '__main__':
 
         注意:
             将命令行参数解析器解析得到的结果存储在基本数据类型的变量中。
-            这样做的目的是避免在多进程环境中向子进程传递不可序列化的对象，因为这些对象在传递过程中可能会导致 `pickle.PicklingError` 错误。
+            这样做的目的是避免在多进程环境中向子进程传递不可序列化的对象。
+            因为这些对象在传递过程中可能会导致 `pickle.PicklingError` 错误。
         """
         _flick, _carry, _fully = _lines.flick, _lines.carry, _lines.fully
         _speed, _basic, _keras = _lines.speed, _lines.basic, _lines.keras
