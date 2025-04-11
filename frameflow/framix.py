@@ -968,7 +968,7 @@ class Missions(object):
         # ====[ 内置模块 ]====
         import uuid
 
-        looper = asyncio.get_event_loop()
+        looper = asyncio.new_event_loop()
 
         clipix = Clipix(self.fmp, self.fpb)
         report = Report(option.total_place)
@@ -1094,7 +1094,7 @@ class Missions(object):
             logger.debug(tip := f"没有有效任务")
             return self.design.show_panel(tip, Wind.KEEPER)
 
-        looper = asyncio.get_event_loop()
+        looper = asyncio.new_event_loop()
 
         async def conduct():
             search_file_list, search_dirs_list = [], []
