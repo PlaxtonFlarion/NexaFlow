@@ -16,7 +16,7 @@ from rich.console import Console
 from rich.logging import (
     LogRecord, RichHandler
 )
-from frameflow.skills.show import Show
+from frameflow.skills.design import Design
 from nexaflow import const
 
 
@@ -286,7 +286,7 @@ class Active(object):
 
         logger.remove(0)
         logger.add(
-            _RichSink(Show.console), level=log_level.upper(), format=const.PRINT_FORMAT, diagnose=False
+            _RichSink(Design.console), level=log_level.upper(), format=const.PRINT_FORMAT, diagnose=False
         )
 
 

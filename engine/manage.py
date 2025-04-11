@@ -16,7 +16,7 @@ from rich.prompt import Prompt
 from screeninfo import get_monitors
 from engine.device import Device
 from engine.terminal import Terminal
-from frameflow.skills.show import Show
+from frameflow.skills.design import Design
 from nexaflow import const
 
 
@@ -45,7 +45,7 @@ class SourceMonitor(object):
 
     async def monitor(self):
         first_examine = True
-        progress = Show.show_progress()
+        progress = Design.show_progress()
         task = progress.add_task(description=f"Analyzer", total=5)
         progress.start()
 
@@ -63,7 +63,7 @@ class SourceMonitor(object):
                 if explain == "stable":
                     progress.update(task, completed=5)
                     progress.stop()
-                    return Show.console.print(table)
+                    return Design.console.print(table)
                 first_examine = False
 
             elif len(self.history) >= 5:
@@ -71,11 +71,11 @@ class SourceMonitor(object):
                 if explain == "stable":
                     progress.update(task)
                     progress.stop()
-                    return Show.console.print(table)
+                    return Design.console.print(table)
 
                 progress.stop()
-                Show.console.print(table)
-                progress = Show.show_progress()
+                Design.console.print(table)
+                progress = Design.show_progress()
                 task = progress.add_task(description=f"Analyzer", total=5)
                 progress.start()
 
@@ -194,7 +194,7 @@ class Manage(object):
     async def operate_device(self) -> typing.Optional[list["Device"]]:
         while True:
             if len(current_device_dict := await self.current_device()) == 0:
-                Show.simulation_progress(f"Wait for device to connect ...")
+                Design.simulation_progress(f"Wait for device to connect ...")
                 continue
 
             self.device_dict = current_device_dict
@@ -203,7 +203,7 @@ class Manage(object):
     async def another_device(self) -> typing.Optional[list["Device"]]:
         while True:
             if len(current_device_dict := await self.current_device()) == 0:
-                Show.simulation_progress(f"Wait for device to connect ...")
+                Design.simulation_progress(f"Wait for device to connect ...")
                 continue
 
             self.device_dict = current_device_dict
@@ -212,16 +212,16 @@ class Manage(object):
                 return list(self.device_dict.values())
 
             for index, device in enumerate(self.device_dict.values()):
-                Show.notes(f"[bold][bold #FFFACD]Connect:[/] [{index + 1:02}] {device}[/]")
+                Design.notes(f"[bold][bold #FFFACD]Connect:[/] [{index + 1:02}] {device}[/]")
 
             if (action := Prompt.ask(
-                    "[bold #FFEC8B]请输入序列号选择一台设备[/]", console=Show.console, default="00")) == "00":
+                    "[bold #FFEC8B]请输入序列号选择一台设备[/]", console=Design.console, default="00")) == "00":
                 return list(self.device_dict.values())
 
             try:
                 choose_device = self.device_dict[action]
             except KeyError as e:
-                Show.notes(f"{const.ERR}序列号不存在 -> {e}[/]\n")
+                Design.notes(f"{const.ERR}序列号不存在 -> {e}[/]\n")
                 await asyncio.sleep(1)
                 continue
 
@@ -229,9 +229,9 @@ class Manage(object):
             return list(self.device_dict.values())
 
     async def display_device(self) -> None:
-        Show.console.print(f"[bold]<Link> <{'单设备模式' if len(self.device_dict) == 1 else '多设备模式'}>[/]")
+        Design.console.print(f"[bold]<Link> <{'单设备模式' if len(self.device_dict) == 1 else '多设备模式'}>[/]")
         for device in self.device_dict.values():
-            Show.console.print(f"[bold #00FFAF]Connect:[/] [bold]{device}[/]")
+            Design.console.print(f"[bold #00FFAF]Connect:[/] [bold]{device}[/]")
 
     @staticmethod
     async def display_select(device_list: list["Device"]) -> None:
@@ -240,7 +240,7 @@ class Manage(object):
         }
 
         if len(select_dict) == 0:
-            return Show.console.print(f"{const.WRN}没有多屏幕的设备[/]\n")
+            return Design.console.print(f"{const.WRN}没有多屏幕的设备[/]\n")
 
         table = Table(
             title=f"[bold #FF851B]{const.ITEM} {const.DESC} Select Command Line",
@@ -265,12 +265,12 @@ class Manage(object):
                     f"[bold #FFF68F]{device.sn}[bold #FF3030];[/]{index}[/]"
                 ]
                 table.add_row(*info)
-        Show.console.print(table)
+        Design.console.print(table)
 
-        action = Prompt.ask("[bold #FFEC8B]Select Display[/]", console=Show.console, choices=choices)
+        action = Prompt.ask("[bold #FFEC8B]Select Display[/]", console=Design.console, choices=choices)
         sn, display_id = re.split(r";", action, re.S)
         select_dict[sn].id, screen = int(display_id), select_dict[sn].display[int(display_id)]
-        Show.notes(f"{const.SUC}{sn} -> ID=[{display_id}] DISPLAY={list(screen)}")
+        Design.notes(f"{const.SUC}{sn} -> ID=[{display_id}] DISPLAY={list(screen)}")
 
 
 if __name__ == '__main__':

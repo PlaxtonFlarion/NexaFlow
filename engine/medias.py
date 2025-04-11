@@ -20,7 +20,7 @@ except ImportError as e:
     raise ImportError("AudioPlayer requires pygame. install it first.")
 
 from engine.terminal import Terminal
-from frameflow.skills.show import Show
+from frameflow.skills.design import Design
 from nexaflow import const
 
 
@@ -63,7 +63,7 @@ class Record(object):
 
         async def input_stream():
             async for line in transports.stdout:
-                Show.annal(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
+                Design.annal(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
                 if "Recording started" in stream:
                     events["head"].set()
                 elif "Recording complete" in stream:
@@ -73,7 +73,7 @@ class Record(object):
 
         async def error_stream():
             async for line in transports.stderr:
-                Show.annal(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
+                Design.annal(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
                 if "Could not find" in stream or "connection failed" in stream or "Recorder error" in stream:
                     events["fail"].set()
                     break
@@ -154,7 +154,7 @@ class Record(object):
                 child_pids = await Terminal.cmd_line(
                     ["pgrep", "-P", pid]
                 )
-            Show.notes(f"{desc} PID={child_pids}")
+            Design.notes(f"{desc} PID={child_pids}")
 
             return [line.strip() for line in child_pids.splitlines() if line.strip().isdigit()] if child_pids else []
 
@@ -167,7 +167,7 @@ class Record(object):
                 off = await Terminal.cmd_line(
                     ["xargs", "kill", "-SIGINT"], transmit=pid.encode()
                 )
-            Show.notes(f"{desc} OFF={off}")
+            Design.notes(f"{desc} OFF={off}")
 
         desc = f"{device.tag} {device.sn} PPID={(record_pid := transports.pid)}"
 
@@ -223,15 +223,15 @@ class Record(object):
             if events["head"].is_set():
                 for i in range(amount):
                     row = amount - i if amount - i <= 10 else 10
-                    Show.notes(f"{desc} 剩余时间 -> {amount - i:02} 秒 {'----' * row} ...")
+                    Design.notes(f"{desc} 剩余时间 -> {amount - i:02} 秒 {'----' * row} ...")
                     if bridle.is_set() and i != amount:
-                        return Show.notes(f"{desc} 主动停止 ...")
+                        return Design.notes(f"{desc} 主动停止 ...")
                     elif events["fail"].is_set():
-                        return Show.notes(f"{desc} 意外停止 ...")
+                        return Design.notes(f"{desc} 意外停止 ...")
                     await asyncio.sleep(1)
-                return Show.notes(f"{desc} 剩余时间 -> 00 秒")
+                return Design.notes(f"{desc} 剩余时间 -> 00 秒")
             elif events["fail"].is_set():
-                return Show.notes(f"{desc} 意外停止 ...")
+                return Design.notes(f"{desc} 意外停止 ...")
             await asyncio.sleep(0.2)
 
     async def check_event(self, device, exec_tasks):
@@ -272,7 +272,7 @@ class Record(object):
 
         if task := exec_tasks.get(device.sn, []):
             task.cancel()
-        return Show.notes(f"[bold #CD853F]{device.sn} Cancel task[/]")
+        return Design.notes(f"[bold #CD853F]{device.sn} Cancel task[/]")
 
     async def flunk_event(self):
         """

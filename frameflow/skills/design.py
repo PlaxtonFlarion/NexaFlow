@@ -16,51 +16,53 @@ from rich.table import Table
 from rich.panel import Panel
 from rich.console import Console
 from rich.progress import (
-    Progress,
-    BarColumn,
-    TextColumn,
-    SpinnerColumn,
-    TimeRemainingColumn
+    Progress, BarColumn, TextColumn,
+    SpinnerColumn, TimeRemainingColumn
 )
 from frameflow import argument
 from nexaflow import const
 
 
-class Show(object):
+class Design(object):
     """
     负责 CLI 界面展示与美化输出的核心类。
 
-    Show 类提供丰富的终端展示方法，包括彩色日志输出、面板渲染、目录树展示、
+    提供丰富的终端展示方法，包括彩色日志输出、面板渲染、目录树展示、
     进度条、动画加载、控制台表格等，依赖 `rich` 库实现高可读性和美学化的 CLI 交互体验。
 
     Attributes
     ----------
     console : Optional[Console]
         rich 控制台对象，用于渲染文本、表格、面板和动画。
+
+    design_level : str
+        日志等级。
     """
 
     console: typing.Optional["Console"] = Console()
 
+    def __init__(self, design_level: str):
+        self.design_level = design_level
+
     @staticmethod
     def notes(text: typing.Any) -> None:
         """输出常规日志信息，使用 bold 样式强调。"""
-        Show.console.print(f"[bold]{const.DESC} | Analyzer | {text}[/]")
+        Design.console.print(f"[bold]{const.DESC} | Analyzer | {text}[/]")
 
     @staticmethod
     def annal(text: typing.Any) -> None:
         """输出结构化强调文本，适用于模型状态或分析摘要。"""
-        Show.console.print(f"[bold]{const.DESC} | Analyzer |[/]", Text(text, "bold"))
+        Design.console.print(f"[bold]{const.DESC} | Analyzer |[/]", Text(text, "bold"))
 
-    @staticmethod
-    def show_panel(level: str, text: typing.Any, wind: dict) -> None:
+    def show_panel(self, text: typing.Any, wind: dict) -> None:
         """根据日志等级和样式参数渲染面板式输出。"""
-        if level == const.SHOW_LEVEL:
+        if self.design_level == const.SHOW_LEVEL:
             panel = Panel(
                 Text(
                     f"{text}", **wind["文本"]
-                ), **wind["边框"], width=int(Show.console.width * 0.7)
+                ), **wind["边框"], width=int(Design.console.width * 0.7)
             )
-            Show.console.print(panel)
+            Design.console.print(panel)
 
     @staticmethod
     def show_tree(file_path: str) -> None:
@@ -85,7 +87,7 @@ class Show(object):
             f"[link file://{file_path}]📁 {os.path.basename(file_path)}[/]", guide_style="bold blue"
         )
         add_nodes(tree, file_path)
-        Show.console.print(tree)
+        Design.console.print(tree)
 
     @staticmethod
     def show_progress() -> "Progress":
@@ -96,7 +98,7 @@ class Show(object):
                 style="bold #FFF68F", speed=1, finished_text="[bold #9AFF9A]Done"
             ),
             BarColumn(
-                bar_width=int(Show.console.width * 0.4),
+                bar_width=int(Design.console.width * 0.4),
                 style="bold #FF6347", complete_style="bold #FFEC8B", finished_style="bold #98FB98"
             ),
             TimeRemainingColumn(),
@@ -113,7 +115,7 @@ class Show(object):
                 style="bold #FFF68F", speed=1, finished_text="[bold #9AFF9A]Done"
             ),
             BarColumn(
-                bar_width=int(Show.console.width * 0.4),
+                bar_width=int(Design.console.width * 0.4),
                 style="bold #FF6347", complete_style="bold #FFEC8B", finished_style="bold #98FB98"
             ),
             TimeRemainingColumn(),
@@ -128,7 +130,7 @@ class Show(object):
     @staticmethod
     def done() -> None:
         """显示任务完成状态的 ASCII 区块框提示。"""
-        Show.console.print(f"""[bold]
+        Design.console.print(f"""[bold]
     ╔══════════════════════════════════╗
     ║          [bold #00FF00]Missions  Done[/]          ║
     ╚══════════════════════════════════╝""")
@@ -136,7 +138,7 @@ class Show(object):
     @staticmethod
     def fail() -> None:
         """显示任务失败状态的 ASCII 区块框提示。"""
-        Show.console.print(f"""[bold]
+        Design.console.print(f"""[bold]
     ╔══════════════════════════════════╗
     ║          [bold #FF0000]Missions  Fail[/]          ║
     ╚══════════════════════════════════╝""")
@@ -144,7 +146,7 @@ class Show(object):
     @staticmethod
     def exit() -> None:
         """显示任务退出状态的 ASCII 区块框提示。"""
-        Show.console.print(f"""[bold]
+        Design.console.print(f"""[bold]
     ╔══════════════════════════════════╗
     ║          [bold #FFFF00]Missions  Exit[/]          ║
     ╚══════════════════════════════════╝""")
@@ -168,7 +170,7 @@ class Show(object):
     ██║  ╚███║███████╗██╔╝ ██╗██║  ██║  ██║     ███████╗╚██████╔╝╚███╔███╔╝
     ╚═╝   ╚══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝  ╚═╝     ╚══════╝ ╚═════╝  ╚══╝╚══╝
         """
-        Show.console.print(logo)
+        Design.console.print(logo)
 
     @staticmethod
     def minor_logo() -> None:
@@ -182,9 +184,9 @@ class Show(object):
             ╚═╝      ╚═╝  ╚═╝ ╚═╝  ╚═╝     ╚═╝     ╚═╝ ╚═╝ ╚═╝  ╚═╝
         """
         for line in logo.split("\n"):
-            Show.console.print(line)
+            Design.console.print(line)
             time.sleep(0.05)
-        Show.console.print(const.DECLARE)
+        Design.console.print(const.DECLARE)
 
     @staticmethod
     def help_document() -> None:
@@ -213,7 +215,7 @@ class Show(object):
                 table.add_row(
                     *[f"[bold #FFDC00]{cmds}", f"[bold #7FDBFF]{kind}", f"{push_color}{push}", f"[bold #39CCCC]{desc}"]
                 )
-            Show.console.print(table, "\t")
+            Design.console.print(table, "\t")
 
     @staticmethod
     def tips_document() -> None:
@@ -238,7 +240,7 @@ class Show(object):
         ]
         for info in information:
             table.add_row(*info)
-        Show.console.print(table)
+        Design.console.print(table)
 
     @staticmethod
     def load_animation() -> None:
@@ -302,11 +304,11 @@ class Show(object):
             return engine_stages[stage % len(engine_stages)]
 
         def animation(step, secs, function):
-            Show.notes(f"[bold #C1FFC1]Engine Initializing[/] ...")
+            Design.notes(f"[bold #C1FFC1]Engine Initializing[/] ...")
             for i in range(step):
-                Show.console.print(function(i), justify="left")
+                Design.console.print(function(i), justify="left")
                 time.sleep(secs)
-            Show.notes(f"[bold #C1FFC1]Engine Loaded[/] ...")
+            Design.notes(f"[bold #C1FFC1]Engine Loaded[/] ...")
 
         stochastic = [
             lambda: animation(4, 0.2, speed_engine),
@@ -316,72 +318,71 @@ class Show(object):
         ]
         random.choice(stochastic)()
 
-    @staticmethod
-    def content_pose(rlt, avg, dur, org, vd_start, vd_close, vd_limit, video_temp, frate) -> None:
-        """展示当前视频处理过程中的关键帧率与时长信息。"""
-        table_info = Table(
-            title=f"[bold #F5F5DC]Video Info {os.path.basename(video_temp)}",
-            header_style="bold #F5F5DC",
-            title_justify="center",
-            show_header=True,
-            show_lines=True
-        )
-        table_info.add_column("视频尺寸", justify="left", width=14)
-        table_info.add_column("实际帧率", justify="left", width=22)
-        table_info.add_column("平均帧率", justify="left", width=22)
-        table_info.add_column("转换帧率", justify="left", width=22)
+    def content_pose(self, rlt, avg, dur, org, vd_start, vd_close, vd_limit, video_temp, frate) -> None:
+        """根据日志等级展示当前视频处理过程中的关键帧率与时长信息。"""
+        if self.design_level == const.SHOW_LEVEL:
+            table_style = {
+                "title_justify": "center", "show_header": True, "show_lines": True
+            }
 
-        table_clip = Table(
-            title=f"[bold #D8BFD8]Video Clip {os.path.basename(video_temp)}",
-            header_style="bold #7FFFD4",
-            title_justify="center",
-            show_header=True,
-            show_lines=True
-        )
-        table_clip.add_column("视频时长", justify="left", width=14)
-        table_clip.add_column("开始时间", justify="left", width=22)
-        table_clip.add_column("结束时间", justify="left", width=22)
-        table_clip.add_column("持续时间", justify="left", width=22)
+            table_info = Table(
+                title=f"[bold #F5F5DC]Video Info {os.path.basename(video_temp)}",
+                header_style="bold #F5F5DC", **table_style
+            )
+            table_info.add_column("视频尺寸", justify="left", width=14)
+            table_info.add_column("实际帧率", justify="left", width=22)
+            table_info.add_column("平均帧率", justify="left", width=22)
+            table_info.add_column("转换帧率", justify="left", width=22)
 
-        info_list = [
-            f"[bold #87CEEB]{org}", f"[bold #87CEEB]{rlt}",
-            f"[bold #87CEEB]{avg}", f"[bold #87CEEB]{frate}"
-        ]
-        table_info.add_row(*info_list)
+            table_clip = Table(
+                title=f"[bold #D8BFD8]Video Clip {os.path.basename(video_temp)}",
+                header_style="bold #7FFFD4", **table_style
+            )
+            table_clip.add_column("视频时长", justify="left", width=14)
+            table_clip.add_column("开始时间", justify="left", width=22)
+            table_clip.add_column("结束时间", justify="left", width=22)
+            table_clip.add_column("持续时间", justify="left", width=22)
 
-        clip_list = [
-            f"[bold #87CEEB]{dur}",
-            f"[bold][[bold #EE82EE]{vd_start}[/]][/]",
-            f"[bold][[bold #EE82EE]{vd_close}[/]][/]",
-            f"[bold][[bold #EE82EE]{vd_limit}[/]][/]"
-        ]
-        table_clip.add_row(*clip_list)
+            info_list = [
+                f"[bold #87CEEB]{org}", f"[bold #87CEEB]{rlt}",
+                f"[bold #87CEEB]{avg}", f"[bold #87CEEB]{frate}"
+            ]
+            table_info.add_row(*info_list)
 
-        Show.console.print(table_info)
-        Show.console.print(table_clip)
+            clip_list = [
+                f"[bold #87CEEB]{dur}",
+                f"[bold][[bold #EE82EE]{vd_start}[/]][/]",
+                f"[bold][[bold #EE82EE]{vd_close}[/]][/]",
+                f"[bold][[bold #EE82EE]{vd_limit}[/]][/]"
+            ]
+            table_clip.add_row(*clip_list)
 
-    @staticmethod
-    def assort_frame(begin_fr, final_fr, stage_cs) -> None:
-        """输出帧片段处理的起止帧号及耗时统计。"""
-        table = Table(
-            title=f"[bold #EED5D2]{const.DESC} Assort Frame",
-            header_style="bold #D3D3D3",
-            title_justify="center",
-            show_header=True,
-            show_lines=True
-        )
-        table.add_column("开始帧", justify="left", width=22)
-        table.add_column("结束帧", justify="left", width=22)
-        table.add_column("总耗时", justify="left", width=22)
+            Design.console.print(table_info)
+            Design.console.print(table_clip)
 
-        assort_list = [
-            f"[bold][[bold #C1FFC1]{begin_fr}[/]][/]",
-            f"[bold][[bold #FF4040]{final_fr}[/]][/]",
-            f"[bold][[bold #F4A460]{stage_cs}[/]][/]"
-        ]
-        table.add_row(*assort_list)
+    def assort_frame(self, begin_fr, final_fr, stage_cs) -> None:
+        """根据日志等级输出帧片段处理的起止帧号及耗时统计。"""
+        if self.design_level == const.SHOW_LEVEL:
+            table_style = {
+                "title_justify": "center", "show_header": True, "show_lines": True
+            }
 
-        Show.console.print(table)
+            table = Table(
+                title=f"[bold #EED5D2]{const.DESC} Assort Frame",
+                header_style="bold #D3D3D3", **table_style
+            )
+            table.add_column("开始帧", justify="left", width=22)
+            table.add_column("结束帧", justify="left", width=22)
+            table.add_column("总耗时", justify="left", width=22)
+
+            assort_list = [
+                f"[bold][[bold #C1FFC1]{begin_fr}[/]][/]",
+                f"[bold][[bold #FF4040]{final_fr}[/]][/]",
+                f"[bold][[bold #F4A460]{stage_cs}[/]][/]"
+            ]
+            table.add_row(*assort_list)
+
+            Design.console.print(table)
 
 
 if __name__ == '__main__':

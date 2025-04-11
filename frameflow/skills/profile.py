@@ -13,13 +13,12 @@ import typing
 from loguru import logger
 from rich.table import Table
 from frameflow.skills.parser import Parser
-from frameflow.skills.show import Show
+from frameflow.skills.design import Design
 from frameflow.argument import Args
 from nexaflow import const
 
 
 def dump_parameters(src: typing.Any, dst: dict) -> None:
-    os.makedirs(os.path.dirname(src), exist_ok=True)
     with open(src, "w", encoding=const.CHARSET) as file:
         json.dump(dst, file, indent=4, separators=(",", ":"), ensure_ascii=False)
 
@@ -227,6 +226,8 @@ class Deploy(object):
         for attr in ["crops", "omits"]:
             if len(deep_copy_deploys["ALS"][attr]) == 0:
                 deep_copy_deploys["ALS"][attr] = const.HOOKS
+
+        os.makedirs(os.path.dirname(deploy_file), exist_ok=True)
         dump_parameters(deploy_file, deep_copy_deploys)
 
     def load_deploy(self, deploy_file: typing.Any) -> None:
@@ -264,7 +265,7 @@ class Deploy(object):
 
             for info in information:
                 table.add_row(*info)
-            Show.console.print(table)
+            Design.console.print(table)
 
 
 class Option(object):
@@ -334,6 +335,7 @@ class Option(object):
             logger.debug(f"未知错误 {e}")
 
     def dump_option(self, option_file: typing.Any) -> None:
+        os.makedirs(os.path.dirname(option_file), exist_ok=True)
         dump_parameters(option_file, self.options)
 
 
@@ -362,6 +364,8 @@ class Script(object):
                 }
             ]
         }
+
+        os.makedirs(os.path.dirname(script_file), exist_ok=True)
         dump_parameters(script_file, scripts)
 
 
