@@ -21,18 +21,53 @@ from nexaflow import const
 
 
 class ScreenMonitor(object):
+    """
+    屏幕监视器类，用于获取当前系统屏幕的分辨率信息。
+    """
 
     @staticmethod
     def screen_size(index: int = 0) -> tuple[int, int]:
+        """
+        获取指定屏幕的分辨率（宽度和高度）。
+
+        Parameters
+        ----------
+        index : int, optional
+            屏幕索引，默认为主屏幕（0）。
+
+        Returns
+        -------
+        tuple[int, int]
+            返回指定屏幕的宽度和高度，格式为 (width, height)。
+
+        Notes
+        -----
+        - 该方法依赖 `screeninfo` 库，确保环境中已安装该库。
+        - 如果系统存在多个显示器，可通过指定 index 获取对应的分辨率。
+        """
         screen = get_monitors()[index]
         return screen.width, screen.height
 
 
 class SourceMonitor(object):
+    """
+    系统资源监控器类。
+
+    本类用于动态监控系统的 CPU 和内存使用情况，并判断当前资源是否足够稳定以执行视频分析任务。
+    包含资源采样、评估和反馈展示等功能。
+    """
 
     history: list[tuple[float, float, float]] = []
 
     def __init__(self):
+        """
+        初始化系统资源监控器。
+
+        Notes
+        -----
+        - 设置 CPU 和内存使用阈值。
+        - 计算逻辑根据当前系统的 CPU 核心数量和内存总量动态设定性能标准。
+        """
         base_cpu_usage_threshold = 50
         base_mem_usage_threshold = 70
 
@@ -43,7 +78,28 @@ class SourceMonitor(object):
         self.mem_usage_threshold = max(50, base_mem_usage_threshold - self.mem_total / 10)
         self.mem_spare_threshold = max(1, self.mem_total * 0.2)
 
-    async def monitor(self):
+    async def monitor(self) -> None:
+        """
+        异步资源监控任务入口。
+
+        该方法会持续采样系统的 CPU 和内存状态，在采集 5 次数据后对系统资源进行评估。
+        若资源达标则终止监控，否则重启采样过程，直到资源稳定为止。
+
+        Notes
+        -----
+        - 每次评估的周期为 5 次采样，每次采样间隔约为 2 秒。
+        - 每次评估后会显示一个资源概览表格，并根据结果决定是否继续监控。
+        - 使用 `rich.progress` 显示进度条。
+
+        Workflow
+        --------
+        1. 初始化进度条并开始资源采样；
+        2. 每次采样后记录 CPU 使用率、内存使用率和可用内存；
+        3. 采样达到 5 次后调用 `evaluate_resources` 进行评估；
+        4. 如果资源评估结果为稳定，终止进度条并展示结果；
+        5. 若不稳定，则清空采样记录并重启评估过程；
+        6. 每轮采样之间等待 2 秒。
+        """
         first_examine = True
         progress = Design.show_progress()
         task = progress.add_task(description=f"Analyzer", total=5)
@@ -81,8 +137,29 @@ class SourceMonitor(object):
 
             await asyncio.sleep(2)
 
-    async def evaluate_resources(self, first_examine: bool):
+    async def evaluate_resources(self, first_examine: bool) -> tuple["Table", str]:
+        """
+        评估当前采样数据所反映的系统资源状况。
 
+        Parameters
+        ----------
+        first_examine : bool
+            是否为首次采样，用于判断是否清空历史记录。
+
+        Returns
+        -------
+        tuple
+            返回两个元素：
+            - Table: 格式化后的资源使用情况表格（rich.Table）。
+            - str: 资源稳定状态，值为 "stable" 或 "unstable"。
+
+        Notes
+        -----
+        - 若平均 CPU 使用率低于阈值，内存使用率低于阈值，且可用内存高于阈值，视为资源稳定；
+        - 否则视为资源不稳定，需重新采样；
+        - 当检测为稳定后会清空历史记录；
+        - 每次结果将以表格形式展示在控制台。
+        """
         avg_cpu_usage = sum(i[0] for i in self.history) / len(self.history)
         avg_mem_usage = sum(i[1] for i in self.history) / len(self.history)
         avg_mem_spare = sum(i[2] for i in self.history) / len(self.history)
@@ -116,6 +193,12 @@ class SourceMonitor(object):
 
 
 class Manage(object):
+    """
+    设备管理器类。
+
+    该类负责通过 ADB 接口发现并管理 Android 设备，支持获取设备的硬件信息（如品牌、版本、CPU、内存、分辨率等），
+    并提供用户选择和切换设备的交互方式。适用于多设备调试和控制场景，支持异步批量设备信息收集与展示。
+    """
 
     device_dict: dict[str, "Device"] = {}
 
@@ -124,13 +207,13 @@ class Manage(object):
 
     async def current_device(self) -> dict[str, "Device"]:
 
-        async def _device_cpu(sn):
+        async def _device_cpu(sn: str) -> typing.Any:
             cmd = [
                 self.adb, "-s", sn, "wait-for-device", "shell", "cat", "/proc/cpuinfo", "|", "grep", "processor"
             ]
             return len(re.findall(r"processor", cpu, re.S)) if (cpu := await Terminal.cmd_line(cmd)) else None
 
-        async def _device_ram(sn):
+        async def _device_ram(sn: str) -> typing.Any:
             cmd = [
                 self.adb, "-s", sn, "wait-for-device", "shell", "free"
             ]
@@ -141,19 +224,19 @@ class Manage(object):
                         return math.ceil(total_ram)
             return None
 
-        async def _device_tag(sn):
+        async def _device_tag(sn: str) -> typing.Any:
             cmd = [
                 self.adb, "-s", sn, "wait-for-device", "shell", "getprop", "ro.product.brand"
             ]
             return tag if (tag := await Terminal.cmd_line(cmd)) else None
 
-        async def _device_ver(sn):
+        async def _device_ver(sn: str) -> typing.Any:
             cmd = [
                 self.adb, "-s", sn, "wait-for-device", "shell", "getprop", "ro.build.version.release"
             ]
             return ver if (ver := await Terminal.cmd_line(cmd)) else None
 
-        async def _device_display(sn):
+        async def _device_display(sn: str) -> dict:
             cmd = [
                 self.adb, "-s", sn, "wait-for-device", "shell", "dumpsys", "display", "|", "grep", "mViewports="
             ]
@@ -169,14 +252,10 @@ class Manage(object):
                             screen_dict.update({int(i.group()): (int(w.group()), int(h.group()))})
             return screen_dict
 
-        async def _device_information(sn):
+        async def _device_information(sn: str) -> "Device":
             information_list = await asyncio.gather(
-                _device_tag(sn), _device_ver(sn), _device_cpu(sn), _device_ram(sn), _device_display(sn),
-                return_exceptions=True
+                _device_tag(sn), _device_ver(sn), _device_cpu(sn), _device_ram(sn), _device_display(sn)
             )
-            for device_info in information_list:
-                if isinstance(device_info, Exception):
-                    return device_info
             return Device(self.adb, sn, *information_list)
 
         device_dict = {}

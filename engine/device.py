@@ -15,13 +15,31 @@ from engine.terminal import Terminal
 
 
 class _Phone(object):
+    """
+    设备信息基础模型类。
+
+    用于封装 Android 设备的基本信息，例如序列号、品牌、系统版本、CPU 核心数、内存大小和显示分辨率等，常用于初始化与表示设备对象。
+    """
+
+    display: dict = {}
 
     def __init__(self, sn: str, *args):
+        """
+        初始化设备对象。
+        """
         self.sn = sn
+
         self.tag, self.ver, self.cpu, self.ram, self.display, *_ = args
-        self.id = list(self.display.keys())[0] if self.display else 0
+
+        try:
+            self.id = list(self.display.keys())[0] if self.display else 0
+        except IndexError:
+            self.id = 0
 
     def __str__(self):
+        """
+        格式化设备对象为字符串描述。
+        """
         head = f"<Device {self.tag} SN={self.sn} OS=[{self.ver}]"
         tail = f"CPU=[{self.cpu}] RAM=[{self.ram}] ID=[{self.id}] DISPLAY={self.display}>"
         return head + " " + tail

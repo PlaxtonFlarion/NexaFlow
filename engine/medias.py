@@ -19,12 +19,50 @@ try:
 except ImportError as e:
     raise ImportError("AudioPlayer requires pygame. install it first.")
 
+from engine.device import Device
 from engine.terminal import Terminal
 from frameflow.skills.design import Design
 from nexaflow import const
 
 
 class Record(object):
+    """
+    视频录制管理类。
+
+    该类用于控制 Android 设备的视频录制行为，支持启动、停止录制，监控录制状态，并处理录制任务相关事件。
+
+    Class Attributes
+    ----------------
+    record_events : dict[dict[str, asyncio.Event]]
+        每台设备的录制事件集合，包含 "head"（录制开始）、"done"（录制完成）、
+        "stop"（主动停止）和 "fail"（录制失败）等事件标识。
+
+    melody_events : asyncio.Event
+        全局录制事件控制器，适用于非独立模式下的统一停止控制。
+
+    Instance Attributes
+    -------------------
+    version : str
+        scrcpy 的版本号信息，用于判断是否支持无窗口录制选项。
+
+    station : str
+        当前操作系统平台，例如 'win32' 或 'linux'。
+
+    alone : bool
+        是否为独立控制模式，如果为 True，则每台设备分别控制录制流程。
+
+    whist : bool
+        是否启用静默录制（无窗口模式），用于降低图形资源消耗。
+
+    frate : int
+        录制时的最大帧率，默认为 `const.FRATE`。
+
+    Notes
+    -----
+    - 支持异步控制多设备录制任务。
+    - 提供全局与局部事件机制，适用于不同的录制调度需求。
+    - 所有录制状态通过事件进行管理与清理。
+    """
 
     record_events: dict[dict[str, asyncio.Event]] = {}
     melody_events: asyncio.Event = asyncio.Event()
@@ -36,34 +74,48 @@ class Record(object):
         self.whist = kwargs.get("whist", False)
         self.frate = kwargs.get("frate", const.FRATE)
 
-    async def ask_start_record(self, device, dst, **kwargs):
+    async def ask_start_record(
+            self, device: "Device", dst: str, **kwargs
+    ) -> tuple[str, "asyncio.subprocess.Process"]:
         """
         异步启动视频录制。
 
         该方法启动视频录制进程，并监控其标准输出和标准错误输出，记录录制状态。
 
-        参数:
-            device: 设备对象，包含设备的序列号 (sn) 和显示 ID (id)。
-            dst (str): 视频文件的保存路径。
-            **kwargs: 其他可选参数，包括窗口位置和大小。
+        Parameters
+        ----------
+        device : object
+            设备对象，包含设备的序列号 (sn) 和显示 ID (id)。
 
-        返回:
-            tuple: 包含视频文件路径和进程对象。
+        dst : str
+            视频文件的保存路径。
 
-        内部函数:
-            input_stream(): 异步读取进程的标准输出，监控录制状态。
-            error_stream(): 异步读取进程的标准错误输出，监控可能的错误。
+        **kwargs : dict
+            其他可选参数，包括窗口位置和大小。
 
-        注意:
-            - 初始化录制事件字典，包含 `head`、`done`、`stop` 和 `fail` 事件。
-            - 根据设备信息和可选参数构建录制命令。
-            - 启动录制进程并创建异步任务监控输出流。
-            - 通过 asyncio.sleep(1) 等待录制进程启动稳定。
+        Returns
+        -------
+        tuple
+            包含视频文件路径和进程对象。
+
+        Notes
+        -----
+        - 初始化录制事件字典，包含 `head`、`done`、`stop` 和 `fail` 事件。
+        - 根据设备信息和可选参数构建录制命令。
+        - 启动录制进程并创建异步任务监控输出流。
+        - 通过 `asyncio.sleep(1)` 等待录制进程启动稳定。
+
+        Workflow
+        --------
+        1. 构建录制命令（使用 scrcpy），包括设备序列号、窗口位置、帧率等参数。
+        2. 启动子进程，并并发创建标准输出和错误输出的监听任务。
+        3. 通过事件字典监控录制状态。
+        4. 返回录制文件路径和进程对象，供后续停止录制使用。
         """
 
         async def input_stream():
             async for line in transports.stdout:
-                Design.annal(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
+                Design.annal(stream := line.decode(encoding=const.CHARSET, errors="ignore").strip())
                 if "Recording started" in stream:
                     events["head"].set()
                 elif "Recording complete" in stream:
@@ -73,7 +125,7 @@ class Record(object):
 
         async def error_stream():
             async for line in transports.stderr:
-                Design.annal(stream := line.decode(encoding="UTF-8", errors="ignore").strip())
+                Design.annal(stream := line.decode(encoding=const.CHARSET, errors="ignore").strip())
                 if "Could not find" in stream or "connection failed" in stream or "Recorder error" in stream:
                     events["fail"].set()
                     break
@@ -109,40 +161,53 @@ class Record(object):
 
         _ = asyncio.create_task(input_stream())
         _ = asyncio.create_task(error_stream())
+
         await asyncio.sleep(1)
 
         return video_temp, transports
 
-    async def ask_close_record(self, device, video_temp, transports):
+    async def ask_close_record(
+            self, device: "Device", video_temp: str, transports: "asyncio.subprocess.Process"
+    ) -> tuple:
         """
         异步停止视频录制。
 
         该方法通过终止录制进程及其子进程来停止视频录制，并监控录制完成状态。
 
-        参数:
-            device: 设备对象，包含设备的标签 (tag) 和序列号 (sn)。
-            video_temp (str): 视频文件的临时路径。
-            transports: 录制进程对象。
+        Parameters
+        ----------
+        device : Device
+            设备对象，包含设备的标签 (tag) 和序列号 (sn)。
 
-        返回:
-            tuple: 包含描述信息和视频文件名称。
+        video_temp : str
+            视频文件的临时路径。
 
-        内部函数:
-            find_child(pid): 异步查找指定进程 ID 的子进程。
-                - 如果平台是 Windows，使用 PowerShell 命令获取子进程 ID。
-                - 否则，使用 pgrep 命令获取子进程 ID。
-            stop_child(pid): 异步终止指定进程 ID 的子进程。
-                - 如果平台是 Windows，使用 PowerShell 命令终止进程。
-                - 否则，使用 xargs 和 kill 命令发送 SIGINT 信号终止进程。
+        transports : asyncio.subprocess.Process
+            录制进程对象。
 
-        注意:
-            - 初始化录制事件字典，包含 `done` 事件。
-            - 查找并终止录制进程的所有子进程。
-            - 等待录制完成事件触发，超时时返回失败信息。
-            - 如果录制成功完成，返回成功信息。
+        Returns
+        -------
+        tuple
+            包含描述信息和视频文件名称。
+
+        Notes
+        -----
+        - 初始化录制事件字典，包含 `done` 事件。
+        - 查找并终止录制进程的所有子进程。
+        - 等待录制完成事件触发，超时时返回失败信息。
+        - 如果录制成功完成，返回成功信息。
+
+        Workflow
+        --------
+        1. 使用 `find_child(pid)` 获取录制进程的所有子进程 PID。
+        2. 使用 `stop_child(pid)` 逐个终止子进程：
+            - Windows 使用 PowerShell 的 `Stop-Process`。
+            - 类 Unix 系统使用 `xargs kill -SIGINT`。
+        3. 等待 `done` 事件的触发，超时则视为失败。
+        4. 根据事件状态返回成功或失败的描述信息及视频文件名。
         """
 
-        async def find_child(pid):
+        async def find_child(pid: str) -> list:
             if self.station == "win32":
                 child_pids = await Terminal.cmd_line(
                     [
@@ -156,9 +221,11 @@ class Record(object):
                 )
             Design.notes(f"{desc} PID={child_pids}")
 
-            return [line.strip() for line in child_pids.splitlines() if line.strip().isdigit()] if child_pids else []
+            return [
+                line.strip() for line in child_pids.splitlines() if line.strip().isdigit()
+            ] if child_pids else []
 
-        async def stop_child(pid):
+        async def stop_child(pid: str) -> None:
             if self.station == "win32":
                 off = await Terminal.cmd_line(
                     ["powershell", "-Command", "Stop-Process", "-Id", pid, "-Force"]
@@ -186,34 +253,41 @@ class Record(object):
         else:
             return f"{desc} 视频录制成功", banner
 
-    async def check_timer(self, device, amount):
+    async def check_timer(self, device: "Device", amount: int) -> None:
         """
-        异步检查计时器状态。
+        监控录制计时状态。
 
-        该方法监控设备录制状态，并在指定时间内输出剩余时间。
+        该方法在视频录制过程中，实时倒计时，并在指定时间内监控事件状态。
 
-        参数:
-            device: 设备对象，包含设备的标签 (tag) 和序列号 (sn)。
-            amount (int): 计时器的总秒数。
+        Parameters
+        ----------
+        device : object
+            设备对象，包含设备的标签 (tag) 和序列号 (sn)。
 
-        内部变量:
-            bridle: 停止录制事件，根据 self.alone 决定是否使用全局或局部事件。
-            events: 录制事件字典，包含 `head`、`stop`、`fail` 等事件。
-            desc (str): 设备描述信息，包括标签和序列号。
+        amount : int
+            倒计时的总秒数。
 
-        处理流程:
-            - 检查 `head` 事件是否已触发，如果是，则开始倒计时。
-            - 在倒计时过程中，每秒检查 `stop` 或 `fail` 事件是否触发：
-                - 如果 `stop` 事件触发且尚未结束，输出主动停止信息。
-                - 如果 `fail` 事件触发，输出意外停止信息。
-                - 否则，继续倒计时并每秒更新剩余时间。
-            - 如果 `fail` 事件在 `head` 事件触发前触发，输出意外停止信息。
-            - 每 0.2 秒检查一次事件状态。
+        Returns
+        -------
+        None
 
-        返回:
-            None
+        Notes
+        -----
+        - 使用 `head` 事件判断录制是否已启动。
+        - 若 `stop` 在倒计时中被触发，视为主动停止。
+        - 若 `fail` 在任意阶段被触发，视为录制失败。
+        - 每秒更新剩余时间，展示提示信息。
+
+        Workflow
+        --------
+        1. 等待 `head` 事件触发后进入倒计时循环。
+        2. 在倒计时过程中：
+            - 每秒输出剩余时间提示；
+            - 若 `stop` 事件被设定，则提前终止；
+            - 若 `fail` 事件被设定，则输出意外终止信息。
+        3. 若在 `head` 前就收到 `fail`，立即终止。
+        4. 倒计时正常结束后输出完成提示。
         """
-
         bridle = self.record_events[device.sn]["stop"] if self.alone else self.melody_events
         events = self.record_events[device.sn]
 
@@ -234,33 +308,38 @@ class Record(object):
                 return Design.notes(f"{desc} 意外停止 ...")
             await asyncio.sleep(0.2)
 
-    async def check_event(self, device, exec_tasks):
+    async def check_event(self, device: "Device", exec_tasks: dict[str, "asyncio.Task"]) -> None:
         """
-        异步检查事件状态。
+        监听录制过程中的任务中断事件。
 
-        该方法监控设备录制过程中的事件状态，并根据事件状态执行相应操作。
+        该方法用于在任务执行期间，实时监听 `stop`、`done` 或 `fail` 事件是否触发，并安全中断任务。
 
-        参数:
-            device: 设备对象，包含设备的序列号 (sn)。
-            exec_tasks (dict): 存储任务的字典，其中键是设备的序列号，值是对应的异步任务。
+        Parameters
+        ----------
+        device : object
+            设备对象，包含设备的序列号 (sn)。
 
-        内部变量:
-            events (dict): 录制事件字典，包含 `stop`、`done`、`fail` 等事件。
-            bridle (tuple): 包含需要监控的事件 (`stop`、`done`、`fail`)。
-            task (coroutine): 存储在 exec_tasks 字典中的异步任务。
+        exec_tasks : dict
+            异步任务字典，key 是设备序列号，value 是任务实例。
 
-        处理流程:
-            - 如果 self.alone 为 True，则获取设备的录制事件字典，并监控 `stop`、`done` 和 `fail` 事件。
-                - 进入循环，检查是否有任何一个事件被触发，如果是，则跳出循环。
-                - 每秒钟检查一次事件状态。
-            - 如果 self.alone 为 False，则等待全局事件 `melody_events` 被触发。
-            - 检查 exec_tasks 字典中是否有与设备序列号对应的任务，如果有，则取消该任务。
-            - 输出任务取消信息。
+        Returns
+        -------
+        None
 
-        返回:
-            None
+        Notes
+        -----
+        - 独立控制模式下监听设备专属事件；
+        - 非独立模式下监听全局 `melody_events`；
+        - 一旦事件触发，取消当前设备的任务。
+
+        Workflow
+        --------
+        1. 判断当前控制模式是否为独立 (`self.alone`)。
+        2. 独立模式下循环等待 `stop`、`done`、`fail` 中任一事件触发。
+        3. 非独立模式下等待全局 `melody_events`。
+        4. 若任务存在于 `exec_tasks` 中，调用 `cancel()` 中断执行。
+        5. 输出取消任务提示信息。
         """
-
         if self.alone and (events := self.record_events.get(device.sn, None)):
             bridle = events["stop"], events["done"], events["fail"]
             while True:
@@ -272,49 +351,57 @@ class Record(object):
 
         if task := exec_tasks.get(device.sn, []):
             task.cancel()
+
         return Design.notes(f"[bold #CD853F]{device.sn} Cancel task[/]")
 
-    async def flunk_event(self):
+    async def flunk_event(self) -> bool:
         """
-        检查是否有任何设备触发了失败事件。
+        检查是否存在录制失败事件。
 
-        该方法遍历所有记录的设备事件，检查是否存在任何一个设备的 `fail` 事件被触发。
+        该方法遍历所有设备的事件状态，判断是否有任何设备在录制过程中触发了 `fail` 事件。
 
-        返回:
-            bool: 如果任何一个设备的 `fail` 事件被触发，返回 True；否则返回 False。
+        Returns
+        -------
+        bool
+            若有任一设备的 `fail` 事件被触发，则返回 True；否则返回 False。
 
-        内部变量:
-            events (dict): 包含录制事件的字典，其中 `fail` 事件表示录制失败。
+        Notes
+        -----
+        - 每个设备在录制启动时会生成一组事件；
+        - `fail` 表示录制异常中断，可能由 scrcpy 异常、连接错误等引起；
+        - 本方法适用于判断录制是否需要中断或重试。
 
-        处理流程:
-            - 遍历 self.record_events 字典的所有值。
-            - 对每个设备的事件字典，检查 `fail` 事件是否被触发。
-            - 如果找到任何一个 `fail` 事件被触发，返回 True。
-            - 如果所有设备的 `fail` 事件均未触发，返回 False。
+        Workflow
+        --------
+        1. 遍历 `self.record_events` 中所有设备的事件字典；
+        2. 检查每个事件字典中的 `fail` 是否处于已触发状态；
+        3. 若任一事件触发，则返回 True；
+        4. 全部未触发时，返回 False。
         """
+        return any(events["fail"].is_set() for events in self.record_events.values())
 
-        return any(
-            events["fail"].is_set() for events in self.record_events.values()
-        )
-
-    async def clean_event(self):
+    async def clean_event(self) -> None:
         """
-        清理所有录制事件并重置状态。
+        清理所有录制事件状态。
 
-        该方法用于清理所有录制事件，重置状态，以便为新地录制任务做好准备。
+        该方法在一次录制任务结束后调用，用于重置所有事件对象，防止状态残留影响后续任务。
 
-        操作步骤:
-            1. 清除全局事件 `self.melody_events`。
-            2. 遍历 `self.record_events` 字典的所有值，并清除其中的每个事件。
-            3. 清空 `self.record_events` 字典。
+        Returns
+        -------
+        None
 
-        处理流程:
-            - `self.melody_events.clear()`: 清除全局事件，确保其处于未触发状态。
-            - 遍历 `self.record_events` 中的每个设备事件字典：
-                - 对每个设备事件字典中的事件调用 `clear()` 方法，使其处于未触发状态。
-            - 清空 `self.record_events` 字典，移除所有设备的事件记录。
+        Notes
+        -----
+        - 包含清空全局事件 `melody_events`；
+        - 遍历所有设备事件并逐个 `clear()`；
+        - 最终清空 `record_events` 字典。
+
+        Workflow
+        --------
+        1. 调用 `self.melody_events.clear()` 重置全局事件；
+        2. 遍历 `record_events`，对每个设备的事件集合执行清除操作；
+        3. 清空 `record_events`，为下一轮任务做好准备。
         """
-
         self.melody_events.clear()
         for event_dict in self.record_events.values():
             for events in event_dict.values():
@@ -323,27 +410,35 @@ class Record(object):
 
 
 class Player(object):
+    """
+    音频播放控制类。
+
+    该类用于管理音频播放行为，支持异步播放本地音频文件。适用于任务流程中需要音效提示或语音播放的场景。
+    内部维护事件标志以支持多线程/异步控制。
+    """
 
     player_events: dict = {}
     melody_events: asyncio.Event = asyncio.Event()
 
     @staticmethod
-    async def audio_player(audio_file: str):
+    async def audio_player(audio_file: str) -> None:
         """
         异步播放音频文件。
 
-        该方法使用 pygame 库异步播放指定的音频文件，播放时音量设置为最大。
+        使用 pygame.mixer 异步播放指定的本地音频文件，适用于提示音或语音播报。
 
-        参数:
-            audio_file (str): 音频文件的路径。
+        Parameters
+        ----------
+        audio_file : str
+            音频文件的本地路径。
 
-        注意:
-            - 初始化 pygame.mixer 模块并加载音频文件。
-            - 设置音量为 1.0（最大音量）。
-            - 播放音频文件，并在音频播放期间通过检查 pygame.mixer.music.get_busy() 保持循环，直到播放结束。
-            - 在循环中通过 pygame.time.Clock().tick(10) 控制帧率，防止占用过多 CPU 资源。
+        Notes
+        -----
+        - 初始化 pygame.mixer 模块并加载音频资源。
+        - 设置音量为最大值（1.0）。
+        - 进入播放循环，判断播放是否结束。
+        - 使用 `pygame.time.Clock().tick(10)` 控制轮询频率，避免 CPU 占用过高。
         """
-
         pygame.mixer.init()
         pygame.mixer.music.load(audio_file)
         pygame.mixer.music.set_volume(1.0)
