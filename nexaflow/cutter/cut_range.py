@@ -86,6 +86,29 @@ class VideoCutRange(object):
         # )
 
     def can_merge(self, another: "VideoCutRange", offset: int = None, **_) -> bool:
+        """
+        判断当前剪辑范围是否可与另一个范围合并。
+
+        Parameters
+        ----------
+        another : VideoCutRange
+            另一个待合并的剪辑范围。
+
+        offset : int, optional
+            允许的帧数间隔偏移，默认为 0，表示必须完全连续。
+
+        Returns
+        -------
+        bool
+            如果两个范围可合并，则返回 True；否则返回 False。
+
+        Notes
+        -----
+        - 合并条件包括：
+            1. 两个范围位于同一个视频 (`video.path` 相同)；
+            2. 起止帧足够接近，满足连续或带偏移条件。
+        - `offset` 允许在帧编号之间有最大 `offset` 个帧的间隔。
+        """
         if not offset:
             is_continuous = self.end == another.start
         else:
@@ -93,7 +116,35 @@ class VideoCutRange(object):
         return is_continuous and self.video.path == another.video.path
 
     def merge(self, another: "VideoCutRange", **kwargs) -> "VideoCutRange":
+        """
+        合并两个视频剪辑范围，生成新的 `VideoCutRange` 对象。
+
+        Parameters
+        ----------
+        another : VideoCutRange
+            另一个待合并的剪辑范围。
+
+        **kwargs :
+            传递给 `can_merge()` 的其他合并容差参数，如 `offset`。
+
+        Returns
+        -------
+        VideoCutRange
+            合并后的新剪辑范围，包含两段的统计信息和时间范围。
+
+        Raises
+        ------
+        AssertionError
+            如果两个范围不可合并，将抛出断言异常。
+
+        Notes
+        -----
+        - 合并将拼接两个区间的 `ssim`、`mse`、`psnr` 列表；
+        - 起始点为当前范围的 `start`，终止点为 `another.end`；
+        - 时间范围也将更新为两段的总起止时间。
+        """
         assert self.can_merge(another, **kwargs)
+
         return __class__(
             self.video,
             self.start,
@@ -106,6 +157,24 @@ class VideoCutRange(object):
         )
 
     def contain(self, frame_id: int) -> bool:
+        """
+        判断指定帧 ID 是否包含在当前剪辑范围中。
+
+        Parameters
+        ----------
+        frame_id : int
+            要判断的帧编号。
+
+        Returns
+        -------
+        bool
+            若该帧编号在 `[start, end]` 区间内（闭区间），则返回 True；否则返回 False。
+
+        Notes
+        -----
+        - 当前剪辑范围是闭区间 `[start, end]`；
+        - 支持通过 `contain_frame_id` 别名访问该方法。
+        """
         return frame_id in range(self.start, self.end + 1)
 
     contain_frame_id = contain
@@ -113,9 +182,38 @@ class VideoCutRange(object):
     def contain_image(
         self, image_path: str = None, image_object: np.ndarray = None, *args, **kwargs
     ) -> dict[str, typing.Any]:
+        """
+        判断当前剪辑范围中是否存在与指定图像匹配的帧。
+
+        Parameters
+        ----------
+        image_path : str, optional
+            输入图像的路径。
+
+        image_object : np.ndarray, optional
+            图像对象，若未提供路径，可直接传入图像矩阵。
+
+        *args :
+            传递给 `pick()` 的额外参数，用于控制取样帧的逻辑。
+
+        **kwargs :
+            传递给 `contain_image()` 的匹配参数，如匹配方法、精度控制等。
+
+        Returns
+        -------
+        dict[str, Any]
+            匹配结果字典，由 `VideoFrame.contain_image()` 返回，包含匹配位置、相似度评分等信息。
+
+        Notes
+        -----
+        - 默认从当前范围中采样一帧（由 `pick()` 决定），并对其执行图像匹配；
+        - 若需更精细匹配，可通过自定义采样策略或增加帧数；
+        - 图像匹配的执行依赖于 `VideoFrame.contain_image()` 方法，支持模板匹配等多种算法。
+        """
         target_id = self.pick(*args, **kwargs)[0]
         operator = self.video.get_operator()
         frame = operator.get_frame_by_id(target_id)
+
         return frame.contain_image(
             image_path=image_path, image_object=image_object, **kwargs
         )

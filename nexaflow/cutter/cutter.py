@@ -249,11 +249,6 @@ class VideoCutter(object):
         - 最终返回的段数量为 `2 * parts - 1`，即包含 `parts` 个主段和 `parts - 1` 个间隔段。
         - 通常用于稳定片段划分、采样任务分批执行等需求。
         - 所有区间从 `1` 开始计数，包含左右边界。
-
-        Examples
-        --------
-        >>> VideoCutter.split_range(100, 3)
-        [(1, 33, 32), (33, 34, 1), (34, 66, 32), (66, 67, 1), (67, 100, 33)]
         """
         division, remainder = value // parts, value % parts
         result, current_start = [], 1
@@ -320,12 +315,6 @@ class VideoCutter(object):
         5. 构造 `VideoCutRange`，记录起始帧、结束帧、时间戳及相似性指标。
         6. 窗口右移，重复上述过程，直到处理完整个视频。
         7. 返回所有构造的 `VideoCutRange` 列表，用于后续分析或剪辑。
-
-        Examples
-        --------
-        >>> cutter = VideoCutter(step=1, compress_rate=0.3)
-        >>> ranges = cutter.magic_frame_range(video, block=3, window_size=5, window_coefficient=2)
-        >>> print(ranges[0].ssim)  # 显示第一段帧之间的 SSIM 指标
         """
 
         def slice_frame() -> list["VideoCutRange"]:
@@ -424,11 +413,6 @@ class VideoCutter(object):
             - 加权权重计算方式为：(length - index)^window_coefficient，指数型增强后端帧影响力。
             - 权重分母 `denominator` 为所有权重之和，用于归一化。
             - 若 `float_list` 趋于一致，输出值近似于平均值；若变化剧烈，输出更偏向后端值。
-
-            Examples
-            --------
-            >>> float_merge([0.9, 0.7, 0.8])
-            # 输出值更接近 0.8 而非简单平均
             """
 
             # 第一个，最大的
@@ -582,91 +566,9 @@ class VideoCutter(object):
         - 每个 `VideoCutRange` 表示两帧之间的图像差异，包含 SSIM/MSE/PSNR 指标。
         - 本方法适用于帧级动态分析、剪辑检测、稳定性建模等场景。
         - 可结合 `VideoCutResult.get_range()` 自动筛选稳定与不稳定段落。
-
-        Examples
-        --------
-        >>> cutter = VideoCutter(step=1, compress_rate=0.2)
-        >>> result = cutter.cut("demo.mp4", block=3, window_size=5, window_coefficient=2)
-        >>> stable, unstable = result.get_range(limit=5, threshold=0.85)
         """
         video = VideoObject(video) if isinstance(video, str) else video
 
-        """
-        `block` 分割与 `window` 滑动机制
-        
-        ### 1. `block` 分割图解
-        
-        当设置 `block=3` 时，每帧图像会被切分为 `3x3=9` 个子区域：
-        
-        ```
-            +------+------+------+
-            | blk1 | blk2 | blk3 |
-            +------+------+------+
-            | blk4 | blk5 | blk6 |
-            +------+------+------+
-            | blk7 | blk8 | blk9 |
-            +------+------+------+
-        ```
-        
-        - 每个块（blkX）代表一个小区域，参与局部比较（SSIM、MSE 等）。
-        - 增强对局部图像变化的检测能力。
-
-        ---
-        
-        ### 2. `window_size` 滑动窗口图解
-        
-        以 `window_size=3`、`step=1` 为例：
-        
-        ```
-            帧序列：
-            [ f1 ][ f2 ][ f3 ][ f4 ][ f5 ][ f6 ][ f7 ]
-            
-            窗口1：        f1 → f2
-            [ f1 ][ f2 ][ f3 ]
-            
-            窗口2：            f2 → f3
-                [ f2 ][ f3 ][ f4 ]
-            
-            窗口3：                f3 → f4
-                    [ f3 ][ f4 ][ f5 ]
-            
-            ...
-        ```
-        
-        - 每个窗口用于比较连续帧之间的变化。
-        - 可用于检测动态事件、过渡等。
-        
-        ### 3. `window_coefficient` 权重示意
-        
-        设定：
-        - `window_size = 5`
-        - `window_coefficient = 2`
-        
-        计算每帧权重：
-
-        ```
-            窗口帧序列： f1  f2  f3  f4  f5
-            对应权重²：  1   4   9  16  25
-        ```
-        
-        - 越靠后的帧权重越高，变化影响越大。
-        - 适用于强调“尾部”帧的瞬时变化。
-        
-        ### 综合应用场景：       
-        
-        - **场景切换检测**：
-          - 参数：`block=3`、`window_size=5`、`step=1`
-          - 分析视觉剧烈变化的位置。       
-        
-        - **细粒度动作检测**：
-          - 参数：`block=4`、`step=1`
-          - 局部变化更加敏感。       
-        
-        - **静态片段提取**：
-          - 参数：`block=1`、`window_size=10`、`step=2`
-          - 用于寻找无变化的视频片段。
-        
-        """
         block = block or 3
         window_size = window_size or 1
         window_coefficient = window_coefficient or 2

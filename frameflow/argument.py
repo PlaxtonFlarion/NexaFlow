@@ -309,7 +309,7 @@ class Args(object):
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.begin}",
                 f"[bold][[bold #7FFFD4] ?  ? [/]]",
-                f"[bold]非稳定阶段 [bold #FFD700]{x.begin}[/]"
+                f"[bold]非稳定阶段 [bold #FFD700]{list(x.begin)}[/]"
             ]
         },
         "--final": {
@@ -321,7 +321,7 @@ class Args(object):
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.final}",
                 f"[bold][[bold #7FFFD4] ?  ? [/]]",
-                f"[bold]非稳定阶段 [bold #FFD700]{x.final}[/]"
+                f"[bold]非稳定阶段 [bold #FFD700]{list(x.final)}[/]"
             ]
         },
         "--thres": {
@@ -356,8 +356,34 @@ class Args(object):
                 - 提升图像处理、运动检测、局部特征提取等操作中的计算效率与空间分辨能力，适用于高分辨率视频的并行分析与局部建模。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.block}",
-                f"[bold][[bold #7FFFD4] 1  10[/]]",
-                f"[bold]每个图像分割 [bold #FFD700]{x.block * x.block}[/] 块"
+                f"[bold][[bold #7FFFD4] 3  10[/]]",
+                f"[bold]每帧分块数 [bold #FFD700]{x.block} * {x.block} = {x.block * x.block}"
+            ]
+        },
+        "--scope": {
+            "args": {"nargs": "?", "const": None, "type": str},
+            "view": ["一次", "=POSITIVE INT"],
+            "help": "序维穿梭",
+            "func": """- 控制滑动窗口的分析跨度，即每次运算所覆盖的帧数区间。
+                - 决定了算法对“时间”维度的理解深度，影响稳定性判断与细节捕捉能力。
+                - 本质上是时间感知的“感受器尺寸”：范围越大，感知越长；范围越小，感知越敏捷。""",
+            "push": lambda x, y: [
+                f"[bold #87AFD7]{x.scope}",
+                f"[bold][[bold #7FFFD4] 1  20[/]]",
+                f"[bold]滑动窗口中包含 [bold #FFD700]{x.scope}[/] 帧"
+            ]
+        },
+        "--grade": {
+            "args": {"nargs": "?", "const": None, "type": str},
+            "view": ["一次", "=POSITIVE INT"],
+            "help": "相位律动",
+            "func": """- 控制滑动窗口内各帧的加权分布方式，用于平滑值（如 SSIM、MSE、PSNR）的加权计算。
+                - 权重分布以幂函数方式衰减：靠近当前帧的权重更高，远离当前帧的影响力降低。
+                - 本质上模拟“时序惯性”与“当前性偏好”，可理解为时序分析中的“物理驱动感”。""",
+            "push": lambda x, y: [
+                f"[bold #87AFD7]{x.grade}",
+                f"[bold][[bold #7FFFD4] 1  5 [/]]",
+                f"[bold]滑动窗口中加权系数的幂指数 [bold #FFD700]{x.grade}[/]"
             ]
         },
         "--crops": {

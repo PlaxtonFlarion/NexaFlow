@@ -49,6 +49,8 @@ class Deploy(object):
             "thres": const.THRES,
             "shift": const.SHIFT,
             "block": const.BLOCK,
+            "scope": const.SCOPE,
+            "grade": const.GRADE,
             "crops": const.CROPS,
             "omits": const.OMITS
         }
@@ -126,6 +128,14 @@ class Deploy(object):
     @property
     def block(self):
         return self.deploys["ALS"]["block"]
+
+    @property
+    def scope(self):
+        return self.deploys["ALS"]["scope"]
+
+    @property
+    def grade(self):
+        return self.deploys["ALS"]["grade"]
 
     @property
     def crops(self):
@@ -210,8 +220,18 @@ class Deploy(object):
 
     @block.setter
     def block(self, value: typing.Any):
-        if effective := Parser.parse_waves(value, min_v=1, max_v=10, decimal=0):
+        if effective := Parser.parse_waves(value, min_v=3, max_v=10, decimal=0):
             self.deploys["ALS"]["block"] = effective
+
+    @scope.setter
+    def scope(self, value: typing.Any):
+        if effective := Parser.parse_waves(value, min_v=1, max_v=20, decimal=0):
+            self.deploys["ALS"]["scope"] = effective
+
+    @grade.setter
+    def grade(self, value: typing.Any):
+        if effective := Parser.parse_waves(value, min_v=1, max_v=5, decimal=0):
+            self.deploys["ALS"]["grade"] = effective
 
     @crops.setter
     def crops(self, value: typing.Any):
@@ -238,7 +258,8 @@ class Deploy(object):
                     setattr(self, k, parameters.get(key, {}).get(k, v))
                     logger.debug(f"Load <{k}> = {v} -> {getattr(self, k)}")
         except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
-            logger.debug(f"使用默认参数 {e}")
+            logger.debug(f"使用默认参数: {e}")
+            logger.debug(f"生成部署文件: {deploy_file}")
             self.dump_deploy(deploy_file)
         except Exception as e:
             logger.debug(f"未知错误 {e}")
@@ -248,7 +269,7 @@ class Deploy(object):
 
         for key, value in self.deploys.items():
             table = Table(
-                title=f"[bold #87CEFA]{const.DESC} Deploys {key}",
+                title=f"[bold #87CEFA]{const.DESC}({const.ALIAS}) Deploys {key}",
                 header_style=f"bold #B0C4DE",
                 title_justify=f"center",
                 show_header=True
@@ -329,7 +350,8 @@ class Option(object):
                 setattr(self, k, parameters.get(k, v))
                 logger.debug(f"Load <{k}> = {v} -> {getattr(self, k)}")
         except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
-            logger.debug(f"使用默认参数 {e}")
+            logger.debug(f"使用默认参数: {e}")
+            logger.debug(f"生成配置文件: {option_file}")
             self.dump_option(option_file)
         except Exception as e:
             logger.debug(f"未知错误 {e}")

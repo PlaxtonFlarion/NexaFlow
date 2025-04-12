@@ -2843,8 +2843,14 @@ class Alynex(object):
 
         cut_start_time = time.time()
 
+        logger.debug(
+            f"压缩视频中: block={self.deploy.block}, scope={self.deploy.scope}, grade={self.deploy.grade}"
+        )
         cut_range = cutter.cut(
-            video=video, block=self.deploy.block
+            video=video,
+            block=self.deploy.block,
+            window_size=self.deploy.scope,
+            window_coefficient=self.deploy.grade
         )
 
         logger.debug(f"{(cut_name := '视频帧压缩完成: ' f'{video.name}')}")
@@ -3148,8 +3154,14 @@ class Alynex(object):
             cut_start_time = time.time()
 
             # 开始裁剪视频帧块
+            logger.debug(
+                f"压缩视频中: block={self.deploy.block}, scope={self.deploy.scope}, grade={self.deploy.grade}"
+            )
             cut_range = cutter.cut(
-                video=video, block=self.deploy.block
+                video=video,
+                block=self.deploy.block,
+                window_size=self.deploy.scope,
+                window_coefficient=self.deploy.grade
             )
 
             # 裁剪完成后展示信息
