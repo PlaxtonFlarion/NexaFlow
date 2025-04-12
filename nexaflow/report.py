@@ -21,54 +21,63 @@ from loguru import logger
 from jinja2 import Template
 from collections import defaultdict
 from engine.tinker import FramixError
-from nexaflow import toolbox, const
+from nexaflow import (
+    toolbox, const
+)
 from nexaflow.classifier.base import ClassifierResult
 
 
 class Report(object):
+    """
+    用于管理和生成分析报告的核心类。
+
+    该类封装了从分析结果数据结构到最终 HTML 报告文件的整个流程，支持单个分析报告的构建、
+    多报告的合并、以及生成带有图像与统计信息的总汇总报告。其功能主要包括：
+
+    - 初始化报告输出路径结构与日志路径；
+    - 管理报告标题与查询信息；
+    - 加载报告片段信息；
+    - 生成单个分析报告、创建汇总报告；
+    - 绘制分析图表并生成 HTML 文件。
+
+    该类依赖 aiofiles 进行异步文件操作，Jinja2 用于渲染 HTML 模板，并通过日志记录操作流程。
+    报告内容来源于 `ClassifierResult` 结构，帧图像来源于保存路径或 Base64 格式处理。
+    """
 
     def __init__(self, total_path: str):
         """
-        初始化类时设置默认值。
+        初始化 Report 实例并创建目录结构与日志文件。
 
-        参数:
-            total_path (str): 存储文件的根路径，用于初始化后续的文件夹结构。
+        Parameters
+        ----------
+        total_path : str
+            指定的根目录路径，用于存放分析报告的总目录。
 
-        私有属性:
-            __title (str): 用于存储标题的私有属性，默认值为空字符串。
-            __query (str): 用于存储查询字符串的私有属性，默认值为空字符串。
+        Notes
+        -----
+        - 创建总报告目录路径（包含时间戳与进程号）与恢复目录；
+        - 初始化 query_path、video_path、frame_path、extra_path 等路径为空；
+        - 设置 `range_list` 和 `total_list` 用于存储分析数据；
+        - 设置日志输出路径至恢复目录中的日志文件，并使用 logger 记录后续分析事件；
+        - 所有生成路径均确保目录存在（os.makedirs + exist_ok=True）。
 
-        公共属性:
-            query_path (str): 存储查询路径的属性，默认值为空字符串。
-            video_path (str): 存储视频路径的属性，默认值为空字符串。
-            frame_path (str): 存储帧路径的属性，默认值为空字符串。
-            extra_path (str): 存储额外资源路径的属性，默认值为空字符串。
-            range_list (list): 存储范围列表的属性，默认值为空列表。
-            total_list (list): 存储总列表的属性，默认值为空列表。
-
-        内部变量:
-            _tms (str): 当前时间戳，用于生成唯一的路径名称。
-            _pid (int): 当前进程的ID，用于生成唯一的路径名称。
-
-        路径属性:
-            total_path (str): 总路径，基于传入的total_path，时间戳和进程ID生成唯一目录，并在其中创建总集合文件夹。
-            reset_path (str): 重置路径，基于total_path的父目录生成恢复文件夹。
-
-        日志文件:
-            log_papers (str): 日志文件的路径，保存在重置路径中，记录操作日志。
-            logger (Logger): 配置日志记录器，记录操作日志，日志级别为NOTE_LEVEL，格式为WRITE_FORMAT。
+        Workflow
+        --------
+        1. 生成带时间戳的唯一输出目录；
+        2. 初始化输出路径（视频、帧图、附加图）为空；
+        3. 创建恢复路径和日志记录文件；
+        4. 初始化报告内容缓存结构。
         """
+        self.__title: str = ""
+        self.__query: str = ""
 
-        self.__title = ""
-        self.__query = ""
+        self.query_path: str = ""
+        self.video_path: str = ""
+        self.frame_path: str = ""
+        self.extra_path: str = ""
 
-        self.query_path = ""
-        self.video_path = ""
-        self.frame_path = ""
-        self.extra_path = ""
-
-        self.range_list = []
-        self.total_list = []
+        self.range_list: list = []
+        self.total_list: list = []
 
         _tms, _pid = time.strftime("%Y%m%d%H%M%S"), os.getpid()
 
@@ -124,6 +133,18 @@ class Report(object):
         del self.__query
 
     async def load(self, inform: dict) -> None:
+        """
+        将分析信息追加到 `range_list` 列表中。
+
+        Parameters
+        ----------
+        inform : dict
+            单个分析阶段的数据结构，包含 stage、frame、extra 等信息。
+
+        Notes
+        -----
+        该方法主要用于单报告内容的记录，可被多次调用以汇总阶段信息。
+        """
         if inform:
             self.range_list.append(inform)
 
@@ -132,34 +153,44 @@ class Report(object):
             merge_list: typing.Union[list, tuple], template_file: str
     ) -> str:
         """
-        静态方法: `ask_merge_report`
+        合并多个分析报告，生成汇总 HTML 文件。
 
-        功能:
-            合并多个报告文件，生成最终的合并报告。此方法从多个日志文件中提取数据，将其合并到指定的模板文件中，并生成最终的HTML报告。
+        该方法从多个已完成的分析报告中提取恢复日志内容，并将相关目录合并至一个新目录中，最终根据模板生成一个汇总 HTML 报告。
 
-        参数:
-            merge_list (typing.Union[list, tuple]): 需要合并的报告目录列表或元组。
-            template_file (str): 用于生成最终报告的HTML模板文件路径。
+        Parameters
+        ----------
+        merge_list : list or tuple
+            含有多个报告输出目录路径的列表或元组，每个路径都应包含 recovery 日志。
 
-        内部函数:
-            assemble(file):
-                异步读取指定文件的内容，并提取出包含“Recovery”关键词的数据。
+        template_file : str
+            用于渲染汇总报告的 Jinja2 模板文件路径。
 
-        异常处理:
-            FramixError:
-                当无法找到可以合并的报告时，抛出此异常。
+        Returns
+        -------
+        str
+            最终生成的汇总 HTML 报告的文件路径。
 
-        操作流程:
-            1. 生成合并路径，并确保目标目录存在。
-            2. 使用assemble函数从各个报告目录的日志文件中提取有效数据。
-            3. 复制各个报告目录下的所有数据到合并路径中，忽略指定的文件类型。
-            4. 使用模板文件生成最终的HTML报告，并保存到指定路径。
+        Raises
+        ------
+        FramixError
+            - 如果合并列表为空。
+            - 如果日志提取失败或模板渲染出错。
+            - 如果复制目录失败或日志内容无效。
 
-        返回值:
-            report_html (str): 返回最终生成的HTML报告文件路径。
+        Notes
+        -----
+        - 每个目录应包含 `R_RECOVERY/R_LOG_FILE` 文件，且日志中包含 `Recovery:` 开头的 JSON 结构。
+        - 合并操作会创建新目录 `R_UNION_TAG_<timestamp>` 用于收集所有内容。
+        - 报告合并时会忽略 `.log`、`.db` 文件以及总汇文件，避免污染新目录。
+        - 生成的 HTML 会统一写入新合并目录的上一级，文件名为 `R_UNION_FILE`。
 
-        异常:
-            如果在操作过程中遇到任何异常或错误，将抛出 `FramixError` 以便处理。
+        Workflow
+        --------
+        1. 依次提取每个日志文件中以 `Recovery:` 开头的 JSON 内容；
+        2. 合并所有目录内容（排除日志和数据库文件）到新合并目录；
+        3. 使用传入的模板渲染 HTML 内容；
+        4. 将渲染结果写入最终的汇总 HTML 文件；
+        5. 返回该 HTML 文件的完整路径。
         """
 
         async def assemble(file):
@@ -212,33 +243,60 @@ class Report(object):
             total: "Path", title: str, serial: str, parts_list: list, style_loc: str
     ) -> typing.Optional[dict]:
         """
-        静态方法: `ask_create_report`
+        生成单个分析报告的 HTML 文件。
 
-        功能:
-            生成视频分析的HTML报告，并返回包含分析结果的字典。
-            该方法根据输入的分析数据，生成相应的图像列表和统计信息，最终输出一个HTML报告文件。
+        该方法负责将某个分析任务的图像、原型、阶段数据等汇总并生成 HTML 格式的可视化报告，用于回溯和比对。
 
-        参数:
-            total (Path): 存放报告的根目录路径。
-            title (str): 报告的标题名称。
-            serial (str): 报告的序列号，用于唯一标识报告文件。如果未提供，将生成一个随机序列号。
-            parts_list (list): 包含多个字典的列表，每个字典存储一个视频分析的详细信息。
-            style_loc (str): HTML模板文件的路径，用于生成最终报告。
+        Parameters
+        ----------
+        total : Path
+            报告的根路径。
 
-        操作流程:
-            1. 调用图像加载函数生成图像列表。
-            2. 将图像列表及其他相关数据渲染到HTML模板中，并保存为HTML文件。
-            3. 计算图像处理的平均耗时，生成包含报告信息的字典并返回。
+        title : str
+            当前报告的标题名，将作为文件夹名称创建子目录。
 
-        返回值:
-            single (typing.Optional[dict]): 包含报告信息的字典，键包括`case`(报告标题)、`cost_list`(耗时列表)、`avg`(平均耗时)和`href`(HTML报告的路径)。
+        serial : str
+            用于标识报告组的编号，如果为空则自动生成随机编号。
 
-        异常:
-            ZeroDivisionError:
-                在计算平均耗时时，如果耗时列表为空，处理零除异常，返回平均耗时为`0.00000`。
+        parts_list : list
+            包含多组图像路径、阶段信息、原型等数据的列表，每一项为一个字典。
+
+        style_loc : str
+            Jinja2 模板路径，用于渲染最终的 HTML 报告页面。
+
+        Returns
+        -------
+        dict or None
+            如果成功生成报告，返回包含汇总信息的字典（如耗时、跳转链接等），否则返回 None。
+
+        Raises
+        ------
+        ZeroDivisionError
+            当 parts_list 中所有耗时为 0 时，平均耗时计算除零异常。
+
+        Notes
+        -----
+        - 每个 parts_list 字典需包含字段 `query`、`frame`、`extra`、`proto` 和 `stage`；
+        - 图像名称需可提取帧 ID 和时间戳信息，否则跳过；
+        - 报告将保存为 HTML 文件，位于 `total/title/title_serial.html`；
+        - 报告的元数据会以 JSON 格式记录在日志中。
+
+        Workflow
+        --------
+        1. 遍历 `parts_list`，提取每组图像路径、原型文件和阶段标记；
+        2. 组织所有图片和元数据，生成渲染上下文；
+        3. 使用 Jinja2 渲染 HTML 模板；
+        4. 保存生成的 HTML 文件至对应目录；
+        5. 构造并返回该报告的描述信息（耗时、路径、编号等）。
         """
 
         async def acquire(query: str, frame: typing.Optional[str]) -> typing.Optional[list[dict]]:
+            """
+            解析指定目录中的图像文件，提取帧 ID 与时间戳信息。
+
+            根据图像文件名提取帧编号与时间戳，构造统一格式的字典结构，
+            并按帧编号进行排序，用于报告中图像内容的展示。
+            """
             if not frame:
                 return None
 
@@ -246,12 +304,10 @@ class Report(object):
             for image in os.listdir(os.path.join(total, title, query, frame)):
                 image_src = os.path.join(query, frame, image)
 
-                """
-                Example:
-                    frame_00322.png
-                    79_1.30000.png
-                    219(3_6333333333333333).png
-                """
+                # Note
+                # frame_00322.png
+                # 79_1.30000.png
+                # 219(3_6333333333333333).png
                 if fit_id := re.search(r"(?<=frame_)\d+", image):
                     image_idx = fit_id.group()
                 elif fit_id := re.search(r"^(?!frame)(?!.*\().*?(\d+)(?=_)", image):
@@ -272,6 +328,12 @@ class Report(object):
             return frame_list
 
         async def transform(inform_part: dict) -> list[dict]:
+            """
+            转换报告数据字典，整合图像与阶段信息。
+
+            解析 inform_part 中的 frame、extra、stage、proto 字段，
+            并通过 acquire 加载图像数据，构造统一结构以供模板渲染使用。
+            """
             query = inform_part.get("query", "")
             stage = inform_part.get("stage", {})
             frame = inform_part.get("frame", "")
@@ -327,34 +389,52 @@ class Report(object):
             file_name: str, group: bool, style_loc: str, total_loc: str
     ) -> typing.Union[typing.Any, str]:
         """
-        静态方法: `ask_create_total_report`
+        汇总多个单项分析报告，生成最终总报告 HTML。
 
-        功能:
-            生成一个总报告，汇总多个分析报告的结果。
-            该方法从指定文件中提取分析数据，按照一定的规则对数据进行分组和整理，最终生成一个包含所有分析结果的总报告HTML文件。
+        该方法负责从多个单项报告的日志文件中提取数据，合并处理后生成完整的汇总页面。支持分组模式以生成分项目归类的展示结构。
 
-        参数:
-            file_name (str): 存放日志文件的根目录路径。
-            group (bool): 是否将结果按照某个标准分组。
-            style_loc (str): HTML模板文件的路径，用于生成最终报告。
-            total_loc (str): 总报告模板文件的路径。
+        Parameters
+        ----------
+        file_name : str
+            指向汇总目标目录的路径，包含所有子报告及其日志文件。
 
-        操作流程:
-            1. 尝试打开并读取指定文件中的日志数据。
-            2. 从日志中提取符合条件的分析数据，并将其转换为字典列表。
-            3. 根据`group`参数，按一定规则对数据进行分组和整理。
-            4. 调用`Report.ask_create_report`生成单个报告文件，并收集生成的报告信息。
-            5. 整理生成的报告信息，按照一定格式将数据合并。
-            6. 渲染总报告模板，并生成总报告HTML文件。
+        group : bool
+            是否按 query 名称进行分组处理，如果为 True 则将同一 query 下的多个分析任务归为一组。
 
-        返回值:
-            total_html (typing.Union[typing.Any, str]): 生成的总报告HTML文件的路径。
+        style_loc : str
+            单项报告模板路径，用于渲染每个分析小项的 HTML 页面。
 
-        异常:
-            FramixError:
-                如果无法找到指定的日志文件，如果在日志文件中无法找到符合条件的数据，或者在生成报告时发生错误，将抛出此异常。
+        total_loc : str
+            总报告模板路径，用于渲染最终的 HTML 汇总文件。
+
+        Returns
+        -------
+        str
+            返回最终生成的总报告 HTML 文件路径。
+
+        Raises
+        ------
+        FramixError
+            - 当日志文件不存在或无法读取；
+            - 当未能提取出任何有效数据或报告内容为空；
+            - 当报告渲染过程中发生异常。
+
+        Notes
+        -----
+        - 此方法仅处理符合格式的 Recovery 日志；
+        - 会遍历日志中记录的所有分项任务，自动调用 `ask_create_report` 生成子报告；
+        - 合并结果最终会调用 Jinja2 模板生成汇总页面并写入至文件系统。
+
+        Workflow
+        --------
+        1. 读取 `file_name` 目录下日志文件中记录的任务；
+        2. 从日志中提取 Speeder / Restore 信息；
+        3. 若开启分组，按 `(total, title, query)` 对数据进行归类；
+        4. 针对每个分析项目，调用 `ask_create_report` 生成 HTML 报告；
+        5. 合并每个子报告的摘要信息，组织为总表结构；
+        6. 使用 Jinja2 渲染总报告模板；
+        7. 写入最终总报告文件至指定位置并返回路径。
         """
-
         try:
             log_file = const.R_RECOVERY, const.R_LOG_FILE
             async with aiofiles.open(os.path.join(file_name, *log_file), "r", encoding=const.CHARSET) as f:
@@ -377,7 +457,14 @@ class Report(object):
         ]
 
         async def format_packed() -> dict:
+            """
+            将报告信息按 (total, title, serial) 进行分组打包。
+
+            遍历 parts_list 中的数据，根据三元组键聚合各字段内容，
+            生成格式统一的嵌套字典结构，用于后续创建单份报告。
+            """
             parts_dict = defaultdict(lambda: defaultdict(list))
+
             for parts in parts_list:
                 for key, value in parts.items():
                     for k, v in value.items():
@@ -389,7 +476,14 @@ class Report(object):
             }
 
         async def format_merged() -> list[dict]:
+            """
+            合并创建结果中的字段内容，生成汇总报告的格式化结构。
+
+            根据 case 与 team 组合键对报告字段聚合，构建统一结构的阶段信息，
+            用于绘制总报告中每个实验条目的合并图表与详细数据。
+            """
             parts_dict, segment = defaultdict(lambda: defaultdict(list)), "<@@@>"
+
             for rp in create_total_result:
                 for key, value in rp.items():
                     if key not in ["case", "team"]:
@@ -441,33 +535,56 @@ class Report(object):
             scores: dict, struct_result: "ClassifierResult", proto_path: str, template_file: str, boost: bool,
     ) -> typing.Union[typing.Any, str]:
         """
-        静态方法: `ask_draw`
+        绘制阶段图像摘要报告，生成 HTML 格式的图像展示页面。
 
-        功能:
-            根据分类器的结果生成一份包含分析数据和缩略图的HTML报告。
-            报告内容包括各个阶段的帧图像、时间戳、分类标签等信息，最后将生成的报告保存为HTML文件。
+        本方法根据结构分类结果和图像评分信息，构造出稳定与不稳定阶段的缩略图数据，并填充 HTML 模板，生成完整可视化报告页面。
 
-        参数:
-            scores (dict): 每帧对应的图像数据，以帧ID为键，图像数据为值。
-            struct_result (ClassifierResult): 分类器的结果，包含帧的分析数据和阶段信息。
-            proto_path (str): 保存生成的报告的路径，如果是目录则在目录下生成HTML文件，否则将路径作为文件名。
-            template_file (str): HTML模板文件的路径，用于渲染最终的报告。
-            boost (bool): 如果为True，报告中将只包含中间帧的信息；如果为False，报告将包含所有阶段的所有帧。
+        Parameters
+        ----------
+        scores : dict
+            图像评分结果字典，键为 frame_id，值为对应帧图像的 base64 编码或图像路径。
 
-        操作流程:
-            1. 根据分类器的结果获取每个阶段的帧范围。
-            2. 根据`boost`参数决定如何选择帧，并生成各个阶段的图像列表和相关信息。
-            3. 计算视频的分析成本数据，并生成附加信息如视频路径、帧总数、每帧间隔等。
-            4. 使用指定的HTML模板渲染报告内容。
-            5. 将渲染后的HTML报告保存到指定路径。
+        struct_result : ClassifierResult
+            分类器分析的结构化结果，包含所有阶段及关键帧信息。
 
-        返回值:
-            report_path (typing.Union[typing.Any, str]): 生成的HTML报告文件的路径。
+        proto_path : str
+            HTML 报告输出路径，支持目录或具体文件名。
 
-        异常:
-            无直接异常处理，但`aiofiles`的文件操作可能引发I/O异常。
+        template_file : str
+            Jinja2 模板路径，用于渲染 HTML 报告。
+
+        boost : bool
+            是否启用图像增强绘制模式，启用后会将稳定阶段中间帧以 base64 嵌入，其他阶段使用已保存图像路径。
+
+        Returns
+        -------
+        str
+            返回 HTML 报告文件的保存路径。
+
+        Raises
+        ------
+        AssertionError
+            若分类器输出结构不完整或为空阶段集合时抛出。
+
+        FramixError
+            若写入 HTML 报告文件失败或路径非法时抛出。
+
+        Notes
+        -----
+        - 在 `boost=True` 时，稳定阶段的中间帧将被嵌入为 base64 编码；
+        - 不稳定阶段或未知阶段以已保存图像的路径填充；
+        - 会自动统计每个阶段的时长及 ID 范围作为标题；
+        - HTML 中将包含图像列表、成本信息、时间戳、工具元信息等字段。
+
+        Workflow
+        --------
+        1. 从 `struct_result` 中获取所有阶段片段；
+        2. 遍历每个阶段片段并提取中间帧及全部帧图像；
+        3. 构建每个阶段的标题、帧区间、耗时等信息；
+        4. 使用 Jinja2 模板渲染 HTML 页面；
+        5. 将报告保存至 `proto_path` 指定路径；
+        6. 返回生成 HTML 报告文件路径。
         """
-
         label_stable = "稳定阶段"
         label_unstable = "不稳定阶段"
         label_unspecific = "不明阶段"
