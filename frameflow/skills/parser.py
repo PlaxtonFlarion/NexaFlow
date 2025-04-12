@@ -22,24 +22,7 @@ class Parser(object):
     def __init__(self):
         custom_made_usage = f"""\
         --------------------------------------------    
-        \033[1;35m{const.NAME}\033[0m --flick --speed --alone --scale 0.5 
-        \033[1;35m{const.NAME}\033[0m --paint --scale 0.5 --omits 0,0,0,0.1
-        \033[1;35m{const.NAME}\033[0m --union <file.path> --union <file.path>  
-        \033[1;35m{const.NAME}\033[0m --merge <file.path> --merge <file.path>     
-        \033[1;35m{const.NAME}\033[0m --speed --scale 0.5 --video <video.file>
-        \033[1;35m{const.NAME}\033[0m --speed --scale 0.5 --stack <file.dir> --stack <file.dir>  
-        \033[1;35m{const.NAME}\033[0m --train <video.file> --scale 0.5
-        \033[1;35m{const.NAME}\033[0m --build <file.path> --shape 200,200    
-        \033[1;35m{const.NAME}\033[0m --basic --shape 350,700 --gauss=1 --grind=-1 --video <video.file>        
-        \033[1;35m{const.NAME}\033[0m --keras --boost --whist --shine --shape 350,700 --carry <file.path,A,B,C> --total <file.dir>
-        \033[1;35m{const.NAME}\033[0m --keras --boost --whist --shine --shape 350,700 --fully <file.path> --total <file.dir>                
-        \033[1;35m{const.NAME}\033[0m --keras --boost --start 00:00:08 --close 00:00:10 --video <video.file>
-        \033[1;35m{const.NAME}\033[0m --keras --boost --start 00:00:00 --limit 00:00:02 --video <video.file>
-        \033[1;35m{const.NAME}\033[0m --keras --boost --color --alike --shine --group --scale 0.5 --video <video.file> --video <video.file>
-        \033[1;35m{const.NAME}\033[0m --keras --boost --scale 0.5 --begin=0,1 --final=-1,-1 --video <video.file>
-        \033[1;35m{const.NAME}\033[0m --keras --boost --scale 0.5 --thres 0.98 --shift 3 --block 3 --video <video.file>
-        \033[1;35m{const.NAME}\033[0m --keras --boost --scale 0.5 --crops 0,0,1,0.8 --omits 0,0,0,0.1 --video <video.file>
-        \033[1;35m{const.NAME}\033[0m --keras --boost --scale 0.5 --debug --video <video.file>
+        \033[1;35m{const.NAME}\033[0m Get started quickly 
         """
         self.__parse_engine = argparse.ArgumentParser(
             const.NAME,
@@ -72,11 +55,15 @@ class Parser(object):
                 )
 
             for key, value in values.items():
+                *_, kind = value["view"]
                 cmds.add_argument(
                     key, **value["args"], help=textwrap.dedent(f'''\
-                        \033[1;34m^*{value["help"]}*^\033[0m
-                        ----------------------
-                                                                   
+                \033[1;34m^*{value["help"]}*^\033[0m
+                ----------------------
+                {value.get("func", "")}
+                ----------------------
+                \033[35m{const.NAME}\033[0m {key}\033[36m{kind}\033[0m
+                                                      
                     ''')
                 )
 

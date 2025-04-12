@@ -191,29 +191,32 @@ class Design(object):
     @staticmethod
     def help_document() -> None:
         """展示命令行参数文档（来自 ARGUMENT 配置），以表格形式高亮各类参数分组。"""
+        table_style = {
+            "title_justify": "center", "show_header": True, "show_lines": True
+        }
+
         for keys, values in argument.Args.ARGUMENT.items():
-            description = "[bold #FFE4E1]参数互斥[/]" if keys in [
+            know = "[bold #FFE4E1]参数互斥[/]" if keys in [
                 "核心操控", "辅助利器", "视控精灵"] else "[bold #C1FFC1]参数兼容[/]"
 
             table = Table(
-                title=f"[bold #FFDAB9]{const.ITEM} {const.DESC} CLI [bold #66CDAA]<{keys}>[/] <{description}>",
-                header_style="bold #FF851B",
-                title_justify="center",
-                show_header=True,
-                show_lines=True
+                title=f"[bold #FFDAB9]{const.DESC}({const.ALIAS}) CLI [bold #66CDAA]<{keys}>[/] <{know}>",
+                header_style="bold #FF851B", **table_style
             )
-            table.add_column("命令参数", justify="left", width=14)
-            table.add_column("参数类型", justify="left", width=12)
-            table.add_column("传递次数", justify="left", width=10)
-            table.add_column("功能说明", justify="left", width=30)
+            table.add_column("命令", justify="left", no_wrap=True, width=7)
+            table.add_column("传递", justify="left", no_wrap=True, width=4)
+            table.add_column("功能说明", justify="left", no_wrap=True, width=16)
+            table.add_column("使用方法", justify="left", no_wrap=True, width=39)
+
             information = [
                 [key, *value["view"], value["help"]] for key, value in values.items()
             ]
             for info in information:
-                cmds, kind, push, desc = info
+                cmds, push, kind, desc = info
                 push_color = "[bold #FFAFAF]" if push == "多次" else "[bold #CFCFCF]"
                 table.add_row(
-                    *[f"[bold #FFDC00]{cmds}", f"[bold #7FDBFF]{kind}", f"{push_color}{push}", f"[bold #39CCCC]{desc}"]
+                    f"[bold #FFDC00]{cmds}", f"{push_color}{push}", f"[bold #39CCCC]{desc}",
+                    f"[bold #d7afd7]{const.NAME} [bold #FFDC00]{cmds}[bold #7FDBFF]{kind}"
                 )
             Design.console.print(table, "\t")
 
