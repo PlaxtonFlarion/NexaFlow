@@ -323,6 +323,8 @@ framix --flick
         "thres":0.97,
         "shift":3,
         "block":3,
+        "scope":1,
+        "grade":2,
         "crops":[
             {"x":0, "y":0, "x_size":0, "y_size":0}
         ],
