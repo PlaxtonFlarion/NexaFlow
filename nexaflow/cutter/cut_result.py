@@ -10,17 +10,46 @@ import os
 import cv2
 import uuid
 import json
-import difflib
 import typing
+import difflib
 import numpy as np
 from loguru import logger
 from nexaflow import toolbox
 from nexaflow.hook import BaseHook
-from nexaflow.video import VideoObject, VideoFrame
+from nexaflow.video import (
+    VideoObject, VideoFrame
+)
 from nexaflow.cutter.cutter import VideoCutRange
 
 
 class VideoCutResult(object):
+    """
+    VideoCutResult 类用于组织和管理视频中分割出来的帧区间（VideoCutRange），支持区间提取、稳定/不稳定区域判定、
+    帧图像提取与保存、区间动态调整、结果序列化/反序列化、差异比较等操作。
+
+    该类作为分析视频结构和生成训练数据的核心组件之一，围绕一段视频的多个切分段提供灵活、高度可配置的处理方法。
+
+    Attributes
+    ----------
+    video : VideoObject
+        视频对象，包含原始视频路径、帧信息等。
+
+    range_list : list of VideoCutRange
+        视频中已分割的区间列表，通常由某种图像相似度算法生成。
+
+    cut_kwargs : dict, optional
+        区间处理参数字典，用于支持各种自定义行为或阈值策略。
+
+    Notes
+    -----
+    本类提供以下核心功能：
+    - 基于稳定性、相似性自动筛选并合并区间；
+    - 提供动态阈值调整机制，确保最终稳定区间数量落入指定范围；
+    - 支持对比两个视频切分结果，生成结构级别的差异报告；
+    - 内建帧图像采样与保存方法，可直接导出训练用图像；
+    - 支持 JSON 格式序列化/反序列化与持久化管理；
+    - 可生成缩略图用于快速浏览视频结构。
+    """
 
     def __init__(
             self,
@@ -28,11 +57,60 @@ class VideoCutResult(object):
             range_list: list["VideoCutRange"],
             cut_kwargs: dict = None,
     ):
+        """
+        初始化 VideoCutResult 实例。
+
+        构建用于管理视频切割结果的数据结构，保存原始视频对象、切割区间和可选参数配置。
+
+        Parameters
+        ----------
+        video : VideoObject
+            视频对象，封装了视频路径、帧总数、尺寸等基本信息。
+
+        range_list : list of VideoCutRange
+            视频被切割后的帧区间列表，每个区间代表一个稳定或不稳定阶段。
+
+        cut_kwargs : dict, optional
+            可选的参数字典，用于指定合并区间、判定稳定性的控制策略（如相似度阈值等）。
+
+        Notes
+        -----
+        初始化完成后，可通过本类方法执行：
+        - 获取稳定区间与不稳定区间；
+        - 对区间进行合并与过滤；
+        - 保存样本图像；
+        - 对比差异；
+        - 序列化与持久化等。
+        """
         self.video = video
         self.range_list = range_list
         self.cut_kwargs = cut_kwargs or {}
 
     def get_target_range_by_id(self, frame_id: int) -> "VideoCutRange":
+        """
+         根据帧 ID 获取所属的切割区间。
+
+         在当前的 range_list 中查找包含指定帧 ID 的切割区间对象。
+
+         Parameters
+         ----------
+         frame_id : int
+             需要定位的帧编号。
+
+         Returns
+         -------
+         VideoCutRange
+             包含该帧编号的切割区间对象。
+
+         Raises
+         ------
+         RuntimeError
+             如果没有任何区间包含该帧，则抛出异常。
+
+         Notes
+         -----
+         此方法通常用于标定帧所在的稳定或不稳定阶段。
+         """
         for each in self.range_list:
             if each.contain(frame_id):
                 return each
@@ -40,6 +118,29 @@ class VideoCutResult(object):
 
     @staticmethod
     def _length_filter(range_list: list["VideoCutRange"], limit: int) -> list["VideoCutRange"]:
+        """
+        过滤出长度大于等于指定阈值的区间段。
+
+        该方法遍历给定的区间列表，仅保留帧数大于或等于限制值的区间，用于剔除过短、无实际意义的片段。
+
+        Parameters
+        ----------
+        range_list : list of VideoCutRange
+            待过滤的区间段列表，通常为稳定或不稳定区间。
+
+        limit : int
+            最小帧长度阈值，仅保留长度不小于该值的区间。
+
+        Returns
+        -------
+        list of VideoCutRange
+            过滤后的区间列表，所有区间的长度均不小于给定阈值。
+
+        Notes
+        -----
+        - 可用于稳定段过滤、训练样本筛选等场景；
+        - 实际长度由 `VideoCutRange.get_length()` 方法计算。
+        """
         after = list()
         for each in range_list:
             if each.get_length() >= limit:
@@ -50,35 +151,33 @@ class VideoCutResult(object):
             self, limit: int = None, range_threshold: float = None, **kwargs
     ) -> list["VideoCutRange"]:
         """
-        方法: `get_unstable_range`
+        获取所有的不稳定阶段区间。
 
-        功能:
-            获取视频中不稳定的时间段。这些不稳定的时间段可能是视频中变化较大、不可预测的部分。
+        遍历当前切割区间，筛选出属于不稳定阶段的区间，并可选择性进行合并、过滤与长度限制。
 
-        参数:
-            - limit (int, 可选): 限制返回的不稳定时间段的最大数量。如果未指定或为 `None`，则不限制数量。
-            - range_threshold (float, 可选): 用于过滤时间段的相似度阈值。低于此阈值的时间段将被视为循环模式并被排除在结果之外。
-            - **kwargs: 关键字参数，传递给 `is_stable` 和 `can_merge` 方法，用于调整这些方法的行为。
+        Parameters
+        ----------
+        limit : int, optional
+            不稳定区间的最小长度，低于该长度的将被过滤。
 
-        操作流程:
-            1. 从 `self.range_list` 中筛选出所有不稳定的时间段，并按开始时间升序排列。
-            2. 如果不稳定的时间段少于或等于1，直接返回该列表。
-            3. 否则，遍历不稳定的时间段，尝试将相邻且可合并的时间段合并为一个更大的时间段。
-            4. 如果指定了 `limit` 参数，调用 `_length_filter` 方法对合并后的时间段列表进行数量限制。
-            5. 如果指定了 `range_threshold` 参数，筛选掉在阈值内形成循环模式的时间段。
-            6. 返回最终的不稳定时间段列表。
+        range_threshold : float, optional
+            用于判断区间是否构成循环结构的阈值，用于进一步剔除异常区间。
 
-        返回:
-            list["VideoCutRange"]: 返回一个 `VideoCutRange` 对象列表，每个对象表示一个不稳定的时间段。
+        **kwargs : dict
+            传递给 `is_stable()` 和 `can_merge()` 的附加参数，如相似度判断依据。
 
-        异常处理:
-            - 在处理时间段合并时需要确保索引范围正确，以避免超出列表边界。
-            - 如果在合并或筛选过程中发生异常，应记录日志并处理。
+        Returns
+        -------
+        list of VideoCutRange
+            经过筛选和合并后的不稳定区间列表。
 
-        使用示例:
-            该方法可用于检测视频中的不稳定区域，如用于分析视频质量、检测视频剪辑中的跳跃或异常变化。
+        Notes
+        -----
+        - 此方法先调用每个区间的 `is_stable()` 方法进行稳定性判断；
+        - 相邻不稳定区间在满足 `can_merge()` 条件时将被合并；
+        - 可通过 `limit` 过滤掉无效的短区间；
+        - 可通过 `range_threshold` 剔除自循环区间（如画面闪动但无实际变化）。
         """
-
         change_range_list = sorted(
             [i for i in self.range_list if not i.is_stable(**kwargs)],
             key=lambda x: x.start,
@@ -119,30 +218,36 @@ class VideoCutResult(object):
             self, limit: int = None, unstable_limit: int = None, **kwargs
     ) -> tuple[list["VideoCutRange"], list["VideoCutRange"]]:
         """
-        获取视频中稳定和不稳定的时间段范围。
+        获取稳定与不稳定阶段的完整区间列表。
 
-        参数:
-            - limit (int, 可选): 限制返回的稳定范围的数量。
-            - unstable_limit (int, 可选): 限制返回的不稳定范围的数量。
-            - **kwargs: 传递给 get_unstable_range 方法的其他参数。
+        基于当前 range_list 划分出稳定与不稳定阶段，并返回两者的切割区间列表。
 
-        返回:
-            - tuple[list[VideoCutRange], list[VideoCutRange]]: 返回一个元组，其中第一个元素是稳定范围列表，第二个元素是不稳定范围列表。
+        Parameters
+        ----------
+        limit : int, optional
+            稳定阶段区间的最小帧长度，小于该值的区间将被过滤。
 
-        具体流程:
-            1. 调用 get_unstable_range 方法获取不稳定范围列表。
-            2. 初始化视频的起始和结束帧 ID 和时间戳。
-            3. 定义默认的质量参数字典（SSIM、MSE、PSNR）。
-            4. 如果未检测到不稳定阶段，则返回整个视频作为稳定范围。
-            5. 确定第一个稳定范围的结束帧 ID 和最后一个稳定范围的起始帧 ID。
-            6. 初始化稳定范围列表。
-            7. 如果存在稳定的起始阶段，将其添加到稳定范围列表。
-            8. 遍历不稳定范围列表，将每个不稳定范围之间的阶段作为稳定范围添加到列表中。
-            9. 如果存在稳定地结束阶段，将其添加到稳定范围列表。
-            10. 根据 limit 参数过滤稳定范围列表。
-            11. 将稳定范围列表按开始帧 ID 排序并返回稳定和不稳定范围列表。
+        unstable_limit : int, optional
+            不稳定阶段区间的最小帧长度，用于进一步清洗不稳定区间。
+
+        **kwargs : dict
+            可传入给 `is_stable()` 与合并逻辑的参数（如相似度阈值）。
+
+        Returns
+        -------
+        tuple of list of VideoCutRange
+            - 第一个元素为稳定阶段区间列表；
+            - 第二个元素为不稳定阶段区间列表。
+
+        Notes
+        -----
+        - 如果视频整体稳定（无显著变化），则返回整段视频为稳定区间；
+        - 否则，按前后顺序判断并构建稳定区间，包括：
+            - 视频起始至首个不稳定区间前；
+            - 任意两个不稳定区间之间；
+            - 最后一个不稳定区间至视频结束；
+        - 所有区间均会附加默认图像相似性指标（SSIM、MSE、PSNR）。
         """
-
         unstable_range_list = self.get_unstable_range(unstable_limit, **kwargs)
 
         video_start_frame_id = 1
@@ -250,6 +355,28 @@ class VideoCutResult(object):
         return stable_range_list, unstable_range_list
 
     def get_stable_range(self, limit: int = None, **kwargs) -> list["VideoCutRange"]:
+        """
+         获取所有稳定阶段的切割区间。
+
+         该方法是 `get_range()` 的简化版本，只返回稳定区间部分。
+
+         Parameters
+         ----------
+         limit : int, optional
+             稳定区间的最小帧长度限制。
+
+         **kwargs : dict
+             传入底层稳定性判断或合并逻辑的参数。
+
+         Returns
+         -------
+         list of VideoCutRange
+             稳定阶段的区间列表。
+
+         Notes
+         -----
+         本方法依赖 `get_range()` 执行稳定/不稳定划分，并仅保留稳定区间部分。
+         """
         return self.get_range(limit, **kwargs)[0]
 
     def get_range_dynamic(
@@ -261,39 +388,45 @@ class VideoCutResult(object):
             **kwargs,
     ) -> tuple[list["VideoCutRange"], list["VideoCutRange"]]:
         """
-        方法: `get_range_dynamic`
+        动态调整阈值以获取期望数量的稳定阶段区间。
 
-        功能:
-            动态调整阈值，获取视频的稳定和不稳定时间段，使稳定时间段的数量符合预期范围。
+        此方法通过递归方式调整稳定性阈值，使稳定区间的数量落入指定范围内，用于自动化视频阶段划分。
 
-        参数:
-            - stable_num_limit (list[int]): 稳定时间段数量的期望范围，格式为 `[min, max]`，例如 `[1, 3]` 表示希望稳定时间段的数量在1到3之间。
-            - threshold (float): 初始相似度阈值，用于确定视频的稳定性。取值范围为 0.0 到 1.0 之间。
-            - step (float, 可选): 每次调整阈值的步长。默认为 0.005。
-            - max_retry (int, 可选): 最大重试次数。如果达到此次数仍未能使稳定时间段数量符合期望范围，则停止调整。默认为 10。
-            - **kwargs: 关键字参数，传递给 `get_range` 方法，用于调整 `get_range` 的行为。
+        Parameters
+        ----------
+        stable_num_limit : list of int
+            期望稳定阶段数量的上下界，例如 [2, 4]。
 
-        操作流程:
-            1. 确保 `max_retry` 不为零，`stable_num_limit` 的长度为 2，并且 `threshold` 在有效范围内。
-            2. 调用 `get_range` 方法，根据当前阈值获取稳定和不稳定的时间段列表，并计算当前稳定时间段的数量。
-            3. 如果当前稳定时间段的数量在 `stable_num_limit` 范围内，则返回稳定和不稳定时间段列表。
-            4. 如果稳定时间段的数量少于期望范围，则增加阈值；如果多于期望范围，则减少阈值。
-            5. 递归调用 `get_range_dynamic`，调整后的阈值继续获取稳定和不稳定时间段，直至满足期望范围或达到最大重试次数。
+        threshold : float
+            初始的相似度阈值（例如 SSIM 阈值），用于判断是否为不稳定阶段。
 
-        返回:
-            tuple[list["VideoCutRange"], list["VideoCutRange"]]: 返回一个元组，包含两个列表：
-                - 稳定的时间段列表。
-                - 不稳定的时间段列表。
+        step : float, optional
+            每次调整阈值的步长，默认值为 0.005。
 
-        异常处理:
-            - 如果 `max_retry` 为零，将抛出断言错误，提示动态获取范围失败。
-            - 如果 `stable_num_limit` 长度不为2，将抛出断言错误。
-            - 如果 `threshold` 不在 0.0 和 1.0 之间，将抛出断言错误。
+        max_retry : int, optional
+            最大递归尝试次数，防止无限循环，默认值为 10。
 
-        使用示例:
-            该方法用于动态调整视频相似度阈值，以便在分析视频稳定性时获得所需数量的稳定时间段。
+        **kwargs : dict
+            传入给 `get_range()` 的额外参数，例如 `range_threshold`。
+
+        Returns
+        -------
+        tuple of list of VideoCutRange
+            返回两个列表：
+            - 稳定阶段区间列表；
+            - 不稳定阶段区间列表。
+
+        Raises
+        ------
+        AssertionError
+            若参数非法或递归次数用尽仍无法满足要求时抛出。
+
+        Notes
+        -----
+        - 若稳定区间数量过少，则自动提高阈值（降低不稳定判定强度）；
+        - 若稳定区间数量过多，则降低阈值（收紧稳定性标准）；
+        - 使用递归方式反复调整，直至满足期望数量区间或达到最大尝试次数。
         """
-
         assert max_retry != 0, f"fail to get range dynamically: {stable_num_limit}"
         assert len(stable_num_limit) == 2, "num_limit should be something like [1, 3]"
         assert 0.0 < threshold < 1.0, "threshold out of range"
@@ -325,41 +458,37 @@ class VideoCutResult(object):
             is_vertical: bool = None,
             *_,
             **__,
-    ) -> np.ndarray:
+    ) -> "np.ndarray":
         """
-        方法: `thumbnail`
+        生成指定区间的帧缩略图拼图。
 
-        功能:
-            根据指定的视频剪辑范围生成视频缩略图。缩略图可以按指定的压缩率进行压缩，并可以选择垂直或水平堆叠帧。
-            生成的缩略图可以保存为 PNG 文件或直接返回处理后的图像数组。
+        从目标区间中采样所有帧，进行压缩并拼接成一张横向或纵向的缩略图。
 
-        参数:
-            - target_range (`VideoCutRange`): 指定的视频剪辑范围。该范围内的帧将用于生成缩略图。
-            - to_dir (str, 可选): 保存缩略图的目标目录路径。如果未指定，缩略图将不会保存到文件，而是仅返回图像数组。
-            - compress_rate (float, 可选): 图像压缩率。默认值为 0.1，即图像尺寸将缩小至原始尺寸的 10%。
-            - is_vertical (bool, 可选): 如果为 `True`，帧将垂直堆叠，否则水平堆叠。默认值为 `None`，实际会选择水平堆叠。
-            - *_: 位置参数，未使用。
-            - **__: 关键字参数，未使用。
+        Parameters
+        ----------
+        target_range : VideoCutRange
+            目标帧区间对象，包含起止帧 ID。
 
-        操作流程:
-            1. 设置默认压缩率为 0.1。
-            2. 根据 `is_vertical` 参数选择帧堆叠方式（垂直或水平）以及分隔线生成方式。
-            3. 打开视频文件，并跳转到指定的起始帧位置。
-            4. 逐帧读取视频帧，按指定的压缩率压缩帧，并将帧与分隔线添加到帧列表中。
-            5. 当读取到的帧数量达到指定范围的长度时，结束帧读取。
-            6. 根据帧堆叠方式将所有帧和分隔线合并成一个图像数组。
-            7. 如果指定了保存目录，将合并后的图像保存为 PNG 文件，并返回图像数组。
+        to_dir : str, optional
+            如果提供，将缩略图保存到该目录。
 
-        返回:
-            `np.ndarray`: 返回合并后的缩略图图像数组。如果指定了 `to_dir`，缩略图也会保存为 PNG 文件。
+        compress_rate : float, optional
+            帧压缩比例，默认值为 0.1。
 
-        异常处理:
-            - 如果在处理视频帧时发生错误，未进行特殊的异常处理。
+        is_vertical : bool, optional
+            若为 True，按纵向拼接；否则按横向拼接。
 
-        使用示例:
-            该方法用于生成视频片段的缩略图，可以选择垂直或水平堆叠帧，并可选择是否保存生成的缩略图文件。
+        Returns
+        -------
+        np.ndarray
+            拼接后的缩略图图像数据。
+
+        Notes
+        -----
+        - 缩略图可用于人工快速浏览指定区间的帧演变情况；
+        - 若提供保存路径，将图像写入磁盘；
+        - 在每帧间插入 5 像素空白分隔线。
         """
-
         if not compress_rate:
             compress_rate = 0.1
 
@@ -412,31 +541,45 @@ class VideoCutResult(object):
             **kwargs,
     ) -> str:
         """
-        从视频切割范围列表中选择帧并保存到指定目录中。
+        从指定区间中采样并保存图像帧。
 
-        参数:
-            range_list (list[VideoCutRange]): 视频切割范围列表。
-            frame_count (int): 每个切割范围中要选择的帧数。
-            to_dir (str, 可选): 保存选定帧的目录。如果未指定，则创建一个带有时间戳的新目录。
-            prune (float, 可选): 修剪参数，如果提供，将应用于选定的帧。
-            meaningful_name (bool, 可选): 如果为 True，则使用有意义的文件名，否则使用随机 UUID 文件名。
-            *args: 传递给 pick 方法的其他位置参数。
-            **kwargs: 传递给 pick 方法和 compress_frame 函数的其他关键字参数。
+        本方法会从每个指定的 `VideoCutRange` 区间中抽取若干帧，进行压缩和预处理后保存到指定目录，
+        并可选择是否使用语义化文件名以及是否剔除高度相似的样本。
 
-        返回:
-            str: 包含选定帧的目录路径。
+        Parameters
+        ----------
+        range_list : list of VideoCutRange
+            要处理的帧区间列表，每个区间将从中抽取帧图像。
+        frame_count : int
+            每个区间采样的帧数。
+        to_dir : str, optional
+            保存目录路径，若未提供则使用时间戳生成目录名。
+        prune : float, optional
+            剪枝阈值（SSIM），若设置则会剔除与后续区间高度相似的样本区间。
+        meaningful_name : bool, optional
+            若为 True，使用包含视频名、帧 ID 和时间戳的语义化文件名，否则使用随机 UUID 命名。
+        *args, **kwargs :
+            传递给 `compress_frame` 的额外参数（如压缩率、目标尺寸、是否转灰度等）。
 
-        具体流程:
-            1. 初始化 `stage_list` 列表，用于存储每个切割范围中的选定帧。
-            2. 遍历 `range_list` 列表，对每个切割范围对象调用 `pick` 方法选择帧。
-            3. 获取每个选定帧的数据，并将其存储在 `stage_list` 列表中。
-            4. 如果提供了 `prune` 参数，则对 `stage_list` 列表进行修剪。
-            5. 如果未指定 `to_dir` 参数，则创建一个带有时间戳的新目录。
-            6. 创建指定目录及其子目录。
-            7. 遍历 `stage_list` 列表，将每个选定帧保存到对应的目录中。
-            8. 返回保存选定帧的目录路径。
+        Returns
+        -------
+        str
+            实际用于保存图像的目录路径。
+
+        Notes
+        -----
+        - 每个子目录对应一个稳定/不稳定阶段；
+        - 剪枝机制可避免训练集中出现大量视觉冗余区域；
+        - 语义命名便于数据追踪和调试。
+
+        Workflow
+        --------
+        1. 遍历每个区间，调用 `pick()` 获取采样帧；
+        2. 若启用剪枝（`prune`），通过 `multi_compare_ssim` 过滤冗余区间；
+        3. 确定输出路径，若无提供则使用时间戳创建新目录；
+        4. 遍历每帧图像，压缩并保存到子目录下，以语义或 UUID 命名；
+        5. 返回保存根目录。
         """
-
         stage_list = list()
         for index, each_range in enumerate(range_list):
             picked = each_range.pick(frame_count, *args, **kwargs)
@@ -490,40 +633,33 @@ class VideoCutResult(object):
             stages: list[tuple[str, list["VideoFrame"]]],
     ) -> list[tuple[str, list["VideoFrame"]]]:
         """
-        方法: `_prune`
+        基于 SSIM 相似度进行区间剪枝。
 
-        功能:
-            对一组视频帧阶段进行修剪，以减少冗余的帧序列。该方法根据结构相似性（SSIM）指数判断两个阶段是否相似，如果相似度高于指定的阈值（`threshold`），则该阶段将被修剪（即从列表中移除）。
+        该方法用于剔除与其他区间图像高度相似的区间，以减少冗余样本，提高训练效率。
 
-        参数:
-            - threshold (`float`): 相似性阈值。如果两个阶段之间的最小 SSIM 值大于该阈值，则认为这两个阶段相似，并修剪后续的阶段。
-            - stages (`list[tuple[str, list["VideoFrame"]]]`): 包含多个阶段的列表，每个阶段由一个字符串索引和该阶段的视频帧列表组成。
+        Parameters
+        ----------
+        threshold : float
+            SSIM 相似度阈值。若某区间与其他区间的最小相似度超过该值，则视为冗余区间并被剔除。
 
-        操作流程:
-            1. 记录修剪前的阶段数量和相似性阈值。
-            2. 初始化一个空列表 `after` 用于存储修剪后的阶段。
-            3. 遍历每个阶段，逐个比较它与其后续阶段之间的相似性。
-            4. 使用 `toolbox.multi_compare_ssim` 方法计算两个阶段之间的 SSIM 列表，并取其最小值。
-            5. 如果两个阶段的最小 SSIM 值超过阈值，则认为这两个阶段相似，停止进一步比较，并修剪当前阶段。
-            6. 如果该阶段没有被修剪，则将其添加到 `after` 列表中。
-            7. 返回修剪后的阶段列表。
+        stages : list of tuple
+            每个元素为二元组，包含阶段标识符及对应的帧图像列表。
 
-        返回:
-            `list[tuple[str, list["VideoFrame"]]]`: 返回修剪后的阶段列表。列表中的每个阶段由一个字符串索引和该阶段的视频帧列表组成。
+        Returns
+        -------
+        list of tuple
+            被保留的阶段列表，格式与输入相同。
 
-        日志:
-            - 记录修剪操作的开始、每次阶段比较的 SSIM 结果以及哪些阶段被修剪。
-
-        异常处理:
-            - 没有显式的异常处理。如果在 SSIM 计算或列表操作时发生错误，将抛出相应的异常。
-
-        使用示例:
-            该方法通常用于视频分析中，以减少冗余的帧序列，从而优化视频处理效率。
+        Notes
+        -----
+        - 使用 `toolbox.multi_compare_ssim()` 计算每两个阶段之间的图像相似度；
+        - 若存在某阶段与后续某阶段所有图像均高度相似，则该阶段被移除；
+        - 该方法是采样后数据筛选的重要步骤，适用于压缩样本数据量。
         """
-
         logger.debug(
             f"start pruning ranges, origin length is {len(stages)}, threshold is {threshold}"
         )
+
         after = list()
         for i in range(len(stages)):
             index, frames = stages[i]
@@ -540,6 +676,22 @@ class VideoCutResult(object):
         return after
 
     def dumps(self) -> str:
+        """
+        将当前对象序列化为 JSON 字符串。
+
+        该方法会将 `VideoCutResult` 对象序列化为 JSON 格式文本，并处理 `np.ndarray` 类型字段。
+
+        Returns
+        -------
+        str
+            表示当前对象的 JSON 字符串。
+
+        Notes
+        -----
+        - `np.ndarray` 会被替换为占位字符串 "<np.ndarray object>"；
+        - 使用 `json.dumps()` 结合 `default` 回调方式自定义对象转字典；
+        - 常用于调试、报告保存或与 `dump()` 结合使用。
+        """
 
         def _handler(obj: object):
             if isinstance(obj, np.ndarray):
@@ -549,6 +701,30 @@ class VideoCutResult(object):
         return json.dumps(self, sort_keys=True, default=_handler)
 
     def dump(self, json_path: str, **kwargs):
+        """
+         将当前对象保存为 JSON 文件。
+
+         该方法调用 `dumps()` 获取序列化字符串并写入指定路径的文件中。
+
+         Parameters
+         ----------
+         json_path : str
+             保存 JSON 文件的目标路径。
+
+         **kwargs :
+             传递给内建 `open()` 函数的附加参数（如 encoding）。
+
+         Raises
+         ------
+         AssertionError
+             如果目标路径已存在，则抛出异常避免覆盖文件。
+
+         Notes
+         -----
+         - 若路径已存在将触发断言失败；
+         - 推荐在保存前通过 `get_timestamp_str()` 或其他方式生成唯一文件名；
+         - 可与 `load()` 搭配使用完成模型结果的持久化与还原。
+         """
         logger.debug(f"dump result to {json_path}")
         assert not os.path.exists(json_path), f"{json_path} already existed"
         with open(json_path, "w+", **kwargs) as f:
@@ -556,6 +732,27 @@ class VideoCutResult(object):
 
     @classmethod
     def loads(cls, content: str) -> "VideoCutResult":
+        """
+        从 JSON 字符串中反序列化出 `VideoCutResult` 实例。
+
+        该方法用于将通过 `dumps()` 序列化的 JSON 字符串内容还原为 `VideoCutResult` 对象。
+
+        Parameters
+        ----------
+        content : str
+            JSON 字符串内容，通常由 `dumps()` 或 `dump()` 方法生成。
+
+        Returns
+        -------
+        VideoCutResult
+            反序列化后的 `VideoCutResult` 对象。
+
+        Notes
+        -----
+        - 会还原 `VideoObject` 实例以及多个 `VideoCutRange` 实例；
+        - 不包含帧图像数据，只包含范围信息和路径标识；
+        - 适合用于结果重载、测试对比或断点恢复。
+        """
         json_dict: dict = json.loads(content)
         return cls(
             VideoObject(**json_dict["video"]),
@@ -564,6 +761,30 @@ class VideoCutResult(object):
 
     @classmethod
     def load(cls, json_path: str, **kwargs) -> "VideoCutResult":
+        """
+        从 JSON 文件中加载 `VideoCutResult` 实例。
+
+        该方法封装了 `loads()`，从文件中读取 JSON 内容并反序列化为结果对象。
+
+        Parameters
+        ----------
+        json_path : str
+            JSON 文件的路径。
+
+        **kwargs :
+            传递给内建 `open()` 函数的附加参数（如 encoding）。
+
+        Returns
+        -------
+        VideoCutResult
+            加载完成的 `VideoCutResult` 实例。
+
+        Notes
+        -----
+        - 要求 JSON 文件为 `dump()` 生成的格式；
+        - 若路径不存在或文件格式错误，将触发异常；
+        - 常用于还原分析任务结果、脚本重用或增量标注场景。
+        """
         logger.debug(f"load result from {json_path}")
         with open(json_path, **kwargs) as f:
             return cls.loads(f.read())
@@ -578,41 +799,42 @@ class VideoCutResult(object):
             **kwargs,
     ) -> "VideoCutResultDiff":
         """
-        方法: `diff`
+        比较当前结果与另一个结果之间的差异，并生成差异分析对象。
 
-        功能:
-            比较当前 `VideoCutResult` 对象与另一个 `VideoCutResult` 对象之间的稳定阶段差异，并生成一个 `VideoCutResultDiff` 对象。该方法可以自动合并结果，并将帧保存到指定的输出目录中。
+        该方法用于分析两个 `VideoCutResult` 的稳定区间差异，支持可选的自动匹配和预处理操作。
 
-        参数:
-            - another (`VideoCutResult`): 另一个要进行比较的 `VideoCutResult` 对象。
-            - auto_merge (`bool`, 可选): 是否自动合并比较结果。默认为 `None`，表示不进行自动合并。如果设置为 `True`，则会自动选择差异最大的阶段进行合并。
-            - pre_hooks (`list[BaseHook]`, 可选): 预处理钩子列表，用于在比较之前对数据进行处理。默认为 `None`。
-            - output_path (`str`, 可选): 保存比较结果的目录路径。如果提供，比较过程中选定的帧将会保存到该目录中。
-            - *args: 传递给 `get_range` 方法的其他参数，用于获取稳定阶段。
-            - **kwargs: 传递给 `get_range` 方法的关键字参数，用于获取稳定阶段。
+        Parameters
+        ----------
+        another : VideoCutResult
+            用于比较的另一个 `VideoCutResult` 对象。
+        auto_merge : bool, optional
+            是否启用自动匹配合并结果，仅返回相似度最高的配对（默认 False）。
+        pre_hooks : list of BaseHook, optional
+            应用于帧图像的预处理钩子列表（如灰度、尺寸调整等）。
+        output_path : str, optional
+            比对图像的输出目录，用于保存中间图像和可视化结果。
+        *args, **kwargs :
+            传递给 `get_range()` 与差异计算函数的附加参数。
 
-        操作流程:
-            1. 调用 `get_range` 方法分别获取当前对象和另一个对象的稳定阶段。
-            2. 调用 `pick_and_save` 方法，从获取的稳定阶段中选取帧，并将其保存到指定的 `output_path` 目录中（如果提供）。
-            3. 创建 `VideoCutResultDiff` 对象，传入两个稳定阶段列表，初始化差异结果。
-            4. 调用 `apply_diff` 方法，应用预处理钩子 `pre_hooks` 对稳定阶段进行差异比较。
-            5. 如果 `auto_merge` 为 `True`，则对结果进行自动合并：
-                - 遍历所有比较结果，选择每个阶段差异最大的项，更新差异结果数据。
-            6. 返回 `VideoCutResultDiff` 对象，包含比较后的差异结果。
+        Returns
+        -------
+        VideoCutResultDiff
+            差异分析对象，包含每个阶段的 SSIM 对比数据和最优匹配信息。
 
-        返回:
-            `VideoCutResultDiff`: 返回包含稳定阶段差异的 `VideoCutResultDiff` 对象。
+        Notes
+        -----
+        - 本方法可用于模型训练集构建前的数据过滤与对齐；
+        - 支持阶段名不一致或数量不等的情况；
+        - 可扩展为图像级别的评估与推荐系统。
 
-        日志:
-            - 日志未明确记录在此方法中，但可能由其他调用的方法记录（如 `get_range`, `pick_and_save`, `apply_diff`）。
-
-        异常处理:
-            - 没有显式的异常处理。如果在比较或文件操作时发生错误，将抛出相应的异常。
-
-        使用示例:
-            该方法用于比较两个视频剪辑的稳定阶段，尤其是在视频处理或分析工作流中，以检测视频之间的差异。
+        Workflow
+        --------
+        1. 分别获取两个结果的稳定区间；
+        2. 采样稳定区间并保存图像（如指定输出目录）；
+        3. 调用 `VideoCutResultDiff` 分析对应区间的差异；
+        4. 若开启 `auto_merge`，则自动匹配最相似的阶段作为最终输出；
+        5. 返回分析结果。
         """
-
         self_stable, _ = self.get_range(*args, **kwargs)
         another_stable, _ = another.get_range(*args, **kwargs)
         self.pick_and_save(self_stable, 3, to_dir=output_path)
@@ -638,41 +860,35 @@ class VideoCutResult(object):
             **kwargs,
     ) -> dict[int, dict[int, list[float]]]:
         """
-        方法: `range_diff`
+        计算两个稳定区间列表之间的逐区间差异指标。
 
-        功能:
-            比较两个 `VideoCutRange` 列表中的每一对范围，并生成一个嵌套字典，表示两个范围列表之间的差异。该方法通过计算每个范围对之间的差异来提供详细的比较数据。
+        本方法用于对比两个视频分析结果中的稳定区段，逐对计算差异性指标（如 SSIM、MSE、PSNR），
+        并返回每个区间组合之间的差异值列表，结果以字典形式组织。
 
-        参数:
-            - range_list_1 (`list[VideoCutRange]`): 第一个视频剪辑范围列表，用于与第二个范围列表进行比较。
-            - range_list_2 (`list[VideoCutRange]`): 第二个视频剪辑范围列表，用于与第一个范围列表进行比较。
-            - *args: 传递给 `VideoCutRange.diff` 方法的其他参数，用于计算范围之间的差异。
-            - **kwargs: 传递给 `VideoCutRange.diff` 方法的关键字参数，用于计算范围之间的差异。
+        Parameters
+        ----------
+        range_list_1 : list of VideoCutRange
+            第一个结果中的稳定区间列表，作为参照集合。
 
-        操作流程:
-            1. 获取 `range_list_1` 和 `range_list_2` 的长度，分别表示两个视频剪辑范围列表中稳定阶段的数量。
-            2. 检查两个范围列表的长度是否相等。如果不相等，记录一个警告日志，提醒用户两个列表的阶段数量不一致。
-            3. 初始化一个空的嵌套字典 `data`，用于存储每对范围之间的差异。
-            4. 遍历 `range_list_1` 中的每个范围 `each_self_range`，记录其索引为 `self_id`。
-            5. 对于 `range_list_1` 中的每个范围，进一步遍历 `range_list_2` 中的每个范围 `another_self_range`，记录其索引为 `another_id`。
-            6. 调用 `each_self_range.diff(another_self_range, *args, **kwargs)` 方法，计算 `each_self_range` 和 `another_self_range` 之间的差异，并将结果存储在 `temp` 字典中，其中 `another_id` 作为键。
-            7. 将 `temp` 字典作为值，`self_id` 作为键，存储在 `data` 字典中。
-            8. 返回包含所有范围对差异的嵌套字典 `data`。
+        range_list_2 : list of VideoCutRange
+            第二个结果中的稳定区间列表，作为比较集合。
 
-        返回:
-            `dict[int, dict[int, list[float]]]`: 返回一个嵌套字典，其中外层字典的键是 `range_list_1` 中范围的索引，值是另一个字典。内层字典的键是 `range_list_2` 中范围的索引，值是一个浮点数列表，表示这对范围之间的差异。
+        *args, **kwargs :
+            传递给 `VideoCutRange.diff()` 的附加参数（如对齐策略、相似度指标等）。
 
-        日志:
-            - 如果两个范围列表的长度不相等，记录一个警告日志，指示阶段数量不一致。
-            - 差异计算的详细日志可能由 `VideoCutRange.diff` 方法记录。
+        Returns
+        -------
+        dict of int -> dict of int -> list of float
+            差异值字典。结构为 `{i: {j: [...], ...}, ...}`，其中 i 和 j 为区间索引，
+            每个值为一个包含多个指标（例如 SSIM、PSNR 等）的浮点值列表。
 
-        异常处理:
-            - 没有显式的异常处理。如果在比较过程中发生错误，将抛出相应的异常。
-
-        使用示例:
-            该方法用于比较两个视频剪辑范围列表，特别是在视频分析过程中，以检测不同范围之间的差异。
+        Notes
+        -----
+        - 两个区间数量可以不同，算法仍可运行；
+        - 如果区间数量不一致，会给出警告日志提示；
+        - 差异指标的计算依赖于 `VideoCutRange.diff()` 的具体实现；
+        - 可用于稳定段落的匹配、排序推荐或样本筛选。
         """
-
         self_stable_range_count = len(range_list_1)
         another_stable_range_count = len(range_list_2)
         if self_stable_range_count != another_stable_range_count:
@@ -693,18 +909,10 @@ class VideoCutResult(object):
 
 class VideoCutResultDiff(object):
     """
-    类: `VideoCutResultDiff`
+    用于比较两个视频切割结果的差异。
 
-    功能:
-        该类用于比较两个 `VideoCutRange` 列表的差异，并提供分析方法来判断阶段是否丢失、阶段的转移情况以及阶段的详细差异。
-
-    属性:
-        - threshold (`float`): 定义判断阶段是否丢失的阈值，默认为 0.7。
-        - default_stage_id (`int`): 默认的阶段 ID，用于在找不到匹配阶段时返回，默认为 -1。
-        - default_score (`float`): 默认的评分，用于在找不到匹配阶段时返回，默认为 -1.0。
-        - origin (`list[VideoCutRange]`): 原始的 `VideoCutRange` 列表。
-        - another (`list[VideoCutRange]`): 用于与原始列表进行比较的 `VideoCutRange` 列表。
-        - data (`typing.Optional[dict[int, dict[int, list[float]]]]`): 存储 `range_diff` 方法返回的差异数据字典，默认为 None。
+    该类接受两个 `VideoCutRange` 列表（通常为稳定阶段的分割结果），并评估每个阶段间的相似性匹配程度。
+    提供是否缺失阶段、阶段转移分析、以及结构化的差异对比等功能，常用于训练数据验证或多版本模型评估。
     """
 
     threshold: float = 0.7
@@ -712,13 +920,6 @@ class VideoCutResultDiff(object):
     default_score: float = -1.0
 
     def __init__(self, origin: list["VideoCutRange"], another: list["VideoCutRange"]):
-        """
-        构造方法，初始化 `VideoCutResultDiff` 实例。
-
-        参数:
-            - origin (`list[VideoCutRange]`): 原始的 `VideoCutRange` 列表。
-            - another (`list[VideoCutRange]`): 用于比较的 `VideoCutRange` 列表。
-        """
         self.origin = origin
         self.another = another
         self.data: typing.Optional[dict[int, dict[int, list[float]]]] = None
@@ -727,30 +928,40 @@ class VideoCutResultDiff(object):
         """
         应用阶段差异分析方法，并存储差异数据。
 
-        参数:
-            - pre_hooks (`list[BaseHook]`, 可选): 预处理钩子列表，用于在比较前应用，默认为 None。
+        Parameters
+        ----------
+        pre_hooks : list of BaseHook, optional
+            在进行相似度比较前应用的图像处理钩子，例如裁剪、灰度化等。
 
-        说明:
-            该方法调用 `VideoCutResult.range_diff` 方法来计算两个范围列表之间的差异，并将结果存储在 `self.data` 中。
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        - 通过调用 `VideoCutResult.range_diff()` 方法计算差异；
+        - 差异结果存储在 `self.data` 字典中。
         """
         self.data = VideoCutResult.range_diff(self.origin, self.another, pre_hooks)
 
     def most_common(self, stage_id: int) -> (int, float):
         """
-        获取与指定阶段最匹配的阶段 ID 及其评分。
+        获取与指定阶段最匹配的阶段 ID 及其最大相似度得分。
 
-        参数:
-            - stage_id (`int`): 指定的阶段 ID。
+        Parameters
+        ----------
+        stage_id : int
+            源阶段编号。
 
-        返回:
-            - `int`: 与指定阶段最匹配的阶段 ID。
-            - `float`: 匹配的评分。
+        Returns
+        -------
+        tuple of (int, float)
+            匹配得分最高的目标阶段 ID 及对应相似度分值。
 
-        异常:
-            - `AssertionError`: 如果指定的 `stage_id` 不在 `self.data` 中，会引发异常。
-
-        说明:
-            该方法遍历指定阶段的差异数据，找到评分最高的匹配阶段。
+        Raises
+        ------
+        AssertionError
+            如果该阶段不在 `self.data` 中。
         """
         assert stage_id in self.data
         ret_k, ret_v = self.default_stage_id, self.default_score
@@ -763,41 +974,40 @@ class VideoCutResultDiff(object):
 
     def is_stage_lost(self, stage_id: int) -> bool:
         """
-        判断指定阶段是否丢失。
+        判断指定阶段是否在目标视频中缺失。
 
-        参数:
-            - stage_id (`int`): 指定的阶段 ID。
+        Parameters
+        ----------
+        stage_id : int
+            源阶段编号。
 
-        返回:
-            - `bool`: 如果阶段的最高评分低于阈值，则返回 `True`，否则返回 `False`。
-
-        说明:
-            该方法调用 `most_common` 方法，判断指定阶段的评分是否低于阈值 `self.threshold`。
+        Returns
+        -------
+        bool
+            如果最高匹配得分低于设定阈值，则视为缺失。
         """
         _, v = self.most_common(stage_id)
         return v < self.threshold
 
     def any_stage_lost(self) -> bool:
         """
-        判断是否所有阶段都丢失。
+        判断是否所有源阶段均未在目标中找到匹配。
 
-        返回:
-            - `bool`: 如果所有阶段的最高评分都低于阈值，则返回 `True`，否则返回 `False`。
-
-        说明:
-            该方法遍历 `self.data` 中的所有阶段，检查它们是否都丢失。
+        Returns
+        -------
+        bool
+            如果所有阶段匹配得分均低于阈值，返回 True。
         """
         return all((self.is_stage_lost(each) for each in self.data.keys()))
 
     def stage_shift(self) -> list[int]:
         """
-        获取阶段转移情况的列表。
+        获取源阶段在目标中的最佳匹配阶段编号列表。
 
-        返回:
-            - `list[int]`: 返回所有得分高于阈值的阶段 ID 列表。
-
-        说明:
-            该方法遍历 `self.data` 中的阶段，找到评分高于阈值的匹配阶段并返回其 ID。
+        Returns
+        -------
+        list of int
+            与源阶段顺序对应的匹配目标阶段编号（相似度超过阈值）。
         """
         ret = list()
         for k in self.data.keys():
@@ -808,13 +1018,12 @@ class VideoCutResultDiff(object):
 
     def stage_diff(self) -> typing.Iterator:
         """
-        生成阶段差异的比较结果。
+        使用 difflib 生成源阶段映射与目标阶段顺序之间的差异对比。
 
-        返回:
-            - `typing.Iterator`: 返回阶段差异的迭代器对象。
-
-        说明:
-            该方法使用 `difflib.Differ` 对象来比较阶段转移情况和目标阶段列表，并生成差异报告。
+        Returns
+        -------
+        Iterator
+            逐行表示差异的迭代器，可用于展示阶段变化情况。
         """
         return difflib.Differ().compare(
             [str(each) for each in self.stage_shift()],

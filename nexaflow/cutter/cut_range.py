@@ -10,13 +10,48 @@ import typing
 import random
 import numpy as np
 from loguru import logger
-from nexaflow import toolbox
-from nexaflow import const
+from nexaflow import (
+    toolbox, const
+)
+from nexaflow.video import (
+    VideoObject, VideoFrame
+)
 from nexaflow.hook import BaseHook
-from nexaflow.video import VideoObject, VideoFrame
 
 
 class VideoCutRange(object):
+    """
+    表示视频中的一个连续帧区间段，包含相应的相似度信息和时间戳范围。
+
+    该类主要用于处理视频分析中稳定区段、不稳定区段的提取与判断，
+    提供帧采样、合并、图像比较、相似度评估等功能，并支持与另一区间进行差异比对。
+
+    Attributes
+    ----------
+    video : Union[VideoObject, dict]
+        视频对象或视频配置字典。
+
+    start : int
+        区间起始帧编号。
+
+    end : int
+        区间结束帧编号。
+
+    ssim : list of float
+        每帧之间的结构相似度指数。
+
+    mse : list of float
+        每帧之间的均方误差。
+
+    psnr : list of float
+        每帧之间的峰值信噪比。
+
+    start_time : float
+        起始帧的时间戳（单位：秒）。
+
+    end_time : float
+        结束帧的时间戳（单位：秒）。
+    """
 
     def __init__(
         self,
@@ -50,17 +85,7 @@ class VideoCutRange(object):
         #     f"new a range: {self.start}({self.start_time}) - {self.end}({self.end_time})"
         # )
 
-    def can_merge(self, another: "VideoCutRange", offset: int = None, **_):
-        """
-        函数 `can_merge` 用于判断两个视频剪辑区域（`VideoCutRange` 对象）是否可以合并。
-        这主要依赖于剪辑区间的结束点和开始点是否接近或连续，以及两个剪辑区间是否来自同一视频文件。
-
-        @param another: 另一个 `VideoCutRange` 对象，表示要比较的第二个视频剪辑区间。
-        @param offset: 一个可选的整数，用于定义接受两个视频剪辑区间之间间隔的容忍度。
-        @param _:
-        @return: 函数返回一个布尔值，如果两个剪辑区间既连续（考虑到可能的 `offset`）又来自同一视频文件，则返回 `True`，表示它们可以合并；否则返回 `False`。
-        """
-
+    def can_merge(self, another: "VideoCutRange", offset: int = None, **_) -> bool:
         if not offset:
             is_continuous = self.end == another.start
         else:
@@ -88,37 +113,6 @@ class VideoCutRange(object):
     def contain_image(
         self, image_path: str = None, image_object: np.ndarray = None, *args, **kwargs
     ) -> dict[str, typing.Any]:
-        """
-        方法: `contain_image`
-
-        功能:
-            在视频帧中检查是否包含指定的图像。可以通过提供图像路径或直接提供图像对象（矩阵）进行检测。
-
-        参数:
-            - image_path (str, 可选): 待检测图像的文件路径。如果提供了 `image_path`，将从该路径加载图像。
-            - image_object (np.ndarray, 可选): 直接提供的待检测图像数据（NumPy 数组）。如果提供了 `image_object`，将直接使用该图像进行检测。
-            - *args: 位置参数，用于传递给 `pick` 方法来选择目标帧的 ID。
-            - **kwargs: 关键字参数，用于进一步配置图像检测或传递给 `contain_image` 方法。
-
-        操作流程:
-            1. 使用 `self.pick(*args, **kwargs)` 选择目标帧的 ID。该方法根据提供的参数从视频片段中挑选帧，默认选择第一个帧 ID。
-            2. 获取视频操作对象 `operator`，该对象提供了从视频中提取帧的功能。
-            3. 使用 `operator.get_frame_by_id(target_id)` 获取选定的帧对象。
-            4. 调用 `frame.contain_image` 方法，在获取的帧中检查是否包含指定的图像。这个方法可以根据提供的 `image_path` 或 `image_object` 进行检测。
-            5. 返回 `frame.contain_image` 的结果，该结果通常是一个字典，包含检测过程中的各种信息。
-
-        返回:
-            dict[str, typing.Any]: 返回一个字典，包含检测结果的详细信息。该字典可能包含匹配的置信度、位置等信息，具体取决于 `contain_image` 方法的实现。
-
-        异常处理:
-            - 需确保 `self.pick` 方法能够返回有效的帧 ID。
-            - 确保 `operator.get_frame_by_id` 返回有效的帧对象。
-            - 如果图像加载或检测过程失败，需要处理相应的异常并记录日志。
-
-        使用示例:
-            假设提供了 `image_path`，该方法将选择一个目标帧，并检测该帧中是否包含指定的图像。如果包含，则返回相关信息。
-        """
-
         target_id = self.pick(*args, **kwargs)[0]
         operator = self.video.get_operator()
         frame = operator.get_frame_by_id(target_id)
@@ -130,42 +124,46 @@ class VideoCutRange(object):
         self, frame_count: int = None, is_random: bool = None, *_, **__
     ) -> list[int]:
         """
-        方法: `pick`
+        从当前视频帧区间中选择指定数量的帧编号。
 
-        功能:
-            从视频的帧范围内选择指定数量的帧索引。可以选择随机挑选帧或按均匀间隔挑选帧。
+        该方法用于在当前视频区间范围内选取若干代表性的帧索引，支持等距采样或随机采样方式。
+        默认情况下采用等距采样，确保帧分布均匀；若指定 `is_random=True`，则会在区间范围内随机抽样。
 
-        参数:
-            - frame_count (int, 可选): 要选择的帧的数量。如果未指定，则默认选择 3 帧。
-            - is_random (bool, 可选): 指定是否随机选择帧。如果为 `True`，则随机选择指定数量的帧；否则按均匀间隔选择帧。
-            - *_: 位置参数，未使用，在此方法中被忽略。
-            - **__: 关键字参数，未使用，在此方法中被忽略。
+        Parameters
+        ----------
+        frame_count : int, optional
+            需要选取的帧数量，默认为 3。如果帧数超过区间长度，会抛出异常。
 
-        操作流程:
-            1. 如果 `frame_count` 未指定，默认为 3。
-            2. 记录调试信息，输出帧选择的范围和视频路径。
-            3. 初始化一个空的结果列表 `result`。
-            4. 如果 `is_random` 为 `True`，则从 `self.start` 到 `self.end` 范围内随机选择 `frame_count` 个帧索引并返回。
-            5. 如果 `is_random` 为 `False` 或未指定，按均匀间隔从 `self.start` 到 `self.end` 选择帧：
-                - 计算视频片段的长度 `length`。
-                - 根据 `frame_count` 均匀地选择指定数量的帧索引并将其添加到 `result` 列表中。
-            6. 返回包含所选帧索引的 `result` 列表。
+        is_random : bool, optional
+            是否启用随机采样模式，默认为 False，表示使用等距采样。
 
-        返回:
-            list[int]: 返回一个包含所选帧索引的列表。
+        *_ : tuple
+            预留参数，用于兼容扩展。
 
-        异常处理:
-            - 确保 `self.start` 和 `self.end` 之间有足够的帧可供选择，特别是在随机选择时，可能会抛出 `ValueError` 异常。
-            - 如果 `frame_count` 大于 `self.start` 和 `self.end` 之间的帧数，需处理并返回适当的错误或调整 `frame_count`。
+        **__ : dict
+            预留参数，用于兼容扩展。
 
-        使用示例:
-            假设 `self.start` 为 0，`self.end` 为 100，`self.video.path` 为 `"video.mp4"`：
-            - 若 `is_random` 为 `True` 且 `frame_count` 为 5，可能返回 `[12, 37, 65, 78, 90]`。
-            - 若 `is_random` 为 `False` 且 `frame_count` 为 3，则按均匀间隔返回 `[25, 50, 75]`。
+        Returns
+        -------
+        list[int]
+            选中的帧编号列表，按照采样策略生成。
+
+        Raises
+        ------
+        ValueError
+            如果指定帧数超过当前区间长度，在启用随机采样时可能引发采样错误。
+
+        Notes
+        -----
+        - 等距采样将起始点和结束点之间平均划分为 `frame_count+1` 份，从中间断点处采样。
+        - 随机采样不会保证顺序和均匀性，但可能更适用于避免过拟合的模型训练。
+        - `frame_count` 实际参与计算时会自动加 1，以增强采样间隔的分布精度。
+        - 该方法不会返回起始帧或结束帧编号。
+        - 采样结果在日志中会记录选取范围与数量。
         """
-
         if not frame_count:
             frame_count = 3
+
         logger.debug(
             f"pick {frame_count} frames "
             f"from {self.start}({self.start_time}) "
@@ -188,35 +186,32 @@ class VideoCutRange(object):
         self, frame_id_list: list[int], *_, **__
     ) -> list["VideoFrame"]:
         """
-        方法: `get_frames`
+        根据帧编号列表获取对应帧图像对象。
 
-        功能:
-            根据提供的帧 ID 列表，从视频中提取对应的帧并返回这些帧的列表。
+        该方法根据输入的帧 ID 列表，从视频文件或缓存中提取对应的帧数据，封装为 `VideoFrame` 实例返回。
 
-        参数:
-            - frame_id_list (list[int]): 要提取的帧 ID 的列表。每个帧 ID 对应视频中的一个具体帧。
-            - *_: 位置参数，未使用，在此方法中被忽略。
-            - **__: 关键字参数，未使用，在此方法中被忽略。
+        Parameters
+        ----------
+        frame_id_list : list of int
+            指定要提取的帧编号列表，编号从 1 开始。
 
-        操作流程:
-            1. 初始化一个空的输出列表 `out`，用于存储提取的帧。
-            2. 获取视频操作对象 `operator`，该对象提供了从视频中提取帧的功能。
-            3. 对于 `frame_id_list` 中的每个帧 ID：
-                - 调用 `operator.get_frame_by_id(each_id)` 获取对应的帧对象。
-                - 将提取的帧对象添加到输出列表 `out` 中。
-            4. 返回包含提取的帧对象的列表 `out`。
+        *_ : tuple
+            预留位置参数，用于扩展兼容。
 
-        返回:
-            list["VideoFrame"]: 返回一个包含提取的 `VideoFrame` 对象的列表。
+        **__ : dict
+            预留关键字参数，用于扩展兼容。
 
-        异常处理:
-            - 需确保 `frame_id_list` 中的每个帧 ID 在视频范围内有效。若帧 ID 超出范围，`operator.get_frame_by_id` 可能会抛出异常。
-            - 若视频对象未正确加载或操作对象不可用，需处理并返回适当的错误或日志记录。
+        Returns
+        -------
+        list of VideoFrame
+            包含 `VideoFrame` 实例的列表，每个实例包含帧编号、时间戳和图像数据。
 
-        使用示例:
-            假设 `frame_id_list` 为 `[1, 10, 20]`，返回的 `out` 列表可能包含这些 ID 对应的 `VideoFrame` 对象，例如 `[VideoFrame(1), VideoFrame(10), VideoFrame(20)]`。
+        Notes
+        -----
+        - 该方法通过调用 `video.get_operator()` 获取帧读取器，并使用 `get_frame_by_id()` 方法逐帧读取。
+        - 如果帧编号越界或帧不存在，返回列表中将缺失对应帧。
+        - 建议搭配 `pick()` 或 `pick_and_get()` 方法联合使用，以避免重复实现采样逻辑。
         """
-
         out = list()
         operator = self.video.get_operator()
         for each_id in frame_id_list:
@@ -225,26 +220,92 @@ class VideoCutRange(object):
         return out
 
     def pick_and_get(self, *args, **kwargs) -> list["VideoFrame"]:
+        """
+        在当前范围内选取若干帧并返回对应的帧图像对象。
+
+        该方法相当于 `pick()` 与 `get_frames()` 的组合操作：
+        首先根据采样策略从当前区间内选取若干帧编号，然后加载对应帧数据，返回 `VideoFrame` 对象列表。
+
+        Parameters
+        ----------
+        *args : tuple
+            可变参数，传递给 `pick()` 和 `get_frames()` 方法，用于指定帧数、是否随机等。
+        **kwargs : dict
+            关键字参数，支持以下常用选项：
+            - frame_count (int): 采样帧数，默认 3。
+            - is_random (bool): 是否启用随机采样模式，默认为 False。
+            - compress_rate / target_size / to_grey 等参数将传递至图像处理流程。
+
+        Returns
+        -------
+        list of VideoFrame
+            包含 `VideoFrame` 实例的列表，每个对象封装帧编号、时间戳及图像数据。
+
+        Notes
+        -----
+        - 推荐在进行数据准备（如训练样本采样）时使用此方法，可减少重复逻辑。
+        - 若帧数过多或图像较大，建议配合压缩参数避免内存开销。
+
+        Workflow
+        --------
+        1. 调用 `self.pick()` 获取采样帧编号列表。
+        2. 调用 `self.get_frames()` 加载指定帧编号对应的图像帧。
+        3. 返回完整的 `VideoFrame` 对象列表。
+        """
         picked = self.pick(*args, **kwargs)
         return self.get_frames(picked, *args, **kwargs)
 
-    def get_length(self):
+    def get_length(self) -> int:
+        """
+        获取当前视频片段的帧数长度。
+
+        该方法计算当前片段的帧数跨度，定义为 `end - start + 1`，确保包含起始和结束帧。
+
+        Returns
+        -------
+        int
+            视频片段的帧数，即从 start 到 end（包含）的帧数。
+
+        Notes
+        -----
+        - 起始帧和结束帧都包含在区间内，因此加 1。
+        - 在构建样本、提取特征或进行段分析时经常用于过滤长度过短的片段。
+        - 本方法不依赖任何帧图像加载，仅基于数值计算。
+        """
         return self.end - self.start + 1
 
     def is_stable(
         self, threshold: float = None, psnr_threshold: float = None, **_
     ) -> bool:
         """
-        函数 `is_stable` 用于确定一个数据集（可能是图像帧或视频片段）是否稳定。
-        这个函数主要基于结构相似性指数（SSIM）和峰值信噪比（PSNR）来评估稳定性。
-        这两个指标常用于图像和视频质量评估，其中 SSIM 衡量两张图像的相似性，而 PSNR 是衡量图像重建质量的指标。
+        判断当前视频片段是否为稳定状态。
 
-        @param threshold: 一个可选的浮点数，设置判断图像稳定性的 SSIM 阈值。如果未指定，函数将使用一个常量值 `const.THRES`。
-        @param psnr_threshold: 一个可选的浮点数，设置判断图像稳定性的 PSNR 阈值。
-        @param _:
-        @return: 函数返回一个布尔值，表示数据集是否稳定。
+        稳定性是通过结构相似度（SSIM）均值与可选的峰值信噪比（PSNR）均值判断的：
+        - 当 SSIM 均值大于给定阈值 `threshold` 时，初步判断为稳定；
+        - 若设置了 `psnr_threshold`，则需同时满足 PSNR 均值大于该值。
+
+        Parameters
+        ----------
+        threshold : float, optional
+            判断稳定状态所用的 SSIM 阈值，默认为 const.THRES。
+
+        psnr_threshold : float, optional
+            可选的 PSNR 阈值，若设置则需 SSIM 与 PSNR 均满足阈值条件才判为稳定。
+
+        **_ : dict
+            预留参数，用于向后兼容。
+
+        Returns
+        -------
+        bool
+            若当前片段满足稳定性标准，则返回 True，否则返回 False。
+
+        Notes
+        -----
+        - 通常用于划分稳定阶段与不稳定阶段，是后续分类、摘要或数据筛选的前提。
+        - 若仅关注 SSIM，可忽略 `psnr_threshold` 参数。
+        - SSIM 越接近 1 表示相似度越高；PSNR 越高表示信号质量越好。
         """
-
         threshold = threshold if threshold else const.THRES
 
         res = np.mean(self.ssim) > threshold
@@ -253,36 +314,31 @@ class VideoCutRange(object):
 
         return res
 
-    def is_loop(self, threshold: float = None, **_) -> bool:
+    def is_loop(self, threshold: float = None, **__) -> bool:
         """
-        方法: `is_loop`
+        判断当前视频片段是否存在“循环”（Loop）行为。
 
-        功能:
-            判断视频片段的起始帧和结束帧之间的相似度是否超过指定阈值，以确定该片段是否可能是循环的。
+        通过对比当前区间的起始帧和结束帧的结构相似度（SSIM），若相似度高于指定阈值，
+        则认为该区间可能是循环动画或视频内容未发生明显变化。
 
-        参数:
-            - threshold (float, 可选): 相似度阈值，用于确定起始帧和结束帧是否足够相似。默认使用全局常量 `const.THRES`。
-            - **_ : 关键字参数，在此方法中被忽略。
+        Parameters
+        ----------
+        threshold : float, optional
+            判断是否循环的 SSIM 阈值，默认为 const.THRES。
 
-        操作流程:
-            1. 如果 `threshold` 未提供，则使用默认阈值 `const.THRES`。
-            2. 获取视频操作对象 `operator`，该对象提供了从视频中提取帧的功能。
-            3. 使用 `operator.get_frame_by_id(self.start)` 获取视频片段的起始帧。
-            4. 使用 `operator.get_frame_by_id(self.end)` 获取视频片段的结束帧。
-            5. 调用 `toolbox.compare_ssim` 方法，计算起始帧和结束帧的结构相似度指数（SSIM）。
-            6. 如果计算得到的相似度值大于阈值 `threshold`，则返回 `True`，表示该片段可能是循环的；否则返回 `False`。
+        **__ : dict
+            预留参数，用于向后兼容。
 
-        返回:
-            bool: 返回一个布尔值，`True` 表示起始帧和结束帧的相似度超过阈值，视频片段可能是循环的；`False` 表示不是。
+        Returns
+        -------
+        bool
+            若起始帧与结束帧的结构相似度高于阈值，则返回 True，表示存在循环；否则返回 False。
 
-        异常处理:
-            - 需确保 `start_frame` 和 `end_frame` 能正确获取。如果帧 ID 无效，`operator.get_frame_by_id` 可能会抛出异常。
-            - 如果 `toolbox.compare_ssim` 方法在计算相似度时出错，需处理相关异常并记录日志。
-
-        使用示例:
-            假设 `self.start` 为帧 ID 1，`self.end` 为帧 ID 100，如果它们的相似度超过阈值 `threshold`，则返回 `True`，表示这个片段可能是循环的。
+        Notes
+        -----
+        - 该方法可用于检测广告、背景动画、过渡镜头等重复片段。
+        - 判断逻辑依赖于 `toolbox.compare_ssim()` 的实现。
         """
-
         threshold = threshold if threshold else const.THRES
 
         operator = self.video.get_operator()
@@ -298,38 +354,46 @@ class VideoCutRange(object):
         **kwargs,
     ) -> list[float]:
         """
-        方法: `diff`
+        比较当前视频片段与另一个视频片段的帧内容差异（SSIM 相似度）。
 
-        功能:
-            比较两个视频片段 (`VideoCutRange`) 在指定帧范围内的差异。通过选择的帧对比两个视频片段的相似性。
+        该方法用于对两个 `VideoCutRange` 区间进行内容相似性评估。内部会从每个区间中提取若干关键帧，
+        并应用可选的预处理钩子（如灰度转换、裁剪等），之后利用 SSIM 指标计算每对关键帧之间的相似度。
 
-        参数:
-            - another ("VideoCutRange"): 另一个用于比较的视频片段对象。
-            - pre_hooks (list["BaseHook"]): 在比较帧数据之前应用的一系列钩子函数列表。钩子函数可以对帧数据进行预处理。
-            - *args: 位置参数，用于传递给 `pick_and_get` 方法，以确定从每个视频片段中选择哪些帧。
-            - **kwargs: 关键字参数，用于传递给 `pick_and_get` 方法，以进一步配置帧选择过程。
+        Parameters
+        ----------
+        another : VideoCutRange
+            要进行比较的另一个视频区间对象。
 
-        操作流程:
-            1. 使用 `self.pick_and_get(*args, **kwargs)` 从当前视频片段中选择并获取一组帧。
-            2. 使用 `another.pick_and_get(*args, **kwargs)` 从另一个视频片段中选择并获取一组帧。
-            3. 调用 `toolbox.multi_compare_ssim` 方法，对两个视频片段选定的帧组进行逐一比较。`pre_hooks` 列表中的钩子函数会在比较之前应用到每一帧上。
-            4. 返回比较结果，这通常是一个包含每对帧相似度评分的浮点数列表。
+        pre_hooks : list of BaseHook
+            针对每帧图像的预处理钩子列表，用于标准化、去噪、二值化、对齐等操作。
 
-        返回:
-            list[float]: 返回一个浮点数列表，每个浮点数表示两个视频片段在对应帧上的相似度评分。评分通常是结构相似性（SSIM）值，范围在 0 到 1 之间，越接近 1 表示两帧越相似。
+        *args : tuple
+            传递给帧选取函数的其他参数（如帧数、是否随机等）。
 
-        异常处理:
-            - 需要确保 `pick_and_get` 方法返回有效的帧数据。
-            - 确保 `toolbox.multi_compare_ssim` 能够正确处理帧数据和钩子函数。
-            - 如果在帧选择或比较过程中发生错误，应记录日志并处理异常。
+        **kwargs : dict
+            同样传递给帧选取和预处理流程的其他关键字参数。
 
-        使用示例:
-            该方法可以用于检测两个视频片段在相似场景下的差异，例如在视频编辑、质量控制或内容匹配等应用场景中。
+        Returns
+        -------
+        list of float
+            每对帧之间计算得到的结构相似度（SSIM）得分序列，取值范围为 [0.0, 1.0]。
 
+        Notes
+        -----
+        - 建议抽取的帧数一致，否则可能导致对齐误差。
+        - 分数越接近 1.0 表示越相似；越接近 0.0 表示差异显著。
+        - 可用于视频版本对比、动作检测验证、稳定性分析等场景。
+
+        Workflow
+        --------
+        1. 从当前区间与目标区间分别抽取等量关键帧。
+        2. 应用预处理钩子（如灰度转换、模糊、裁剪等）。
+        3. 使用 SSIM 算法逐帧比较两组关键帧。
+        4. 返回相似度得分序列。
         """
-
         self_picked = self.pick_and_get(*args, **kwargs)
         another_picked = another.pick_and_get(*args, **kwargs)
+
         return toolbox.multi_compare_ssim(self_picked, another_picked, pre_hooks)
 
     def __str__(self):
