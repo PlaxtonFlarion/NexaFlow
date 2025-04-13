@@ -1,4 +1,4 @@
-# 🚀 Framix(画帧秀) - 流畅性的革命！
+# 🚀 Framix｜画帧秀
 
 ![LOGO](resources/images/illustration/Readme.png)
 
