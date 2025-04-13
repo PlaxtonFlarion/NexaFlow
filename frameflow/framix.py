@@ -2077,13 +2077,16 @@ class Missions(object):
                 try:
                     await manage_.display_device()
                     start_tips_ = f"<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/] 秒>>>"
+
                     if action_ := Prompt.ask(f"[bold #5FD7FF]{start_tips_}", console=Design.console):
                         if (select_ := action_.strip().lower()) == "device":
                             device_list = await manage_.another_device()
                             continue
+
                         elif select_ == "cancel":
                             Design.exit()
                             sys.exit(Design.closure())
+
                         elif "header" in select_:
                             if match_ := re.search(r"(?<=header\s).*", select_):
                                 if hd_ := match_.group().strip():
@@ -2092,9 +2095,11 @@ class Missions(object):
                                     report.title = f"{src_hd_}_{hd_}" if hd_ else f"{src_hd_}_{random.randint(a_, b_)}"
                                     continue
                             raise FramixError
+
                         elif select_ == "create":
                             await self.combine(report)
                             break
+
                         elif select_ == "deploy":
                             Design.notes(f"{const.WRN}请完全退出编辑器再继续操作")
                             deploy.dump_deploy(self.initial_deploy)
@@ -2106,17 +2111,21 @@ class Missions(object):
                             deploy.load_deploy(self.initial_deploy)
                             deploy.view_deploy()
                             continue
+
                         elif select_.isdigit():
                             timer_value_ = int(select_)
                             if timer_value_ > upper_bound_ or timer_value_ < lower_bound_:
                                 bound_tips_ = f"{lower_bound_} <= [bold #FFD7AF]Time[/] <= {upper_bound_}"
                                 Design.notes(f"[bold #FFFF87]{bound_tips_}")
                             timer_mode = max(lower_bound_, min(upper_bound_, timer_value_))
+
                         else:
                             raise FramixError
+
                 except FramixError:
                     Design.tips_document()
                     continue
+
                 else:
                     task_list = await anything_film()
                     await load_timer()
@@ -2124,6 +2133,7 @@ class Missions(object):
                     await anything_well()
                     check_ = await record.flunk_event()
                     device_list = await manage_.operate_device() if check_ else device_list
+
                 finally:
                     await record.clean_event()
 

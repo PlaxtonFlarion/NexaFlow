@@ -6,6 +6,17 @@
 #    |_| |_|_| |_|_|\_\___|_|
 #
 
+"""
+版权所有 (c) 2024  Framix(画帧秀)
+此文件受 Framix(画帧秀) 许可证的保护。您可以在 LICENSE.md 文件中查看详细的许可条款。
+
+Copyright (c) 2024  Framix(画帧秀)
+This file is licensed under the Framix(画帧秀) License. See the LICENSE.md file for more details.
+
+# Copyright (c) 2024  Framix(画帧秀)
+# このファイルは Framix(画帧秀) ライセンスの下でライセンスされています。詳細は LICENSE.md ファイルを参照してください。
+"""
+
 import os
 import re
 import typing

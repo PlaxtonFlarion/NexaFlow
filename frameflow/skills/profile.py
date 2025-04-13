@@ -6,6 +6,17 @@
 #  |_|   |_|  \___/|_| |_|_|\___|
 #
 
+"""
+版权所有 (c) 2024  Framix(画帧秀)
+此文件受 Framix(画帧秀) 许可证的保护。您可以在 LICENSE.md 文件中查看详细的许可条款。
+
+Copyright (c) 2024  Framix(画帧秀)
+This file is licensed under the Framix(画帧秀) License. See the LICENSE.md file for more details.
+
+# Copyright (c) 2024  Framix(画帧秀)
+# このファイルは Framix(画帧秀) ライセンスの下でライセンスされています。詳細は LICENSE.md ファイルを参照してください。
+"""
+
 import os
 import copy
 import json
@@ -19,16 +30,69 @@ from nexaflow import const
 
 
 def dump_parameters(src: typing.Any, dst: dict) -> None:
+    """
+    将配置参数以 JSON 格式写入指定路径的文件。
+
+    Parameters
+    ----------
+    src : typing.Any
+        目标文件路径，可为字符串或路径对象，用于存储配置数据。
+
+    dst : dict
+        待写入的配置数据字典。
+
+    Returns
+    -------
+    None
+        不返回任何值，写入完成后直接关闭文件。
+
+    Notes
+    -----
+    - 使用 UTF-8 编码（或由 `const.CHARSET` 指定）进行文件写入；
+    - 使用缩进和格式控制以确保 JSON 可读性（indent=4, ensure_ascii=False）；
+    - 本函数适用于保存部署参数、应用配置、模型元数据等场景。
+    """
     with open(src, "w", encoding=const.CHARSET) as file:
         json.dump(dst, file, indent=4, separators=(",", ":"), ensure_ascii=False)
 
 
 def load_parameters(src: typing.Any) -> typing.Any:
+    """
+    从指定路径读取 JSON 文件内容并解析为 Python 字典对象。
+
+    Parameters
+    ----------
+    src : typing.Any
+        JSON 文件路径，支持字符串或路径对象。
+
+    Returns
+    -------
+    typing.Any
+        返回解析后的配置对象（通常为 `dict` 类型）。
+
+    Notes
+    -----
+    - 使用 UTF-8 编码（或由 `const.CHARSET` 指定）读取 JSON 文件；
+    - 若文件内容不符合 JSON 语法，将抛出 `json.decoder.JSONDecodeError`；
+    - 可用于恢复用户参数配置、加载模型元信息、初始化系统设置等。
+    """
     with open(src, "r", encoding=const.CHARSET) as file:
         return json.load(file)
 
 
 class Deploy(object):
+    """
+    参数部署与配置管理器类。
+
+    该类负责解析、加载、设置与展示 Framix 命令行工具中的参数配置。
+    它支持两大参数组：FST（基础设置）与 ALS（分析设置），通过动态解析器
+    `Parser` 实现参数合法性验证，并提供序列化与表格化展示功能。
+
+    Attributes
+    ----------
+    deploys : dict
+        包含所有默认部署参数的嵌套字典，分为 FST 与 ALS 两大组。
+    """
 
     deploys = {
         "FST": {
@@ -260,6 +324,34 @@ class Deploy(object):
         self.deploys["ALS"]["omits"] = Parser.parse_hooks(value)
 
     def dump_deploy(self, deploy_file: typing.Any) -> None:
+        """
+        将当前部署参数写入 JSON 文件中，作为配置持久化存储。
+
+        Parameters
+        ----------
+        deploy_file : Any
+            输出文件路径，可以是字符串路径或类文件对象。
+            最终将把 deploy 配置以 JSON 格式保存至该路径。
+
+        Returns
+        -------
+        None
+            不返回任何值，但会在磁盘写入部署配置文件。
+
+        Notes
+        -----
+        - 在写入前，会对 `deploys` 数据结构做深拷贝，防止原始配置被污染；
+        - 如果 `crops` 或 `omits` 为空，则会填充默认的 `const.HOOKS`；
+        - 会自动创建目标路径所需的目录结构；
+        - 最终通过 `dump_parameters()` 将部署数据写入文件。
+
+        Workflow
+        --------
+        1. 对当前 `deploys` 结构进行深拷贝；
+        2. 检查并修复 `crops` 和 `omits` 字段；
+        3. 创建部署文件所在目录（如不存在）；
+        4. 调用 `dump_parameters()` 保存为 JSON 文件。
+        """
         deep_copy_deploys = copy.deepcopy(self.deploys)
         for attr in ["crops", "omits"]:
             if len(deep_copy_deploys["ALS"][attr]) == 0:
@@ -269,6 +361,34 @@ class Deploy(object):
         dump_parameters(deploy_file, deep_copy_deploys)
 
     def load_deploy(self, deploy_file: typing.Any) -> None:
+        """
+        加载部署配置文件并初始化参数值。
+
+        Parameters
+        ----------
+        deploy_file : Any
+            指定的部署文件路径，可以是字符串路径或类文件对象，包含部署参数的 JSON 配置。
+
+        Returns
+        -------
+        None
+            方法不返回值，但会更新对象内部的参数映射 deploys。
+
+        Notes
+        -----
+        - 方法首先尝试从指定文件中加载部署参数；
+        - 如果文件不存在或内容无效（如格式错误），将自动使用默认值并创建新文件；
+        - 所有参数会通过 `setattr()` 动态绑定到对象属性；
+        - 会为每个参数输出加载日志，便于调试与回溯；
+        - 如果发生不可预知异常，也会被捕获并打印警告日志。
+
+        Workflow
+        --------
+        1. 调用 `load_parameters()` 加载 JSON 参数；
+        2. 遍历默认 deploys 结构并更新每项配置；
+        3. 若解析失败或文件缺失，则调用 `dump_deploy()` 写入默认值；
+        4. 日志模块记录每个参数的加载结果。
+        """
         try:
             parameters = load_parameters(deploy_file)
             for key, value in self.deploys.items():
@@ -283,6 +403,30 @@ class Deploy(object):
             logger.debug(f"未知错误 {e}")
 
     def view_deploy(self) -> None:
+        """
+        以表格形式在控制台展示当前部署参数的详细信息。
+
+        Returns
+        -------
+        None
+            该方法不会返回值，但会在终端以表格方式输出参数配置详情。
+
+        Notes
+        -----
+        - 本方法适用于交互式 CLI 场景，可直观查看当前所有配置项；
+        - 使用 `rich.Table` 美化显示输出，包含分组标题、表头、每项参数的名称、值、范围、作用等；
+        - 包括两大配置分组：
+            - FST：帧级参数（如缩放、滤波器、起止时间等）；
+            - ALS：分析参数（如步长、滑动窗口、裁剪钩子等）；
+        - 若存在裁剪/忽略钩子 (`crops`、`omits`)，将额外绘制专属区域表格展示其索引与配置内容。
+
+        Workflow
+        --------
+        1. 合并参数分组元信息（`Args.GROUP_FIRST` 和 `Args.GROUP_EXTRA`）；
+        2. 遍历 `FST` 与 `ALS` 配置组，分别构建并打印参数表格；
+        3. 若存在 `crops` 或 `omits` 钩子配置，则创建并显示对应的裁剪钩子表格；
+        4. 所有输出均通过 `Design.console.print()` 渲染输出至 CLI。
+        """
         deploys_group = {**Args.GROUP_FIRST, **Args.GROUP_EXTRA}
 
         table_style = {
@@ -334,12 +478,32 @@ class Deploy(object):
 
 
 class Option(object):
+    """
+    用于加载和保存与模型路径和配置信息相关的全局参数设置。
+
+    该类负责从本地配置文件中读取或写入包含模型位置和模型名称的参数。
+    它提供了属性访问器（property）来安全管理这些字段，并进行路径有效性校验。
+
+    Attributes
+    ----------
+    options : dict
+        包含配置字段的默认字典，字段包括：
+        - "total_place"：总体输出目录；
+        - "model_place"：模型目录；
+        - "faint_model"：灰度检测模型名称；
+        - "color_model"：彩色检测模型名称。
+
+    Notes
+    -----
+    - 所有配置项在初始化时通过 `load_option()` 方法自动加载；
+    - 若配置文件不存在或格式错误，将自动创建默认配置文件。
+    """
 
     options = {
-        "total_place": "",
-        "model_place": "",
-        "faint_model": "",
-        "color_model": ""
+        "total_place": "",  # 报告文件夹路径
+        "model_place": "",  # 模型文件夹路径
+        "faint_model": "",  # 灰度模型名称
+        "color_model": "",  # 彩色模型名称
     }
 
     def __init__(self, option_file: typing.Any):
@@ -388,6 +552,25 @@ class Option(object):
             self.options["color_model"] = value
 
     def load_option(self, option_file: typing.Any) -> None:
+        """
+        从指定路径加载配置参数，并更新当前选项状态。
+
+        Parameters
+        ----------
+        option_file : typing.Any
+            配置文件路径，支持字符串或路径对象。
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        - 配置文件应为合法的 JSON 格式；
+        - 若文件不存在或格式不合法，将创建并写入默认配置；
+        - 支持对字段进行类型检查和目录存在性验证；
+        - 成功加载后会通过日志记录每一项配置的变更。
+        """
         try:
             parameters = load_parameters(option_file)
             for k, v in self.options.items():
@@ -401,6 +584,24 @@ class Option(object):
             logger.debug(f"未知错误 {e}")
 
     def dump_option(self, option_file: typing.Any) -> None:
+        """
+        将当前选项配置以 JSON 格式写入指定文件路径。
+
+        Parameters
+        ----------
+        option_file : typing.Any
+            保存配置的目标文件路径。
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        - 若目录不存在则自动创建；
+        - 文件采用 UTF-8 编码格式，结构清晰（含缩进）；
+        - 此操作将覆盖原有文件内容，用于持久化保存当前参数配置。
+        """
         os.makedirs(os.path.dirname(option_file), exist_ok=True)
         dump_parameters(option_file, self.options)
 
