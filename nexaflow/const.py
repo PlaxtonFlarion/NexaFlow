@@ -53,6 +53,7 @@ BEGIN = (0, 1)
 FINAL = (-1, -1)
 THRES = 0.98
 SHIFT = 3
+SLIDE = 1
 BLOCK = 3
 SCOPE = 1
 GRADE = 2

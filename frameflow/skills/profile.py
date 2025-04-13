@@ -48,6 +48,7 @@ class Deploy(object):
             "final": const.FINAL,
             "thres": const.THRES,
             "shift": const.SHIFT,
+            "slide": const.SLIDE,
             "block": const.BLOCK,
             "scope": const.SCOPE,
             "grade": const.GRADE,
@@ -126,6 +127,10 @@ class Deploy(object):
         return self.deploys["ALS"]["shift"]
 
     @property
+    def slide(self):
+        return self.deploys["ALS"]["slide"]
+
+    @property
     def block(self):
         return self.deploys["ALS"]["block"]
 
@@ -154,6 +159,7 @@ class Deploy(object):
 
     @scale.setter
     def scale(self, value: typing.Any):
+        # Note 取值范围 0.0 ～ 1.0
         if effective := Parser.parse_waves(value, min_v=0.0, max_v=1.0, decimal=1):
             self.deploys["FST"]["scale"] = effective
 
@@ -171,17 +177,20 @@ class Deploy(object):
 
     @gauss.setter
     def gauss(self, value: typing.Any):
-        if effective := Parser.parse_waves(value, min_v=0.0, max_v=10.0, decimal=1):
+        # Note 取值范围 0.0 ～ 2.0
+        if effective := Parser.parse_waves(value, min_v=0.0, max_v=2.0, decimal=1):
             self.deploys["FST"]["gauss"] = effective
 
     @grind.setter
     def grind(self, value: typing.Any):
-        if effective := Parser.parse_waves(value, min_v=-2.0, max_v=5.0, decimal=1):
+        # Note 取值范围 0.00 ～ 2.00
+        if effective := Parser.parse_waves(value, min_v=0.0, max_v=2.0, decimal=1):
             self.deploys["FST"]["grind"] = effective
 
     @frate.setter
     def frate(self, value: typing.Any):
-        if effective := Parser.parse_waves(value, min_v=1, max_v=60, decimal=0):
+        # Note 取值范围 30 ～ 60
+        if effective := Parser.parse_waves(value, min_v=30, max_v=60, decimal=0):
             self.deploys["FST"]["frate"] = effective
 
 # Setter ###############################################################################################################
@@ -208,28 +217,37 @@ class Deploy(object):
 
     @thres.setter
     def thres(self, value: typing.Any):
-        if not (effective := Parser.parse_waves(value, min_v=0.0, max_v=1.0, decimal=2)):
-            effective = const.THRES
-        self.deploys["ALS"]["thres"] = effective
+        # Note 取值范围 0.00 ～ 1.00
+        if effective := Parser.parse_waves(value, min_v=0.00, max_v=1.00, decimal=2):
+            self.deploys["ALS"]["thres"] = effective
 
     @shift.setter
     def shift(self, value: typing.Any):
-        if not (effective := Parser.parse_waves(value, min_v=0, max_v=10, decimal=0)):
-            effective = const.SHIFT
-        self.deploys["ALS"]["shift"] = effective
+        # Note 取值范围 0 ～ 15
+        if effective := Parser.parse_waves(value, min_v=0, max_v=15, decimal=0):
+            self.deploys["ALS"]["shift"] = effective
+
+    @slide.setter
+    def slide(self, value: typing.Any):
+        # Note 取值范围 1 ～ 10
+        if effective := Parser.parse_waves(value, min_v=1, max_v=10, decimal=0):
+            self.deploys["ALS"]["slide"] = effective
 
     @block.setter
     def block(self, value: typing.Any):
-        if effective := Parser.parse_waves(value, min_v=3, max_v=10, decimal=0):
+        # Note 取值范围 1 ～ 10
+        if effective := Parser.parse_waves(value, min_v=1, max_v=10, decimal=0):
             self.deploys["ALS"]["block"] = effective
 
     @scope.setter
     def scope(self, value: typing.Any):
+        # Note 取值范围 1 ～ 20
         if effective := Parser.parse_waves(value, min_v=1, max_v=20, decimal=0):
             self.deploys["ALS"]["scope"] = effective
 
     @grade.setter
     def grade(self, value: typing.Any):
+        # Note 取值范围 1 ～ 5
         if effective := Parser.parse_waves(value, min_v=1, max_v=5, decimal=0):
             self.deploys["ALS"]["grade"] = effective
 

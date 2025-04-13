@@ -244,7 +244,7 @@ class Args(object):
                 - 常用于背景虚化、艺术滤镜、前处理降噪等场景，营造柔和梦幻的视觉氛围。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.gauss or 'Auto'}",
-                f"[bold][[bold #7FFFD4] 0  10[/]]",
+                f"[bold][[bold #7FFFD4] 0  2 [/]]",
                 f"[bold]模糊 [bold #FFD700]{x.gauss}[/]" if x.gauss else f"[bold #A4D3EE]自动"
             ]
         },
@@ -256,7 +256,7 @@ class Args(object):
                 - 适用于修复模糊图像、强化结构轮廓，或在特定分析任务中凸显细节信息。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.grind or 'Auto'}",
-                f"[bold][[bold #7FFFD4]-2  5 [/]]",
+                f"[bold][[bold #7FFFD4] 0  2 [/]]",
                 f"[bold]锐化 [bold #FFD700]{x.grind}[/]" if x.grind else f"[bold #A4D3EE]自动"
             ]
         },
@@ -264,11 +264,11 @@ class Args(object):
             "args": {"nargs": "?", "const": None, "type": str},
             "view": ["一次", "=POSITIVE INT"],
             "help": "频率探测",
-            "func": """- 控制视频处理过程中的帧率采样频率，平衡画面流畅度与计算资源消耗。
-                - 可用于视频加速预览、关键帧分析、性能压缩优化等任务中。""",
+            "func": """- 控制视频处理过程中的帧率采样频率，用于平衡图像精度与计算负载。
+                - 常用于视频加速预览、动作识别、性能优化等任务中，尤其适合需要高帧细节的分析场景。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.frate or 'Auto'}",
-                f"[bold][[bold #7FFFD4] 1  60[/]]",
+                f"[bold][[bold #7FFFD4]30  60[/]]",
                 f"[bold]帧率 [bold #FFD700]{x.frate}[/]" if x.frate else f"[bold #A4D3EE]自动"
             ]
         }
@@ -333,7 +333,7 @@ class Args(object):
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.thres}",
                 f"[bold][[bold #7FFFD4] 0  1 [/]]",
-                f"[bold]阈值超过 [bold #FFD700]{x.thres}[/] 的帧为稳定帧"
+                f"[bold]帧间相似度大于 [bold #FFD700]{x.thres}[/] 视为稳定"
             ]
         },
         "--shift": {
@@ -344,8 +344,21 @@ class Args(object):
                 - 该参数广泛用于多段拼接、场景变化识别及视频同步过程中，对容忍度进行灵活调控。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.shift}",
-                f"[bold][[bold #7FFFD4] 0  10[/]]",
-                f"[bold]合并 [bold #FFD700]{x.shift}[/] 个变化不大的稳定区间"
+                f"[bold][[bold #7FFFD4] 0  15[/]]",
+                f"[bold]允许合并 [bold #FFD700]{x.shift}[/] 个间隔帧"
+            ]
+        },
+        "--slide": {
+            "args": {"nargs": "?", "const": None, "type": str},
+            "view": ["一次", "=POSITIVE INT"],
+            "help": "星线踏步",
+            "func": """- 控制滑动窗口在视频帧序列中的推进步幅。
+                - 步幅越小，窗口间重叠度越高，有助于提升检测精度；步幅越大，推进速度更快，有利于大规模分析。
+                - 配合 `--scope`（序维穿梭）与 `--grade`（相位律动）使用，可精准调节分析节奏与资源消耗之间的平衡。""",
+            "push": lambda x, y: [
+                f"[bold #87AFD7]{x.slide}",
+                f"[bold][[bold #7FFFD4] 1  10[/]]",
+                f"[bold]滑动窗口在帧序列中每次前进 [bold #FFD700]{x.slide}[/] 步"
             ]
         },
         "--block": {
@@ -356,7 +369,7 @@ class Args(object):
                 - 提升图像处理、运动检测、局部特征提取等操作中的计算效率与空间分辨能力，适用于高分辨率视频的并行分析与局部建模。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.block}",
-                f"[bold][[bold #7FFFD4] 3  10[/]]",
+                f"[bold][[bold #7FFFD4] 1  10[/]]",
                 f"[bold]每帧分块数 [bold #FFD700]{x.block} * {x.block} = {x.block * x.block}"
             ]
         },
@@ -366,7 +379,7 @@ class Args(object):
             "help": "序维穿梭",
             "func": """- 控制滑动窗口的分析跨度，即每次运算所覆盖的帧数区间。
                 - 决定了算法对“时间”维度的理解深度，影响稳定性判断与细节捕捉能力。
-                - 本质上是时间感知的“感受器尺寸”：范围越大，感知越长；范围越小，感知越敏捷。""",
+                - 本质上是时间感知的“感受器尺寸”，范围越大，感知越长；范围越小，感知越敏捷。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.scope}",
                 f"[bold][[bold #7FFFD4] 1  20[/]]",

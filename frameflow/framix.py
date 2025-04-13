@@ -2831,7 +2831,8 @@ class Alynex(object):
 
         video = await self.ask_video_load(target_vision, src_size)
 
-        cutter = VideoCutter()
+        logger.debug(f"引擎初始化: slide={self.deploy.slide}")
+        cutter = VideoCutter(step=self.deploy.slide)
 
         logger.debug(f"{(cut_name := '视频帧长度: ' f'{video.frame_count}')}")
         logger.debug(f"{(cut_part := '视频帧片段: ' f'{video.frame_count - 1}')}")
@@ -3098,7 +3099,8 @@ class Alynex(object):
             4. 保留若干关键帧图片并绘制网格；
             5. 使用模型分类器（若启用）进行分类并返回结构结果。
             """
-            cutter = VideoCutter()
+            logger.debug(f"引擎初始化: slide={self.deploy.slide}")
+            cutter = VideoCutter(step=self.deploy.slide)
 
             panel_hook_list = []  # 用于记录所有 hook 描述信息并展示
 
