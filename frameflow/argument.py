@@ -20,6 +20,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
 
 
 class Args(object):
+    """Args Style"""
 
     reconcilable: list[str] = []
     discriminate: list[str] = []
@@ -461,6 +462,7 @@ class Args(object):
 
 
 class Wind(object):
+    """Wind style"""
 
     SPEED_TEXT = """> >> >>> >>>> >>>>> >>>>>> >>>>>>> >>>>>>>> >>>>>> >>>>> >>>> >>> >> >
 > > > > > > > > > > > > > > > > > > > >"""
