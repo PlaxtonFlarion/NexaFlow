@@ -182,7 +182,7 @@ class Args(object):
                 - 适用于批量压缩、格式转换或模型推理场景中的尺寸归一化处理。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.shape or 'Auto'}",
-                f"[bold][[bold #7FFFD4] ?  ? [/]]",
+                f"[bold][[bold #7FFFD4]   ?  ?   [/]]",
                 f"[bold]宽高 [bold #FFD700]{x.shape[0]} x {x.shape[1]}" if x.shape else f"[bold #A4D3EE]自动"
             ]
         },
@@ -196,7 +196,7 @@ class Args(object):
                 - 在保持画面清晰度与比例合理性的基础上，有效控制资源消耗和输出体积。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.scale or 'Auto'}",
-                f"[bold][[bold #7FFFD4] 0  1 [/]]",
+                f"[bold][[bold #7FFFD4] 0.1  1.0 [/]]",
                 f"[bold]压缩 [bold #FFD700]{x.scale}[/]" if x.scale else f"[bold #A4D3EE]自动"
             ]
         },
@@ -208,7 +208,7 @@ class Args(object):
                 - 可用于跳过片头、定位关键时间段，适配大文件裁剪或任务加速。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{getattr(y, 'parse_mills')(x.start) or 'Auto'}",
-                f"[bold][[bold #7FFFD4] 0  ? [/]]",
+                f"[bold][[bold #7FFFD4]   0  ?   [/]]",
                 f"[bold]开始 [bold #FFD700]{x.start}[/]" if x.start else f"[bold #A4D3EE]自动"
             ]
         },
@@ -220,7 +220,7 @@ class Args(object):
                 - 常用于跳过片尾、控制分析范围或预留系统资源。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{getattr(y, 'parse_mills')(x.close) or 'Auto'}",
-                f"[bold][[bold #7FFFD4] 0  ? [/]]",
+                f"[bold][[bold #7FFFD4]   0  ?   [/]]",
                 f"[bold]结束 [bold #FFD700]{x.close}[/]" if x.close else f"[bold #A4D3EE]自动"
             ]
         },
@@ -232,7 +232,7 @@ class Args(object):
                 - 与 `--start` 搭配使用时，可精准控制处理窗口，避免冗余计算。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{getattr(y, 'parse_mills')(x.limit) or 'Auto'}",
-                f"[bold][[bold #7FFFD4] 0  ? [/]]",
+                f"[bold][[bold #7FFFD4]   0  ?   [/]]",
                 f"[bold]持续 [bold #FFD700]{x.limit}[/]" if x.limit else f"[bold #A4D3EE]自动"
             ]
         },
@@ -244,7 +244,7 @@ class Args(object):
                 - 常用于背景虚化、艺术滤镜、前处理降噪等场景，营造柔和梦幻的视觉氛围。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.gauss or 'Auto'}",
-                f"[bold][[bold #7FFFD4] 0  2 [/]]",
+                f"[bold][[bold #7FFFD4] 0.0  2.0 [/]]",
                 f"[bold]模糊 [bold #FFD700]{x.gauss}[/]" if x.gauss else f"[bold #A4D3EE]自动"
             ]
         },
@@ -256,7 +256,7 @@ class Args(object):
                 - 适用于修复模糊图像、强化结构轮廓，或在特定分析任务中凸显细节信息。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.grind or 'Auto'}",
-                f"[bold][[bold #7FFFD4] 0  2 [/]]",
+                f"[bold][[bold #7FFFD4] 0.0  2.0 [/]]",
                 f"[bold]锐化 [bold #FFD700]{x.grind}[/]" if x.grind else f"[bold #A4D3EE]自动"
             ]
         },
@@ -268,7 +268,7 @@ class Args(object):
                 - 常用于视频加速预览、动作识别、性能优化等任务中，尤其适合需要高帧细节的分析场景。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.frate or 'Auto'}",
-                f"[bold][[bold #7FFFD4]30  60[/]]",
+                f"[bold][[bold #7FFFD4]  30  60  [/]]",
                 f"[bold]帧率 [bold #FFD700]{x.frate}[/]" if x.frate else f"[bold #A4D3EE]自动"
             ]
         }
@@ -284,7 +284,7 @@ class Args(object):
                 - 通过智能跳帧与关键帧优选机制，加速分析流程，提升处理效率，尤其适用于长视频或资源受限场景。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.boost}",
-                f"[bold][[bold #7FFFD4] T  F [/]]",
+                f"[bold][[bold #7FFFD4]   T  F   [/]]",
                 f"[bold #CAFF70]开启" if x.boost else f"[bold #FFB6C1]关闭"
             ]
         },
@@ -296,7 +296,7 @@ class Args(object):
                 - 在无需色彩信息的场景下可选择灰度模式，以降低计算负担并提升处理速度，实现性能与视觉需求之间的灵活权衡。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.color}",
-                f"[bold][[bold #7FFFD4] T  F [/]]",
+                f"[bold][[bold #7FFFD4]   T  F   [/]]",
                 f"[bold #CAFF70]开启" if x.color else f"[bold #FFB6C1]关闭"
             ]
         },
@@ -308,7 +308,7 @@ class Args(object):
                 - 该参数可实现对内容开头的精细控制，适用于关键时刻的标注与后期处理。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.begin}",
-                f"[bold][[bold #7FFFD4] ?  ? [/]]",
+                f"[bold][[bold #7FFFD4]   ?  ?   [/]]",
                 f"[bold]非稳定阶段 [bold #FFD700]{list(x.begin)}[/]"
             ]
         },
@@ -320,7 +320,7 @@ class Args(object):
                 - 当参数设为 `-1` 时，表示自动选取视频的最后一个阶段或最后一帧，便于快速截取完整片段的末尾部分。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.final}",
-                f"[bold][[bold #7FFFD4] ?  ? [/]]",
+                f"[bold][[bold #7FFFD4]   ?  ?   [/]]",
                 f"[bold]非稳定阶段 [bold #FFD700]{list(x.final)}[/]"
             ]
         },
@@ -332,7 +332,7 @@ class Args(object):
                 - 该值越高，对图像稳定状态的判定越严格，在视频剪辑、关键帧提取、稳定性检测等任务中提升图像变化识别的敏感度与精度。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.thres}",
-                f"[bold][[bold #7FFFD4] 0  1 [/]]",
+                f"[bold][[bold #7FFFD4]0.85  1.00[/]]",
                 f"[bold]帧间相似度大于 [bold #FFD700]{x.thres}[/] 视为稳定"
             ]
         },
@@ -344,7 +344,7 @@ class Args(object):
                 - 该参数广泛用于多段拼接、场景变化识别及视频同步过程中，对容忍度进行灵活调控。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.shift}",
-                f"[bold][[bold #7FFFD4] 0  15[/]]",
+                f"[bold][[bold #7FFFD4]   0  15  [/]]",
                 f"[bold]允许合并 [bold #FFD700]{x.shift}[/] 个间隔帧"
             ]
         },
@@ -357,7 +357,7 @@ class Args(object):
                 - 配合 `--scope`（序维穿梭）与 `--grade`（相位律动）使用，可精准调节分析节奏与资源消耗之间的平衡。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.slide}",
-                f"[bold][[bold #7FFFD4] 1  10[/]]",
+                f"[bold][[bold #7FFFD4]   1  10  [/]]",
                 f"[bold]滑动窗口在帧序列中每次前进 [bold #FFD700]{x.slide}[/] 步"
             ]
         },
@@ -369,7 +369,7 @@ class Args(object):
                 - 提升图像处理、运动检测、局部特征提取等操作中的计算效率与空间分辨能力，适用于高分辨率视频的并行分析与局部建模。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.block}",
-                f"[bold][[bold #7FFFD4] 1  10[/]]",
+                f"[bold][[bold #7FFFD4]   1  10  [/]]",
                 f"[bold]每帧分块数 [bold #FFD700]{x.block} * {x.block} = {x.block * x.block}"
             ]
         },
@@ -382,7 +382,7 @@ class Args(object):
                 - 本质上是时间感知的“感受器尺寸”，范围越大，感知越长；范围越小，感知越敏捷。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.scope}",
-                f"[bold][[bold #7FFFD4] 1  20[/]]",
+                f"[bold][[bold #7FFFD4]   1  20  [/]]",
                 f"[bold]滑动窗口中包含 [bold #FFD700]{x.scope}[/] 帧"
             ]
         },
@@ -395,7 +395,7 @@ class Args(object):
                 - 本质上模拟“时序惯性”与“当前性偏好”，可理解为时序分析中的“物理驱动感”。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{x.grade}",
-                f"[bold][[bold #7FFFD4] 1  5 [/]]",
+                f"[bold][[bold #7FFFD4]   1  5   [/]]",
                 f"[bold]滑动窗口中加权系数的幂指数 [bold #FFD700]{x.grade}[/]"
             ]
         },
@@ -407,7 +407,7 @@ class Args(object):
                 - 指定裁剪区域的左上角坐标 `(x, y)` 和该区域的宽度 `x_size` 及高度 `y_size`。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{['!' for _ in range(len(x.crops))]}",
-                f"[bold][[bold #7FFFD4] 0  1 [/]]",
+                f"[bold][[bold #7FFFD4]0.00  1.00[/]]",
                 f"[bold]探索 [bold #FFD700]{len(x.crops)}[/] 个区域的图像"
             ]
         },
@@ -419,7 +419,7 @@ class Args(object):
                 - 与 `--crops` 相反，此参数用于标记无需参与处理或分析的图像区域。""",
             "push": lambda x, y: [
                 f"[bold #87AFD7]{['!' for _ in range(len(x.omits))]}",
-                f"[bold][[bold #7FFFD4] 0  1 [/]]",
+                f"[bold][[bold #7FFFD4]0.00  1.00[/]]",
                 f"[bold]忽略 [bold #FFD700]{len(x.omits)}[/] 个区域的图像"
             ]
         }

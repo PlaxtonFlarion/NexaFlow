@@ -60,9 +60,9 @@ class Design(object):
             panel = Panel(
                 Text(
                     f"{text}", **wind["文本"]
-                ), **wind["边框"], width=int(Design.console.width * 0.7)
+                ), **wind["边框"], width=int(self.console.width * 0.7)
             )
-            Design.console.print(panel)
+            self.console.print(panel)
 
     @staticmethod
     def show_tree(file_path: str) -> None:
@@ -360,8 +360,8 @@ class Design(object):
             ]
             table_clip.add_row(*clip_list)
 
-            Design.console.print(table_info)
-            Design.console.print(table_clip)
+            self.console.print(table_info)
+            self.console.print(table_clip)
 
     def assort_frame(self, begin_fr, final_fr, stage_cs) -> None:
         """根据日志等级输出帧片段处理的起止帧号及耗时统计。"""
@@ -385,7 +385,7 @@ class Design(object):
             ]
             table.add_row(*assort_list)
 
-            Design.console.print(table)
+            self.console.print(table)
 
 
 if __name__ == '__main__':

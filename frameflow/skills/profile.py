@@ -159,8 +159,8 @@ class Deploy(object):
 
     @scale.setter
     def scale(self, value: typing.Any):
-        # Note 取值范围 0.0 ～ 1.0
-        if effective := Parser.parse_waves(value, min_v=0.0, max_v=1.0, decimal=1):
+        # Note 取值范围 0.1 ～ 1.0
+        if effective := Parser.parse_waves(value, min_v=0.1, max_v=1.0, decimal=1):
             self.deploys["FST"]["scale"] = effective
 
     @start.setter
@@ -183,7 +183,7 @@ class Deploy(object):
 
     @grind.setter
     def grind(self, value: typing.Any):
-        # Note 取值范围 0.00 ～ 2.00
+        # Note 取值范围 0.0 ～ 2.0
         if effective := Parser.parse_waves(value, min_v=0.0, max_v=2.0, decimal=1):
             self.deploys["FST"]["grind"] = effective
 
@@ -217,8 +217,8 @@ class Deploy(object):
 
     @thres.setter
     def thres(self, value: typing.Any):
-        # Note 取值范围 0.00 ～ 1.00
-        if effective := Parser.parse_waves(value, min_v=0.00, max_v=1.00, decimal=2):
+        # Note 取值范围 0.85 ～ 1.00
+        if effective := Parser.parse_waves(value, min_v=0.85, max_v=1.00, decimal=2):
             self.deploys["ALS"]["thres"] = effective
 
     @shift.setter
@@ -285,17 +285,19 @@ class Deploy(object):
     def view_deploy(self) -> None:
         deploys_group = {**Args.GROUP_FIRST, **Args.GROUP_EXTRA}
 
+        table_style = {
+            "title_justify": "center", "show_header": True, "show_lines": True
+        }
+
         for key, value in self.deploys.items():
             table = Table(
                 title=f"[bold #87CEFA]{const.DESC}({const.ALIAS}) Deploys {key}",
-                header_style=f"bold #B0C4DE",
-                title_justify=f"center",
-                show_header=True
+                header_style=f"bold #B0C4DE", **table_style
             )
             table.add_column("配置", no_wrap=True, width=8)
-            table.add_column("参数", no_wrap=True, width=12)
-            table.add_column("范围", no_wrap=True, width=8)
-            table.add_column("效果", no_wrap=True, min_width=30)
+            table.add_column("参数", no_wrap=True, width=14)
+            table.add_column("范围", no_wrap=True, width=12)
+            table.add_column("效果", no_wrap=True, min_width=32)
 
             information = [
                 [f"[bold #D75F87]{v['help']}"] + v["push"](self, Parser)
@@ -304,6 +306,30 @@ class Deploy(object):
 
             for info in information:
                 table.add_row(*info)
+            Design.console.print(table)
+
+        if crops_list := self.crops:
+            table = Table(
+                title=f"[bold #5FAFFF]{const.DESC}({const.ALIAS}) Paint Crop Hook",
+                header_style="bold #AFAFD7", **table_style
+            )
+            table.add_column("编号", justify="left", width=4)
+            table.add_column("区域", justify="left", width=68)
+
+            for index, hook in enumerate(crops_list, start=1):
+                table.add_row(f"[bold #B2B2B2]{index:02}", f"[bold #87AFFF]{hook}")
+            Design.console.print(table)
+
+        if omits_list := self.omits:
+            table = Table(
+                title=f"[bold #5FAFFF]{const.DESC}({const.ALIAS}) Paint Omit Hook",
+                header_style="bold #AFAFD7", **table_style
+            )
+            table.add_column("编号", justify="left", width=4)
+            table.add_column("区域", justify="left", width=68)
+
+            for index, hook in enumerate(omits_list, start=1):
+                table.add_row(f"[bold #B2B2B2]{index:02}", f"[bold #87AFFF]{hook}")
             Design.console.print(table)
 
 
