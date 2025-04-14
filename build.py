@@ -32,17 +32,23 @@ from nexacore.design import Design
 from nexaflow import const
 
 
-async def packaging() -> tuple["Path", typing.Union["Path"], typing.Union["Path"]]:
+async def packaging() -> tuple[
+    "Path", typing.Union["Path"], typing.Union["Path"], typing.Union["Path"]
+]:
+
     operation_system, exe = sys.platform, sys.executable
 
-    venv_base_path, site_packages, target = Path(".venv") if Path(".venv").exists() else Path("venv"), None, None
+    venv_base_path = Path(".venv") if Path(".venv").exists() else Path("venv")
+
+    site_packages, target, rename = None, None, None
 
     compile_cmd = [exe, "-m", "nuitka", "--standalone"]
 
     if operation_system == "win32":
         if (lib_path := venv_base_path / "Lib" / "site-packages").exists():
-            program = Path(f"applications/{const.DESC}.dist")
-            site_packages, target, compile_cmd = lib_path.resolve(), program, compile_cmd + [
+            target = Path(f"applications/{const.DESC}.dist")
+            site_packages, rename = lib_path.resolve(), Path(target.parent).joinpath(const.DESC)
+            compile_cmd += [
                 "--windows-icon-from-ico=resources/icons/framix_icn_2.ico",
             ]
 
@@ -50,8 +56,9 @@ async def packaging() -> tuple["Path", typing.Union["Path"], typing.Union["Path"
         if (lib_path := venv_base_path / "lib").exists():
             for sub in lib_path.iterdir():
                 if "site-packages" in str(sub):
-                    program = Path(f"applications/{const.DESC}.app/Contents/MacOS")
-                    site_packages, target, compile_cmd = sub.resolve(), program, compile_cmd + [
+                    target = Path(f"applications/{const.DESC}.app/Contents/MacOS")
+                    site_packages, compile_cmd = sub.resolve(), None
+                    compile_cmd += [
                         "--macos-create-app-bundle",
                         f"--macos-app-name={const.DESC}",
                         f"--macos-app-version={const.VERSION}",
@@ -68,7 +75,7 @@ async def packaging() -> tuple["Path", typing.Union["Path"], typing.Union["Path"
         "--show-progress", "--show-memory", "--output-dir=applications", f"{const.NAME}.py"
     ]
 
-    return site_packages, target, compile_cmd
+    return site_packages, target, rename, compile_cmd
 
 
 async def post_build() -> typing.Coroutine | None:
@@ -137,8 +144,9 @@ async def post_build() -> typing.Coroutine | None:
             progress.advance(task)
 
         # 文件夹重命名
-        shutil.move(target, rename := Path(target.parent).joinpath(const.DESC))
-        Design.console.print(f"[bold #00D787][✓] Rename completed {target.name} → {rename.name}")
+        if rename:
+            shutil.move(target, rename)
+            Design.console.print(f"[bold #00D787][✓] Rename completed {target.name} → {rename.name}")
 
     done_list, fail_list = [], []
 
@@ -146,7 +154,7 @@ async def post_build() -> typing.Coroutine | None:
         "uiautomator2", "keras", "tensorflow", "tensorboard",
     ]
 
-    site_packages, target, compile_cmd = await packaging()
+    site_packages, target, rename, compile_cmd = await packaging()
 
     await examine_dependencies()
 
