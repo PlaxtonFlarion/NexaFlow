@@ -1,6 +1,6 @@
 # 许可证 / LICENSES
 
-![LOGO](resources/images/illustration/License.png)
+![LOGO](/schematic/resources/images/illustration/License.png)
 
 ---
 
