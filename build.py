@@ -55,15 +55,19 @@ async def packaging() -> tuple[
     elif operation_system == "darwin":
         if (lib_path := venv_base_path / "lib").exists():
             for sub in lib_path.iterdir():
-                if "site-packages" in str(sub):
-                    target = Path(f"applications/{const.DESC}.app/Contents/MacOS")
-                    site_packages, compile_cmd = sub.resolve(), None
-                    compile_cmd += [
-                        "--macos-create-app-bundle",
-                        f"--macos-app-name={const.DESC}",
-                        f"--macos-app-version={const.VERSION}",
-                        "--macos-app-icon=resources/images/macos/framix_macos_icn.png",
-                    ]
+                if sub.name.startswith("python"):
+                    site_packages, rename = (sub / "site-packages").resolve(), None
+                elif "site-packages" in str(sub):
+                    site_packages, rename = sub.resolve(), None
+
+                target = Path(f"applications/{const.DESC}.app/Contents/MacOS")
+
+                compile_cmd += [
+                    "--macos-create-app-bundle",
+                    f"--macos-app-name={const.DESC}",
+                    f"--macos-app-version={const.VERSION}",
+                    "--macos-app-icon=resources/images/macos/framix_macos_icn.png",
+                ]
 
     else:
         raise RuntimeError(f"Unsupported platforms: {operation_system}")
