@@ -52,7 +52,9 @@ async def packaging() -> tuple["Path", typing.Union["Path"], typing.Union["Path"
                 if "site-packages" in str(sub):
                     program = Path(f"applications/{const.DESC}.app/Contents/MacOS")
                     site_packages, target, compile_cmd = sub.resolve(), program, compile_cmd + [
-                        "--macos-create-app-bundle", f"--macos-app-name={const.DESC}", f"--macos-app-version={const.VERSION}",
+                        "--macos-create-app-bundle",
+                        f"--macos-app-name={const.DESC}",
+                        f"--macos-app-version={const.VERSION}",
                         "--macos-app-icon=resources/images/macos/framix_macos_icn.png",
                     ]
 
@@ -63,7 +65,7 @@ async def packaging() -> tuple["Path", typing.Union["Path"], typing.Union["Path"
         "--nofollow-import-to=tensorflow,uiautomator2",
         "--include-module=pdb,deprecation",
         "--include-package=ml_dtypes,distutils,site,google,absl,wrapt,gast,astunparse,termcolor,opt_einsum,flatbuffers,h5py,adbutils,pygments",
-        "--show-progress", "--show-memory", "--output-dir=applications", "frameflow/framix.py"
+        "--show-progress", "--show-memory", "--output-dir=applications", "framix.py"
     ]
 
     return site_packages, target, compile_cmd
@@ -109,7 +111,7 @@ async def post_build() -> typing.Coroutine | None:
         """将指定依赖从虚拟环境复制到目标目录。"""
         with Progress(
                 TextColumn(
-                    text_format="[bold #80C0FF]Framix | {task.description}", justify="right"
+                    text_format=f"[bold #80C0FF]{const.DESC} | {{task.description}}", justify="right"
                 ),
                 SpinnerColumn(
                     style="bold #FFA07A", speed=1, finished_text="[bold #7CFC00]✓"
@@ -136,7 +138,7 @@ async def post_build() -> typing.Coroutine | None:
 
     done_list, fail_list = [], []
 
-    schematic, dependencies = Path(os.path.dirname(__file__)).joinpath("frameflow", const.F_SCHEMATIC), [
+    schematic, dependencies = Path(os.path.dirname(__file__)).joinpath(const.F_SCHEMATIC), [
         "uiautomator2", "keras", "tensorflow", "tensorboard",
     ]
 

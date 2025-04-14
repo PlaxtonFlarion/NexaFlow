@@ -1,6 +1,6 @@
 # 🚀 Framix｜画帧秀
 
-![LOGO](resources/images/illustration/Readme.png)
+![LOGO](schematic/resources/images/illustration/Readme.png)
 
 ---
 
@@ -2137,7 +2137,7 @@ framix --shape 200,200 --build <文件夹路径> --build <文件夹路径> --bui
 
 ## Framix｜画帧秀 编译 / Compile
 
-![LOGO](resources/images/illustration/Compile.png)
+![LOGO](schematic/resources/images/illustration/Compile.png)
 
 ---
 
@@ -2199,16 +2199,16 @@ framix --shape 200,200 --build <文件夹路径> --build <文件夹路径> --bui
 
 ---
 
-## Windows 操作系统
-### 准备工作
+### Windows 操作系统
+#### 准备工作
 - 打开命令提示符 **Command Prompt** 或 **PowerShell**
 - 导航到您的 **Python** 脚本所在的目录
 
-### 运行根目录下 `build.py` 文件
+#### 运行根目录下 `build.py` 文件
 > **NexaFlow**
 >> **build.py**
 
-### 目录结构
+#### 目录结构
 - **applications**
   - **Framix**
     - **schematic**
@@ -2221,16 +2221,16 @@ framix --shape 200,200 --build <文件夹路径> --build <文件夹路径> --bui
 
 ---
 
-## MacOS 操作系统
-### 准备工作
+### MacOS 操作系统
+#### 准备工作
 - 打开终端 **Terminal** 
 - 导航到您的 **Python** 脚本所在的目录
 
-### 运行根目录下 `build.py` 文件
+#### 运行根目录下 `build.py` 文件
 > **NexaFlow**
 >> **build.py**
 
-### 目录结构
+#### 目录结构
 - **applications**
   - **Framix.app**
     - **Contents**
@@ -2248,19 +2248,20 @@ framix --shape 200,200 --build <文件夹路径> --build <文件夹路径> --bui
           - **Keras_Hued_W256_H256**
       - **Info.plist**
 
-### 修改 Info.plist 文件
+#### 修改 Info.plist 文件
 ```
 <key>CFBundleExecutable</key>
 <string>framix.sh</string> <!-- 设置启动脚本 -->
 ```
 
-### 赋予执行权限
-#### framix
+#### 赋予执行权限
+
+- **framix**
 ```
 chmod +x /Applications/Framix.app/Contents/MacOS/framix
 ```
 
-#### framix.sh
+- **framix.sh**
 ```
 chmod +x /Applications/Framix.app/Contents/MacOS/framix.sh
 ```
