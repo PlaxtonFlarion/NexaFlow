@@ -65,7 +65,7 @@ async def packaging() -> tuple["Path", typing.Union["Path"], typing.Union["Path"
         "--nofollow-import-to=tensorflow,uiautomator2",
         "--include-module=pdb,deprecation",
         "--include-package=ml_dtypes,distutils,site,google,absl,wrapt,gast,astunparse,termcolor,opt_einsum,flatbuffers,h5py,adbutils,pygments",
-        "--show-progress", "--show-memory", "--output-dir=applications", "framix.py"
+        "--show-progress", "--show-memory", "--output-dir=applications", f"{const.NAME}.py"
     ]
 
     return site_packages, target, compile_cmd
