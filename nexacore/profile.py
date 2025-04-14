@@ -23,9 +23,9 @@ import json
 import typing
 from loguru import logger
 from rich.table import Table
-from frameflow.skills.parser import Parser
-from frameflow.skills.design import Design
-from frameflow.argument import Args
+from nexacore.parser import Parser
+from nexacore.design import Design
+from nexacore.argument import Args
 from nexaflow import const
 
 

@@ -32,7 +32,7 @@ except ImportError as e:
 
 from engine.device import Device
 from engine.terminal import Terminal
-from frameflow.skills.design import Design
+from nexacore.design import Design
 from nexaflow import const
 
 

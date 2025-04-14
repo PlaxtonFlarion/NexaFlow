@@ -27,7 +27,7 @@ from rich.console import Console
 from rich.logging import (
     LogRecord, RichHandler
 )
-from frameflow.skills.design import Design
+from nexacore.design import Design
 from nexaflow import const
 
 

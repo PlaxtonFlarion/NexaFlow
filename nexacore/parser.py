@@ -22,7 +22,7 @@ import typing
 import argparse
 import datetime
 import textwrap
-from frameflow import argument
+from nexacore import argument
 from nexaflow import const
 
 

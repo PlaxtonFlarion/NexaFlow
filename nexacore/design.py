@@ -1,9 +1,9 @@
-#
-#   ____  _
-#  / ___|| |__   _____      __
-#  \___ \| '_ \ / _ \ \ /\ / /
-#   ___) | | | | (_) \ V  V /
-#  |____/|_| |_|\___/ \_/\_/
+#   ____            _
+#  |  _ \  ___  ___(_) __ _ _ __
+#  | | | |/ _ \/ __| |/ _` | '_ \
+#  | |_| |  __/\__ \ | (_| | | | |
+#  |____/ \___||___/_|\__, |_| |_|
+#                     |___/
 #
 
 """
@@ -30,7 +30,7 @@ from rich.progress import (
     Progress, BarColumn, TextColumn,
     SpinnerColumn, TimeRemainingColumn
 )
-from frameflow import argument
+from nexacore import argument
 from nexaflow import const
 
 

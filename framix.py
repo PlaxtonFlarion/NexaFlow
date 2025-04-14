@@ -73,11 +73,11 @@ from engine.terminal import Terminal
 from engine.tinker import (
     Craft, Search, Active, Review, FramixError
 )
-from frameflow.argument import Wind
-from frameflow.skills.cubicle import DB
-from frameflow.skills.design import Design
-from frameflow.skills.parser import Parser
-from frameflow.skills.profile import (
+from nexacore.argument import Wind
+from nexacore.cubicle import DB
+from nexacore.design import Design
+from nexacore.parser import Parser
+from nexacore.profile import (
     Deploy, Option
 )
 from nexaflow import const
@@ -3495,7 +3495,7 @@ if __name__ == '__main__':
         elif _software == f"{const.NAME}.py":
             # IDE
             _fx_work = os.path.dirname(os.path.abspath(__file__))
-            _fx_feasible = os.path.dirname(_fx_work)
+            _fx_feasible = _fx_work
         else:
             raise FramixError(f"{const.DESC} compatible with {const.NAME} command")
 
