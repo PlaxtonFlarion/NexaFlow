@@ -38,6 +38,8 @@ async def packaging() -> tuple[
 
     operation_system, exe = sys.platform, sys.executable
 
+    app = f"applications"
+
     venv_base_path = Path(".venv") if Path(".venv").exists() else Path("venv")
 
     site_packages, target, rename = None, None, None
@@ -46,7 +48,7 @@ async def packaging() -> tuple[
 
     if operation_system == "win32":
         if (lib_path := venv_base_path / "Lib" / "site-packages").exists():
-            target = Path(f"applications/{const.DESC}.dist")
+            target = Path(app).joinpath(f"{const.DESC}.dist")
             site_packages, rename = lib_path.resolve(), Path(target.parent).joinpath(const.DESC)
             compile_cmd += [
                 "--windows-icon-from-ico=schematic/resources/icons/framix_icn_2.ico",
@@ -60,7 +62,7 @@ async def packaging() -> tuple[
                 elif "site-packages" in str(sub):
                     site_packages, rename = sub.resolve(), None
 
-                target = Path(f"applications/{const.DESC}.app/Contents/MacOS")
+                target = Path(app).joinpath(f"{const.DESC}.app", f"Contents", f"MacOS")
 
                 compile_cmd += [
                     "--macos-create-app-bundle",
@@ -76,7 +78,7 @@ async def packaging() -> tuple[
         "--nofollow-import-to=tensorflow,uiautomator2",
         "--include-module=pdb,deprecation",
         "--include-package=ml_dtypes,distutils,site,google,absl,wrapt,gast,astunparse,termcolor,opt_einsum,flatbuffers,h5py,adbutils,pygments",
-        "--show-progress", "--show-memory", "--output-dir=applications", f"{const.NAME}.py"
+        "--show-progress", "--show-memory", f"--output-dir={app}", f"{const.NAME}.py"
     ]
 
     return site_packages, target, rename, compile_cmd
@@ -87,14 +89,12 @@ async def post_build() -> typing.Coroutine | None:
     async def input_stream() -> typing.Coroutine | None:
         """读取标准流"""
         async for line in transports.stdout:
-            line_fmt = line.decode(encoding=const.CHARSET, errors="ignore").strip()
-            Design.console.print(f"[bold]{const.DESC} | [bold #FFAF5F]Compiler[/] | {line_fmt}")
+            compile_log(line.decode(encoding=const.CHARSET, errors="ignore").strip())
 
     async def error_stream() -> typing.Coroutine | None:
         """读取异常流"""
         async for line in transports.stderr:
-            line_fmt = line.decode(encoding=const.CHARSET, errors="ignore").strip()
-            Design.console.print(f"[bold]{const.DESC} | [bold #FFAF5F]Compiler[/] | {line_fmt}")
+            compile_log(line.decode(encoding=const.CHARSET, errors="ignore").strip())
 
     async def examine_dependencies() -> typing.Coroutine | None:
         """自动查找虚拟环境中的 site-packages 路径，仅支持 Windows 与 macOS，兼容 .venv / venv。 """
@@ -107,15 +107,24 @@ async def post_build() -> typing.Coroutine | None:
                 done_list.append((src, dst))
             else:
                 fail_list.append(dep)
-                Design.console.print(f"[bold #FF6347][!] Dependency not found -> {dep}")
+                compile_log(f"[bold #FF6347][!] Dependency not found -> {dep}")
 
         if schematic.exists():
-            done_list.append(schematic.name)
+            src, dst = schematic, target / schematic.name
+            done_list.append((src, dst))
         else:
             fail_list.append(schematic.name)
-            Design.console.print(f"[bold #FF6347][!] Dependency not found -> {schematic.name}")
+            compile_log(f"[bold #FF6347][!] Dependency not found -> {schematic.name}")
 
-        if len(done_list) != len(dependencies + [schematic.name]):
+        # Note Framix Only
+        if specially.exists():
+            src, dst = specially, target / const.F_SPECIALLY / specially.name
+            done_list.append((src, dst))
+        else:
+            fail_list.append(specially.name)
+            compile_log(f"[bold #FF6347][!] Dependency not found -> {specially.name}")
+
+        if fail_list:
             raise FileNotFoundError(f"Incomplete dependencies required {fail_list}")
 
     async def forward_dependencies() -> typing.Coroutine | None:
@@ -138,27 +147,34 @@ async def post_build() -> typing.Coroutine | None:
                 expand=False
         ) as progress:
 
-            task = progress.add_task("Copy Dependencies", total=len(dependencies))
+            task = progress.add_task("Copy Dependencies", total=len(done_list))
 
             for src, dst in done_list:
                 shutil.copytree(src, dst, dirs_exist_ok=True)
                 progress.advance(task)
 
-            shutil.copytree(schematic, target.joinpath(const.F_SCHEMATIC), dirs_exist_ok=True)
-            progress.advance(task)
-
         # 文件夹重命名
         if rename:
             shutil.move(target, rename)
-            Design.console.print(f"[bold #00D787][✓] Rename completed {target.name} → {rename.name}")
+            compile_log(f"[bold #00D787][✓] Rename completed {target.name} → {rename.name}")
+
+    compile_log: typing.Any = lambda x: Design.console.print(
+        f"[bold]{const.DESC} | [bold #FFAF5F]Compiler[/] | {x}"
+    )
+
+    site_packages, target, rename, compile_cmd = await packaging()
 
     done_list, fail_list = [], []
 
-    schematic, dependencies = Path(os.path.dirname(__file__)).joinpath(const.F_SCHEMATIC), [
-        "uiautomator2", "keras", "tensorflow", "tensorboard",
+    current_folder = os.path.dirname(os.path.abspath(__file__))
+
+    dependencies = [
+        "uiautomator2", "keras", "tensorflow", "tensorboard"
     ]
 
-    site_packages, target, rename, compile_cmd = await packaging()
+    schematic = Path(current_folder).joinpath(const.F_SCHEMATIC)
+    # Note Framix Only
+    specially = Path(current_folder).joinpath(const.F_SPECIALLY, const.F_SRC_MODEL_PLACE)
 
     await examine_dependencies()
 
