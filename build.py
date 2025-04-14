@@ -49,7 +49,7 @@ async def packaging() -> tuple[
             target = Path(f"applications/{const.DESC}.dist")
             site_packages, rename = lib_path.resolve(), Path(target.parent).joinpath(const.DESC)
             compile_cmd += [
-                "--windows-icon-from-ico=resources/icons/framix_icn_2.ico",
+                "--windows-icon-from-ico=schematic/resources/icons/framix_icn_2.ico",
             ]
 
     elif operation_system == "darwin":
@@ -66,7 +66,7 @@ async def packaging() -> tuple[
                     "--macos-create-app-bundle",
                     f"--macos-app-name={const.DESC}",
                     f"--macos-app-version={const.VERSION}",
-                    "--macos-app-icon=resources/images/macos/framix_macos_icn.png",
+                    "--macos-app-icon=schematic/resources/images/macos/framix_macos_icn.png",
                 ]
 
     else:
