@@ -136,6 +136,10 @@ async def post_build() -> typing.Coroutine | None:
             shutil.copytree(schematic, target.joinpath(const.F_SCHEMATIC), dirs_exist_ok=True)
             progress.advance(task)
 
+        # 文件夹重命名
+        shutil.move(target, rename := Path(target.parent).joinpath(const.DESC))
+        Design.console.print(f"[bold #00D787][✓] Rename completed {target.name} → {rename.name}")
+
     done_list, fail_list = [], []
 
     schematic, dependencies = Path(os.path.dirname(__file__)).joinpath(const.F_SCHEMATIC), [
