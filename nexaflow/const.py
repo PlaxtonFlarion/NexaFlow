@@ -17,7 +17,6 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
 # このファイルは Framix(画帧秀) ライセンスの下でライセンスされています。詳細は LICENSE.md ファイルを参照してください。
 """
 
-import os
 
 ITEM = r"NexaFlow"
 NAME = r"framix"
@@ -92,7 +91,7 @@ FAINT_MODEL = f"Keras_Gray_W256_H256"
 COLOR_MODEL = f"Keras_Hued_W256_H256"
 
 F_SCHEMATIC = f"schematic"
-F_SPECIALLY = f"Specially"
+F_STRUCTURE = f"Structure"
 F_SRC_OPERA_PLACE = f"{DESC}_Mix"
 F_SRC_MODEL_PLACE = f"{DESC}_Model"
 F_SRC_TOTAL_PLACE = f"{DESC}_Report"
@@ -106,15 +105,6 @@ SHOW_LEVEL = f"INFO"
 WHILE_FORMAT = f"[bold]{{time:YYYY-MM-DD HH:mm:ss.SSS}} | <level>{{level: <8}}</level> | {{name}}:{{function}}:{{line}} - <level>{{message}}</level>"
 PRINT_FORMAT = f"[bold]{DESC} | <level>{{level: <8}}</level> | <level>{{message}}</level>"
 WRITE_FORMAT = f"<green>{{time:YYYY-MM-DD HH:mm:ss.SSS}}</green> | <level>{{level: <8}}</level> | <level>{{message}}</level>"
-
-NEXA = os.path.dirname(os.path.abspath(__file__))
-WORK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-TEMPLATE_ATOM_TOTAL = os.path.join(NEXA, f"templates", f"template_atom_total.html")
-TEMPLATE_VIEW_TOTAL = os.path.join(NEXA, f"templates", f"template_view_total.html")
-TEMPLATE_MAIN_TOTAL = os.path.join(NEXA, f"templates", f"template_main_total.html")
-TEMPLATE_VIEW_SHARE = os.path.join(NEXA, f"templates", f"template_view_share.html")
-TEMPLATE_MAIN_SHARE = os.path.join(NEXA, f"templates", f"template_main_share.html")
 
 
 if __name__ == '__main__':

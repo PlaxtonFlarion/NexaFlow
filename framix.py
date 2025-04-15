@@ -3544,7 +3544,7 @@ if __name__ == '__main__':
 
         # 设置初始路径
         if not os.path.exists(
-                _initial_source := os.path.join(_fx_feasible, const.F_SPECIALLY).format()
+                _initial_source := os.path.join(_fx_feasible, const.F_STRUCTURE).format()
         ):
             os.makedirs(_initial_source, exist_ok=True)
 
