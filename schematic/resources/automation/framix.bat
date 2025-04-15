@@ -1,7 +1,7 @@
 @echo off
 
 :: 设置路径
-set EXE_PATH="%~dp0framix.dist\framix.exe"
+set EXE_PATH="%~dp0FramixEngine\framix.exe"
 
 :: 检查是否存在
 if not exist %EXE_PATH% (
