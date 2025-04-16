@@ -43,12 +43,15 @@ import re
 import sys
 import json
 import time
+import uuid
+import stat
 import signal
 import shutil
 import random
 import typing
 import inspect
 import asyncio
+import pathlib
 import datetime
 import tempfile
 
@@ -65,10 +68,19 @@ from concurrent.futures import ProcessPoolExecutor
 # ====[ from: 第三方库 ]====
 from loguru import logger
 from rich.prompt import Prompt
+from PIL import (
+    Image, ImageDraw, ImageFont
+)
 
 # ====[ from: 本地模块 ]====
 from engine.device import Device
 from engine.switch import Switch
+from engine.manage import (
+    ScreenMonitor, SourceMonitor, Manage
+)
+from engine.medias import (
+    Record, Player
+)
 from engine.terminal import Terminal
 from engine.tinker import (
     Craft, Search, Active, Review, FramixError
@@ -94,6 +106,28 @@ from nexaflow.classifier.base import ClassifierResult
 from nexaflow.classifier.keras_classifier import KerasStruct
 
 _T = typing.TypeVar("_T")  # 定义类型变量
+
+
+# 信号处理器
+def signal_processor(*_, **__) -> None:
+    """
+    程序信号处理函数，用于响应中断（如 Ctrl+C）时的清理与退出操作。
+
+    该函数通常注册为信号处理器，用于在用户主动中止程序执行时，
+    优雅地清理状态、打印退出提示，并安全终止进程。
+
+    Parameters
+    ----------
+    *_, **__ : Any
+        占位参数，用于兼容 signal.signal 的回调签名要求。
+
+    Returns
+    -------
+    None
+        无返回值，调用后程序将终止。
+    """
+    Design.exit()
+    sys.exit(Design.closure())
 
 
 class Missions(object):
@@ -1071,9 +1105,6 @@ class Missions(object):
             logger.debug(tip := f"没有有效任务")
             return self.design.show_panel(tip, Wind.KEEPER)
 
-        # ====[ 内置模块 ]====
-        import uuid
-
         looper = asyncio.get_running_loop()
 
         clipix = Clipix(self.fmp, self.fpb)
@@ -1343,11 +1374,6 @@ class Missions(object):
         4. 添加标准网格线以增强图像可读性。
         5. 展示图像预览，支持用户交互式选择是否保存。
         """
-
-        # ====[ from: 第三方库 ]====
-        from PIL import (
-            Image, ImageDraw, ImageFont
-        )
 
         async def paint_lines(device: "Device") -> "Image":
             """
@@ -3348,66 +3374,12 @@ class Alynex(object):
         ) if struct else Review(*(await analytics_basic()))
 
 
-# 任务处理器
-async def arithmetic(function: "typing.Callable", parameters: list[str]) -> None:
-    """
-    执行通用异步任务函数，并预处理参数路径。
-
-    该函数用于统一调度框架中的任务执行流程。它在调用目标函数前，
-    先对传入的参数列表进行路径字符清洗与去重处理，然后以标准格式调用。
-
-    适用于需要传入文件路径或命令参数的异步任务场景。
-
-    Parameters
-    ----------
-    function : Callable
-        目标异步函数，接受 (parameters, _option, _deploy) 作为标准参数签名。
-
-    parameters : list[str]
-        原始字符串参数列表，通常为路径或文件名，执行前将被去除控制符并去重。
-
-    Returns
-    -------
-    None
-        异步执行，无返回值。
-    """
-
-    # 修正参数路径
-    parameters = [(await Craft.revise_path(param)) for param in parameters]
-    # 去除重复参数
-    parameters = list(dict.fromkeys(parameters))
-    # 执行函数
-    await function(parameters, _option, _deploy)
-
-
-# 任务处理器
-async def scheduling() -> None:
+async def main() -> typing.Coroutine | None:
     """
     命令分发调度器，根据命令行参数执行对应任务模块。
-
-    根据解析到的 `_lines` 参数判断用户指定的任务类型，并调用对应的执行逻辑。
-    若任务类型需要依赖 `scrcpy` 工具，则进行安装检查；否则根据具体参数执行
-    分析、图像生成、视图合并等不同子任务。若未指定任务，则输出帮助文档。
-
-    Subtasks
-    --------
-    - flick / carry / fully : 启动视频分析流程
-    - paint                 : 启动图像渲染模块
-    - union                 : 合并子视图（多任务时间线拼接）
-    - merge                 : 合并主任务视频（帧与音频同步）
-
-    Returns
-    -------
-    None
-        所有任务均为异步执行，无返回值。
-
-    Raises
-    ------
-    FramixError
-        若未检测到 scrcpy 安装，在依赖场景下将主动抛出异常。
     """
 
-    async def _already_installed():
+    async def _scheduling() -> typing.Coroutine | None:
         """
         检查 scrcpy 是否已安装，如果未安装则显示安装提示并退出程序。
         """
@@ -3415,8 +3387,50 @@ async def scheduling() -> None:
             return None
         raise FramixError("Install first https://github.com/Genymobile/scrcpy")
 
-    if _lines.flick or _lines.carry or _lines.fully:
-        await _already_installed()
+    async def _authorized() -> typing.Coroutine | None:
+        """
+        检查目录下的所有文件是否具备执行权限，如果文件没有执行权限，则自动添加 +x 权限。
+        """
+        if _platform != "darwin":
+            return None
+
+        if not (ensure := [
+            kit for kit in [_adb, _fmp, _fpb] if not (pathlib.Path(kit).stat().st_mode & stat.S_IXUSR)
+        ]):
+            return None
+
+        for auth in ensure:
+            logger.debug(f"Authorizing: {auth}")
+
+        for resp in await asyncio.gather(
+            *(Terminal.cmd_line(["chmod", "+x", kit]) for kit in ensure), return_exceptions=True
+        ):
+            logger.debug(f"Authorize: {resp}")
+
+    async def _arithmetic(function: "typing.Callable", parameters: list[str]) -> typing.Coroutine | None:
+        """
+        执行通用异步任务函数，并预处理参数路径。
+        """
+        parameters = [(await Craft.revise_path(param)) for param in parameters]
+        parameters = list(dict.fromkeys(parameters))
+        await function(parameters, _option, _deploy)
+
+    await _authorized()
+
+    if _video_list := _lines.video:
+        await _arithmetic(_missions.video_file_task, _video_list)
+
+    elif _stack_list := _lines.stack:
+        await _arithmetic(_missions.video_data_task, _stack_list)
+
+    elif _train_list := _lines.train:
+        await _arithmetic(_missions.train_model, _train_list)
+
+    elif _build_list := _lines.build:
+        await _arithmetic(_missions.build_model, _build_list)
+
+    elif _lines.flick or _lines.carry or _lines.fully:
+        await _scheduling()
         await _missions.analysis(_option, _deploy)
 
     elif _lines.paint:
@@ -3430,28 +3444,6 @@ async def scheduling() -> None:
 
     else:
         Design.help_document()
-
-
-# 信号处理器
-def signal_processor(*_, **__) -> None:
-    """
-    程序信号处理函数，用于响应中断（如 Ctrl+C）时的清理与退出操作。
-
-    该函数通常注册为信号处理器，用于在用户主动中止程序执行时，
-    优雅地清理状态、打印退出提示，并安全终止进程。
-
-    Parameters
-    ----------
-    *_, **__ : Any
-        占位参数，用于兼容 signal.signal 的回调签名要求。
-
-    Returns
-    -------
-    None
-        无返回值，调用后程序将终止。
-    """
-    Design.exit()
-    sys.exit(Design.closure())
 
 
 if __name__ == '__main__':
@@ -3468,9 +3460,10 @@ if __name__ == '__main__':
     try:
         signal.signal(signal.SIGINT, signal_processor)  # 设置 Ctrl + C 信号处理方式
 
+        Design.minor_logo()
+
         # 如果没有提供命令行参数，则显示应用程序标志和帮助文档，并退出程序
         if len(system_parameter_list := sys.argv) == 1:
-            Design.minor_logo()
             Design.help_document()
             Design.done()
             sys.exit(Design.closure())
@@ -3522,16 +3515,16 @@ if __name__ == '__main__':
         # 根据平台设置工具路径
         if _platform == "win32":
             # Windows
-            _adb = os.path.join(_turbo, "Windows", "platform-tools", "adb.exe")
-            _fmp = os.path.join(_turbo, "Windows", "ffmpeg", "bin", "ffmpeg.exe")
-            _fpb = os.path.join(_turbo, "Windows", "ffmpeg", "bin", "ffprobe.exe")
-        elif _platform == "darwin":
-            # MacOS
-            _adb = os.path.join(_turbo, "MacOS", "platform-tools", "adb")
-            _fmp = os.path.join(_turbo, "MacOS", "ffmpeg", "bin", "ffmpeg")
-            _fpb = os.path.join(_turbo, "MacOS", "ffmpeg", "bin", "ffprobe")
+            _supports = os.path.join(_turbo, "Windows").format()
+            _adb, _fmp, _fpb = "adb.exe", "ffmpeg.exe", "ffprobe.exe"
         else:
-            raise FramixError(f"{const.DESC} tool compatible with Windows or MacOS")
+            # MacOS
+            _supports = os.path.join(_turbo, "MacOS").format()
+            _adb, _fmp, _fpb = "adb", "ffmpeg", "ffprobe"
+
+        _adb = os.path.join(_supports, "platform-tools", _adb)
+        _fmp = os.path.join(_supports, "ffmpeg", "bin", _fmp)
+        _fpb = os.path.join(_supports, "ffmpeg", "bin", _fpb)
 
         # 将工具路径添加到系统 PATH 环境变量中
         for _tls in (_tools := [_adb, _fmp, _fpb]):
@@ -3669,48 +3662,9 @@ if __name__ == '__main__':
 
         _missions = Missions(_wires, _level, _power, *_positions, **_keywords)  # 初始化主要任务对象
 
-        Design.minor_logo()  # 显示应用程序标志
         Design.load_animation()  # 显示应用程序加载动画
 
-        """
-        **创建主事件循环**
-
-        注意: 
-            该事件循环对象 `_main_loop` 是不可序列化的，因此不能将其传递给子进程。
-            在需要使用事件循环的类实例化或函数调用时，应当在子进程内创建新的事件循环。
-        """
-        _main_loop: "asyncio.AbstractEventLoop" = asyncio.new_event_loop()
-
-        if _video_list := _lines.video:
-            _main_loop.run_until_complete(
-                arithmetic(_missions.video_file_task, _video_list)
-            )
-
-        elif _stack_list := _lines.stack:
-            _main_loop.run_until_complete(
-                arithmetic(_missions.video_data_task, _stack_list)
-            )
-
-        elif _train_list := _lines.train:
-            _main_loop.run_until_complete(
-                arithmetic(_missions.train_model, _train_list)
-            )
-
-        elif _build_list := _lines.build:
-            _main_loop.run_until_complete(
-                arithmetic(_missions.build_model, _build_list)
-            )
-
-        else:
-            # ====[ from: 本地模块 ]====
-            from engine.manage import (
-                ScreenMonitor, SourceMonitor, Manage
-            )
-            from engine.medias import (
-                Record, Player
-            )
-
-            _main_loop.run_until_complete(scheduling())
+        asyncio.run(main())
 
     except KeyboardInterrupt:
         Design.exit()

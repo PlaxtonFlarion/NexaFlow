@@ -5,6 +5,7 @@
 #define MyEngineName "FramixEngine"
 #define MyAssetsName "FramixStructure"
 #define MyAppVersion "1.0.0"
+#define MyAppVerName MyAppName + " v" + MyAppVersion
 #define MyAppPublisher "AceKeppel"
 #define MyAppURL "https://github.com/PlaxtonFlarion/NexaFlow"
 #define MyAppExeName "framix.exe"
@@ -20,7 +21,7 @@
 AppId={{C2D9D962-5920-4373-9F0A-102BA6BF9B32}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-AppVerName={#MyAppName} + " v" + {#MyAppVersion}
+AppVerName={#MyAppVerName}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
@@ -43,6 +44,7 @@ SolidCompression=yes
 WizardStyle=modern
 DisableWelcomePage=no
 
+
 [Code]
 procedure InitializeWizard();
 begin
@@ -55,17 +57,14 @@ begin
 end;
 
 
-; NOTE: 语言设置
 [Languages]
 Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
 
 
-; NOTE: 创建桌面图标
 [Tasks]
 ;Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 
-; NOTE: 需要压缩的目录
 [Files]
 Source: "applications\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ;Source: "schematic\resources\automation\{#MyAppBatName}"; DestDir: "{app}"; Flags: ignoreversion
@@ -89,11 +88,9 @@ Root: HKA; Subkey: "Software\Classes\Applications\{#MyAppExeName}\SupportedTypes
 ;Name: "{autoprograms}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"; IconFilename: "{app}\{#MyEngineName}\schematic\resources\icons\framix_delete_2.ico"
 
 
-; NOTE: 卸载时运行
 [UninstallRun]
 Filename: "{app}\{#MyEngineName}\schematic\supports\Windows\platform-tools\adb.exe"; Parameters: "kill-server"; Flags: runhidden; RunOnceId: "KillADBServer"
 
 
-; NOTE: 卸载时删除
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"; Check: IsAdmin;

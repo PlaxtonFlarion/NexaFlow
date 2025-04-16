@@ -27,7 +27,9 @@ from rich.progress import (
     BarColumn, TimeElapsedColumn,
     Progress, SpinnerColumn, TextColumn,
 )
-from engine.tinker import Active
+from engine.tinker import (
+    Active, FramixError
+)
 from engine.terminal import Terminal
 from nexacore.design import Design
 from nexaflow import const
@@ -37,159 +39,116 @@ compile_log: typing.Any = lambda x: Design.console.print(
 )
 
 
-class Compile(object):
-    """Compile"""
+async def is_virtual_env() -> typing.Coroutine | None:
+    if sys.prefix != sys.base_prefix:
+        return compile_log("[bold #00D787][✓] 当前运行在虚拟环境中")
 
-    ops: str
-    app: "Path"
-    site_packages: "Path"
-    target: typing.Union["Path"]
-    rename: typing.Union[tuple["Path", "Path"]]
-    compile_cmd: list[str]
-    launch: list[str]
-
-    def __init__(self, *args, **__):
-        self.ops, self.app, self.site_packages, *_ = args
-        _, _, _, self.target, self.rename, *_ = args
-        *_, self.compile_cmd, self.launch = args
+    raise FramixError("[!] 当前不是虚拟环境")
 
 
-async def rename_so_files(root_dir: str) -> None:
+async def find_site_packages() -> typing.Coroutine | "Path":
+    base_venv, base_libs, base_site = Path(sys.prefix), "lib", "site-packages"
+
+    for lib_path in base_venv.iterdir():
+        if base_libs in lib_path.name.lower():
+            for sub in lib_path.iterdir():
+                if base_site in sub.name.lower():
+                    return sub.resolve()
+                elif sub.name.lower().startswith("python"):
+                    return (sub / base_site).resolve()
+
+    raise FramixError(f"[!] Site packages path not found in virtual environment")
+
+
+async def rename_sensitive(src: "Path", dst: "Path") -> typing.Coroutine | None:
+    temporary = src.with_name(f"__temp_{time.strftime('%Y%m%d%H%M%S')}__")
+    compile_log(f"[bold #00D787][✓] 生成临时目录 {temporary.name}")
+
+    src.rename(temporary)
+    compile_log(f"[bold #00D787][✓] Rename completed {src.name} → {temporary.name}")
+    temporary.rename(dst)
+    compile_log(f"[bold #00D787][✓] Rename completed {temporary.name} → {dst.name}")
+
+
+async def sweep_cache_tree(target: "Path") -> typing.Coroutine | None:
+    compile_log(f"[!] 准备清理删除缓存目录 {target.as_posix()}")
+    if caches := [
+        cache for cache in target.iterdir() if cache.is_dir() and cache.name.lower().endswith("build")
+    ]:
+        for cache in await asyncio.gather(
+                *(asyncio.to_thread(
+                    shutil.rmtree, cache, ignore_errors=True) for cache in caches), return_exceptions=True
+        ):
+            if isinstance(cache, Exception):
+                compile_log(f"[bold #FF6347][✗] 无法清理 {cache}")
+            else:
+                compile_log(f"[bold #00D787][✓] 构建缓存已清理 {cache}")
+    else:
+        compile_log("[!] 未发现 *.build 跳过清理")
+
+
+async def rename_so_files(ops: str, target: "Path") -> typing.Coroutine | None:
     """
     将 Darwin 系统下编译生成的 *.cpython-XXX-darwin.so 文件统一重命名为 *.so。
-
-    Parameters
-    ----------
-    root_dir : str
-        要遍历的根目录路径，通常为 Nuitka 编译输出的 MacOS 应用目录。
-
-    Notes
-    -----
-    ## ⚙️ SKLEARN `.so` 文件命名说明
-
-    在 macOS 系统中，通过 `pip install scikit-learn` 安装包时，会生成包含平台信息的 `.so` 文件，例如
-
-    ```
-    sklearn.tree._utils.cpython-311-darwin.so
-    ```
-
-    这并非 Nuitka 打包的问题，而是 Python 构建系统中的默认行为。
-    此命名方式是为了保证 `.so` 文件能够与当前 Python 解释器版本和操作系统匹配，特别是对 Cython/C 扩展模块而言。
-
-    ---
-
-    ### 为何需要重命名？
-
-    虽然该命名方式合法，但在实际使用或部署过程中可能出现以下问题：
-
-    - 某些模块的 `__init__.py` 或动态加载逻辑中仅尝试加载 `xxx.so`，导致加载失败。
-    - Nuitka 或自定义启动器在查找扩展模块时可能忽略带平台后缀的 `.so` 文件。
-    - 部署到其他平台或做二次封装时，文件名一致性会影响加载成功率。
-
-    ---
-
-    ### 如何处理？
-
-    Framix 在 macOS 构建完成后，会自动执行如下重命名操作
-
-    ```bash
-    # 原始文件
-    sklearn.tree._utils.cpython-311-darwin.so
-
-    # 重命名后
-    sklearn.tree._utils.so
-    ```
-
-    此操作通过 `rename_so_files()` 函数实现。
-    确保所有 `.cpython-XXX-darwin.so` 文件都被重命名为标准格式 `.so`，增强模块导入兼容性。
-
-    ---
-
-    ### 总结
-
-    - 这是 `pip` 安装 `scikit-learn` 的正常行为。
-    - 对于打包后部署、多平台适配、模型分发等场景，建议重命名。
-    - Framix 已内置自动处理机制，无需手动干预。
-    - 本函数适用于 macOS 平台，用于修正动态链接库的命名。
-    - 会打印出重命名的成功日志。
     """
+    if ops != "darwin":
+        return compile_log(f"将目录中所有形如 xxx.cpython-XXX-darwin.so 的文件重命名为 xxx.so")
+
     pattern = re.compile(r"^(.*)\.cpython-\d{3}-darwin\.so$")
 
-    for file in Path(root_dir).rglob("*.so"):
+    for file in target.rglob("*.so"):
         if match := pattern.match(file.name):
             file.rename(file.with_name(new_name := f"{match.group(1)}.so"))
-            compile_log(f"[bold #00D787][✓]Renamed {file.name} → {new_name}")
+            compile_log(f"[bold #00D787][✓] Renamed {file.name} → {new_name}")
+
+
+async def authorized_tools(ops: str, *args: "Path", **__) -> typing.Coroutine | None:
+    """
+    检查目录下的所有文件是否具备执行权限，如果文件没有执行权限，则自动添加 +x 权限。
+    """
+    if ops != "darwin":
+        return None
+
+    for resp in (ensure := [
+        ["chmod", "-R", "+x", arg.as_posix()] if arg.is_dir() else [
+            "chmod", "+x", arg.as_posix()] for arg in args
+    ]):
+        compile_log(f"[!] Authorizing {resp}")
+
+    for resp in await asyncio.gather(
+            *(Terminal.cmd_line(kit) for kit in ensure)
+    ):
+        compile_log(f"[!] Authorize resp={resp}")
 
 
 async def packaging() -> tuple[
     str, "Path", "Path",
-    typing.Union["Path"], typing.Union[tuple["Path", "Path"]], list[str], list[str]
+    typing.Union["Path"], typing.Union[tuple["Path", "Path"]], list[str], tuple["Path", "Path"]
 ]:
     """
-    构建 Framix 独立应用的打包编译命令与目录结构信息。
-
-    Returns
-    -------
-    tuple
-        返回包含以下内容：
-        - ops : str
-            当前操作系统（win32 或 darwin）。
-
-        - app : Path
-            应用输出目录（applications/）。
-
-        - site_packages : Path
-            虚拟环境中的 site-packages 路径。
-
-        - target : Path
-            编译产物的原始输出路径。
-
-        - rename : tuple[Path, Path]
-            编译产物重命名前后的路径元组。
-
-        - compile_cmd : list[str]
-            Nuitka 编译命令列表。
-
-        - launch : list[str]
-            启动脚本相对路径列表。
-
-    Notes
-    -----
-    - 自动根据平台构建打包参数。
-    - 支持图标、App Bundle、macOS 签名信息等定制选项。
-    - 会清空原有的 `applications/` 目录。
+    构建独立应用的打包编译命令与目录结构信息。
     """
     if (app := Path(f"applications")).exists():
         shutil.rmtree(app)
     app.mkdir(exist_ok=True)
 
-    venv_base_path = Path(".venv") if Path(".venv").exists() else Path("venv")
+    site_packages = await find_site_packages()
 
-    site_packages, target, rename, launch = None, None, None, ["resources", "automation"]
+    launch = app.parent.joinpath(const.F_SCHEMATIC, "resources", "automation")
 
     compile_cmd = [exe := sys.executable, "-m", "nuitka", "--standalone"]
 
     if (ops := sys.platform) == "win32":
-        if (lib_path := venv_base_path / "Lib" / "site-packages").exists():
-            site_packages = lib_path.resolve()
-
-            target = app.joinpath(f"{const.DESC}.dist")
-            rename = target, app.joinpath(f"{const.DESC}Engine")
+        target = app.joinpath(f"{const.DESC}.dist")
+        rename = target, app.joinpath(f"{const.DESC}Engine")
 
         compile_cmd += [
             f"--windows-icon-from-ico=schematic/resources/icons/framix_icn_2.ico",
         ]
 
-        launch += [f"{const.NAME}.bat"]
+        launch = launch.joinpath(f"{const.NAME}.bat"), target.parent
 
     elif ops == "darwin":
-        if (lib_path := venv_base_path / "lib").exists():
-            for sub in lib_path.iterdir():
-                if sub.name.startswith("python"):
-                    site_packages = (sub / "site-packages").resolve()
-                elif "site-packages" in str(sub):
-                    site_packages = sub.resolve()
-
         target = app.joinpath(f"{const.DESC}.app", f"Contents", f"MacOS")
         rename = target.parent.parent, app.joinpath(f"{const.DESC}.app")
 
@@ -200,10 +159,10 @@ async def packaging() -> tuple[
             f"--macos-app-icon=schematic/resources/images/macos/framix_macos_icn.png",
         ]
 
-        launch += [f"{const.NAME}.sh"]
+        launch = launch.joinpath(f"{const.NAME}.sh"), target
 
     else:
-        raise RuntimeError(f"Unsupported platforms: {ops}")
+        raise FramixError(f"Unsupported platforms {ops}")
 
     compile_cmd += [
         f"--nofollow-import-to=tensorflow,uiautomator2",
@@ -212,45 +171,29 @@ async def packaging() -> tuple[
         f"--show-progress", f"--show-memory", f"--output-dir={app}", f"{const.NAME}.py"
     ]
 
-    compile_log(f"System={ops}")
-    compile_log(f"Folder={app}")
-    compile_log(
-        f"{list(site_packages.parts[-4:]) if site_packages else site_packages}"
-    )
-    compile_log(f"Target={target}")
-    compile_log(f"Rename={rename}")
-    compile_log(f"Launch={launch}")
+    compile_log(f"system={ops}")
+    compile_log(f"folder={app}")
+    compile_log(f"packet={site_packages}")
+    compile_log(f"target={target}")
+    compile_log(f"rename={rename}")
+    compile_log(f"launch={launch}")
 
     try:
         if writer := await asyncio.wait_for(
                 Terminal.cmd_line([exe, "-m", "pip", "show", compile_cmd[2]]), timeout=5
         ):
-            compile_log(f"Writer={writer}")
+            compile_log(f"writer={writer}")
+        else:
+            compile_log(f"writer={compile_cmd[2]}")
     except asyncio.TimeoutError as e:
-        compile_log(f"Writer={compile_cmd[2]} {e}")
-    else:
-        compile_log(f"Writer={compile_cmd[2]}")
+        compile_log(f"writer={compile_cmd[2]} {e}")
 
     return ops, app, site_packages, target, rename, compile_cmd, launch
 
 
 async def post_build() -> typing.Coroutine | None:
     """
-    Framix 应用打包后的自动依赖检查与部署流程。
-
-    Returns
-    -------
-    Coroutine or None
-        异步构建过程的最终协程对象。
-
-    Workflow
-    --------
-    1. 调用 `packaging()` 构造 Nuitka 打包命令。
-    2. 检查依赖项完整性，准备拷贝路径。
-    3. 调用 `Terminal.cmd_link()` 执行打包命令并实时输出日志。
-    4. 拷贝本地资源与依赖模块。
-    5. MacOS 平台执行 so 文件重命名修正。
-    6. 清除临时 build 缓存目录。
+    应用打包后的自动依赖检查与部署流程。
     """
 
     async def input_stream() -> typing.Coroutine | None:
@@ -270,43 +213,24 @@ async def post_build() -> typing.Coroutine | None:
     async def examine_dependencies() -> typing.Coroutine | None:
         """
         检查所有指定依赖是否存在于虚拟环境中。
-
-        Raises
-        ------
-        FileNotFoundError
-            如果依赖不完整或路径丢失，将触发异常。
-
-        Notes
-        -----
-        - 依赖包括本地模块、本地启动脚本与第三方库。
-        - 成功与失败的依赖分别记录在 `done_list` 和 `fail_list`。
         """
-        if not site_packages or not target:
-            raise FileNotFoundError(f"Site packages path not found in virtual environment")
-
         for key, value in dependencies.items():
             for src, dst in value:
                 if src.exists():
-                    compile_log(f"[bold #00D787][✓] Read {key} -> {src.name}")
                     done_list.append((src, dst))
+                    compile_log(f"[bold #00D787][✓] Read {key} -> {src.name}")
                 else:
                     fail_list.append(f"{key}: {src.name}")
                     compile_log(f"[bold #FF6347][!] Dependency not found -> {src.name}")
 
         if fail_list:
-            raise FileNotFoundError(f"Incomplete dependencies required {fail_list}")
+            raise FramixError(f"[!] Incomplete dependencies required {fail_list}")
 
     async def forward_dependencies() -> typing.Coroutine | None:
         """
         拷贝所有依赖文件与目录至编译产物路径，并执行重命名与缓存清理。
-
-        Notes
-        -----
-        - 使用 Rich 的进度条展示拷贝过程。
-        - 若为 macOS，还会执行 so 文件重命名。
-        - 构建完成后清理 *.build 缓存目录。
         """
-        with Progress(
+        with (Progress(
                 TextColumn(
                     text_format=f"[bold #80C0FF]{const.DESC} | {{task.description}}", justify="right"
                 ),
@@ -314,7 +238,7 @@ async def post_build() -> typing.Coroutine | None:
                     style="bold #FFA07A", speed=1, finished_text="[bold #7CFC00]✓"
                 ),
                 BarColumn(
-                    bar_width=int(Design.console.width * 0.5), style="bold #ADD8E6",
+                    bar_width=int(Design.console.width * 0.3), style="bold #ADD8E6",
                     complete_style="bold #90EE90", finished_style="bold #00CED1"
                 ),
                 TimeElapsedColumn(),
@@ -322,49 +246,38 @@ async def post_build() -> typing.Coroutine | None:
                     "[progress.percentage][bold #F0E68C]{task.completed:>2.0f}[/]/[bold #FFD700]{task.total}[/]"
                 ),
                 expand=False
-        ) as progress:
+        ) as progress):
 
-            task = progress.add_task("Copy Dependencies", total=len(done_list))
+            task = progress.add_task("Dependencies", total=len(done_list))
             for src, dst in done_list:
                 shutil.copytree(
-                    src, dst, dirs_exist_ok=True
-                ) if src.is_dir() else shutil.copy2(src, dst)
+                    src, dst, dirs_exist_ok=True) if src.is_dir() else shutil.copy2(src, dst)
                 progress.advance(task)
 
-        rename_src, rename_dst = rename
-        shutil.move(rename_src, rename_dst)
-        compile_log(f"[bold #00D787][✓] Rename completed {rename_src.name} → {rename_dst.name}")
-
-        compile_log(f"[i]准备清理删除缓存目录 {apps.absolute()}")
-        for cache in apps.iterdir():
-            if cache.is_dir() and cache.name.endswith("build"):
-                try:
-                    shutil.rmtree(cache, ignore_errors=True)
-                except Exception as e:
-                    compile_log(f"[bold #FF6347][!] 无法清理: {e}")
-                compile_log(f"[bold #00D787][✓] 构建缓存 {cache.name} 已清理")
-        compile_log("[i]未发现 *.build 跳过清理")
-
-        if ops == "darwin":
-            compile_log(f"将目录中所有形如 xxx.cpython-XXX-darwin.so 的文件重命名为 xxx.so")
-            await rename_so_files(target)
+        await authorized_tools(
+            ops, target / schematic.name / "supports",
+            target / const.NAME, target / launch[0].name
+        )
+        await rename_so_files(ops, target)
+        await rename_sensitive(*rename)
+        await sweep_cache_tree(app)
 
     build_start_time = time.time()
 
-    Active.active("INFO")
+    Active.active("DEBUG")
 
-    ops, apps, site_packages, target, rename, compile_cmd, launch = await packaging()
+    ops, app, site_packages, target, rename, compile_cmd, launch = await packaging()
 
     done_list, fail_list = [], []
 
-    schematic = apps.parent.joinpath(const.F_SCHEMATIC)
-    structure = apps.parent.joinpath(const.F_STRUCTURE, const.F_SRC_MODEL_PLACE)
+    schematic = app.parent.joinpath(const.F_SCHEMATIC)
+    structure = app.parent.joinpath(const.F_STRUCTURE, const.F_SRC_MODEL_PLACE)
 
     local_pack, local_file = [
         (schematic, target / schematic.name),
         (structure, target.parent / const.F_STRUCTURE / structure.name)
     ], [
-        (schematic.joinpath(*launch), target)
+        launch
     ]
 
     dependencies = {
@@ -387,8 +300,11 @@ async def post_build() -> typing.Coroutine | None:
 
     await forward_dependencies()
 
-    compile_log(f"Time consuming={(time.time() - build_start_time) / 60:.2f} m")
+    compile_log(f"TimeCost={(time.time() - build_start_time) / 60:.2f} m")
 
 
 if __name__ == "__main__":
-    asyncio.run(post_build())
+    try:
+        asyncio.run(post_build())
+    except FramixError as _e:
+        compile_log(_e)
