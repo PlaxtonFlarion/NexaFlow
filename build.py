@@ -264,7 +264,9 @@ async def post_build() -> typing.Coroutine | None:
 
     build_start_time = time.time()
 
-    Active.active("DEBUG")
+    Active.active("INFO")
+
+    Design.show_quantum_intro()
 
     ops, app, site_packages, target, rename, compile_cmd, launch = await packaging()
 

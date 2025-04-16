@@ -332,6 +332,68 @@ class Design(object):
         ]
         random.choice(stochastic)()
 
+    @staticmethod
+    def show_quantum_intro() -> None:
+        """星域构形动画（Quantum Star Boot）"""
+        frames = [
+            f"""\
+
+    [#808080]        ░░░░░░░░░░
+            ░░░░        ░░░░
+         ░░░░    [#00FFFF]●[/]    ░░░░
+            ░░░░        ░░░░
+                ░░░░░░░░░░[/]
+            """,
+            f"""\
+
+    [#999999]        ████▓▓████
+          ▓▓██            ██▓▓
+      ██▓▓    [#00FFDD]◉[/]     ▓▓██
+          ▓▓██            ██▓▓
+              ████████████[/]
+            """,
+            f"""\
+
+    [#AAAAAA]        ▓▓▓▓▓▓▓▓▓▓
+          ████    [#00FFB7]◎[/]    ████
+        ██▓▓            ▓▓██
+          ████        ████
+              ▓▓▓▓▓▓▓▓▓▓[/]
+            """,
+            f"""\
+
+[bold #00FFC0]╔═════════════════════════════╗
+║                             ║
+║       [bold #FFD700]{const.NAME} Compiler[/]       ║
+║                             ║
+╚═════════════════════════════╝
+            """
+        ]
+
+        Design.clear_screen()
+        for _ in range(10):
+            for frame in frames[:-1]:
+                Design.clear_screen()
+                Design.console.print(Text.from_markup(frame))
+                time.sleep(0.2)
+
+        time.sleep(0.3)
+        Design.clear_screen()
+        Design.console.print(Panel.fit(
+            frames[-1],
+            title="[bold #40E0D0]System Wake",
+            subtitle="[bold #ADFF2F]Initializing Modules",
+            border_style="bold #7FFFD4"
+        ))
+        Design.console.print(f"\n{const.DECLARE}")
+        time.sleep(1)
+        Design.simulation_progress("Compiler Ready")
+
+    @staticmethod
+    def clear_screen() -> None:
+        """清空终端内容，自动适配平台，Windows 使用 'cls'，其他平台使用 'clear'。"""
+        os.system("cls" if os.name == "nt" else "clear")
+
     def content_pose(self, rlt, avg, dur, org, vd_start, vd_close, vd_limit, video_temp, frate) -> None:
         """根据日志等级展示当前视频处理过程中的关键帧率与时长信息。"""
         if self.design_level == const.SHOW_LEVEL:
