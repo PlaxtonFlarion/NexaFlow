@@ -40,6 +40,9 @@ compile_log: typing.Any = lambda x: Design.console.print(
 
 
 async def is_virtual_env() -> typing.Coroutine | None:
+    """
+    检查当前 Python 运行环境是否为虚拟环境。
+    """
     if sys.prefix != sys.base_prefix:
         return compile_log("[bold #00D787][✓] 当前运行在虚拟环境中")
 
@@ -47,6 +50,9 @@ async def is_virtual_env() -> typing.Coroutine | None:
 
 
 async def find_site_packages() -> typing.Coroutine | "Path":
+    """
+    自动查找当前虚拟环境中的 `site-packages` 路径。
+    """
     base_venv, base_libs, base_site = Path(sys.prefix), "lib", "site-packages"
 
     for lib_path in base_venv.iterdir():
@@ -61,6 +67,9 @@ async def find_site_packages() -> typing.Coroutine | "Path":
 
 
 async def rename_sensitive(src: "Path", dst: "Path") -> typing.Coroutine | None:
+    """
+    执行双重重命名操作以避免系统锁定或覆盖冲突。
+    """
     temporary = src.with_name(f"__temp_{time.strftime('%Y%m%d%H%M%S')}__")
     compile_log(f"[bold #00D787][✓] 生成临时目录 {temporary.name}")
 
@@ -71,6 +80,9 @@ async def rename_sensitive(src: "Path", dst: "Path") -> typing.Coroutine | None:
 
 
 async def sweep_cache_tree(target: "Path") -> typing.Coroutine | None:
+    """
+    清理指定路径下所有名为 `*build` 的缓存目录。
+    """
     compile_log(f"[!] 准备清理删除缓存目录 {target.as_posix()}")
     if caches := [
         cache for cache in target.iterdir() if cache.is_dir() and cache.name.lower().endswith("build")
@@ -92,7 +104,9 @@ async def rename_so_files(ops: str, target: "Path") -> typing.Coroutine | None:
     将 Darwin 系统下编译生成的 *.cpython-XXX-darwin.so 文件统一重命名为 *.so。
     """
     if ops != "darwin":
-        return compile_log(f"将目录中所有形如 xxx.cpython-XXX-darwin.so 的文件重命名为 xxx.so")
+        return None
+
+    compile_log(f"[!] 将目录中所有形如 xxx.cpython-XXX-darwin.so 的文件重命名为 xxx.so")
 
     pattern = re.compile(r"^(.*)\.cpython-\d{3}-darwin\.so$")
 
@@ -122,8 +136,8 @@ async def authorized_tools(ops: str, *args: "Path", **__) -> typing.Coroutine | 
 
 
 async def packaging() -> tuple[
-    str, "Path", "Path",
-    typing.Union["Path"], typing.Union[tuple["Path", "Path"]], list[str], tuple["Path", "Path"]
+    str, "Path", "Path", typing.Union["Path"],
+    typing.Union[tuple["Path", "Path"]], list[str], tuple["Path", "Path"]
 ]:
     """
     构建独立应用的打包编译命令与目录结构信息。
@@ -134,23 +148,23 @@ async def packaging() -> tuple[
 
     site_packages = await find_site_packages()
 
-    launch = app.parent.joinpath(const.F_SCHEMATIC, "resources", "automation")
+    launch = app.parent / const.F_SCHEMATIC / "resources" / "automation"
 
     compile_cmd = [exe := sys.executable, "-m", "nuitka", "--standalone"]
 
     if (ops := sys.platform) == "win32":
-        target = app.joinpath(f"{const.DESC}.dist")
-        rename = target, app.joinpath(f"{const.DESC}Engine")
+        target = app / f"{const.DESC}.dist"
+        rename = target, app / f"{const.DESC}Engine"
 
         compile_cmd += [
             f"--windows-icon-from-ico=schematic/resources/icons/framix_icn_2.ico",
         ]
 
-        launch = launch.joinpath(f"{const.NAME}.bat"), target.parent
+        launch = launch / f"{const.NAME}.bat", target.parent
 
     elif ops == "darwin":
-        target = app.joinpath(f"{const.DESC}.app", f"Contents", f"MacOS")
-        rename = target.parent.parent, app.joinpath(f"{const.DESC}.app")
+        target = app / f"{const.DESC}.app" / f"Contents" / f"MacOS"
+        rename = target.parent.parent, app / f"{const.DESC}.app"
 
         compile_cmd += [
             f"--macos-create-app-bundle",
@@ -159,7 +173,7 @@ async def packaging() -> tuple[
             f"--macos-app-icon=schematic/resources/images/macos/framix_macos_icn.png",
         ]
 
-        launch = launch.joinpath(f"{const.NAME}.sh"), target
+        launch = launch / f"{const.NAME}.sh", target
 
     else:
         raise FramixError(f"Unsupported platforms {ops}")
@@ -201,14 +215,14 @@ async def post_build() -> typing.Coroutine | None:
         异步读取终端标准输出流内容，并打印实时构建日志。
         """
         async for line in transports.stdout:
-            compile_log(line.decode(encoding=const.CHARSET, errors="ignore").strip())
+            compile_log(line.decode(const.CHARSET, "ignore").strip())
 
     async def error_stream() -> typing.Coroutine | None:
         """
         异步读取终端错误输出流内容，实时反馈构建异常信息。
         """
         async for line in transports.stderr:
-            compile_log(line.decode(encoding=const.CHARSET, errors="ignore").strip())
+            compile_log(line.decode(const.CHARSET, "ignore").strip())
 
     async def examine_dependencies() -> typing.Coroutine | None:
         """
@@ -230,38 +244,34 @@ async def post_build() -> typing.Coroutine | None:
         """
         拷贝所有依赖文件与目录至编译产物路径，并执行重命名与缓存清理。
         """
-        with (Progress(
-                TextColumn(
-                    text_format=f"[bold #80C0FF]{const.DESC} | {{task.description}}", justify="right"
-                ),
-                SpinnerColumn(
-                    style="bold #FFA07A", speed=1, finished_text="[bold #7CFC00]✓"
-                ),
-                BarColumn(
-                    bar_width=int(Design.console.width * 0.3), style="bold #ADD8E6",
-                    complete_style="bold #90EE90", finished_style="bold #00CED1"
-                ),
+        bar_width = int(Design.console.width * 0.3)
+
+        with Progress(
+                TextColumn(text_format=f"[bold #80C0FF]{const.DESC} | {{task.description}}", justify="right"),
+                SpinnerColumn(style="bold #FFA07A", speed=1, finished_text="[bold #7CFC00]✓"),
+                BarColumn(bar_width, style="bold #ADD8E6", complete_style="bold #90EE90", finished_style="bold #00CED1"),
                 TimeElapsedColumn(),
                 TextColumn(
                     "[progress.percentage][bold #F0E68C]{task.completed:>2.0f}[/]/[bold #FFD700]{task.total}[/]"
-                ),
-                expand=False
-        ) as progress):
+                ), expand=False
+        ) as progress:
 
-            task = progress.add_task("Dependencies", total=len(done_list))
+            task = progress.add_task(description="Dependencies", total=len(done_list))
             for src, dst in done_list:
                 shutil.copytree(
                     src, dst, dirs_exist_ok=True) if src.is_dir() else shutil.copy2(src, dst)
                 progress.advance(task)
 
         await authorized_tools(
-            ops, target / schematic.name / "supports",
-            target / const.NAME, target / launch[0].name
-        )
-        await rename_so_files(ops, target)
+            ops, target / schematic.name / "supports", target / const.NAME, target / launch[0].name
+        )  # Note: macOS Only
+
+        await rename_so_files(ops, target)  # Note: macOS Only
+
         await rename_sensitive(*rename)
         await sweep_cache_tree(app)
 
+    # ==== Note: Start from here ====
     build_start_time = time.time()
 
     Active.active("INFO")
@@ -272,8 +282,8 @@ async def post_build() -> typing.Coroutine | None:
 
     done_list, fail_list = [], []
 
-    schematic = app.parent.joinpath(const.F_SCHEMATIC)
-    structure = app.parent.joinpath(const.F_STRUCTURE, const.F_SRC_MODEL_PLACE)
+    schematic = app.parent / const.F_SCHEMATIC
+    structure = app.parent / const.F_STRUCTURE / const.F_SRC_MODEL_PLACE  # Note: Framix Only
 
     local_pack, local_file = [
         (schematic, target / schematic.name),
@@ -294,6 +304,7 @@ async def post_build() -> typing.Coroutine | None:
 
     await examine_dependencies()
 
+    # Note: Start compiling
     transports = await Terminal.cmd_link(compile_cmd)
     await asyncio.gather(
         *(asyncio.create_task(task()) for task in [input_stream, error_stream])
