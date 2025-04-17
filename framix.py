@@ -1587,40 +1587,53 @@ class Missions(object):
     # """循环节拍器 | 脚本驱动者 | 全域执行者"""
     async def analysis(self, option: "Option", deploy: "Deploy") -> None:
         """
-        分析入口函数，用于根据不同模式执行视频录制、控制命令、自动化脚本及模型分析任务。
-
-        该异步方法是 Framix 分析流程的核心入口，根据用户配置和命令行选项自动识别分析模式（录制、脚本或批量），
-        并协调录屏、执行指令、处理设备、多进程分析和报告生成等任务。
+        根据当前执行模式启动视频录制流程或自动化批处理流程，支持速度优先、基础分析、深度模型等多种模式。
 
         Parameters
         ----------
         option : Option
-            分析配置选项对象，提供模型路径、输出路径等参数。
+            系统配置项，包括模型路径与输出位置等选项封装。
 
         deploy : Deploy
-            视频处理部署配置对象，包含帧率、分辨率、裁剪等视觉处理参数。
+            部署参数对象，包含所有 CLI 配置项，如滑动窗口大小、权重参数、剪辑规则等。
 
         Returns
         -------
         None
-            此函数没有返回值，所有分析结果将通过报告模块记录或控制台展示。
-
-        Raises
-        ------
-        FramixError
-            如果设备连接失败、模型加载异常、脚本格式错误或命令无效等情况将抛出。
+            函数通过协程异步执行分析任务，无返回值。
 
         Notes
         -----
-        - 方法支持三种模式：手动交互式录制（flick）、自动执行脚本（carry/fully）、批量分析（shine）。
-        - 使用异步机制控制设备连接、事件监听和命令执行，最大化多设备并行效率。
-        - 分析流程将根据 speed/basic/keras 参数自动切换分析模型，自动生成报告。
-        - 函数内部封装多个协程函数，如 anything_film、exec_commands 等，确保逻辑清晰模块化。
+        - 若指定 `--flick` 参数，将启用交互式录制流程（flick_loop），由用户手动控制录制与时间。
+        - 若指定 `--carry` 或 `--fully` 参数，则进入自动化批量执行模式（other_loop），按脚本批量录制与分析。
+        - 若未设置任何运行模式参数，将跳过该方法的主流程，不进行任务分发。
+        - 在初始化过程中会加载分析模型（如 --keras），并确认相关设备状态。
+        - 模型加载失败不会中止主流程，但将不执行 Keras 分析路径。
         """
 
         async def anything_film(device_list: list["Device"], report: "Report") -> list[list]:
             """
-            初始化并启动设备的视频录制任务。
+            初始化所有设备，计算窗口布局并启动对应的视频录制任务。
+
+            Parameters
+            ----------
+            device_list : list of Device
+                所有待启动录制的设备对象列表。
+
+            report : Report
+                报告实例对象，用于配置路径、生成标题和视频存储目录。
+
+            Returns
+            -------
+            list of list
+                每个任务的参数集合，包含录制临时路径、传输对象、
+                视频与数据存储路径、报告标题等信息，供后续分析使用。
+
+            Notes
+            -----
+            - 该函数还负责根据屏幕尺寸计算窗口摆放布局，避免设备画面重叠。
+            - 每个设备会以异步方式开启录制任务，并按窗口位置进行排列。
+            - 返回的列表中，每一项对应一个设备的完整录制上下文。
             """
             Design.notes(f"**<* {('独立' if self.alone else '全局')}控制模式 *>**")
 
@@ -1680,7 +1693,25 @@ class Missions(object):
 
         async def anything_over(device_list: list["Device"], task_list: list[list]) -> None:
             """
-            完成任务后的处理逻辑，包括录制终止和无效任务的剔除。
+            完成录制任务后的清理流程，关闭录制并剔除无效任务。
+
+            Parameters
+            ----------
+            device_list : list of Device
+                当前参与录制的设备对象列表。
+
+            task_list : list of list
+                每个设备对应的录制任务信息，包括录制文件路径和传输对象等。
+
+            Returns
+            -------
+            None
+
+            Notes
+            -----
+            - 每台设备调用关闭录制方法 `ask_close_record`，回收资源并返回状态。
+            - 若某个任务标记为“录制失败”，该任务将从 `task_list` 中移除。
+            - 所有处理结果将以调试信息的形式显示在控制面板中。
             """
             effective_list = await asyncio.gather(
                 *(record.ask_close_record(device, video_temp, transports)
@@ -1703,7 +1734,27 @@ class Missions(object):
 
         async def anything_well(task_list: list[list], report: "Report") -> None:
             """
-            执行任务处理，根据选择的分析模式决定调用哪种分析逻辑。
+            根据分析模式对录制任务进行处理，支持快速模式、基础模式和模型模式。
+
+            Parameters
+            ----------
+            task_list : list of list
+                每个任务包含录制文件路径、传输对象及报告路径等相关信息。
+
+            report : Report
+                当前分析过程关联的报告对象。
+
+            Returns
+            -------
+            None
+
+            Notes
+            -----
+            - 若任务列表为空，则终止处理流程并提示。
+            - 分析模式依据实例的 `speed`、`basic` 或 `keras` 属性自动选择：
+                - `speed` 模式：快速执行分析，不加载时间戳。
+                - `basic` 模式：加载基础时间信息，支持可解释分析。
+                - `keras` 模式：使用深度模型分析，识别视频内容区域。
             """
             if len(task_list) == 0:
                 logger.debug(tip := f"没有有效任务")
@@ -1721,7 +1772,25 @@ class Missions(object):
 
         async def load_carry(carry: str) -> dict:
             """
-            加载并解析传入的 carry 字符串，返回包含执行指令的字典或异常
+            加载并解析 carry 指令字符串，提取并返回对应任务的执行命令字典。
+
+            Parameters
+            ----------
+            carry : str
+                用逗号、分号或空格分隔的 carry 指令字符串。第一个元素应为路径，其余为任务键。
+
+            Returns
+            -------
+            dict
+                包含待执行命令的键值对字典，key 为任务标识，value 为执行参数。
+
+            Raises
+            ------
+            FramixError
+                - 参数不足或格式错误；
+                - 文件不存在；
+                - 文件结构非法或 JSON 解析失败；
+                - 指定键不存在。
             """
             if len(parts := re.split(r",|;|!|\s", carry)) >= 2:
                 loc_file, *key_list = parts
@@ -1737,7 +1806,22 @@ class Missions(object):
 
         async def load_fully(fully: str) -> dict:
             """
-            异步加载和解析完整的命令文件
+            异步加载并解析完整的 JSON 命令文件，提取格式化后的执行指令集合。
+
+            Parameters
+            ----------
+            fully : str
+                JSON 脚本文件路径，用于批量加载多组命令数据。
+
+            Returns
+            -------
+            dict
+                执行指令的字典，每个 key 对应一组命令，每组命令包含 parser、header、action 等字段。
+
+            Raises
+            ------
+            FramixError
+                - 当文件不存在、格式不符合要求，或无法解析为合法 JSON 时抛出。
             """
             fully = await Craft.revise_path(fully)
 
@@ -1769,53 +1853,37 @@ class Missions(object):
                 exec_func: str, exec_vals: list, exec_args: list, exec_kwds: dict
         ) -> typing.Any:
             """
-            异步执行设备或工具对象中的指定命令函数。
-
-            该方法用于从传入对象中动态获取方法名并执行，支持异步调用，可用于统一管理多设备或外部对象的行为调用。
+            执行指定对象的指令函数（异步或同步），并捕获运行结果与异常。
 
             Parameters
             ----------
-            bean : Any
-                要调用方法的目标对象实例，通常是设备或功能模块。
+            bean : typing.Any
+                可执行指令的对象实例（如 Device 或 Player 实例）。
 
             live_devices : dict
-                活跃设备的字典，用于管理当前活跃状态的设备对象。
+                当前存活的设备字典，key 为设备编号（sn），value 为设备实例。
 
             exec_func : str
-                要调用的方法名字符串。
+                待执行的函数名称字符串。
 
             exec_vals : list
-                方法调用时的主要位置参数。
+                函数调用的主参数（位于 args 前的显式参数值）。
 
             exec_args : list
-                附加的位置参数。
+                函数调用的扩展位置参数（*args）。
 
             exec_kwds : dict
-                关键字参数，作为方法调用时的可选参数。
+                函数调用的关键字参数（**kwargs）。
 
             Returns
             -------
-            Any
-                方法调用的返回值。如果方法不可调用或发生异常，则返回异常对象。
+            typing.Any
+                如果函数有返回值则返回，若无返回值或异常中断则返回 None。
 
             Raises
             ------
-            asyncio.CancelledError
-                如果当前任务被取消，会将设备从活跃列表中移除，并退出当前指令执行。
-
-            Notes
-            -----
-            - 如果目标方法不是协程函数，则不会执行；
-            - 如果方法返回有效结果，将打印日志和执行结果；
-            - 若执行过程中发生取消或异常，将优雅地处理错误并返回异常对象。
-
-            Workflow
-            --------
-            1. 使用 `getattr` 获取目标方法并判断是否可调用；
-            2. 打印调用日志并确认方法为协程函数；
-            3. 异步执行该方法，传入组合参数；
-            4. 捕获取消或执行异常，并处理相关逻辑（如设备移除、日志记录）；
-            5. 返回调用结果或异常信息。
+            FramixError
+                - 当函数执行异常或找不到目标函数时抛出 FramixError 异常。
             """
             if not (callable(function := getattr(bean, exec_func, None))):
                 logger.debug(tip := f"No callable {exec_func}")
@@ -1840,25 +1908,23 @@ class Missions(object):
 
         async def pack_commands(resolve_list: list) -> list:
             """
-            解析并标准化脚本中的命令配置，生成统一结构的执行参数列表。
-
-            该函数用于将脚本中携带的命令 (`cmds`)、参数 (`vals`)、附加参数 (`args`) 和关键字参数 (`kwds`) 整理为可执行形式的四元组列表。
+            将脚本中解析得到的命令描述列表，转换为标准格式的指令元组序列。
 
             Parameters
             ----------
             resolve_list : list
-                待解析的命令配置列表。每个元素为 dict，通常包含 `cmds`、`vals`、`args` 和 `kwds` 字段。
+                从脚本中解析得到的命令配置，每个元素是包含 `cmds`, `vals`, `args`, `kwds` 的 dict。
 
             Returns
             -------
             list
-                包含解析完成的命令参数列表。每个元素是一个四元组列表，结构为 `(cmd: str, vals: list, args: list, kwds: dict)`。
+                一个列表，包含已打包好的命令执行单元，每个单元是 (func, vals, args, kwds) 的元组序列。
+                每个设备任务为一组命令元组的列表，最终形成二维结构 list[list[tuple]]。
 
             Notes
             -----
-            - 该函数用于构建批量自动化脚本任务的参数清单；
-            - 所有缺失字段将自动补齐为默认空值，确保指令长度对齐；
-            - 支持动态嵌套结构，便于统一处理异步调度任务。
+            - 此方法确保输入不为空字符串，并为缺失参数补全默认空值。
+            - 所有输入会被校验并标准化为 list 或 dict。
             """
             exec_pairs_list = []
 
@@ -1900,37 +1966,29 @@ class Missions(object):
 
         async def exec_commands(device_list: list["Device"], exec_pairs_list: list, *args) -> None:
             """
-            执行批量命令的异步控制函数。
-
-            该方法用于并发调度设备或播放器的功能方法，支持动态参数替换和任务执行生命周期管理。适用于多设备自动化执行场景。
+            在多个设备上并发执行一组命令任务，支持通配符参数替换。
 
             Parameters
             ----------
-            device_list : list[Device]
-                包含设备的列表。
+            device_list : list of Device
+                活跃的设备列表，每个设备将尝试执行指定的命令序列。
 
             exec_pairs_list : list
-                包含命令及其参数组合的列表。每项为一个四元组 `(exec_func, exec_vals, exec_args, exec_kwds)`，分别表示待执行的方法名、位置参数、附加参数和关键字参数。
+                每组为多个命令元组的列表，形式为 (exec_func, exec_vals, exec_args, exec_kwds)。
 
-            *args : Any
-                用于替换参数中的通配符 "*" 的动态值。可传入多个值用于匹配多个 "*"。
+            *args : any
+                用于替换命令参数中 "*" 的外部输入数据，逐一映射到对应位置。
 
             Returns
             -------
             None
-                函数不返回值。所有执行结果通过日志记录或界面展示输出。
-
-            Raises
-            ------
-            asyncio.CancelledError
-                若任务在执行中被主动取消，将中断调度并触发该异常。
 
             Notes
             -----
-            - 方法支持对 "*" 进行参数替换，可在执行时动态注入参数；
-            - 所有命令将并发执行，并根据设备状态自动处理取消和清理；
-            - `audio_player` 为特殊函数，默认绑定播放器，不遍历设备；
-            - 所有设备异常或任务失败将通过控制台展示，并保持任务日志。
+            - 如果 exec_func 为 "audio_player"，将使用 player 对象单独执行。
+            - 其他命令会在所有设备上并发执行，失败设备将被移除。
+            - 命令支持通配符 "*" 替换，通过传入 *args 实现参数动态注入。
+            - 每一轮命令执行结束后清除任务，异常将记录到日志中但不中断主流程。
             """
             substitute: typing.Iterator = iter(args)
 
@@ -1984,6 +2042,22 @@ class Missions(object):
                 stop.cancel()
 
         async def flick_loop() -> typing.Coroutine | None:
+            """
+            启动交互式的录制与分析主循环，用于手动控制录制流程与配置参数。
+
+            Returns
+            -------
+            Coroutine or None
+                若执行成功则返回协程；若中断或退出则返回 None。
+
+            Notes
+            -----
+            - 支持设置定时器、修改标题、编辑配置文件、切换设备等命令。
+            - 用户输入控制整个录制流程，支持多轮录制与分析循环。
+            - 根据 self.whist 控制定时范围；用户输入 header/create/deploy 等命令进行动态控制。
+            - 每次录制完成后自动检测异常并重置设备列表。
+            - 若设置为 --shine 模式，可在所有轮次录制完成后统一进行视频分析。
+            """
             device_list = await manage_.operate_device()
 
             report = Report(option.total_place)
@@ -2061,6 +2135,24 @@ class Missions(object):
                     await record.clean_event()
 
         async def other_loop() -> typing.Coroutine | None:
+            """
+            加载并执行 carry 或 fully 脚本文件中的批处理任务指令，并完成自动化录制与分析流程。
+
+            Returns
+            -------
+            Coroutine or None
+                异步执行任务流程的协程对象，若执行被中断或无内容返回 None。
+
+            Notes
+            -----
+            - carry 表示指定任务子集；fully 表示完整的脚本任务集，二者互斥使用。
+            - 自动激活所有连接设备的自动化引擎（automator）。
+            - 每个任务组支持执行 parser 参数解析、header 命名、change 数据扩展、looper 循环次数。
+            - 分为 prefix（前置指令）、action（主要操作）、suffix（后置指令）三个阶段。
+            - 所有指令集会被自动解析为设备可执行命令并分发调度。
+            - 若开启 `--shine` 模式，所有任务将统一收集后集中分析；否则逐轮分析。
+            - 在执行所有脚本任务后，如设置了 speed/basic/keras 分析模式，会合并生成最终报告。
+            """
             if self.carry:
                 load_script_data = await asyncio.gather(
                     *(load_carry(carry) for carry in self.carry)
@@ -2093,8 +2185,8 @@ class Missions(object):
             for script_dict in script_storage:
                 report = Report(option.total_place)
                 for script_key, script_value in script_dict.items():
-                    logger.debug(tip_ := f"Batch Exec: {script_key}")
-                    self.design.show_panel(tip_, Wind.EXPLORER)
+                    logger.debug(tip := f"Batch Exec: {script_key}")
+                    self.design.show_panel(tip, Wind.EXPLORER)
 
                     # 根据 script_value_ 中的 parser 参数更新 deploy 配置
                     if (parser := script_value.get("parser", {})) and type(parser) is dict:
@@ -2121,8 +2213,8 @@ class Missions(object):
                     # 处理 script_value_ 中的 looper 参数
                     try:
                         looper = int(looper) if (looper := script_value.get("looper", None)) else 1
-                    except ValueError as e_:
-                        logger.debug(tip := f"重置循环次数 {(looper := 1)} {e_}")
+                    except ValueError as e:
+                        logger.debug(tip := f"重置循环次数 {(looper := 1)} {e}")
                         self.design.show_panel(tip, Wind.EXPLORER)
 
                     # 处理 script_value 中的 prefix 参数
@@ -2165,7 +2257,10 @@ class Missions(object):
                             suffix_task_list = []
                             if suffix_list:
                                 suffix_task_list.append(
-                                    asyncio.create_task(exec_commands(device_list, suffix_list), name="suffix"))
+                                    asyncio.create_task(
+                                        exec_commands(device_list, suffix_list), name="suffix"
+                                    )
+                                )
 
                             # 根据参数判断是否分析视频以及使用哪种方式分析
                             if self.shine:
@@ -2556,61 +2651,25 @@ class Alynex(object):
         -------
         None
             本方法不返回值。模型状态通过 `self.ks.model` 保持。
-
-        Raises
-        ------
-        OSError
-            模型路径无效或无法访问。
-
-        TypeError
-            模型文件类型不正确或读取错误。
-
-        ValueError
-            模型加载过程中数据异常。
-
-        AssertionError
-            未初始化 `ks` 或模型通道数不符合部署要求。
-
-        AttributeError
-            属性访问失败，例如未初始化 `ks.model`。
-
-        FramixError
-            封装上述异常并作为统一的模型加载错误抛出。
-
-        Notes
-        -----
-        - `self.matrix` 表示模型基础路径；
-        - 模型路径根据 `deploy.color` 区分为彩色或灰度模型；
-        - 使用 `KerasStruct.load_model()` 加载模型；
-        - 如果模型的通道数不匹配部署需求，将触发断言失败；
-        - 异常统一包装为 `FramixError` 抛出，并清空模型状态防止后续误用。
-
-        Workflow
-        --------
-        1. 读取并校验模型基础路径 `self.option.model_place` 是否存在；
-        2. 确认 `self.ks` 已初始化为有效的 `KerasStruct` 实例；
-        3. 根据部署颜色配置，拼接最终模型路径并尝试加载模型；
-        4. 检查模型输入形状中的通道数是否与彩色或灰度预期一致；
-        5. 若以上步骤出现异常，清空模型并抛出 `FramixError`。
         """
         try:
             if mp := self.matrix:
-                assert os.path.isdir(self.option.model_place), f"Invalid Model {mp}"
-                assert self.ks, f"First Load KerasStruct()"
+                assert os.path.isdir(self.option.model_place), f"The model must be a directory {mp}"
+                assert self.ks, f"Must be loaded first model"
 
                 assert os.path.isdir(
                     final_model := os.path.join(
                         mp,
-                        mn := self.option.color_model if self.deploy.color else self.option.faint_model
+                        self.option.color_model if self.deploy.color else self.option.faint_model
                     )
-                ), f"Invalid Model {mn}"
+                ), f"No configuration model file {final_model.format()}"
                 self.ks.load_model(final_model.format())
 
                 channel = self.ks.model.input_shape[-1]
                 if self.deploy.color:
-                    assert channel == 3, f"彩色模式需要匹配彩色模型 Model Color Channel={channel}"
+                    assert channel == 3, f"彩色模式需要匹配彩色模型 Model color channel={channel}"
                 else:
-                    assert channel == 1, f"灰度模式需要匹配灰度模型 Model Color Channel={channel}"
+                    assert channel == 1, f"灰度模式需要匹配灰度模型 Model color channel={channel}"
         except (OSError, TypeError, ValueError, AssertionError, AttributeError) as e:
             self.ks.model = None
             raise FramixError(e)
@@ -2626,6 +2685,7 @@ class Alynex(object):
         ----------
         vision : str
             视频文件的绝对路径。
+
         src_size : tuple
             原始视频的宽高尺寸，格式为 (width, height)。
 
@@ -2640,15 +2700,6 @@ class Alynex(object):
         - 否则使用 `deploy.scale` 执行等比缩放；
         - 视频帧将根据配置决定是否保留彩色；
         - 加载完成后会显示帧总数、尺寸、加载耗时等信息。
-
-        Workflow
-        --------
-        1. 初始化计时器，并创建 `VideoObject` 对象；
-        2. 如果启用了尺寸设置 (`deploy.shape`)，使用 `Switch.ask_magic_frame()` 计算目标尺寸；
-        3. 如果未指定尺寸，则根据 `deploy.scale` 使用缩放比例加载；
-        4. 调用 `video.load_frames()` 执行帧的读取与变换；
-        5. 日志与面板记录：加载进度、帧数量、尺寸、耗时等信息；
-        6. 返回包含帧数据的 `VideoObject` 实例。
         """
         start_time_ = time.time()  # 开始计时
 
@@ -2707,13 +2758,6 @@ class Alynex(object):
         - 此方法使用 `cv2.VideoCapture` 尝试加载视频；
         - 对目录的处理仅检查第一个可用的文件，未对文件类型做扩展名判断；
         - 无法打开的视频不会抛出异常，只返回 None。
-
-        Workflow
-        --------
-        1. 如果 `vision` 是视频文件，尝试直接打开；
-        2. 如果 `vision` 是目录，则获取目录下首个文件并尝试打开；
-        3. 若打开成功则返回该文件路径；
-        4. 打开失败则返回 None。
         """
         target_screen = None
 
@@ -2766,15 +2810,6 @@ class Alynex(object):
         - 此方法会自动判断输入是文件还是目录；
         - 视频帧压缩通过 VideoCutter 实现，并根据稳定性分析选出关键帧；
         - 提取过程不会修改原视频文件，所有输出保存在 query_path 路径中。
-
-        Workflow
-        --------
-        1. 使用 `ask_frame_grid` 判断并获取有效视频文件；
-        2. 通过 `ask_video_load` 加载视频帧信息；
-        3. 初始化 VideoCutter 并执行 `cut` 方法压缩视频帧；
-        4. 调用 `get_range` 获取稳定帧和不稳定帧的区间；
-        5. 使用 `pick_and_save` 方法提取关键帧图像，保存至指定路径；
-        6. 返回保存路径，供后续分析或模型训练使用。
         """
         if not (target_vision := await self.ask_frame_grid(vision)):
             logger.debug(tip := f"视频文件损坏: {os.path.basename(vision)}")
@@ -2845,15 +2880,6 @@ class Alynex(object):
         -----
         - 若 Keras 模型已加载，将执行结构化处理和分类分析。
         - 若无模型，则只进行基础帧提取并分析。
-
-        Workflow
-        --------
-        1. 检查并确定有效视频路径；
-        2. 加载视频帧信息；
-        3. 执行 frame_flow（模型场景）或跳过（基础模式）；
-        4. 获取所有帧数据；
-        5. 调用 analytics_keras 或 analytics_basic 执行帧处理和分析；
-        6. 封装为 Review 返回。
         """
 
         async def frame_forge(frame: "VideoFrame") -> typing.Any:
@@ -2906,14 +2932,6 @@ class Alynex(object):
             - 起始与结束关键帧基于 `self.deploy.begin` 和 `self.deploy.final` 配置索引。
             - 如果索引无效（如越界或顺序错误），将回退到默认关键帧范围。
             - 展示帧信息面板，便于终端可视化关键帧提取结果。
-
-            Workflow
-            --------
-            1. 获取配置中的起始与结束阶段索引；
-            2. 获取非稳定帧段落，定位起止关键帧；
-            3. 若索引越界或顺序错误，使用默认首尾帧；
-            4. 计算起止帧间的时间差；
-            5. 打印并展示起始帧、结束帧及耗时信息。
             """
 
             # 从 deploy 配置中提取起始帧索引 (阶段索引, 阶段内帧索引)
@@ -2977,14 +2995,6 @@ class Alynex(object):
             - 若 `struct` 不存在（即未进行结构分析），则直接返回原始帧；
             - 若启用 `boost` 参数，则额外添加非关键帧（如不稳定片段）以增强数据覆盖；
             - 使用 `toolbox.show_progress` 展示处理进度条。
-
-            Workflow
-            --------
-            1. 判断是否存在结构分析结果 (`struct`)；
-            2. 若无结构，则直接返回原始帧；
-            3. 若有结构，提取关键帧；
-            4. 若启用 `boost`，则在关键帧之间插入非关键帧；
-            5. 返回最终帧序列。
             """
 
             # 如果 struct 不存在，说明没有结构分析，直接返回原始帧列表
@@ -3043,14 +3053,6 @@ class Alynex(object):
             - 支持尺寸调整、裁剪区域、忽略区域、保存图片等操作；
             - 过滤后的帧将被保存到 `extra_path` 指定目录；
             - 若启用了 Keras 模型，将对帧序列执行分类操作。
-
-            Workflow
-            --------
-            1. 初始化视频帧裁剪器并添加各类 Hook（尺寸、裁剪、忽略、保存）；
-            2. 使用 `VideoCutter.cut` 提取视频帧块；
-            3. 按阈值划分稳定与不稳定帧段；
-            4. 保留若干关键帧图片并绘制网格；
-            5. 使用模型分类器（若启用）进行分类并返回结构结果。
             """
             logger.debug(f"引擎初始化: slide={self.deploy.slide}")
             cutter = VideoCutter(step=self.deploy.slide)
@@ -3183,14 +3185,6 @@ class Alynex(object):
             - 该函数将所有帧按每100张进行分块，并发保存为 PNG 图片。
             - 分析结果中不会包含结构体或模型输出，仅返回原始帧范围及对应图片路径。
             - 遇到保存失败时将记录异常，但整体流程不中断。
-
-            Workflow
-            --------
-            1. 按 100 帧为一组对视频帧进行分块。
-            2. 使用 asyncio 并发保存所有帧为图片。
-            3. 收集所有帧 ID 与图片路径映射结果。
-            4. 获取首尾帧，计算耗时。
-            5. 返回帧 ID、耗时、图片路径映射。
             """
             forge_tasks = [
                 [frame_forge(frame) for frame in chunk] for chunk in
@@ -3234,15 +3228,6 @@ class Alynex(object):
             - 使用 Keras 模型结构提取关键帧，并生成结构体用于后续分析。
             - 帧保存操作与基础分析类似，也采用分块并发保存。
             - `frame_flick()` 负责返回关键帧范围及耗时，在异步中提前调度以节省时间。
-
-            Workflow
-            --------
-            1. 创建 `frame_flick()` 的异步任务，预提取关键帧范围。
-            2. 按 100 帧为一组对视频帧进行分块。
-            3. 并发保存所有帧为 PNG 图片。
-            4. 收集帧 ID 与图片路径映射结果。
-            5. 等待关键帧提取结果完成。
-            6. 返回帧 ID、耗时、图片路径映射及结构体。
             """
             flick_tasks = asyncio.create_task(frame_flick())
 
