@@ -1300,7 +1300,7 @@ class Missions(object):
 
             return "rgb", image.ndim, f"Image: {list(image.shape)} is color image"
 
-        # Note: Start from here
+        # Notes: Start from here
         alynex = Alynex(None, option, deploy, self.design)
 
         report = Report(option.total_place)
@@ -1980,7 +1980,7 @@ class Missions(object):
             for stop in stop_tasks:
                 stop.cancel()
 
-        # Note: Start from here
+        # Notes: Start from here
         manage_ = Manage(self.adb)
 
         device_list = await manage_.operate_device()
