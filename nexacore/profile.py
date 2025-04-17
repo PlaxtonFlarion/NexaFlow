@@ -435,7 +435,7 @@ class Deploy(object):
 
         for key, value in self.deploys.items():
             table = Table(
-                title=f"[bold #87CEFA]{const.DESC}({const.ALIAS}) Deploys {key}",
+                title=f"[bold #87CEFA]{const.DESC} | {const.ALIAS} Deploys {key}",
                 header_style=f"bold #B0C4DE", **table_style
             )
             table.add_column("配置", no_wrap=True, width=8)
@@ -454,7 +454,7 @@ class Deploy(object):
 
         if crops_list := self.crops:
             table = Table(
-                title=f"[bold #5FAFFF]{const.DESC}({const.ALIAS}) Paint Crop Hook",
+                title=f"[bold #5FAFFF]{const.DESC} | {const.ALIAS} Paint Crop Hook",
                 header_style="bold #AFAFD7", **table_style
             )
             table.add_column("编号", justify="left", width=4)
@@ -466,7 +466,7 @@ class Deploy(object):
 
         if omits_list := self.omits:
             table = Table(
-                title=f"[bold #5FAFFF]{const.DESC}({const.ALIAS}) Paint Omit Hook",
+                title=f"[bold #5FAFFF]{const.DESC} | {const.ALIAS} Paint Omit Hook",
                 header_style="bold #AFAFD7", **table_style
             )
             table.add_column("编号", justify="left", width=4)

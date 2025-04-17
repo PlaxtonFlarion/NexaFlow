@@ -92,6 +92,12 @@ class Device(_Phone):
 
 # platform-tools #######################################################################################################
 
+    async def device_online(self, *_, **__) -> None:
+        """
+        等待设备上线。
+        """
+        await Terminal.cmd_line(self.__initial)
+
     async def deep_link(self, url: str, service: str, *_, **__) -> None:
         """
         通过深度链接启动指定的应用服务。

@@ -29,9 +29,11 @@ DESC = r"Framix"
 ALIAS = r"画帧秀"
 LICENSE = r"MIT"
 
-DECLARE = f"""[bold]^* {DESC} ({ALIAS}) *^
+DECLARE = f"""\
+[bold]^* {DESC} | {ALIAS} *^
 (C) {YEAR} {DESC}. All rights reserved.
-Version [bold #FFD75F]{VERSION}[/] - Licensed under the [bold #FF00FF]{LICENSE}[/] License.[/]
+Version [bold #FFD75F]{VERSION}[/] - Licensed under the [bold #D7AFFF]{LICENSE}[/] License.
+-----------------------------------------------
 """
 
 CHARSET = r"UTF-8"

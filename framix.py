@@ -313,23 +313,6 @@ class Missions(object):
         -------
         None
             此方法不返回任何值，数据写入后直接完成异步操作。
-
-        Raises
-        ------
-        TypeError
-            若传入的 `db` 对象不包含 `create` 或 `insert` 方法。
-
-        DatabaseError
-            若数据库执行过程中出现语法、连接或写入失败等错误。
-
-        ValueError
-            若输入参数不符合格式要求或出现非法值。
-
-        Notes
-        -----
-        - 此方法为异步函数，不会阻塞主事件循环。
-        - 数据表结构若已存在，将跳过创建过程。
-        - `db` 对象需提供标准的 `create()` 与 `insert()` 接口。
         """
         await db.create(column_list := ["style", "total", "title", "nest"])
         await db.insert(column_list, [style, total, title, nest])
@@ -560,11 +543,11 @@ class Missions(object):
             self.design.show_panel("\n".join(message_list), Wind.METRIC)
 
         async def render_speed(todo_list: list[list]) -> tuple:
-            total_path: typing.Any | str
-            query_path: typing.Any | str
-            frame_path: typing.Any | str
-            extra_path: typing.Any | str
-            proto_path: typing.Any | str
+            total_path: typing.Any
+            query_path: typing.Any
+            frame_path: typing.Any
+            extra_path: typing.Any
+            proto_path: typing.Any
 
             start, end, cost, scores, struct = 0, 0, 0, None, None
             *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo_list
@@ -718,11 +701,11 @@ class Missions(object):
         atom_tmp = await Craft.achieve(self.atom_total_temp)
 
         async def render_keras(future: "Review", todo_list: list[list]) -> tuple:
-            total_path: typing.Any | str
-            query_path: typing.Any | str
-            frame_path: typing.Any | str
-            extra_path: typing.Any | str
-            proto_path: typing.Any | str
+            total_path: typing.Any
+            query_path: typing.Any
+            frame_path: typing.Any
+            extra_path: typing.Any
+            proto_path: typing.Any
 
             start, end, cost, scores, struct = future.material
             *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo_list
@@ -779,20 +762,6 @@ class Missions(object):
         -------
         None
             无返回值，分析结果通过日志与报告系统落地输出。
-
-        Notes
-        -----
-        - 方法为异步函数，需在协程环境中运行。
-        - 若 `report.scope` 为空，则跳过处理并输出提示信息。
-        - 根据 `self.speed` 配置动态调用 `combine_view()` 或 `combine_main()`。
-        - 所有异常将在执行期间捕获并输出，避免流程中断。
-
-        Workflow
-        --------
-        1. 检查报告对象的有效性及范围列表。
-        2. 输出提示信息（如无可处理数据）。
-        3. 根据配置参数选择合适的组合方法。
-        4. 异步生成组合报告，落地到指定目录。
         """
         if report.range_list:
             function = getattr(self, "combine_view" if self.speed else "combine_main")
@@ -1005,7 +974,7 @@ class Missions(object):
         4. 执行任务分析并生成 HTML 报告。
         """
 
-        async def load_entries():
+        async def load_entries() -> typing.AsyncGenerator:
             """
             加载视频数据条目。
             """
@@ -1016,6 +985,7 @@ class Missions(object):
                     continue
                 yield search_result[0]
 
+        # Notes: Start from here
         search = Search()
 
         clipix = Clipix(self.fmp, self.fpb)
@@ -1239,7 +1209,21 @@ class Missions(object):
 
         looper = asyncio.get_running_loop()
 
-        async def conduct():
+        async def conduct() -> list[str]:
+            """
+            遍历指定的视频数据目录，提取按数字命名的子目录路径列表。
+
+            Returns
+            -------
+            list[str]
+                按目录名称升序排列的不重复的数字子目录路径列表。
+
+            Notes
+            -----
+            - 仅匹配目录名为纯数字的文件夹路径。
+            - 使用 `dict.fromkeys()` 保证路径唯一性并保留顺序。
+            - 用于构建后续图像学习数据源的预筛选入口。
+            """
             search_file_list, search_dirs_list = [], []
 
             for root, dirs, files in os.walk(video_data, topdown=False):
@@ -1252,10 +1236,28 @@ class Missions(object):
 
             if search_dirs_list:
                 search_dirs_list.sort(key=lambda x: int(os.path.basename(x)))
+
             return list(dict.fromkeys(search_dirs_list))
 
-        async def channel():
+        async def channel() -> tuple["numpy.ndarray", str, int]:
+            """
+            遍历所有图像目录，分析图像通道类型，并在设计面板中展示图像信息。
+
+            Returns
+            -------
+            tuple[numpy.ndarray, str, int]
+                - image_learn: 第一个读取成功的图像数据（用于建模）。
+                - image_color: 图像颜色模式（"grayscale" 或 "rgb"）。
+                - image_aisle: 图像通道数量（1 或 3）。
+
+            Notes
+            -----
+            - 支持的图像格式包括：`.png`, `.jpg`, `.jpeg`, `.bmp`, `.gif`, `.tiff`。
+            - 对每张图像调用 `measure()` 进行通道识别，并将结果实时展示在设计面板。
+            - 最终返回用于建模的首张图像及其颜色通道信息。
+            """
             image_learn, image_color, image_aisle = None, "grayscale", 1
+
             for dirs in dirs_list:
                 channel_list = []
                 for name in os.listdir(dirs):
@@ -1266,15 +1268,39 @@ class Missions(object):
                         logger.debug(image_debug)
                         channel_list.append(image_debug)
                 self.design.show_panel("\n".join(channel_list), Wind.DESIGNER)
+
             return image_learn, image_color, image_aisle
 
-        async def measure(image):
+        async def measure(image: "numpy.ndarray") -> tuple[str, int, str]:
+            """
+            判断图像是灰度图还是彩色图，并返回通道类型及描述信息。
+
+            Parameters
+            ----------
+            image : numpy.ndarray
+                待分析的图像数据，通常为 OpenCV 加载图像。
+
+            Returns
+            -------
+            tuple[str, int, str]
+                - 图像颜色模式字符串（"grayscale" 或 "rgb"）
+                - 通道数量（1 表示灰度图，3 表示 RGB 彩色图）
+                - 可用于展示或日志的诊断描述信息
+
+            Notes
+            -----
+            - 判断依据为图像的维度及 RGB 三通道内容是否相等。
+            - 若三通道内容相同，则视为灰度图以 RGB 格式存储。
+            """
             if image.ndim != 3:
                 return "grayscale", 1, f"Image: {list(image.shape)} is grayscale image"
+
             if numpy.array_equal(image[:, :, 0], image[:, :, 1]) and numpy.array_equal(image[:, :, 1], image[:, :, 2]):
                 return "grayscale", 1, f"Image: {list(image.shape)} is grayscale image, stored in RGB format"
+
             return "rgb", image.ndim, f"Image: {list(image.shape)} is color image"
 
+        # Note: Start from here
         alynex = Alynex(None, option, deploy, self.design)
 
         report = Report(option.total_place)
@@ -1315,7 +1341,6 @@ class Missions(object):
             logger.debug(tip := f"没有有效任务")
             return self.design.show_panel(tip, Wind.KEEPER)
 
-        # Ask Analyzer
         if len(task_list) == 1:
             task = [
                 looper.run_in_executor(None, alynex.ks.build, *compile_data)
@@ -1591,71 +1616,20 @@ class Missions(object):
         - 使用异步机制控制设备连接、事件监听和命令执行，最大化多设备并行效率。
         - 分析流程将根据 speed/basic/keras 参数自动切换分析模型，自动生成报告。
         - 函数内部封装多个协程函数，如 anything_film、exec_commands 等，确保逻辑清晰模块化。
-
-        Workflow
-        --------
-        1. 初始化组件：
-            - 创建设备管理器 Manage 和分析引擎 Alynex。
-            - 初始化 Clipix（视频处理器）、Report（报告器）和 Record（录屏管理器）。
-        2. 判断分析模式：
-            - Flick 模式（录制并分析）：
-                a. 展示设备列表，等待用户输入时间或命令。
-                b. 启动录屏任务并计时。
-                c. 完成录制后关闭录屏，分析视频并生成报告。
-            - Carry/Fully 模式（读取 JSON 脚本）：
-                a. 异步加载脚本命令集。
-                b. 激活 UI 自动化。
-                c. 按照 header/change/looper 执行 prefix-action-suffix 三阶段任务。
-                d. 可选地启用 shine 合并任务后再统一分析。
-        3. 命令执行流程：
-            - pack_commands：解析并组合命令列表为可执行格式。
-            - exec_commands：异步并发执行所有命令。
-            - call_commands：调用指定对象的命令函数，并处理结果。
-        4. 视频分析：
-            - 根据 speed/basic/keras 参数自动选择分析方式（als_speed / als_basic_or_keras）。
-            - 支持模型加载、失败回退与结果展示。
-        5. 生成报告：
-            - 所有分析结果通过 Report 模块记录，支持 HTML 渲染、汇总报告合并等。
-            - 脚本模式下支持 batch 多轮循环执行与自动命名。
         """
 
-        async def anything_film() -> list:
+        async def anything_film() -> list[list]:
             """
             初始化并启动设备的视频录制任务。
-
-            Returns
-            -------
-            list
-                返回任务列表，每个元素包含录制视频的相关信息（包括临时路径、传输对象、报告路径等）。
-
-            Notes
-            -----
-            - 遍历所有连接的设备，根据其显示尺寸动态调整窗口布局；
-            - 对每个设备调用 `ask_start_record` 方法开始录制，并生成对应的任务信息；
-            - 支持自动排列设备窗口，避免屏幕重叠；
-            - 将视频任务信息封装为列表，后续用于收集、分析和生成报告。
-
-            Workflow
-            --------
-            1. 获取屏幕分辨率并初始化坐标；
-            2. 计算设备显示位置，处理屏幕换行逻辑；
-            3. 调用录制函数生成任务；
-            4. 返回任务信息列表。
             """
-
-            async def wait_for_device(device: "Device") -> None:
-                """
-                等待设备上线
-                """
-                Design.notes(f"[bold #FAFAD2]Wait Device Online -> {device.tag} {device.sn}")
-                await Terminal.cmd_line([self.adb, "-s", device.sn, "wait-for-device"])
-
             Design.notes(f"**<* {('独立' if self.alone else '全局')}控制模式 *>**")
 
             await source.monitor()
 
+            for device in device_list:
+                logger.debug(f"Wait Device Online -> {device.tag} {device.sn}")
             await asyncio.gather(
-                *(wait_for_device(device) for device in device_list)
+                *(device.device_online() for device in device_list)
             )
 
             media_screen_w, media_screen_h = ScreenMonitor.screen_size()
@@ -1707,22 +1681,6 @@ class Missions(object):
         async def anything_over() -> None:
             """
             完成任务后的处理逻辑，包括录制终止和无效任务的剔除。
-
-            Returns
-            -------
-            None
-
-            Notes
-            -----
-            - 结束所有设备的视频录制任务；
-            - 检查返回结果中是否有录制失败的视频，并将其从任务列表中移除；
-            - 通过日志展示保留或剔除的记录信息。
-
-            Workflow
-            --------
-            1. 并发执行所有设备的 `ask_close_record`；
-            2. 处理返回结果，筛除无效任务；
-            3. 展示每个任务的执行情况。
             """
             effective_list = await asyncio.gather(
                 *(record.ask_close_record(device, video_temp, transports)
@@ -1746,47 +1704,20 @@ class Missions(object):
         async def anything_well() -> None:
             """
             执行任务处理，根据选择的分析模式决定调用哪种分析逻辑。
-
-            Returns
-            -------
-            None
-
-            Notes
-            -----
-            - 当任务列表为空时，直接终止执行；
-            - 根据配置项（speed, basic, keras）决定使用哪种分析方式；
-            - 若无配置项匹配，则表示为录制模式，仅提示当前模式。
-
-            Workflow
-            --------
-            1. 判断任务列表是否为空；
-            2. 根据分析模式调用对应的处理方法（als_speed / als_basic_or_keras）；
-            3. 否则进入默认提示流程。
             """
             if len(task_list) == 0:
                 logger.debug(tip := f"没有有效任务")
                 return self.design.show_panel(tip, Wind.KEEPER)
 
-            # Pack Argument
             attack = deploy, clipix, report, task_list
 
             if self.speed:
-                # Speed Analyzer
                 await self.als_speed(*attack)
             elif self.basic or self.keras:
-                # Keras Analyzer
                 await self.als_basic_or_keras(*attack, option=option, alynex=alynex)
             else:
                 logger.debug(tip := f"**<* 录制模式 *>**")
                 self.design.show_panel(tip, Wind.EXPLORER)
-
-        async def load_timer() -> None:
-            """
-            并行执行定时任务，对设备列表中的每个设备进行计时操作
-            """
-            await asyncio.gather(
-                *(record.check_timer(device, timer_mode) for device in device_list)
-            )
 
         async def load_carry(carry: str) -> dict:
             """
@@ -1928,14 +1859,6 @@ class Missions(object):
             - 该函数用于构建批量自动化脚本任务的参数清单；
             - 所有缺失字段将自动补齐为默认空值，确保指令长度对齐；
             - 支持动态嵌套结构，便于统一处理异步调度任务。
-
-            Workflow
-            --------
-            1. 遍历 `resolve_list` 中每一项，提取并验证 `cmds` 是否有效；
-            2. 对 `vals`、`args`、`kwds` 进行数据结构补齐，确保每个命令项都有对应参数；
-            3. 将每条命令与其参数打包为 `(cmd, vals, args, kwds)` 四元组；
-            4. 将打包后的命令集合追加至总列表中；
-            5. 返回命令集合列表，用于后续调度执行。
             """
             exec_pairs_list = []
 
@@ -1975,7 +1898,7 @@ class Missions(object):
 
             return exec_pairs_list
 
-        async def exec_commands(exec_pairs_list: list, *change) -> None:
+        async def exec_commands(exec_pairs_list: list, *args) -> None:
             """
             执行批量命令的异步控制函数。
 
@@ -1986,7 +1909,7 @@ class Missions(object):
             exec_pairs_list : list
                 包含命令及其参数组合的列表。每项为一个四元组 `(exec_func, exec_vals, exec_args, exec_kwds)`，分别表示待执行的方法名、位置参数、附加参数和关键字参数。
 
-            *change : Any
+            *args : Any
                 用于替换参数中的通配符 "*" 的动态值。可传入多个值用于匹配多个 "*"。
 
             Returns
@@ -2005,29 +1928,14 @@ class Missions(object):
             - 所有命令将并发执行，并根据设备状态自动处理取消和清理；
             - `audio_player` 为特殊函数，默认绑定播放器，不遍历设备；
             - 所有设备异常或任务失败将通过控制台展示，并保持任务日志。
-
-            Workflow
-            --------
-            1. 初始化 `live_devices` 以保存当前活跃设备；
-            2. 为每个设备注册 `stop` 任务，用于监听中断事件；
-            3. 遍历每个命令组 (`exec_pairs`)，按以下规则执行：
-               a. 替换参数中所有的 "*"；
-               b. 若为 `audio_player` 指令，直接执行播放器方法；
-               c. 否则对所有活跃设备并发调用方法；
-            4. 使用 `asyncio.gather` 并发等待所有设备命令执行；
-            5. 捕获并记录执行中出现的异常；
-            6. 所有任务完成后取消 `stop` 事件监听器，完成清理。
             """
+            substitute: typing.Iterator = iter(args)
 
-            async def substitute_star(replaces: typing.Any):
-                """
-                内部函数，用于替换 `exec_args` 中的 "*" 为 `change` 中的相应值。
-                """
-                substitute = iter(change)
-                return [
-                    "".join(next(substitute, "*") if c == "*" else c for c in i)
-                    if isinstance(i, str) else (next(substitute, "*") if i == "*" else i) for i in replaces
-                ]
+            # 用于替换 `exec_args` 中的 "*" 为 `args` 中的相应值。
+            replace_star: typing.Any = lambda x: [
+                "".join(next(substitute, "*") if c == "*" else c for c in i)
+                if isinstance(i, str) else (next(substitute, "*") if i == "*" else i) for i in x
+            ]
 
             live_devices = {device.sn: device for device in device_list}.copy()
 
@@ -2041,14 +1949,21 @@ class Missions(object):
             for exec_pairs in exec_pairs_list:
                 if len(live_devices) == 0:
                     return self.design.notes(f"[bold #F0FFF0 on #000000]All tasks canceled")
+
                 for exec_func, exec_vals, exec_args, exec_kwds in exec_pairs:
-                    exec_vals = await substitute_star(exec_vals)
+                    exec_vals = replace_star(exec_vals)
+
                     if exec_func == "audio_player":
-                        await call_commands(player, live_devices, exec_func, exec_vals, exec_args, exec_kwds)
+                        await call_commands(
+                            player, live_devices, exec_func, exec_vals, exec_args, exec_kwds
+                        )
                     else:
                         for device in live_devices.values():
                             exec_tasks[device.sn] = asyncio.create_task(
-                                call_commands(device, live_devices, exec_func, exec_vals, exec_args, exec_kwds))
+                                call_commands(
+                                    device, live_devices, exec_func, exec_vals, exec_args, exec_kwds
+                                )
+                            )
 
                 try:
                     exec_status_list = await asyncio.gather(*exec_tasks.values(), return_exceptions=True)
@@ -2065,7 +1980,7 @@ class Missions(object):
             for stop in stop_tasks:
                 stop.cancel()
 
-        # 初始化操作
+        # Note: Start from here
         manage_ = Manage(self.adb)
 
         device_list = await manage_.operate_device()
@@ -2076,9 +1991,9 @@ class Missions(object):
         alynex = Alynex(matrix, option, deploy, self.design)
         try:
             await alynex.ask_model_load()
-        except FramixError as e_:
-            logger.debug(e_)
-            self.design.show_panel(e_, Wind.KEEPER)
+        except FramixError as err_:
+            logger.debug(err_)
+            self.design.show_panel(err_, Wind.KEEPER)
 
         titles_ = {"speed": "Speed", "basic": "Basic", "keras": "Keras"}
         input_title_ = next((title_ for key_, title_ in titles_.items() if getattr(self, key_)), "Video")
@@ -2090,19 +2005,18 @@ class Missions(object):
         player = Player()
         source = SourceMonitor()
 
-        lower_bound_, upper_bound_ = (8, 300) if self.whist else (5, 300)
-
         # Flick Loop 处理控制台应用程序中的复杂交互过程，主要负责管理设备显示、设置报告以及通过命令行界面处理各种用户输入
         if self.flick:
             report = Report(option.total_place)
             report.title = f"{input_title_}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
 
-            timer_mode = lower_bound_
+            lower_bound_, upper_bound_ = (8, 300) if self.whist else (5, 300)
+            amount_ = lower_bound_
 
             while True:
                 try:
                     await manage_.display_device()
-                    start_tips_ = f"<<<按 Enter 开始 [bold #D7FF5F]{timer_mode}[/] 秒>>>"
+                    start_tips_ = f"<<<按 Enter 开始 [bold #D7FF5F]{amount_}[/] 秒>>>"
 
                     if action_ := Prompt.ask(f"[bold #5FD7FF]{start_tips_}", console=Design.console):
                         if (select_ := action_.strip().lower()) == "device":
@@ -2120,11 +2034,10 @@ class Missions(object):
                                     Design.notes(f"{const.SUC}New title set successfully")
                                     report.title = f"{src_hd_}_{hd_}" if hd_ else f"{src_hd_}_{random.randint(a_, b_)}"
                                     continue
-                            raise FramixError
+                            raise FramixError(f"命名方式应为 header .*")
 
                         elif select_ == "create":
-                            await self.combine(report)
-                            break
+                            return await self.combine(report)
 
                         elif select_ == "deploy":
                             Design.notes(f"{const.WRN}请完全退出编辑器再继续操作")
@@ -2143,22 +2056,27 @@ class Missions(object):
                             if timer_value_ > upper_bound_ or timer_value_ < lower_bound_:
                                 bound_tips_ = f"{lower_bound_} <= [bold #FFD7AF]Time[/] <= {upper_bound_}"
                                 Design.notes(f"[bold #FFFF87]{bound_tips_}")
-                            timer_mode = max(lower_bound_, min(upper_bound_, timer_value_))
+                            amount_ = max(lower_bound_, min(upper_bound_, timer_value_))
 
                         else:
-                            raise FramixError
+                            raise FramixError(f"未知命令 {select_}")
 
-                except FramixError:
+                except FramixError as e_:
+                    Design.notes(f"{const.WRN}{e_}")
                     Design.tips_document()
-                    continue
 
                 else:
                     task_list = await anything_film()
-                    await load_timer()
+
+                    await asyncio.gather(
+                        *(record.check_timer(device, amount_) for device in device_list)
+                    )
+
                     await anything_over()
                     await anything_well()
-                    check_ = await record.flunk_event()
-                    device_list = await manage_.operate_device() if check_ else device_list
+
+                    if await record.flunk_event():
+                        device_list = await manage_.operate_device()
 
                 finally:
                     await record.clean_event()
@@ -2181,7 +2099,7 @@ class Missions(object):
                 raise FramixError(f"Script content is empty")
 
             for device_ in device_list:
-                logger.debug(tip_ := f"{device_.sn} Automator Activating")
+                logger.debug(tip_ := f"{device_.sn} Automator Activation")
                 self.design.show_panel(tip_, Wind.EXPLORER)
 
             try:
@@ -2190,10 +2108,6 @@ class Missions(object):
                 )
             except Exception as e_:
                 raise FramixError(e_)
-
-            for device_ in device_list:
-                logger.debug(tip_ := f"{device_.sn} Automator Activation Success")
-                self.design.show_panel(tip_, Wind.EXPLORER)
 
             await manage_.display_device()
 
@@ -2264,8 +2178,8 @@ class Missions(object):
                             await anything_over()
 
                             # 检查事件并更新设备列表，清除所有事件
-                            check_ = await record.flunk_event()
-                            device_list = await manage_.operate_device() if check_ else device_list
+                            if await record.flunk_event():
+                                device_list = await manage_.operate_device()
                             await record.clean_event()
 
                             # suffix 提交后置任务
@@ -2290,10 +2204,6 @@ class Missions(object):
                 # 如果需要，结合多种模式生成最终报告
                 if any((self.speed, self.basic, self.keras)):
                     await self.combine(report)
-
-        # Empty Loop
-        else:
-            raise FramixError(f"Command does not exist")
 
 
 class Clipix(object):
@@ -3460,13 +3370,14 @@ if __name__ == '__main__':
     try:
         signal.signal(signal.SIGINT, signal_processor)  # 设置 Ctrl + C 信号处理方式
 
-        Design.minor_logo()
-
         # 如果没有提供命令行参数，则显示应用程序标志和帮助文档，并退出程序
         if len(system_parameter_list := sys.argv) == 1:
+            Design.minor_logo()
             Design.help_document()
             Design.done()
             sys.exit(Design.closure())
+
+        Design.specially_logo()
 
         _wires = system_parameter_list[1:]  # 获取命令行参数（去掉第一个参数，即脚本名称）
 

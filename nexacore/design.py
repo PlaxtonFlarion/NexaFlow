@@ -171,6 +171,41 @@ class Design(object):
         """
 
     @staticmethod
+    def specially_logo() -> None:
+        """
+        打印程序启动时的 ASCII 风格 Logo，并以随机柔和色渲染输出。
+        """
+        logo = f"""\
+__________                        _____        
+___  ____/____________ _______ ______(_)___  __
+__  /_   __  ___/  __ `/_  __ `__ \\_  /__  |/_/
+_  __/   _  /   / /_/ /_  / / / / /  / __>  <  
+/_/      /_/    \\__,_/ /_/ /_/ /_//_/  /_/|_|                                                 
+        """
+        soft_bright_colors = random.choice(
+            [
+                "#FFE4B5",  # 浅橙 Moccasin
+                "#E0FFFF",  # 浅青 LightCyan
+                "#FFFACD",  # 柠檬绸 LemonChiffon
+                "#E6E6FA",  # 薰衣草 Lavender
+                "#F0FFF0",  # 蜜瓜白 Honeydew
+                "#F5F5DC",  # 米色 Beige
+                "#F0F8FF",  # 爱丽丝蓝 AliceBlue
+                "#D8BFD8",  # 蓟色 Thistle
+                "#FFF0F5",  # 藕色 LavenderBlush
+                "#F5FFFA",  # 薄荷奶油 MintCream
+                "#FFEFD5",  # 木瓜奶油 PapayaWhip
+                "#F8F8FF",  # 幽灵白 GhostWhite
+            ]
+        )
+        for line in logo.split("\n"):
+            Design.console.print(
+                Text.from_markup(f"[bold {soft_bright_colors}]{line}[/]")
+            )
+            time.sleep(0.05)
+        Design.console.print(const.DECLARE)
+
+    @staticmethod
     def major_logo() -> None:
         """打印主 Logo（带 ASCII 图形和配色），适用于程序启动欢迎界面。"""
         logo = """[bold #D0D0D0]
@@ -211,7 +246,7 @@ class Design(object):
                 "核心操控", "辅助利器", "视控精灵"] else "[bold #C1FFC1]参数兼容[/]"
 
             table = Table(
-                title=f"[bold #FFDAB9]{const.DESC}({const.ALIAS}) CLI [bold #66CDAA]<{keys}>[/] <{know}>",
+                title=f"[bold #FFDAB9]{const.DESC} | {const.ALIAS} CLI [bold #66CDAA]<{keys}>[/] <{know}>",
                 header_style="bold #FF851B", **table_style
             )
             table.add_column("命令", justify="left", no_wrap=True, width=7)
@@ -259,12 +294,11 @@ class Design(object):
     @staticmethod
     def load_animation() -> None:
         """随机展示启动动画，包括多种渐进式加载风格（点阵、图解等）。"""
-
         colors = {
             1: "bold #D7AFAF", 2: "bold #5FD75F", 3: "bold #5FD7FF", 4: "bold #D7AF5F"
         }
 
-        def speed_engine(stage):
+        def speed_engine(stage: int) -> list["Text"]:
             engine_stages = [
                 Text("\n●", style=colors[1]),
                 Text("●——●", style=colors[2]),
@@ -273,7 +307,7 @@ class Design(object):
             ]
             return engine_stages[stage % len(engine_stages)]
 
-        def basic_engine(stage):
+        def basic_engine(stage: int) -> list["Text"]:
             engine_stages = [
                 Text("\n●", style=colors[1]),
                 Text("●——●", style=colors[2]),
@@ -286,7 +320,7 @@ class Design(object):
             ]
             return engine_stages[stage % len(engine_stages)]
 
-        def keras_engine(stage):
+        def keras_engine(stage: int) -> list["Text"]:
             engine_stages = [
                 Text("""                  
                   (●)
@@ -308,7 +342,7 @@ class Design(object):
             ]
             return engine_stages[stage % len(engine_stages)]
 
-        def other_engine(stage):
+        def other_engine(stage: int) -> list["Text"]:
             engine_stages = [
                 Text("\n○   ○", style=colors[1]),
                 Text("○──┐○──┐", style=colors[2]),
@@ -317,12 +351,12 @@ class Design(object):
             ]
             return engine_stages[stage % len(engine_stages)]
 
-        def animation(step, secs, function):
+        def animation(step: int, secs: int | float, function: typing.Callable) -> None:
             Design.notes(f"[bold #C1FFC1]Engine Initializing[/] ...")
             for i in range(step):
                 Design.console.print(function(i), justify="left")
                 time.sleep(secs)
-            Design.notes(f"[bold #C1FFC1]Engine Loaded[/] ...")
+            Design.notes(f"[bold #C1FFC1]Engine Loaded[/] ...\n")
 
         stochastic = [
             lambda: animation(4, 0.2, speed_engine),
@@ -462,4 +496,5 @@ class Design(object):
 
 
 if __name__ == '__main__':
+    Design.specially_logo()
     pass
