@@ -1618,7 +1618,7 @@ class Missions(object):
         - 函数内部封装多个协程函数，如 anything_film、exec_commands 等，确保逻辑清晰模块化。
         """
 
-        async def anything_film() -> list[list]:
+        async def anything_film(device_list: list["Device"], report: "Report") -> list[list]:
             """
             初始化并启动设备的视频录制任务。
             """
@@ -1678,7 +1678,7 @@ class Missions(object):
 
             return todo_list
 
-        async def anything_over() -> None:
+        async def anything_over(device_list: list["Device"], task_list: list[list]) -> None:
             """
             完成任务后的处理逻辑，包括录制终止和无效任务的剔除。
             """
@@ -1701,7 +1701,7 @@ class Missions(object):
                     check_list.append(tip)
             self.design.show_panel("\n".join(check_list), Wind.EXPLORER)
 
-        async def anything_well() -> None:
+        async def anything_well(task_list: list[list], report: "Report") -> None:
             """
             执行任务处理，根据选择的分析模式决定调用哪种分析逻辑。
             """
@@ -1898,7 +1898,7 @@ class Missions(object):
 
             return exec_pairs_list
 
-        async def exec_commands(exec_pairs_list: list, *args) -> None:
+        async def exec_commands(device_list: list["Device"], exec_pairs_list: list, *args) -> None:
             """
             执行批量命令的异步控制函数。
 
@@ -1906,6 +1906,9 @@ class Missions(object):
 
             Parameters
             ----------
+            device_list : list[Device]
+                包含设备的列表。
+
             exec_pairs_list : list
                 包含命令及其参数组合的列表。每项为一个四元组 `(exec_func, exec_vals, exec_args, exec_kwds)`，分别表示待执行的方法名、位置参数、附加参数和关键字参数。
 
@@ -1980,10 +1983,209 @@ class Missions(object):
             for stop in stop_tasks:
                 stop.cancel()
 
+        async def flick_loop() -> typing.Coroutine | None:
+            device_list = await manage_.operate_device()
+
+            report = Report(option.total_place)
+            report.title = f"{input_title_}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
+
+            lower_bound, upper_bound = (8, 300) if self.whist else (5, 300)
+            amount = lower_bound
+
+            while True:
+                try:
+                    await manage_.display_device()
+                    start_tips = f"<<<按 Enter 开始 [bold #D7FF5F]{amount}[/] 秒>>>"
+
+                    if action := Prompt.ask(f"[bold #5FD7FF]{start_tips}", console=Design.console):
+                        if (select := action.strip().lower()) == "device":
+                            device_list = await manage_.another_device()
+                            continue
+
+                        elif select == "cancel":
+                            Design.exit()
+                            sys.exit(Design.closure())
+
+                        elif "header" in select:
+                            if match := re.search(r"(?<=header\s).*", select):
+                                if hd := match.group().strip():
+                                    src_hd, a, b = f"{input_title_}_{time.strftime('%Y%m%d_%H%M%S')}", 10000, 99999
+                                    Design.notes(f"{const.SUC}New title set successfully")
+                                    report.title = f"{src_hd}_{hd}" if hd else f"{src_hd}_{random.randint(a, b)}"
+                                    continue
+                            raise FramixError(f"命名方式应为 header .*")
+
+                        elif select == "create":
+                            return await self.combine(report)
+
+                        elif select == "deploy":
+                            Design.notes(f"{const.WRN}请完全退出编辑器再继续操作")
+                            deploy.dump_deploy(self.initial_deploy)
+                            if sys.platform == "win32":
+                                first = ["notepad++"] if shutil.which("notepad++") else ["Notepad"]
+                            else:
+                                first = ["open", "-W", "-a", "TextEdit"]
+                            await Terminal.cmd_line(first + self.initial_deploy)
+                            deploy.load_deploy(self.initial_deploy)
+                            deploy.view_deploy()
+                            continue
+
+                        elif select.isdigit():
+                            timer_value = int(select)
+                            if timer_value > upper_bound or timer_value < lower_bound:
+                                bound_tips = f"{lower_bound} <= [bold #FFD7AF]Time[/] <= {upper_bound}"
+                                Design.notes(f"[bold #FFFF87]{bound_tips}")
+                            amount = max(lower_bound, min(upper_bound, timer_value))
+
+                        else:
+                            raise FramixError(f"未知命令 {select}")
+
+                except FramixError as e_:
+                    Design.notes(f"{const.WRN}{e_}")
+                    Design.tips_document()
+
+                else:
+                    task_list = await anything_film(device_list, report)
+
+                    await asyncio.gather(
+                        *(record.check_timer(device, amount) for device in device_list)
+                    )
+
+                    await anything_over(device_list, task_list)
+                    await anything_well(task_list, report)
+
+                    if await record.flunk_event():
+                        device_list = await manage_.operate_device()
+
+                finally:
+                    await record.clean_event()
+
+        async def other_loop() -> typing.Coroutine | None:
+            if self.carry:
+                load_script_data = await asyncio.gather(
+                    *(load_carry(carry) for carry in self.carry)
+                )
+            elif self.fully:
+                load_script_data = await asyncio.gather(
+                    *(load_fully(fully) for fully in self.fully)
+                )
+            else:
+                raise FramixError(f"Script file does not exist")
+
+            if not (script_storage := [script_data_ for script_data_ in load_script_data]):
+                raise FramixError(f"Script content is empty")
+
+            device_list = await manage_.operate_device()
+
+            for device in device_list:
+                logger.debug(tip := f"{device.sn} Automator Activation")
+                self.design.show_panel(tip, Wind.EXPLORER)
+
+            try:
+                await asyncio.gather(
+                    *(device.automator_activation() for device in device_list)
+                )
+            except Exception as e:
+                raise FramixError(e)
+
+            await manage_.display_device()
+
+            for script_dict in script_storage:
+                report = Report(option.total_place)
+                for script_key, script_value in script_dict.items():
+                    logger.debug(tip_ := f"Batch Exec: {script_key}")
+                    self.design.show_panel(tip_, Wind.EXPLORER)
+
+                    # 根据 script_value_ 中的 parser 参数更新 deploy 配置
+                    if (parser := script_value.get("parser", {})) and type(parser) is dict:
+                        for deploy_key, deploy_value in deploy.deploys.items():
+                            logger.debug(f"Current Key {deploy_key}")
+                            for d_key, d_value in deploy_value.items():
+                                # 以命令行参数为第一优先级
+                                if any(line_.lower().startswith(f"--{d_key}") for line_ in self.wires):
+                                    logger.debug(f"    Line First <{d_key}> = {getattr(deploy, d_key)}")
+                                    continue
+                                setattr(deploy, d_key, parser.get(deploy_key, {}).get(d_key, {}))
+                                logger.debug(f"    Parser Set <{d_key}>  {d_value} -> {getattr(deploy, d_key)}")
+
+                    # 处理 script_value_ 中的 header 参数
+                    header = header if type(
+                        header := script_value.get("header", [])
+                    ) is list else ([header] if type(header) is str else [time.strftime("%Y%m%d%H%M%S")])
+
+                    # 处理 script_value_ 中的 change 参数
+                    if change := script_value.get("change", []):
+                        change = change if type(change) is list else (
+                            [change] if type(change) is str else [str(change)])
+
+                    # 处理 script_value_ 中的 looper 参数
+                    try:
+                        looper = int(looper) if (looper := script_value.get("looper", None)) else 1
+                    except ValueError as e_:
+                        logger.debug(tip := f"重置循环次数 {(looper := 1)} {e_}")
+                        self.design.show_panel(tip, Wind.EXPLORER)
+
+                    # 处理 script_value 中的 prefix 参数
+                    if prefix_list := script_value.get("prefix", []):
+                        prefix_list = await pack_commands(prefix_list)
+                    # 处理 script_value 中的 action 参数
+                    if action_list := script_value.get("action", []):
+                        action_list = await pack_commands(action_list)
+                    # 处理 script_value 中的 suffix 参数
+                    if suffix_list := script_value.get("suffix", []):
+                        suffix_list = await pack_commands(suffix_list)
+
+                    # 遍历 header 并执行任务
+                    for hd in header:
+                        report.title = f"{input_title_}_{script_key}_{hd}"
+                        extend_task_list = []
+
+                        for _ in range(looper):
+                            # prefix 前置任务
+                            if prefix_list:
+                                await exec_commands(device_list, prefix_list)
+
+                            # start record 开始录屏
+                            task_list = await anything_film(device_list, report)
+
+                            # action 主要任务
+                            if action_list:
+                                change_list = [hd + c for c in change] if change else [hd]
+                                await exec_commands(device_list, action_list, *change_list)
+
+                            # close record 结束录屏
+                            await anything_over(device_list, task_list)
+
+                            # 检查事件并更新设备列表，清除所有事件
+                            if await record.flunk_event():
+                                device_list = await manage_.operate_device()
+                            await record.clean_event()
+
+                            # suffix 提交后置任务
+                            suffix_task_list = []
+                            if suffix_list:
+                                suffix_task_list.append(
+                                    asyncio.create_task(exec_commands(device_list, suffix_list), name="suffix"))
+
+                            # 根据参数判断是否分析视频以及使用哪种方式分析
+                            if self.shine:
+                                extend_task_list.extend(task_list)
+                            else:
+                                await anything_well(task_list, report)
+
+                            # 等待后置任务完成
+                            await asyncio.gather(*suffix_task_list)
+
+                        # 分析视频集合
+                        if task_list := (extend_task_list if self.shine else []):
+                            await anything_well(task_list, report)
+
+                # 如果需要，结合多种模式生成最终报告
+                if any((self.speed, self.basic, self.keras)):
+                    await self.combine(report)
+
         # Notes: Start from here
         manage_ = Manage(self.adb)
-
-        device_list = await manage_.operate_device()
 
         clipix = Clipix(self.fmp, self.fpb)
 
@@ -2005,205 +2207,10 @@ class Missions(object):
         player = Player()
         source = SourceMonitor()
 
-        # Flick Loop 处理控制台应用程序中的复杂交互过程，主要负责管理设备显示、设置报告以及通过命令行界面处理各种用户输入
         if self.flick:
-            report = Report(option.total_place)
-            report.title = f"{input_title_}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
-
-            lower_bound_, upper_bound_ = (8, 300) if self.whist else (5, 300)
-            amount_ = lower_bound_
-
-            while True:
-                try:
-                    await manage_.display_device()
-                    start_tips_ = f"<<<按 Enter 开始 [bold #D7FF5F]{amount_}[/] 秒>>>"
-
-                    if action_ := Prompt.ask(f"[bold #5FD7FF]{start_tips_}", console=Design.console):
-                        if (select_ := action_.strip().lower()) == "device":
-                            device_list = await manage_.another_device()
-                            continue
-
-                        elif select_ == "cancel":
-                            Design.exit()
-                            sys.exit(Design.closure())
-
-                        elif "header" in select_:
-                            if match_ := re.search(r"(?<=header\s).*", select_):
-                                if hd_ := match_.group().strip():
-                                    src_hd_, a_, b_ = f"{input_title_}_{time.strftime('%Y%m%d_%H%M%S')}", 10000, 99999
-                                    Design.notes(f"{const.SUC}New title set successfully")
-                                    report.title = f"{src_hd_}_{hd_}" if hd_ else f"{src_hd_}_{random.randint(a_, b_)}"
-                                    continue
-                            raise FramixError(f"命名方式应为 header .*")
-
-                        elif select_ == "create":
-                            return await self.combine(report)
-
-                        elif select_ == "deploy":
-                            Design.notes(f"{const.WRN}请完全退出编辑器再继续操作")
-                            deploy.dump_deploy(self.initial_deploy)
-                            if sys.platform == "win32":
-                                first_ = ["notepad++"] if shutil.which("notepad++") else ["Notepad"]
-                            else:
-                                first_ = ["open", "-W", "-a", "TextEdit"]
-                            await Terminal.cmd_line(first_ + self.initial_deploy)
-                            deploy.load_deploy(self.initial_deploy)
-                            deploy.view_deploy()
-                            continue
-
-                        elif select_.isdigit():
-                            timer_value_ = int(select_)
-                            if timer_value_ > upper_bound_ or timer_value_ < lower_bound_:
-                                bound_tips_ = f"{lower_bound_} <= [bold #FFD7AF]Time[/] <= {upper_bound_}"
-                                Design.notes(f"[bold #FFFF87]{bound_tips_}")
-                            amount_ = max(lower_bound_, min(upper_bound_, timer_value_))
-
-                        else:
-                            raise FramixError(f"未知命令 {select_}")
-
-                except FramixError as e_:
-                    Design.notes(f"{const.WRN}{e_}")
-                    Design.tips_document()
-
-                else:
-                    task_list = await anything_film()
-
-                    await asyncio.gather(
-                        *(record.check_timer(device, amount_) for device in device_list)
-                    )
-
-                    await anything_over()
-                    await anything_well()
-
-                    if await record.flunk_event():
-                        device_list = await manage_.operate_device()
-
-                finally:
-                    await record.clean_event()
-
-        # Other Loop 执行批量脚本任务，并根据脚本中的配置进行操作
+            await flick_loop()
         elif self.carry or self.fully:
-
-            if self.carry:
-                load_script_data_ = await asyncio.gather(
-                    *(load_carry(carry_) for carry_ in self.carry)
-                )
-            elif self.fully:
-                load_script_data_ = await asyncio.gather(
-                    *(load_fully(fully_) for fully_ in self.fully)
-                )
-            else:
-                raise FramixError(f"Script file does not exist")
-
-            if not (script_storage_ := [script_data_ for script_data_ in load_script_data_]):
-                raise FramixError(f"Script content is empty")
-
-            for device_ in device_list:
-                logger.debug(tip_ := f"{device_.sn} Automator Activation")
-                self.design.show_panel(tip_, Wind.EXPLORER)
-
-            try:
-                await asyncio.gather(
-                    *(device_.automator_activation() for device_ in device_list)
-                )
-            except Exception as e_:
-                raise FramixError(e_)
-
-            await manage_.display_device()
-
-            for script_dict_ in script_storage_:
-                report = Report(option.total_place)
-                for script_key_, script_value_ in script_dict_.items():
-                    logger.debug(tip_ := f"Batch Exec: {script_key_}")
-                    self.design.show_panel(tip_, Wind.EXPLORER)
-
-                    # 根据 script_value_ 中的 parser 参数更新 deploy 配置
-                    if (parser_ := script_value_.get("parser", {})) and type(parser_) is dict:
-                        for deploy_key_, deploy_value_ in deploy.deploys.items():
-                            logger.debug(f"Current Key {deploy_key_}")
-                            for d_key_, d_value_ in deploy_value_.items():
-                                # 以命令行参数为第一优先级
-                                if any(line_.lower().startswith(f"--{d_key_}") for line_ in self.wires):
-                                    logger.debug(f"    Line First <{d_key_}> = {getattr(deploy, d_key_)}")
-                                    continue
-                                setattr(deploy, d_key_, parser_.get(deploy_key_, {}).get(d_key_, {}))
-                                logger.debug(f"    Parser Set <{d_key_}>  {d_value_} -> {getattr(deploy, d_key_)}")
-
-                    # 处理 script_value_ 中的 header 参数
-                    header_ = header_ if type(
-                        header_ := script_value_.get("header", [])
-                    ) is list else ([header_] if type(header_) is str else [time.strftime("%Y%m%d%H%M%S")])
-
-                    # 处理 script_value_ 中的 change 参数
-                    if change_ := script_value_.get("change", []):
-                        change_ = change_ if type(change_) is list else (
-                            [change_] if type(change_) is str else [str(change_)])
-
-                    # 处理 script_value_ 中的 looper 参数
-                    try:
-                        looper_ = int(looper_) if (looper_ := script_value_.get("looper", None)) else 1
-                    except ValueError as e_:
-                        logger.debug(tip_ := f"重置循环次数 {(looper_ := 1)} {e_}")
-                        self.design.show_panel(tip_, Wind.EXPLORER)
-
-                    # 处理 script_value_ 中的 prefix 参数
-                    if prefix_list_ := script_value_.get("prefix", []):
-                        prefix_list_ = await pack_commands(prefix_list_)
-                    # 处理 script_value_ 中的 action 参数
-                    if action_list_ := script_value_.get("action", []):
-                        action_list_ = await pack_commands(action_list_)
-                    # 处理 script_value_ 中的 suffix 参数
-                    if suffix_list_ := script_value_.get("suffix", []):
-                        suffix_list_ = await pack_commands(suffix_list_)
-
-                    # 遍历 header 并执行任务
-                    for hd_ in header_:
-                        report.title = f"{input_title_}_{script_key_}_{hd_}"
-                        extend_task_list_ = []
-
-                        for _ in range(looper_):
-                            # prefix 前置任务
-                            if prefix_list_:
-                                await exec_commands(prefix_list_)
-
-                            # start record 开始录屏
-                            task_list = await anything_film()
-
-                            # action 主要任务
-                            if action_list_:
-                                change_list_ = [hd_ + c_ for c_ in change_] if change_ else [hd_]
-                                await exec_commands(action_list_, *change_list_)
-
-                            # close record 结束录屏
-                            await anything_over()
-
-                            # 检查事件并更新设备列表，清除所有事件
-                            if await record.flunk_event():
-                                device_list = await manage_.operate_device()
-                            await record.clean_event()
-
-                            # suffix 提交后置任务
-                            suffix_task_list_ = []
-                            if suffix_list_:
-                                suffix_task_list_.append(
-                                    asyncio.create_task(exec_commands(suffix_list_), name="suffix"))
-
-                            # 根据参数判断是否分析视频以及使用哪种方式分析
-                            if self.shine:
-                                extend_task_list_.extend(task_list)
-                            else:
-                                await anything_well()
-
-                            # 等待后置任务完成
-                            await asyncio.gather(*suffix_task_list_)
-
-                        # 分析视频集合
-                        if task_list := (extend_task_list_ if self.shine else []):
-                            await anything_well()
-
-                # 如果需要，结合多种模式生成最终报告
-                if any((self.speed, self.basic, self.keras)):
-                    await self.combine(report)
+            await other_loop()
 
 
 class Clipix(object):
