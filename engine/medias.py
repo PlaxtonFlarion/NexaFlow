@@ -22,6 +22,7 @@ import re
 import sys
 import time
 import random
+import typing
 import asyncio
 
 try:
@@ -75,8 +76,8 @@ class Record(object):
     - 所有录制状态通过事件进行管理与清理。
     """
 
-    record_events: dict[dict[str, asyncio.Event]] = {}
-    melody_events: asyncio.Event = asyncio.Event()
+    record_events: dict[dict[str, "asyncio.Event"]] = {}
+    melody_events: "asyncio.Event" = asyncio.Event()
 
     def __init__(self, version: str, **kwargs):
         self.version, self.station = version, sys.platform
@@ -115,18 +116,11 @@ class Record(object):
         - 根据设备信息和可选参数构建录制命令。
         - 启动录制进程并创建异步任务监控输出流。
         - 通过 `asyncio.sleep(1)` 等待录制进程启动稳定。
-
-        Workflow
-        --------
-        1. 构建录制命令（使用 scrcpy），包括设备序列号、窗口位置、帧率等参数。
-        2. 启动子进程，并并发创建标准输出和错误输出的监听任务。
-        3. 通过事件字典监控录制状态。
-        4. 返回录制文件路径和进程对象，供后续停止录制使用。
         """
 
-        async def input_stream():
+        async def input_stream() -> typing.Coroutine | None:
             async for line in transports.stdout:
-                Design.annal(stream := line.decode(encoding=const.CHARSET, errors="ignore").strip())
+                Design.annal(stream := line.decode(const.CHARSET, "ignore").strip())
                 if "Recording started" in stream:
                     events["head"].set()
                 elif "Recording complete" in stream:
@@ -134,20 +128,20 @@ class Record(object):
                     events["done"].set()
                     break
 
-        async def error_stream():
+        async def error_stream() -> typing.Coroutine | None:
             async for line in transports.stderr:
-                Design.annal(stream := line.decode(encoding=const.CHARSET, errors="ignore").strip())
+                Design.annal(stream := line.decode(const.CHARSET, "ignore").strip())
                 if "Could not find" in stream or "connection failed" in stream or "Recorder error" in stream:
                     events["fail"].set()
                     break
 
-        self.record_events[device.sn]: dict[str, asyncio.Event] = {
+        self.record_events[device.sn]: dict[str, "asyncio.Event"] = {
             "head": asyncio.Event(), "done": asyncio.Event(),
             "stop": asyncio.Event(), "fail": asyncio.Event(),
         }
 
-        bridle: asyncio.Event = self.record_events[device.sn]["stop"] if self.alone else self.melody_events
-        events: dict[str, asyncio.Event] = self.record_events[device.sn]
+        bridle: "asyncio.Event" = self.record_events[device.sn]["stop"] if self.alone else self.melody_events
+        events: dict[str, "asyncio.Event"] = self.record_events[device.sn]
 
         video_flag = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
 
@@ -207,18 +201,12 @@ class Record(object):
         - 查找并终止录制进程的所有子进程。
         - 等待录制完成事件触发，超时时返回失败信息。
         - 如果录制成功完成，返回成功信息。
-
-        Workflow
-        --------
-        1. 使用 `find_child(pid)` 获取录制进程的所有子进程 PID。
-        2. 使用 `stop_child(pid)` 逐个终止子进程：
-            - Windows 使用 PowerShell 的 `Stop-Process`。
-            - 类 Unix 系统使用 `xargs kill -SIGINT`。
-        3. 等待 `done` 事件的触发，超时则视为失败。
-        4. 根据事件状态返回成功或失败的描述信息及视频文件名。
         """
 
         async def find_child(pid: str) -> list:
+            """
+            获取录制进程的所有子进程 PID。
+            """
             if self.station == "win32":
                 child_pids = await Terminal.cmd_line(
                     [
@@ -237,11 +225,16 @@ class Record(object):
             ] if child_pids else []
 
         async def stop_child(pid: str) -> None:
+            """
+            逐个终止子进程。
+            """
             if self.station == "win32":
+                # Windows 使用 PowerShell 的 `Stop-Process`。
                 off = await Terminal.cmd_line(
                     ["powershell", "-Command", "Stop-Process", "-Id", pid, "-Force"]
                 )
             else:
+                # 类 Unix 系统使用 `xargs kill -SIGINT`。
                 off = await Terminal.cmd_line(
                     ["xargs", "kill", "-SIGINT"], transmit=pid.encode()
                 )
@@ -258,6 +251,7 @@ class Record(object):
             )
 
         try:
+            # 等待 `done` 事件的触发，超时则视为失败。
             await asyncio.wait_for(events["done"].wait(), 3)
         except asyncio.TimeoutError:
             return f"{desc} 视频录制失败", banner
@@ -288,16 +282,6 @@ class Record(object):
         - 若 `stop` 在倒计时中被触发，视为主动停止。
         - 若 `fail` 在任意阶段被触发，视为录制失败。
         - 每秒更新剩余时间，展示提示信息。
-
-        Workflow
-        --------
-        1. 等待 `head` 事件触发后进入倒计时循环。
-        2. 在倒计时过程中：
-            - 每秒输出剩余时间提示；
-            - 若 `stop` 事件被设定，则提前终止；
-            - 若 `fail` 事件被设定，则输出意外终止信息。
-        3. 若在 `head` 前就收到 `fail`，立即终止。
-        4. 倒计时正常结束后输出完成提示。
         """
         bridle = self.record_events[device.sn]["stop"] if self.alone else self.melody_events
         events = self.record_events[device.sn]
@@ -342,14 +326,6 @@ class Record(object):
         - 独立控制模式下监听设备专属事件；
         - 非独立模式下监听全局 `melody_events`；
         - 一旦事件触发，取消当前设备的任务。
-
-        Workflow
-        --------
-        1. 判断当前控制模式是否为独立 (`self.alone`)。
-        2. 独立模式下循环等待 `stop`、`done`、`fail` 中任一事件触发。
-        3. 非独立模式下等待全局 `melody_events`。
-        4. 若任务存在于 `exec_tasks` 中，调用 `cancel()` 中断执行。
-        5. 输出取消任务提示信息。
         """
         if self.alone and (events := self.record_events.get(device.sn, None)):
             bridle = events["stop"], events["done"], events["fail"]
@@ -381,13 +357,6 @@ class Record(object):
         - 每个设备在录制启动时会生成一组事件；
         - `fail` 表示录制异常中断，可能由 scrcpy 异常、连接错误等引起；
         - 本方法适用于判断录制是否需要中断或重试。
-
-        Workflow
-        --------
-        1. 遍历 `self.record_events` 中所有设备的事件字典；
-        2. 检查每个事件字典中的 `fail` 是否处于已触发状态；
-        3. 若任一事件触发，则返回 True；
-        4. 全部未触发时，返回 False。
         """
         return any(events["fail"].is_set() for events in self.record_events.values())
 
@@ -406,12 +375,6 @@ class Record(object):
         - 包含清空全局事件 `melody_events`；
         - 遍历所有设备事件并逐个 `clear()`；
         - 最终清空 `record_events` 字典。
-
-        Workflow
-        --------
-        1. 调用 `self.melody_events.clear()` 重置全局事件；
-        2. 遍历 `record_events`，对每个设备的事件集合执行清除操作；
-        3. 清空 `record_events`，为下一轮任务做好准备。
         """
         self.melody_events.clear()
         for event_dict in self.record_events.values():
@@ -429,7 +392,7 @@ class Player(object):
     """
 
     player_events: dict = {}
-    melody_events: asyncio.Event = asyncio.Event()
+    melody_events: "asyncio.Event" = asyncio.Event()
 
     @staticmethod
     async def audio_player(audio_file: str) -> None:

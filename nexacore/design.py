@@ -21,6 +21,7 @@ import os
 import time
 import random
 import typing
+from rich.live import Live
 from rich.tree import Tree
 from rich.text import Text
 from rich.table import Table
@@ -57,16 +58,22 @@ class Design(object):
 
     @staticmethod
     def notes(text: typing.Any) -> None:
-        """输出常规日志信息，使用 bold 样式强调。"""
+        """
+        输出常规日志信息，使用 bold 样式强调。
+        """
         Design.console.print(f"[bold]{const.DESC} | Analyzer | {text}[/]")
 
     @staticmethod
     def annal(text: typing.Any) -> None:
-        """输出结构化强调文本，适用于模型状态或分析摘要。"""
+        """
+        输出结构化强调文本，适用于模型状态或分析摘要。
+        """
         Design.console.print(f"[bold]{const.DESC} | Analyzer |[/]", Text(text, "bold"))
 
     def show_panel(self, text: typing.Any, wind: dict) -> None:
-        """根据日志等级和样式参数渲染面板式输出。"""
+        """
+        根据日志等级和样式参数渲染面板式输出。
+        """
         if self.design_level == const.SHOW_LEVEL:
             panel = Panel(
                 Text(
@@ -77,7 +84,9 @@ class Design(object):
 
     @staticmethod
     def show_tree(file_path: str) -> None:
-        """构建并展示文件夹结构树，支持视频文件和子目录的可视链接。"""
+        """
+        构建并展示文件夹结构树，支持视频文件和子目录的可视链接。
+        """
 
         def add_nodes(current_node: "Tree", current_path: str) -> None:
             try:
@@ -102,7 +111,9 @@ class Design(object):
 
     @staticmethod
     def show_progress() -> "Progress":
-        """创建并返回自定义进度条组件，适用于异步任务的状态展示。"""
+        """
+        创建并返回自定义进度条组件，适用于异步任务的状态展示。
+        """
         return Progress(
             TextColumn(text_format=f"[bold]{const.DESC} | {{task.description}} |", justify="right"),
             SpinnerColumn(
@@ -119,7 +130,9 @@ class Design(object):
 
     @staticmethod
     def simulation_progress(desc: str) -> None:
-        """启动模拟进度条，用于快速任务的视觉反馈。"""
+        """
+        启动模拟进度条，用于快速任务的视觉反馈。
+        """
         with Progress(
             TextColumn(text_format="[bold #FFFFD7]{task.description}", justify="right"),
             SpinnerColumn(
@@ -140,31 +153,39 @@ class Design(object):
 
     @staticmethod
     def done() -> None:
-        """显示任务完成状态的 ASCII 区块框提示。"""
+        """
+        显示任务完成状态的 ASCII 区块框提示，柔和浅绿，视觉愉悦。
+        """
         Design.console.print(f"""[bold]
     ╔══════════════════════════════════╗
-    ║          [bold #00FF00]Missions  Done[/]          ║
+    ║          [bold #A8F5B5]Missions  Done[/]          ║
     ╚══════════════════════════════════╝""")
 
     @staticmethod
     def fail() -> None:
-        """显示任务失败状态的 ASCII 区块框提示。"""
+        """
+        显示任务失败状态的 ASCII 区块框提示，柔和奶黄，温和不过亮。
+        """
         Design.console.print(f"""[bold]
     ╔══════════════════════════════════╗
-    ║          [bold #FF0000]Missions  Fail[/]          ║
+    ║          [bold #F5A8A8]Missions  Fail[/]          ║
     ╚══════════════════════════════════╝""")
 
     @staticmethod
     def exit() -> None:
-        """显示任务退出状态的 ASCII 区块框提示。"""
+        """
+        显示任务退出状态的 ASCII 区块框提示，柔和淡红，不刺眼。
+        """
         Design.console.print(f"""[bold]
     ╔══════════════════════════════════╗
-    ║          [bold #FFFF00]Missions  Exit[/]          ║
+    ║          [bold #FFF6AA]Missions  Exit[/]          ║
     ╚══════════════════════════════════╝""")
 
     @staticmethod
     def closure() -> str:
-        """返回格式化的退出提示文本。"""
+        """
+        返回格式化的退出提示文本。
+        """
         return f"""
     <*=> {const.DESC} will now automatically exit <=*>
     <*=> {const.DESC} see you next <=*>
@@ -207,7 +228,9 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
     @staticmethod
     def major_logo() -> None:
-        """打印主 Logo（带 ASCII 图形和配色），适用于程序启动欢迎界面。"""
+        """
+        打印主 Logo（带 ASCII 图形和配色），适用于程序启动欢迎界面。
+        """
         logo = """[bold #D0D0D0]
     ███╗   ██╗███████╗██╗  ██╗ █████╗   ███████╗██╗      ██████╗ ██╗    ██╗
     ██╔██╗ ██║██╔════╝╚██╗██╔╝██╔══██╗  ██╔════╝██║     ██╔═══██╗██║    ██║
@@ -220,7 +243,9 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
     @staticmethod
     def minor_logo() -> None:
-        """打印次 Logo，逐行动态加载并附带版权信息。"""
+        """
+        打印次 Logo，逐行动态加载并附带版权信息。
+        """
         logo = """[bold #D0D0D0]
             ███████╗ ██████╗   █████╗      ███╗   ███╗ ██╗ ██╗  ██╗
             ██╔════╝ ██╔══██╗ ██╔══██╗     ████╗ ████║ ██║ ╚██╗██╔╝
@@ -236,7 +261,9 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
     @staticmethod
     def help_document() -> None:
-        """展示命令行参数文档（来自 ARGUMENT 配置），以表格形式高亮各类参数分组。"""
+        """
+        展示命令行参数文档（来自 ARGUMENT 配置），以表格形式高亮各类参数分组。
+        """
         table_style = {
             "title_justify": "center", "show_header": True, "show_lines": True
         }
@@ -268,7 +295,9 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
     @staticmethod
     def tips_document() -> None:
-        """显示简化参数提示文档，适用于交互式命令输入提示。"""
+        """
+        显示简化参数提示文档，适用于交互式命令输入提示。
+        """
         table = Table(
             title=f"[bold #FFDAB9]{const.ITEM} {const.DESC} CLI",
             header_style="bold #FF851B",
@@ -293,7 +322,9 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
     @staticmethod
     def load_animation() -> None:
-        """随机展示启动动画，包括多种渐进式加载风格（点阵、图解等）。"""
+        """
+        随机展示启动动画，包括多种渐进式加载风格（点阵、图解等）。
+        """
         colors = {
             1: "bold #D7AFAF", 2: "bold #5FD75F", 3: "bold #5FD7FF", 4: "bold #D7AF5F"
         }
@@ -367,8 +398,31 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         random.choice(stochastic)()
 
     @staticmethod
+    def render_horizontal_pulse() -> None:
+        """
+        渲染报告时的横向光柱动画，表现为左右流动的亮块。
+        """
+        width = int(Design.console.width * 0.25)
+        charset = "⣿"
+
+        start_time = time.time()
+        with Live(refresh_per_second=20) as live:
+            while time.time() - start_time < random.randint(1, 5):
+                if (offset := int((time.time() * 10) % (width * 2))) >= width:
+                    offset = width * 2 - offset
+
+                frame = charset * offset + "[bold #FFFFFF on #00FFAA]" + charset + "[/]" + charset * (width - offset)
+                panel = Panel.fit(
+                    Text.from_markup(frame), title="Html Rendering", border_style="bold #20B2AA", padding=(0, 2)
+                )
+                live.update(panel)
+                time.sleep(0.01)
+
+    @staticmethod
     def show_quantum_intro() -> None:
-        """星域构形动画（Quantum Star Boot）"""
+        """
+        星域构形动画（Quantum Star Boot）
+        """
         frames = [
             f"""\
 
@@ -425,11 +479,15 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
     @staticmethod
     def clear_screen() -> None:
-        """清空终端内容，自动适配平台，Windows 使用 'cls'，其他平台使用 'clear'。"""
+        """
+        清空终端内容，自动适配平台，Windows 使用 'cls'，其他平台使用 'clear'。
+        """
         os.system("cls" if os.name == "nt" else "clear")
 
     def content_pose(self, rlt, avg, dur, org, vd_start, vd_close, vd_limit, video_temp, frate) -> None:
-        """根据日志等级展示当前视频处理过程中的关键帧率与时长信息。"""
+        """
+        根据日志等级展示当前视频处理过程中的关键帧率与时长信息。
+        """
         if self.design_level == const.SHOW_LEVEL:
             table_style = {
                 "title_justify": "center", "show_header": True, "show_lines": True
@@ -471,7 +529,9 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             self.console.print(table_clip)
 
     def assort_frame(self, begin_fr, final_fr, stage_cs) -> None:
-        """根据日志等级输出帧片段处理的起止帧号及耗时统计。"""
+        """
+        根据日志等级输出帧片段处理的起止帧号及耗时统计。
+        """
         if self.design_level == const.SHOW_LEVEL:
             table_style = {
                 "title_justify": "center", "show_header": True, "show_lines": True
@@ -496,5 +556,4 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
 
 if __name__ == '__main__':
-    Design.specially_logo()
     pass

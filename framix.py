@@ -736,6 +736,8 @@ class Missions(object):
 
             return result.get("style"), result.get("total"), result.get("title"), nest
 
+        self.design.render_horizontal_pulse()
+
         # Keras Analyzer Result
         render_result = await asyncio.gather(
             *(render_keras(future, todo_list) for future, todo_list in zip(futures, task_list) if future)
@@ -815,6 +817,8 @@ class Missions(object):
 
         logger.debug(tip := f"正在生成汇总报告 ...")
         self.design.show_panel(tip, Wind.REPORTER)
+
+        self.design.render_horizontal_pulse()
 
         state_list: list[str | Exception] = await asyncio.gather(
             *(
@@ -913,14 +917,11 @@ class Missions(object):
                  report.query, report.frame_path, report.extra_path, report.proto_path]
             )
 
-        # Pack Argument
-        attack = deploy, clipix, report, task_list
-
         if self.speed:
-            # Speed Analyzer
-            await self.als_speed(*attack)
+            await self.als_speed(
+                deploy, clipix, report, task_list
+            )
         else:
-            # Initial Alynex
             matrix = option.model_place if self.keras else None
             alynex = Alynex(matrix, option, deploy, self.design)
             try:
@@ -929,10 +930,10 @@ class Missions(object):
                 logger.debug(e)
                 self.design.show_panel(e, Wind.KEEPER)
 
-            # Keras Analyzer
-            await self.als_basic_or_keras(*attack, option=option, alynex=alynex)
+            await self.als_basic_or_keras(
+                deploy, clipix, report, task_list, option=option, alynex=alynex
+            )
 
-        # Create Report
         await self.combine(report)
 
     # """影像堆叠导航"""
@@ -1008,14 +1009,9 @@ class Missions(object):
                              report.query, report.frame_path, report.extra_path, report.proto_path]
                         )
 
-                    # Pack Argument
-                    attack = deploy, clipix, report, task_list
-
                     if self.speed:
-                        # Speed Analyzer
-                        await self.als_speed(*attack)
+                        await self.als_speed(deploy, clipix, report, task_list)
                     else:
-                        # Initial Alynex
                         matrix = option.model_place if self.keras else None
                         alynex = Alynex(matrix, option, deploy, self.design)
                         try:
@@ -1024,8 +1020,9 @@ class Missions(object):
                             logger.debug(e)
                             self.design.show_panel(e, Wind.KEEPER)
 
-                        # Keras Analyzer
-                        await self.als_basic_or_keras(*attack, option=option, alynex=alynex)
+                        await self.als_basic_or_keras(
+                            deploy, clipix, report, task_list, option=option, alynex=alynex
+                        )
 
                 # Create Report
                 await self.combine(report)
@@ -1585,7 +1582,7 @@ class Missions(object):
                 self.design.show_panel(tip_, Wind.KEEPER)
 
     # """循环节拍器 | 脚本驱动者 | 全域执行者"""
-    async def analysis(self, option: "Option", deploy: "Deploy") -> None:
+    async def analysis(self, option: "Option", deploy: "Deploy", tp_ver: typing.Any) -> None:
         """
         根据当前执行模式启动视频录制流程或自动化批处理流程，支持速度优先、基础分析、深度模型等多种模式。
 
@@ -1596,6 +1593,9 @@ class Missions(object):
 
         deploy : Deploy
             部署参数对象，包含所有 CLI 配置项，如滑动窗口大小、权重参数、剪辑规则等。
+
+        tp_ver : typing.Any
+            依赖的 scrcpy 三方应用版本。
 
         Returns
         -------
@@ -1637,7 +1637,7 @@ class Missions(object):
             """
             Design.notes(f"**<* {('独立' if self.alone else '全局')}控制模式 *>**")
 
-            await source.monitor()
+            await source_monitor.monitor()
 
             for device in device_list:
                 logger.debug(f"Wait Device Online -> {device.tag} {device.sn}")
@@ -1760,12 +1760,14 @@ class Missions(object):
                 logger.debug(tip := f"没有有效任务")
                 return self.design.show_panel(tip, Wind.KEEPER)
 
-            attack = deploy, clipix, report, task_list
-
             if self.speed:
-                await self.als_speed(*attack)
+                await self.als_speed(
+                    deploy, clipix, report, task_list
+                )
             elif self.basic or self.keras:
-                await self.als_basic_or_keras(*attack, option=option, alynex=alynex)
+                await self.als_basic_or_keras(
+                    deploy, clipix, report, task_list, option=option, alynex=alynex
+                )
             else:
                 logger.debug(tip := f"**<* 录制模式 *>**")
                 self.design.show_panel(tip, Wind.EXPLORER)
@@ -2005,7 +2007,10 @@ class Missions(object):
 
             for device in device_list:
                 stop_tasks.append(
-                    asyncio.create_task(record.check_event(device, exec_tasks), name="stop"))
+                    asyncio.create_task(
+                        record.check_event(device, exec_tasks), name="stop"
+                    )
+                )
 
             for exec_pairs in exec_pairs_list:
                 if len(live_devices) == 0:
@@ -2027,7 +2032,9 @@ class Missions(object):
                             )
 
                 try:
-                    exec_status_list = await asyncio.gather(*exec_tasks.values(), return_exceptions=True)
+                    exec_status_list = await asyncio.gather(
+                        *exec_tasks.values(), return_exceptions=True
+                    )
                 except asyncio.CancelledError:
                     return self.design.notes(f"[bold #F0FFF0 on #000000]All tasks canceled")
                 finally:
@@ -2069,9 +2076,9 @@ class Missions(object):
             while True:
                 try:
                     await manage_.display_device()
-                    start_tips = f"<<<按 Enter 开始 [bold #D7FF5F]{amount}[/] 秒>>>"
+                    run_tip = f"<<<按 Enter 开始 [bold #D7FF5F]{amount}[/] 秒>>>"
 
-                    if action := Prompt.ask(f"[bold #5FD7FF]{start_tips}", console=Design.console):
+                    if action := Prompt.ask(f"[bold #5FD7FF]{run_tip}", console=Design.console):
                         if (select := action.strip().lower()) == "device":
                             device_list = await manage_.another_device()
                             continue
@@ -2282,30 +2289,27 @@ class Missions(object):
         # Notes: Start from here
         manage_ = Manage(self.adb)
 
-        clipix = Clipix(self.fmp, self.fpb)
+        if any((self.speed, self.basic, self.keras)):
+            clipix = Clipix(self.fmp, self.fpb)
 
-        matrix = option.model_place if self.keras else None
-        alynex = Alynex(matrix, option, deploy, self.design)
-        try:
-            await alynex.ask_model_load()
-        except FramixError as err_:
-            logger.debug(err_)
-            self.design.show_panel(err_, Wind.KEEPER)
+            matrix = option.model_place if self.keras else None
+            alynex = Alynex(matrix, option, deploy, self.design)
+            try:
+                await alynex.ask_model_load()
+            except FramixError as err_:
+                logger.debug(err_)
+                self.design.show_panel(err_, Wind.KEEPER)
 
         titles_ = {"speed": "Speed", "basic": "Basic", "keras": "Keras"}
         input_title_ = next((title_ for key_, title_ in titles_.items() if getattr(self, key_)), "Video")
 
-        vs_ = await Terminal.cmd_line(["scrcpy", "--version"])
         record = Record(
-            vs_, alone=self.alone, whist=self.whist, frate=deploy.frate
+            tp_ver, alone=self.alone, whist=self.whist, frate=deploy.frate
         )
         player = Player()
-        source = SourceMonitor()
+        source_monitor = SourceMonitor()
 
-        if self.flick:
-            await flick_loop()
-        elif self.carry or self.fully:
-            await other_loop()
+        return await flick_loop() if self.flick else await other_loop()
 
 
 class Clipix(object):
@@ -3281,12 +3285,12 @@ async def main() -> typing.Coroutine | None:
     命令分发调度器，根据命令行参数执行对应任务模块。
     """
 
-    async def _scheduling() -> typing.Coroutine | None:
+    async def _scheduling() -> typing.Coroutine | typing.Any:
         """
         检查 scrcpy 是否已安装，如果未安装则显示安装提示并退出程序。
         """
-        if shutil.which("scrcpy"):
-            return None
+        if shutil.which(third_party_app := "scrcpy"):
+            return await Terminal.cmd_line([third_party_app, "--version"])
         raise FramixError("Install first https://github.com/Genymobile/scrcpy")
 
     async def _authorized() -> typing.Coroutine | None:
@@ -3332,8 +3336,8 @@ async def main() -> typing.Coroutine | None:
         await _arithmetic(_missions.build_model, _build_list)
 
     elif _lines.flick or _lines.carry or _lines.fully:
-        await _scheduling()
-        await _missions.analysis(_option, _deploy)
+        third_party_ver = await _scheduling()
+        await _missions.analysis(_option, _deploy, third_party_ver)
 
     elif _lines.paint:
         await _missions.painting(_option, _deploy)
