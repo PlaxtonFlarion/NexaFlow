@@ -170,8 +170,8 @@ class Record(object):
 
         transports = await Terminal.cmd_link(cmd)
 
-        _ = asyncio.create_task(input_stream())
-        _ = asyncio.create_task(error_stream())
+        asyncio.create_task(input_stream())
+        asyncio.create_task(error_stream())
 
         await asyncio.sleep(1)
 
