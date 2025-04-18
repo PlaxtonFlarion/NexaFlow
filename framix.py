@@ -828,9 +828,6 @@ class Missions(object):
             self.design.show_panel(tip_state, tip_style)
             self.design.show_panel(resp, tip_style)
 
-        for m in merge:
-            Design.show_tree(m, "Arkiv")
-
     # """时空纽带分析系统"""
     async def combine_view(self, merge: list) -> None:
         """

@@ -70,23 +70,27 @@ class Design(object):
         """
         Design.console.print(f"[bold]{const.DESC} | Analyzer |[/]", Text(text, "bold"))
 
-    def show_panel(self, text: typing.Any, wind: dict) -> None:
-        """
-        根据日志等级和样式参数渲染面板式输出。
-        """
-        if self.design_level == const.SHOW_LEVEL:
-            panel = Panel(
-                Text(
-                    f"{text}", **wind["文本"]
-                ), **wind["边框"], width=int(self.console.width * 0.7)
-            )
-            self.console.print(panel)
-
     @staticmethod
-    def show_tree(file_path: str) -> None:
+    def show_tree(file_path: str, *args: str) -> None:
         """
-        构建并展示文件夹结构树，支持视频文件和子目录的可视链接。
+        构建并展示文件夹结构树，根据文件后缀显示图标，可自定义展示哪些类型的文件。
         """
+        choice_icon: typing.Any = lambda x: {
+                '.mp4': '🎞️',
+                '.avi': '🎞️',
+                '.mov': '🎞️',
+                '.mkv': '🎞️',
+                '.html': '🌐',
+                '.db': '🗄️',
+                '.log': '📜',
+                '.py': '🐍',
+                '.json': '🧾',
+                '.txt': '📄',
+                '.png': '🖼️',
+                '.jpg': '🖼️',
+                '.zip': '🗜️',
+                '.exe': '⚙️',
+            }.get(os.path.splitext(x)[1].lower(), '📄')
 
         def add_nodes(current_node: "Tree", current_path: str) -> None:
             try:
@@ -95,16 +99,19 @@ class Design(object):
                         folder_path = cur.path
                         if cur.is_dir():
                             sub_node = current_node.add(
-                                f"[link file://{folder_path}]📁 {cur.name}[/]", guide_style="bold green"
+                                f"[link file:///{folder_path}]📁 {cur.name}[/]", guide_style="bold #7CFC00"
                             )
                             add_nodes(sub_node, folder_path)
-                        elif cur.is_file() and cur.name.endswith(('.mp4', '.avi', '.mov', '.mkv')):
-                            current_node.add(f"[link file://{folder_path}]🎥 {cur.name}[/]")
+                        elif cur.is_file() and cur.name.endswith(('.mp4', '.avi', '.mov', '.mkv', *args)):
+                            current_node.add(
+                                f"[link file:///{folder_path}]{choice_icon(cur.name)} {cur.name}[/] <<<",
+                                style="bold #FF69B4"
+                            )
             except PermissionError:
-                current_node.add("[red]Access denied[/]", style="bold red")
+                current_node.add("Access denied", style="bold #FF6347")
 
         tree = Tree(
-            f"[link file://{file_path}]📁 {os.path.basename(file_path)}[/]", guide_style="bold blue"
+            f"[link file:///{file_path}]📁 {os.path.basename(file_path)}[/]", guide_style="bold #00CED1"
         )
         add_nodes(tree, file_path)
         Design.console.print(tree)
@@ -298,27 +305,29 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         """
         显示简化参数提示文档，适用于交互式命令输入提示。
         """
+        table_style = {
+            "title_justify": "center", "show_header": True, "show_lines": True
+        }
+
         table = Table(
-            title=f"[bold #FFDAB9]{const.ITEM} {const.DESC} CLI",
-            header_style="bold #FF851B",
-            title_justify="center",
-            show_header=True,
-            show_lines=True
+            title=f"[bold #FFDAB9]{const.DESC} | {const.ALIAS} CLI",
+            header_style="bold #FF851B", **table_style
         )
         table.add_column("选项", justify="left", width=12)
-        table.add_column("参数", justify="left", width=12)
         table.add_column("说明", justify="left", width=12)
+        table.add_column("用法", justify="left", width=16)
 
         information = [
-            ["[bold #FFAFAF]header", "[bold #AFD7FF]标题名", "[bold #FFD39B]生成标题"],
-            ["[bold #FFAFAF]device", "[bold #CFCFCF]无参数", "[bold #FFD39B]连接设备"],
-            ["[bold #FFAFAF]deploy", "[bold #CFCFCF]无参数", "[bold #FFD39B]部署配置"],
-            ["[bold #FFAFAF]create", "[bold #CFCFCF]无参数", "[bold #FFD39B]生成报告"],
-            ["[bold #FFAFAF]cancel", "[bold #CFCFCF]无参数", "[bold #FFD39B]退出"]
+            ["[bold #FFAFAF]header", "[bold #FFD39B]生成标题", "[bold #AFD7FF]header new_title"],
+            ["[bold #FFAFAF]device", "[bold #FFD39B]连接设备", "[bold #AFD7FF]device"],
+            ["[bold #FFAFAF]deploy", "[bold #FFD39B]部署配置", "[bold #AFD7FF]deploy"],
+            ["[bold #FFAFAF]digest", "[bold #FFD39B]分析模式", "[bold #AFD7FF]digest"],
+            ["[bold #FFAFAF]create", "[bold #FFD39B]生成报告", "[bold #AFD7FF]create"],
+            ["[bold #FFAFAF]cancel", "[bold #FFD39B]退出程序", "[bold #AFD7FF]cancel"]
         ]
         for info in information:
             table.add_row(*info)
-        Design.console.print(table)
+        Design.console.print(table, "\n")
 
     @staticmethod
     def load_animation() -> None:
@@ -398,27 +407,6 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         random.choice(stochastic)()
 
     @staticmethod
-    def render_horizontal_pulse() -> None:
-        """
-        渲染报告时的横向光柱动画，表现为左右流动的亮块。
-        """
-        width = int(Design.console.width * 0.25)
-        charset = "⣿"
-
-        start_time = time.time()
-        with Live(refresh_per_second=20) as live:
-            while time.time() - start_time < random.randint(1, 5):
-                if (offset := int((time.time() * 10) % (width * 2))) >= width:
-                    offset = width * 2 - offset
-
-                frame = charset * offset + "[bold #FFFFFF on #00FFAA]" + charset + "[/]" + charset * (width - offset)
-                panel = Panel.fit(
-                    Text.from_markup(frame), title="Html Rendering", border_style="bold #20B2AA", padding=(0, 2)
-                )
-                live.update(panel)
-                time.sleep(0.01)
-
-    @staticmethod
     def show_quantum_intro() -> None:
         """
         星域构形动画（Quantum Star Boot）
@@ -483,6 +471,42 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         清空终端内容，自动适配平台，Windows 使用 'cls'，其他平台使用 'clear'。
         """
         os.system("cls" if os.name == "nt" else "clear")
+
+    def show_panel(self, text: typing.Any, wind: dict) -> None:
+        """
+        根据日志等级和样式参数渲染面板式输出。
+        """
+        if self.design_level == const.SHOW_LEVEL:
+            panel = Panel(
+                Text(
+                    f"{text}", **wind["文本"]
+                ), **wind["边框"], width=int(self.console.width * 0.7)
+            )
+            self.console.print(panel)
+
+    def render_horizontal_pulse(self) -> None:
+        """
+        渲染报告时的横向光柱动画，表现为左右流动的亮块。
+        """
+        if self.design_level == const.SHOW_LEVEL:
+            width = int(Design.console.width * 0.25)
+            charset = "⣿"
+
+            start_time = time.time()
+            with Live(refresh_per_second=20) as live:
+                while time.time() - start_time < random.randint(1, 5):
+                    if (offset := int((time.time() * 10) % (width * 2))) >= width:
+                        offset = width * 2 - offset
+
+                    frame = charset * offset + "[bold #FFFFFF on #00FFAA]" + charset + "[/]" + charset * (
+                            width - offset
+                    )
+                    panel = Panel.fit(
+                        Text.from_markup(frame),
+                        title="Html Rendering", border_style="bold #20B2AA", padding=(0, 2)
+                    )
+                    live.update(panel)
+                    time.sleep(0.01)
 
     def content_pose(self, rlt, avg, dur, org, vd_start, vd_close, vd_limit, video_temp, frate) -> None:
         """
