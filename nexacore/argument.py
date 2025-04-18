@@ -473,6 +473,9 @@ class Wind(object):
     KERAS_TEXT = """|> * -> * -> * -> * -> * -> * -> * -> * -> * -> * 
 |> * -> * -> * -> * -> * -> * -> * -> * -> * -> *"""
 
+    MOVIE_TEXT = """▌▒░▐▌▒░▐▌▒░▐▌▒░▐▌▒░▐▌▒░▐▌▒░▐▌▒░▐▌▒░▐▌▒░▐▌▒░▐▌▒░▐
+▒▐▌░▐▌▒░▐▌▒░▐▌▒░▐▌▒░▐▌▒░▒▐▌░▐▌▒░▐▌▒░▐▌▒░▐▌▒░▐▌▒░"""
+
     SPEED = {
         "文本": {
             "style": "bold #FFFF00",
@@ -508,6 +511,20 @@ class Wind(object):
         },
         "边框": {
             "title": "**<* 思维导航 *>**",
+            "title_align": "center",
+            "subtitle": None,
+            "subtitle_align": "center",
+            "border_style": "bold #87CEFA",
+        }
+    }
+
+    MOVIE = {
+        "文本": {
+            "style": "bold #FFFF00",
+            "justify": "center",
+        },
+        "边框": {
+            "title": "**<* 影像捕手 *>**",
             "title_align": "center",
             "subtitle": None,
             "subtitle_align": "center",

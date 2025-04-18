@@ -232,52 +232,6 @@ class VideoCutter(object):
         # 返回包含最小 SSIM、最大 MSE 和最大 PSNR 的列表
         return [ssim, mse, psnr]
 
-    @staticmethod
-    def split_range(value: int, parts: int) -> list[tuple[int, int, int]]:
-        """
-        将一个整数范围平均划分为若干段，并在每段之间插入间隔区间。
-
-        本方法将整数范围 `[1, value]` 拆分为指定数量的 `parts` 份，并在每一份之间插入一个长度为 1 的间隔区域。
-        返回的结果包含数据段和间隔段，用于多段数据分布场景下的任务拆分、分析或可视化。
-
-        Parameters
-        ----------
-        value : int
-            要拆分的整数总范围，例如视频的帧数。
-
-        parts : int
-            拆分的份数，例如期望的稳定阶段数量。
-
-        Returns
-        -------
-        list of tuple[int, int, int]
-            每个元组表示一个范围 (start, end, length)，包含原始数据段与间隔段。
-            - 原始数据段为等长（最后一段可能稍长以容纳余数）；
-            - 间隔段长度固定为 1（表示两个段之间的“断点”）。
-
-        Notes
-        -----
-        - 最终返回的段数量为 `2 * parts - 1`，即包含 `parts` 个主段和 `parts - 1` 个间隔段。
-        - 通常用于稳定片段划分、采样任务分批执行等需求。
-        - 所有区间从 `1` 开始计数，包含左右边界。
-        """
-        division, remainder = value // parts, value % parts
-        result, current_start = [], 1
-
-        for i in range(parts):
-            current_end = current_start + division - 1
-            if i == parts - 1:  # 处理最后一部分，加上余数
-                current_end += remainder
-            result.append((current_start, current_end, current_end - current_start))
-
-            if i < parts - 1:  # 不是最后一部分时，添加断开部分
-                gap_start = current_end
-                gap_end = current_end + 1
-                result.append((gap_start, gap_end, gap_end - gap_start))
-            current_start = current_end + 1
-
-        return result
-
     def magic_frame_range(
         self,
         video: "VideoObject",
@@ -425,9 +379,7 @@ class VideoCutter(object):
             - 权重分母 `denominator` 为所有权重之和，用于归一化。
             - 若 `float_list` 趋于一致，输出值近似于平均值；若变化剧烈，输出更偏向后端值。
             """
-
-            # 第一个，最大的
-            length = len(float_list)
+            length = len(float_list)  # 第一个，最大的
             result = 0.0
             denominator = 0.0
             for i, each in enumerate(float_list):
@@ -499,17 +451,14 @@ class VideoCutter(object):
                 self.end += step
 
                 if self.start >= video_length:
-                    # 超出范围
-                    return False
+                    return False  # 超出范围
 
-                # 窗端
-                if self.end >= video_length:
+                if self.end >= video_length:  # 窗端
                     self.end = video_length
                 # logger.debug(f"window after: {self.start}, {self.end}")
                 return True
 
-        # 获取视频总帧数
-        video_length = video.frame_count
+        video_length = video.frame_count  # 获取视频总帧数
 
         # Note
         # ## `step` 参数具体作用和使用场景
@@ -584,7 +533,7 @@ class VideoCutter(object):
         window_size = window_size or 1
         window_coefficient = window_coefficient or 2
 
-        # Note
+        # Notes
         # 如果视频包含 100 帧
         # 从1开始，列表长度是99，而不是100
         # [范围(1-2)、范围(2-3)、范围(3-4) ... 范围(99-100)]

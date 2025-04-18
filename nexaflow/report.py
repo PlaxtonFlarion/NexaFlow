@@ -22,16 +22,18 @@ import os
 import re
 import json
 import time
-import shutil
 import typing
 import random
+import string
 import asyncio
 import aiofiles
+import aiosqlite
 from pathlib import Path
 from loguru import logger
 from jinja2 import Template
 from collections import defaultdict
 from engine.tinker import FramixError
+from nexacore.cubicle import DB
 from nexaflow import (
     toolbox, const
 )
@@ -160,96 +162,6 @@ class Report(object):
             self.range_list.append(inform)
 
     @staticmethod
-    async def ask_merge_report(
-            merge_list: typing.Union[list, tuple], template_file: str
-    ) -> str:
-        """
-        合并多个分析报告，生成汇总 HTML 文件。
-
-        该方法从多个已完成的分析报告中提取恢复日志内容，并将相关目录合并至一个新目录中，最终根据模板生成一个汇总 HTML 报告。
-
-        Parameters
-        ----------
-        merge_list : list or tuple
-            含有多个报告输出目录路径的列表或元组，每个路径都应包含 recovery 日志。
-
-        template_file : str
-            用于渲染汇总报告的 Jinja2 模板文件路径。
-
-        Returns
-        -------
-        str
-            最终生成的汇总 HTML 报告的文件路径。
-
-        Raises
-        ------
-        FramixError
-            - 如果合并列表为空。
-            - 如果日志提取失败或模板渲染出错。
-            - 如果复制目录失败或日志内容无效。
-
-        Notes
-        -----
-        - 每个目录应包含 `R_RECOVERY/R_LOG_FILE` 文件，且日志中包含 `Recovery:` 开头的 JSON 结构。
-        - 合并操作会创建新目录 `R_UNION_TAG_<timestamp>` 用于收集所有内容。
-        - 报告合并时会忽略 `.log`、`.db` 文件以及总汇文件，避免污染新目录。
-        - 生成的 HTML 会统一写入新合并目录的上一级，文件名为 `R_UNION_FILE`。
-
-        Workflow
-        --------
-        1. 依次提取每个日志文件中以 `Recovery:` 开头的 JSON 内容；
-        2. 合并所有目录内容（排除日志和数据库文件）到新合并目录；
-        3. 使用传入的模板渲染 HTML 内容；
-        4. 将渲染结果写入最终的汇总 HTML 文件；
-        5. 返回该 HTML 文件的完整路径。
-        """
-
-        async def assemble(file):
-            async with aiofiles.open(file, mode="r", encoding=const.CHARSET) as recovery_file:
-                return re.findall(r"(?<=Recovery: ).*}", await recovery_file.read())
-
-        log_file = const.R_RECOVERY, const.R_LOG_FILE
-        if not (log_file_list := [os.path.join(merge, *log_file) for merge in merge_list]):
-            raise FramixError(f"没有可以合并的报告 ...")
-
-        merge_name = f"{const.R_UNION_TAG}_{(merge_time := time.strftime('%Y%m%d%H%M%S'))}", const.R_COLLECTION
-        if not os.path.exists(
-            merge_path := os.path.join(os.path.dirname(merge_list[0]), *merge_name).format()
-        ):
-            os.makedirs(merge_path, exist_ok=True)
-
-        merge_log_list = await asyncio.gather(
-            *(assemble(log) for log in log_file_list), return_exceptions=True
-        )
-
-        ignore = const.R_TOTAL_FILE, ".log", ".db"
-        for m in merge_list:
-            if isinstance(m, Exception):
-                raise FramixError(m)
-            shutil.copytree(
-                os.path.join(m, const.R_COLLECTION).format(),
-                merge_path,
-                ignore=shutil.ignore_patterns(*ignore),
-                dirs_exist_ok=True
-            )
-
-        if not (total_list := [json.loads(i) for logs in merge_log_list for i in logs if i]):
-            raise FramixError(f"没有可以合并的报告 ...")
-
-        async with aiofiles.open(template_file, "r", encoding=const.CHARSET) as f:
-            template_open = await f.read()
-
-        html = Template(template_open).render(
-            head=const.R_TOTAL_HEAD, report_time=merge_time, total_list=total_list
-        )
-
-        report_html = os.path.join(os.path.dirname(merge_path), const.R_UNION_FILE)
-        async with aiofiles.open(report_html, "w", encoding=const.CHARSET) as f:
-            await f.write(html)
-
-        return report_html
-
-    @staticmethod
     async def ask_create_report(
             total: "Path", title: str, serial: str, parts_list: list, style_loc: str
     ) -> typing.Optional[dict]:
@@ -376,9 +288,13 @@ class Report(object):
         html_temp = Template(style_loc).render(
             name=const.NAME, title=title, images_list=images_list
         )
+
         team = serial if serial else random.randint(10000, 99999)
-        html_path = Path(os.path.join(total, title, f"{title}_{team}.html"))
-        async with aiofiles.open(html_path, "w", encoding=const.CHARSET) as range_file:
+
+        # html = Path(os.path.join(total, title, f"{title}_{team}.html"))
+        html = total / title / f"{title}_{team}.html"
+
+        async with aiofiles.open(html, "w", encoding=const.CHARSET) as range_file:
             await range_file.write(html_temp)
 
         cost_list = [cost["stage"]["cost"] for cost in images_list]
@@ -387,7 +303,7 @@ class Report(object):
         except ZeroDivisionError:
             avg = 0.00000
 
-        href = os.path.join(total.name, title, html_path.name)
+        href = os.path.join(total.name, title, html.name)
         single = {
             "case": title, "team": team, "cost_list": cost_list, "avg": f"{avg:.5f}", "href": href
         }
@@ -446,23 +362,36 @@ class Report(object):
         6. 使用 Jinja2 渲染总报告模板；
         7. 写入最终总报告文件至指定位置并返回路径。
         """
+
+        # Notes: 从日志文件中读取数据
+        # try:
+        #     log_file = const.R_RECOVERY, const.R_LOG_FILE
+        #     async with aiofiles.open(os.path.join(file_name, *log_file), "r", encoding=const.CHARSET) as f:
+        #         open_file = await f.read()
+        # except FileNotFoundError as e:
+        #     raise FramixError(e)
+        #
+        # if match_speeder_list := re.findall(r"(?<=Speeder: ).*}", open_file):
+        #     match_list = match_speeder_list
+        # elif match_restore_list := re.findall(r"(?<=Restore: ).*}", open_file):
+        #     match_list = match_restore_list
+        # else:
+        #     raise FramixError(f"没有符合条件的数据 ...")
+        #
+        # parts_list: list[dict] = [
+        #     json.loads(file) for file in match_list if file
+        # ]
+
+        # Notes: 从数据库文件中读取数据
         try:
-            log_file = const.R_RECOVERY, const.R_LOG_FILE
-            async with aiofiles.open(os.path.join(file_name, *log_file), "r", encoding=const.CHARSET) as f:
-                open_file = await f.read()
-        except FileNotFoundError as e:
+            async with DB(Path(file_name) / const.R_RECOVERY / const.DB_FILES_NAME) as db:
+                match_list = [nest[0] for nest in await db.demand()]
+        except aiosqlite.Error as e:
             raise FramixError(e)
 
-        if match_speeder_list := re.findall(r"(?<=Speeder: ).*}", open_file):
-            match_list = match_speeder_list
-        elif match_restore_list := re.findall(r"(?<=Restore: ).*}", open_file):
-            match_list = match_restore_list
-        else:
+        if not (parts_list := [json.loads(file) for file in match_list if file]):
             raise FramixError(f"没有符合条件的数据 ...")
 
-        parts_list: list[dict] = [
-            json.loads(file) for file in match_list if file
-        ]
         parts_list: list[dict] = [
             {(p.pop("total"), p.pop("title"), Path(p["query"]).name if group else ""): p} for p in parts_list
         ]
@@ -486,7 +415,7 @@ class Report(object):
                 k: [dict(zip(v.keys(), entry)) for entry in zip(*v.values())] for k, v in normal_dict.items()
             }
 
-        async def format_merged() -> list[dict]:
+        async def format_merged(create_total_result: list[dict]) -> list[dict]:
             """
             合并创建结果中的字段内容，生成汇总报告的格式化结构。
 
@@ -515,31 +444,37 @@ class Report(object):
         try:
             create_result = await asyncio.gather(
                 *(Report.ask_create_report(
-                    Path(os.path.join(file_name, total)), title, sn, result_dict, style_loc)
-                    for (total, title, sn), result_dict in packed_dict.items())
+                    Path(file_name) / total, title, sn, result_dict, style_loc
+                ) for (total, title, sn), result_dict in packed_dict.items())
             )
         except Exception as e:
             raise FramixError(e)
 
-        create_total_result = [create for create in create_result if create]
-        merged_list = await format_merged()
+        merged_list = await format_merged(
+            [c for c in create_result if c]
+        )
 
         for i in merged_list:
             i["merge_list"] = list(zip(i.pop("href"), i.pop("avg"), i.pop("cost_list")))
             for j in i["merge_list"]:
                 logger.debug(f"{j}")
 
-        if not (total_list := [single for single in merged_list if single]):
+        if not (total_list := [s for s in merged_list if s]):
             raise FramixError(f"没有可以汇总的报告 ...")
 
-        total_html_temp = Template(total_loc).render(
+        html_temp = Template(total_loc).render(
             head=const.R_TOTAL_HEAD, report_time=time.strftime('%Y.%m.%d %H:%M:%S'), total_list=total_list
         )
-        total_html = os.path.join(file_name, const.R_TOTAL_FILE)
-        async with aiofiles.open(total_html, "w", encoding=const.CHARSET) as f:
-            await f.write(total_html_temp)
 
-        return total_html
+        salt: "typing.Callable" = lambda: "".join(
+            random.choices(string.ascii_uppercase + string.digits, k=5)
+        )
+        html = os.path.join(file_name, f"{const.R_TOTAL_NAME}_{salt()}.html")
+
+        async with aiofiles.open(html, "w", encoding=const.CHARSET) as f:
+            await f.write(html_temp)
+
+        return html
 
     @staticmethod
     async def ask_draw(

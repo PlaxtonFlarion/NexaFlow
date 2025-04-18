@@ -204,7 +204,7 @@ class VideoObject(object):
                 progress_bar.close()
                 break
 
-            # Note frame_id_real = frame_id + 1
+            # frame_id_real = frame_id + 1
             if not frame_data[frame_id].timestamp:
                 # logger.debug(f"fix frame {frame_id_real}'s timestamp: {timestamp}")
                 frame_data[frame_id].timestamp = timestamp

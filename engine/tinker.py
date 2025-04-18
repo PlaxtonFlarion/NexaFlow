@@ -87,7 +87,9 @@ class _RichSink(RichHandler):
         )
 
     def emit(self, record: "LogRecord") -> None:
-        """重载日志处理器的输出逻辑，将格式化后的记录打印到指定控制台。"""
+        """
+        重载日志处理器的输出逻辑，将格式化后的记录打印到指定控制台。
+        """
         log_message = self.format(record)
         self.console.print(log_message)
 
@@ -118,7 +120,9 @@ class Entry(object):
         self.sheet = []
 
     def update_video(self, subtitle: str, sequence: str, video_path: str) -> None:
-        """向 sheet 添加一个新的视频记录，生成对应的 query 路径。"""
+        """
+        向 sheet 添加一个新的视频记录，生成对应的 query 路径。
+        """
         self.sheet.append({
             "query": os.path.join(subtitle, sequence),
             "video": video_path
@@ -151,9 +155,7 @@ class Craft(object):
         str
             已清除非法字符的路径字符串。
         """
-
-        pattern = r"[\x00-\x1f\x7f-\x9f\u2000-\u20ff\u202a-\u202e]"
-        return re.sub(pattern, "", path)
+        return re.sub("[\x00-\x1f\x7f-\x9f\u2000-\u20ff\u202a-\u202e]", "", path)
 
     @staticmethod
     async def achieve(template: typing.Union[str, "os.PathLike"]) -> str:
@@ -177,12 +179,12 @@ class Craft(object):
         FramixError
             若模板文件未找到或无法打开，则抛出该错误。
         """
-
         try:
             async with aiofiles.open(template, "r", encoding=const.CHARSET) as f:
                 template_file = await f.read()
         except FileNotFoundError as e:
             raise FramixError(e)
+
         return template_file
 
 
@@ -196,12 +198,16 @@ class Search(object):
 
     @staticmethod
     def is_video_file(file: str) -> bool:
-        """判断文件是否为视频类型（基于扩展名）。"""
+        """
+        判断文件是否为视频类型（基于扩展名）。
+        """
         video_name = (".mp4", ".avi", ".mov", ".mkv", ".flv", ".wmv")
         return file.lower().endswith(video_name)
 
     def list_videos_in_directory(self, folder: str) -> list[str]:
-        """列出指定目录下的所有视频文件路径。"""
+        """
+        列出指定目录下的所有视频文件路径。
+        """
         video_file_list = []
         if os.path.exists(folder):
             with os.scandir(folder) as entries:
@@ -211,12 +217,16 @@ class Search(object):
         return video_file_list
 
     def find_sequence(self, sequence_path: str) -> list[str]:
-        """查找指定序列路径下的所有视频文件。"""
+        """
+        查找指定序列路径下的所有视频文件。
+        """
         video_folder_path = os.path.join(sequence_path, "video")
         return self.list_videos_in_directory(video_folder_path)
 
     def find_subtitle(self, subtitle_path: str, subtitle_tree: "Tree") -> list[tuple[str, str]]:
-        """遍历字幕目录下的序列结构，并构建层级展示树与数据记录。"""
+        """
+        遍历字幕目录下的序列结构，并构建层级展示树与数据记录。
+        """
         all_videos = []
         with os.scandir(subtitle_path) as sequences:
             for sequence_entry in sequences:
@@ -229,7 +239,9 @@ class Search(object):
         return all_videos
 
     def find_title(self, title_path: str, title_tree: "Tree") -> "Entry":
-        """查找标题目录下的所有字幕及其下的视频，返回 Entry 对象。"""
+        """
+        查找标题目录下的所有字幕及其下的视频，返回 Entry 对象。
+        """
         entry = Entry(title_path.split(os.path.sep)[-1])
         with os.scandir(title_path) as subtitles:
             for subtitle_entry in subtitles:
@@ -241,7 +253,9 @@ class Search(object):
         return entry
 
     def find_collection(self, collection_path: str, collection_tree: "Tree") -> list["Entry"]:
-        """解析视频集合目录，构建 Entry 列表并构造标题级展示树。"""
+        """
+        解析视频集合目录，构建 Entry 列表并构造标题级展示树。
+        """
         entries = []
         with os.scandir(collection_path) as titles:
             for title_entry in titles:
@@ -252,7 +266,9 @@ class Search(object):
         return entries
 
     def accelerate(self, base_folder: str) -> typing.Union[list, "FramixError"]:
-        """快速加载指定目录下的视频集合结构，返回可视化树与视频数据。"""
+        """
+        快速加载指定目录下的视频集合结构，返回可视化树与视频数据。
+        """
         if not os.path.exists(base_folder):
             return FramixError(f"文件夹不存在 {base_folder}")
 
@@ -264,7 +280,7 @@ class Search(object):
         collection_list = []
         with os.scandir(base_folder) as collection:
             for collection_entry in collection:
-                if collection_entry.is_dir() and (name := collection_entry.name) == "Nexa_Collection":
+                if collection_entry.is_dir() and (name := collection_entry.name) == const.R_COLLECTION:
                     title_tree = root_tree.add(f"📂 Collection: {name}", style="bold #FDF5E6")
                     entries = self.find_collection(collection_entry.path, title_tree)
                     collection_list.append(entries)
@@ -297,7 +313,6 @@ class Active(object):
         log_level : str
             日志等级（如 "INFO", "DEBUG", "WARNING", "ERROR"），不区分大小写。
         """
-
         logger.remove(0)
         logger.add(
             _RichSink(Design.console), level=log_level.upper(), format=const.PRINT_FORMAT, diagnose=False

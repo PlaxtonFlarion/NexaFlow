@@ -51,7 +51,6 @@ import random
 import typing
 import inspect
 import asyncio
-import pathlib
 import datetime
 import tempfile
 
@@ -61,6 +60,7 @@ import numpy
 import aiofiles
 
 # ====[ from: 内置模块 ]====
+from pathlib import Path
 from functools import partial
 from multiprocessing import freeze_support
 from concurrent.futures import ProcessPoolExecutor
@@ -530,17 +530,16 @@ class Missions(object):
         )
 
         for detach, (video_temp, *_) in zip(detach_result, task_list):
-            message_list = []
-            for message in detach.splitlines():
+            logger.debug(detach)
+            for message in reversed(detach.splitlines()):
                 if matcher := re.search(r"frame.*fps.*speed.*", message):
                     discover: typing.Any = lambda x: re.findall(r"(\w+)=\s*([\w.\-:/x]+)", x)
-                    message_list.append(
-                        format_msg := " ".join([f"{k}={v}" for k, v in discover(matcher.group())])
-                    )
-                    logger.debug(format_msg)
+                    fmt_msg = " ".join([f"{k}={v}" for k, v in discover(matcher.group())])
+                    self.design.show_panel(fmt_msg, Wind.METRIC)
+                    break
                 elif re.search(r"Error", message, re.IGNORECASE):
-                    self.design.show_panel("\n".join(message_list), Wind.KEEPER)
-            self.design.show_panel("\n".join(message_list), Wind.METRIC)
+                    self.design.show_panel(message, Wind.KEEPER)
+                    break
 
         async def render_speed(todo_list: list[list]) -> tuple:
             total_path: typing.Any
@@ -565,15 +564,15 @@ class Missions(object):
 
             return result.get("style"), result.get("total"), result.get("title"), nest
 
-        # Speed Analyzer Result
         render_result = await asyncio.gather(
             *(render_speed(todo_list) for todo_list in task_list)
         )
 
-        async with DB(os.path.join(report.reset_path, const.DB_FILES_NAME).format()) as db:
+        async with DB(Path(report.reset_path) / const.DB_FILES_NAME) as db:
             await asyncio.gather(
                 *(self.enforce(db, *ns) for ns in render_result)
             )
+            logger.debug(f"DB: {render_result}")
 
     async def als_basic_or_keras(
             self, deploy: "Deploy", clipix: "Clipix", report: "Report", task_list: list[list], **kwargs
@@ -656,17 +655,16 @@ class Missions(object):
 
         eliminate = []
         for change, (video_temp, *_) in zip(change_result, task_list):
-            message_list = []
+            logger.debug(change)
             for message in change.splitlines():
                 if matcher := re.search(r"frame.*fps.*speed.*", message):
                     discover: typing.Any = lambda x: re.findall(r"(\w+)=\s*([\w.\-:/x]+)", x)
-                    message_list.append(
-                        format_msg := " ".join([f"{k}={v}" for k, v in discover(matcher.group())])
-                    )
-                    logger.debug(format_msg)
+                    fmt_msg = " ".join([f"{k}={v}" for k, v in discover(matcher.group())])
+                    self.design.show_panel(fmt_msg, Wind.METRIC)
+                    break
                 elif re.search(r"Error", message, re.IGNORECASE):
-                    self.design.show_panel("\n".join(message_list), Wind.KEEPER)
-            self.design.show_panel("\n".join(message_list), Wind.METRIC)
+                    self.design.show_panel(message, Wind.KEEPER)
+                    break
             eliminate.append(
                 looper.run_in_executor(None, os.remove, video_temp)
             )
@@ -675,7 +673,6 @@ class Missions(object):
         if alynex.ks.model:
             deploy.view_deploy()
 
-        # Ask Analyzer
         if len(task_list) == 1:
             task = [
                 alynex.ask_analyzer(target, frame_path, extra_path, src_size)
@@ -697,7 +694,6 @@ class Missions(object):
                 futures = await asyncio.gather(*task)
             self.level = this_level
 
-        # Html Template
         atom_tmp = await Craft.achieve(self.atom_total_temp)
 
         async def render_keras(future: "Review", todo_list: list[list]) -> tuple:
@@ -722,8 +718,8 @@ class Missions(object):
                 stages_inform = await report.ask_draw(
                     scores, struct, proto_path, atom_tmp, deploy.boost
                 )
-                logger.debug(tip_ := f"模版引擎渲染完成 {os.path.basename(stages_inform)}")
-                self.design.show_panel(tip_, Wind.REPORTER)
+                logger.debug(tip := f"模版引擎渲染完成 {os.path.basename(stages_inform)}")
+                self.design.show_panel(tip, Wind.REPORTER)
 
                 result["extra"] = os.path.basename(extra_path)
                 result["proto"] = os.path.basename(stages_inform)
@@ -736,9 +732,6 @@ class Missions(object):
 
             return result.get("style"), result.get("total"), result.get("title"), nest
 
-        self.design.render_horizontal_pulse()
-
-        # Keras Analyzer Result
         render_result = await asyncio.gather(
             *(render_keras(future, todo_list) for future, todo_list in zip(futures, task_list) if future)
         )
@@ -747,6 +740,7 @@ class Missions(object):
             await asyncio.gather(
                 *(self.enforce(db, *ns) for ns in render_result)
             )
+            logger.debug(f"DB: {render_result}")
 
     async def combine(self, report: "Report") -> None:
         """
@@ -820,23 +814,22 @@ class Missions(object):
 
         self.design.render_horizontal_pulse()
 
-        state_list: list[str | Exception] = await asyncio.gather(
-            *(
-                Report.ask_create_total_report(
-                    m, self.group, share_form, total_form) for m in merge),
-            return_exceptions=True
-        )
-
-        for state in state_list:
-            if isinstance(state, Exception):
-                tip_state, tip_style = f"{state}", Wind.KEEPER
+        for resp in await asyncio.gather(
+            *(Report.ask_create_total_report(
+                m, self.group, share_form, total_form) for m in merge), return_exceptions=True
+        ):
+            if isinstance(resp, Exception):
+                tip_state, tip_style = f"{resp}", Wind.KEEPER
             else:
-                tip_state, tip_style = f"成功生成汇总报告 {os.path.basename(state)}", Wind.REPORTER
+                tip_state, tip_style = f"成功生成汇总报告 {os.path.basename(resp)}", Wind.REPORTER
 
             logger.debug(tip_state)
-            logger.debug(state)
+            logger.debug(resp)
             self.design.show_panel(tip_state, tip_style)
-            self.design.show_panel(state, tip_style)
+            self.design.show_panel(resp, tip_style)
+
+        for m in merge:
+            Design.show_tree(m, "Arkiv")
 
     # """时空纽带分析系统"""
     async def combine_view(self, merge: list) -> None:
@@ -1769,8 +1762,8 @@ class Missions(object):
                     deploy, clipix, report, task_list, option=option, alynex=alynex
                 )
             else:
-                logger.debug(tip := f"**<* 录制模式 *>**")
-                self.design.show_panel(tip, Wind.EXPLORER)
+                logger.debug(f"**<* 影像捕手 *>**")
+                self.design.show_panel(Wind.MOVIE_TEXT, Wind.MOVIE)
 
         async def load_carry(carry: str) -> dict:
             """
@@ -1992,13 +1985,30 @@ class Missions(object):
             - 命令支持通配符 "*" 替换，通过传入 *args 实现参数动态注入。
             - 每一轮命令执行结束后清除任务，异常将记录到日志中但不中断主流程。
             """
-            substitute: typing.Iterator = iter(args)
 
-            # 用于替换 `exec_args` 中的 "*" 为 `args` 中的相应值。
-            replace_star: typing.Any = lambda x: [
-                "".join(next(substitute, "*") if c == "*" else c for c in i)
-                if isinstance(i, str) else (next(substitute, "*") if i == "*" else i) for i in x
+            # 替换列表中所有 `*` 为给定参数列表中的值，支持嵌入字符串中的 `*` 多次替换。
+            replace_star: typing.Callable[[list], list] = lambda x, y=iter(args): [
+                "".join(next(y, "*") if c == "*" else c for c in i)
+                if isinstance(i, str) else (next(y, "*") if i == "*" else i) for i in x
             ]
+            """
+            Parameters
+            ----------
+            x : list
+                包含字符串或任意元素的列表。支持元素为字符串时内部多个 * 的替换。
+
+            Returns
+            -------
+            list
+                返回一个替换 * 后的新列表，其中每个 * 被 args 中依次替换的值所替代。
+
+            Notes
+            -----
+            - 可替换嵌入字符串内的多个 `*`；
+            - 支持非字符串元素中的 * 替换；
+            - 若 args 替换值不足，则使用 "*" 作为默认值；
+            - 替换顺序严格按 args 中的顺序。
+            """
 
             live_devices = {device.sn: device for device in device_list}.copy()
 
@@ -2063,7 +2073,7 @@ class Missions(object):
             - 用户输入控制整个录制流程，支持多轮录制与分析循环。
             - 根据 self.whist 控制定时范围；用户输入 header/create/deploy 等命令进行动态控制。
             - 每次录制完成后自动检测异常并重置设备列表。
-            - 若设置为 --shine 模式，可在所有轮次录制完成后统一进行视频分析。
+            - 若使用 digest 指令，可在所有轮次录制完成后统一进行视频分析。
             """
             device_list = await manage_.operate_device()
 
@@ -2072,6 +2082,11 @@ class Missions(object):
 
             lower_bound, upper_bound = (8, 300) if self.whist else (5, 300)
             amount = lower_bound
+
+            choices = list(titles_.keys())
+
+            Design.simulation_progress(f"Ready")
+            Design.tips_document()
 
             while True:
                 try:
@@ -2096,8 +2111,33 @@ class Missions(object):
                                     continue
                             raise FramixError(f"命名方式应为 header .*")
 
+                        elif select == "digest":
+                            if any((self.speed, self.basic, self.keras)):
+                                selected = next(
+                                    (attr for attr in choices if getattr(self, attr, False)), None
+                                )
+                                raise FramixError(f"当前处于 {selected} 分析模式中，请使用 create 指令生成报告")
+
+                            choices += ["88"]
+                            while mode := Prompt.ask(
+                                    f"[bold #ADFF2F]Choose analysis mode [bold #FFA07A][{choices[-1]}]返回",
+                                    console=Design.console, choices=choices, default=choices[-1]
+                            ):
+                                if mode == choices[-1]:
+                                    choices.pop()
+                                    break
+
+                                choices.pop()
+                                for key in choices:
+                                    setattr(self, key, key == mode)
+                                return await self.video_data_task(
+                                    [Path(report.total_path).parent], option, deploy
+                                )
+
                         elif select == "create":
-                            return await self.combine(report)
+                            if any((self.speed, self.basic, self.keras)):
+                                return await self.combine(report)
+                            raise FramixError(f"当前处于 影像捕手 模式，请使用 digest 指令进行分析并生成报告")
 
                         elif select == "deploy":
                             Design.notes(f"{const.WRN}请完全退出编辑器再继续操作")
@@ -2106,7 +2146,7 @@ class Missions(object):
                                 first = ["notepad++"] if shutil.which("notepad++") else ["Notepad"]
                             else:
                                 first = ["open", "-W", "-a", "TextEdit"]
-                            await Terminal.cmd_line(first + self.initial_deploy)
+                            await Terminal.cmd_line(first + [self.initial_deploy])
                             deploy.load_deploy(self.initial_deploy)
                             deploy.view_deploy()
                             continue
@@ -2121,8 +2161,9 @@ class Missions(object):
                         else:
                             raise FramixError(f"未知命令 {select}")
 
-                except FramixError as e_:
-                    Design.notes(f"{const.WRN}{e_}")
+                except FramixError as e:
+                    Design.notes(f"{const.WRN}{e}")
+                    Design.simulation_progress("Try again")
                     Design.tips_document()
 
                 else:
@@ -2160,16 +2201,9 @@ class Missions(object):
             - 若开启 `--shine` 模式，所有任务将统一收集后集中分析；否则逐轮分析。
             - 在执行所有脚本任务后，如设置了 speed/basic/keras 分析模式，会合并生成最终报告。
             """
-            if self.carry:
-                load_script_data = await asyncio.gather(
-                    *(load_carry(carry) for carry in self.carry)
-                )
-            elif self.fully:
-                load_script_data = await asyncio.gather(
-                    *(load_fully(fully) for fully in self.fully)
-                )
-            else:
-                raise FramixError(f"Script file does not exist")
+            load_script_data = await asyncio.gather(
+                *(load_carry(c) for c in self.carry) if self.carry else (load_fully(f) for f in self.fully)
+            )
 
             if not (script_storage := [script_data_ for script_data_ in load_script_data]):
                 raise FramixError(f"Script content is empty")
@@ -3301,7 +3335,7 @@ async def main() -> typing.Coroutine | None:
             return None
 
         if not (ensure := [
-            kit for kit in [_adb, _fmp, _fpb] if not (pathlib.Path(kit).stat().st_mode & stat.S_IXUSR)
+            kit for kit in [_adb, _fmp, _fpb] if not (Path(kit).stat().st_mode & stat.S_IXUSR)
         ]):
             return None
 

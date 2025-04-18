@@ -147,7 +147,7 @@ class DB(object):
         1. 执行 SELECT * 查询。
         2. 异步提取所有结果。
         """
-        async with self.conn.execute(f"SELECT * FROM {const.DB_TABLE_NAME}") as cursor:
+        async with self.conn.execute(f"SELECT nest FROM {const.DB_TABLE_NAME}") as cursor:
             return await cursor.fetchall()
 
 
