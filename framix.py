@@ -94,10 +94,10 @@ from nexacore.profile import (
 )
 from nexaflow import const
 from nexaflow import toolbox
-from nexaflow.report import Report
 from nexaflow.video import (
     VideoObject, VideoFrame
 )
+from nexaflow.report import Report
 from nexaflow.cutter.cutter import VideoCutter
 from nexaflow.hook import (
     FrameSizeHook, FrameSaveHook, PaintCropHook, PaintOmitHook
