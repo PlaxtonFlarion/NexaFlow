@@ -156,9 +156,11 @@ class Missions(object):
         self.main_total_temp: str = kwargs["main_total_temp"]
         self.view_share_temp: str = kwargs["view_share_temp"]
         self.view_total_temp: str = kwargs["view_total_temp"]
+
         self.initial_option: str = kwargs["initial_option"]
         self.initial_deploy: str = kwargs["initial_deploy"]
         self.initial_script: str = kwargs["initial_script"]
+
         self.adb: str = kwargs["adb"]
         self.fmp: str = kwargs["fmp"]
         self.fpb: str = kwargs["fpb"]
