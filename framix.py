@@ -516,6 +516,7 @@ class Missions(object):
         """
         logger.debug(f"**<* 光速穿梭 *>**")
         self.design.show_panel(Wind.SPEED_TEXT, Wind.SPEED)
+        self.design.pulse_track()
 
         originals, indicates = await self.fst_track(deploy, clipix, task_list)
 
@@ -530,6 +531,8 @@ class Missions(object):
                 Switch.ask_video_detach, video_filter, video_temp, target, **points
             ) for (video_filter, target), (video_temp, *_), points in zip(video_target_list, task_list, indicates))
         )
+
+        self.design.frame_grid_initializer()
 
         for detach, (video_temp, *_) in zip(detach_result, task_list):
             logger.debug(detach)
@@ -565,6 +568,8 @@ class Missions(object):
             await report.load(result)
 
             return result.get("style"), result.get("total"), result.get("title"), nest
+
+        self.design.boot_html_renderer()
 
         render_result = await asyncio.gather(
             *(render_speed(todo_list) for todo_list in task_list)
@@ -633,11 +638,14 @@ class Missions(object):
         option: "Option" = kwargs["option"]
         alynex: "Alynex" = kwargs["alynex"]
 
-        logger.debug(f"**<* 思维导航 *>**" if alynex.ks.model else f"**<* 基石阵地 *>**")
-        self.design.show_panel(
-            Wind.KERAS_TEXT if alynex.ks.model else Wind.BASIC_TEXT,
-            Wind.KERAS if alynex.ks.model else Wind.BASIC
-        )
+        if alynex.ks.model:
+            logger.debug(f"**<* 思维导航 *>**")
+            self.design.show_panel(Wind.KERAS_TEXT, Wind.KERAS)
+        else:
+            logger.debug(f"**<* 基石阵地 *>**")
+            self.design.show_panel(Wind.BASIC_TEXT, Wind.BASIC)
+
+        self.design.collapse_star_expanded()
 
         originals, indicates = await self.fst_track(deploy, clipix, task_list)
 
@@ -654,6 +662,8 @@ class Missions(object):
                 Switch.ask_video_change, video_filter, video_temp, target, **points
             ) for (video_filter, target), (video_temp, *_), points in zip(video_target_list, task_list, indicates))
         )
+
+        self.design.frame_grid_initializer()
 
         eliminate = []
         for change, (video_temp, *_) in zip(change_result, task_list):
@@ -674,6 +684,7 @@ class Missions(object):
 
         if alynex.ks.model:
             deploy.view_deploy()
+            self.design.neural_sync_loading()
 
         if len(task_list) == 1:
             task = [
@@ -684,6 +695,10 @@ class Missions(object):
             futures = await asyncio.gather(*task)
 
         else:
+            random.choice([
+                self.design.boot_process_matrix, self.design.boot_process_sequence
+            ])()
+
             this_level = self.level
             self.level = "ERROR"
             func = partial(self.amazing, option, deploy)
@@ -733,6 +748,8 @@ class Missions(object):
             await report.load(result)
 
             return result.get("style"), result.get("total"), result.get("title"), nest
+
+        self.design.boot_html_renderer()
 
         render_result = await asyncio.gather(
             *(render_keras(future, todo_list) for future, todo_list in zip(futures, task_list) if future)
@@ -820,15 +837,12 @@ class Missions(object):
             *(Report.ask_create_total_report(
                 m, self.group, share_form, total_form) for m in merge), return_exceptions=True
         ):
-            if isinstance(resp, Exception):
-                tip_state, tip_style = f"{resp}", Wind.KEEPER
-            else:
-                tip_state, tip_style = f"成功生成汇总报告 {os.path.basename(resp)}", Wind.REPORTER
-
-            logger.debug(tip_state)
             logger.debug(resp)
-            self.design.show_panel(tip_state, tip_style)
-            self.design.show_panel(resp, tip_style)
+            if isinstance(resp, Exception):
+                self.design.show_panel(resp, Wind.KEEPER)
+            else:
+                self.design.show_panel(f"成功生成汇总报告 {(state := Path(resp)).name}", Wind.REPORTER)
+                self.design.show_panel(state.relative_to(Path(__file__).parent.parent), Wind.REPORTER)
 
     # """时空纽带分析系统"""
     async def combine_view(self, merge: list) -> None:
@@ -1102,6 +1116,8 @@ class Missions(object):
             ) for (video_filter, target), (video_temp, *_), points in zip(video_target_list, task_list, indicates))
         )
 
+        self.design.frame_grid_initializer()
+
         eliminate = []
         for change, (video_temp, *_) in zip(change_result, task_list):
             logger.debug(change)
@@ -1131,6 +1147,10 @@ class Missions(object):
             futures = await asyncio.gather(*task)
 
         else:
+            random.choice([
+                self.design.boot_process_matrix, self.design.boot_process_sequence
+            ])()
+
             this_level = self.level
             self.level = "ERROR"
             func = partial(self.bizarre, option, deploy)
@@ -1199,6 +1219,8 @@ class Missions(object):
         ):
             logger.debug(tip := f"没有有效任务")
             return self.design.show_panel(tip, Wind.KEEPER)
+
+        self.design.boot_core_sequence()
 
         looper = asyncio.get_running_loop()
 
@@ -1342,6 +1364,10 @@ class Missions(object):
             futures = await asyncio.gather(*task)
 
         else:
+            random.choice([
+                self.design.boot_process_matrix, self.design.boot_process_sequence
+            ])()
+
             this_level = self.level
             self.level = "ERROR"
             func = partial(alynex.ks.build)
@@ -2154,6 +2180,7 @@ class Missions(object):
                             await Terminal.cmd_line(first + [self.initial_deploy])
                             deploy.load_deploy(self.initial_deploy)
                             deploy.view_deploy()
+                            self.design.neural_sync_loading()
                             continue
 
                         elif select.isdigit():
@@ -3360,7 +3387,7 @@ async def main() -> typing.Coroutine | None:
         parameters = list(dict.fromkeys(parameters))
         await function(parameters, _option, _deploy)
 
-    Design.load_animation()  # 加载动画
+    Design.engine_topology_wave()  # 加载动画
 
     await _authorized()  # 应用授权
 

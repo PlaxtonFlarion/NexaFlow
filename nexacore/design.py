@@ -159,6 +159,13 @@ class Design(object):
                 time.sleep(0.05)
 
     @staticmethod
+    def clear_screen() -> None:
+        """
+        清空终端内容，自动适配平台，Windows 使用 'cls'，其他平台使用 'clear'。
+        """
+        os.system("cls" if os.name == "nt" else "clear")
+
+    @staticmethod
     def done() -> None:
         """
         显示任务完成状态的 ASCII 区块框提示，柔和浅绿，视觉愉悦。
@@ -329,81 +336,103 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         Design.console.print(table, "\n")
 
     @staticmethod
-    def load_animation() -> None:
+    def engine_topology_wave() -> None:
         """
-        随机展示启动动画，包括多种渐进式加载风格（点阵、图解等）。
+        启动时加载动画。
         """
-        colors = {
-            1: "bold #D7AFAF", 2: "bold #5FD75F", 3: "bold #5FD7FF", 4: "bold #D7AF5F"
-        }
-
-        def speed_engine(stage: int) -> list["Text"]:
-            engine_stages = [
-                Text("\n●", style=colors[1]),
-                Text("●——●", style=colors[2]),
-                Text("●——●——●", style=colors[3]),
-                Text("●——●——●——●\n", style=colors[4]),
-            ]
-            return engine_stages[stage % len(engine_stages)]
-
-        def basic_engine(stage: int) -> list["Text"]:
-            engine_stages = [
-                Text("\n●", style=colors[1]),
-                Text("●——●", style=colors[2]),
-                Text("●——●——●", style=colors[3]),
-                Text("●——●——●——●", style=colors[4]),
-                Text("●——●——●——●——●", style=colors[1]),
-                Text("●——●——●——●——●——●", style=colors[2]),
-                Text("●——●——●——●——●——●——●", style=colors[3]),
-                Text("●——●——●——●——●——●——●——●\n", style=colors[4])
-            ]
-            return engine_stages[stage % len(engine_stages)]
-
-        def keras_engine(stage: int) -> list["Text"]:
-            engine_stages = [
-                Text("""                  
-                  (●)
-                   |
-                   |""", style=colors[1]),
-                Text("""         (●)------(●)
-                   |       |
-                   |       |""", style=colors[2]),
-                Text("""         (●)------(●)
-                   | \\     |
-                   |  \\    |
-                  (●)---(●)""", style=colors[3]),
-                Text("""         (●)------(●)
-                 / | \\   / |
-                (●) (●)---(●)
-                     |     |
-                    (●)---(●)
-                """, style=colors[4])
-            ]
-            return engine_stages[stage % len(engine_stages)]
-
-        def other_engine(stage: int) -> list["Text"]:
-            engine_stages = [
-                Text("\n○   ○", style=colors[1]),
-                Text("○──┐○──┐", style=colors[2]),
-                Text("○──┤○──┤", style=colors[3]),
-                Text("○──┤○──┤◉\n", style=colors[4])
-            ]
-            return engine_stages[stage % len(engine_stages)]
-
-        def animation(step: int, secs: int | float, function: typing.Callable) -> None:
-            Design.notes(f"[bold #C1FFC1]Engine Initializing[/] ...")
-            for i in range(step):
-                Design.console.print(function(i), justify="left")
-                time.sleep(secs)
-            Design.notes(f"[bold #C1FFC1]Engine Loaded[/] ...\n")
-
-        stochastic = [
-            lambda: animation(4, 0.2, speed_engine),
-            lambda: animation(8, 0.1, basic_engine),
-            lambda: animation(4, 0.2, keras_engine),
-            lambda: animation(4, 0.2, other_engine),
+        neon_flow = [
+            "#39FF14", "#00FFFF", "#FF00FF", "#FFFF33"
         ]
-        random.choice(stochastic)()
+        dark_matter = [
+            "#8A2BE2", "#FF1493", "#00CED1", "#FF4500"
+        ]
+        core_pulse = [
+            "#FFD700", "#00FFAA", "#FF6EC7", "#87CEFA"
+        ]
+        ether = [
+            "#B0E0E6", "#D8BFD8", "#C1FFC1", "#E0FFFF",
+        ]
+        magma = [
+            "#FF6347", "#FF4500", "#FF8C00", "#FFD700",
+        ]
+        prism = [
+            "#FFB6C1", "#ADD8E6", "#98FB98", "#FFFACD",
+        ]
+        circuit = [
+            "#00FF7F", "#7FFFD4", "#FFA07A", "#CCCCCC",
+        ]
+        frost = [
+            "#AFEEEE", "#E0FFFF", "#B0C4DE", "#FFFFFF",
+        ]
+        nova = [
+            "#FF69B4", "#00BFFF", "#BA55D3", "#FFFF66",
+        ]
+        cloud_memory = [
+            "#D0F0FF", "#FFEFD5", "#FFC0CB", "#E6E6FA"
+        ]
+        pastel_link = [
+            "#C1FFC1", "#FFFACD", "#AFEEEE", "#DDA0DD"
+        ]
+        serene_flux = [
+            "#D8BFD8", "#E0FFFF", "#F5F5DC", "#F0FFF0"
+        ]
+        obsidian_flux = [
+            "#708090", "#A9A9B0", "#3399FF", "#FF7F50"
+        ]
+        nimbus_bloom = [
+            "#F5FFFA", "#FFE4B5", "#E0F8F7", "#FADADD"
+        ]
+        cyber_blossom = [
+            "#CC66FF", "#FF66B2", "#66CCFF", "#FFCCFF"
+        ]
+
+        # 随机选一个配色列表，打乱顺序
+        random.shuffle(
+            colors := random.choice(
+                [
+                    neon_flow, dark_matter, core_pulse, ether, magma, prism, circuit,
+                    frost, nova, cloud_memory, pastel_link, serene_flux, obsidian_flux,
+                    nimbus_bloom, cyber_blossom
+                ]
+            )
+        )
+
+        stages = [
+            f"""                  
+              (●)
+               *
+               |""",
+            f"""         (●)-------(●)
+               *        |
+               |        |""",
+            f"""         (●)-------(●)
+               * \\      |
+               |  \\     |
+              (●)---(●)---(●)
+             / | \\   |""",
+            f"""        (●)---------(●)   [bold {colors[0]}](● ● ●)[/]                  
+             / | \\     \\     |
+            (●) (●)-----(●)-----(●)
+                 *       *       *  \\
+                (●)-----(●)-----(●)---(●)
+            """
+        ]
+
+        chars = [char for char in const.DESC.upper()]
+
+        replace_star: "typing.Callable" = lambda x, y=iter(chars): [
+            "".join(next(y, "|") if c == "*" else c for c in z)
+            if isinstance(z, str) else (next(y, "|") if z == "*" else z) for z in x
+        ]
+        after_replacement = replace_star(stages)
+
+        Design.notes(f"[bold][{colors[0]}]{const.DESC} Engine Initializing[/] ...")
+        for index, i in enumerate(after_replacement):
+            Design.console.print(
+                Text.from_markup(i, style=f"bold {colors[index]}")
+            )
+            time.sleep(0.2)
+        Design.notes(f"[bold][{colors[0]}]Engine Loaded Successfully[/] ...\n")
 
     @staticmethod
     def show_quantum_intro() -> None:
@@ -464,118 +493,523 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         time.sleep(1)
         Design.simulation_progress("Compiler Ready")
 
-    @staticmethod
-    def clear_screen() -> None:
-        """
-        清空终端内容，自动适配平台，Windows 使用 'cls'，其他平台使用 'clear'。
-        """
-        os.system("cls" if os.name == "nt" else "clear")
-
     def show_panel(self, text: typing.Any, wind: dict) -> None:
         """
         根据日志等级和样式参数渲染面板式输出。
         """
-        if self.design_level == const.SHOW_LEVEL:
-            panel = Panel(
-                Text(
-                    f"{text}", **wind["文本"]
-                ), **wind["边框"], width=int(self.console.width * 0.7)
-            )
-            self.console.print(panel)
+        if self.design_level != const.SHOW_LEVEL:
+            return None
+
+        panel = Panel(
+            Text(
+                f"{text}", **wind["文本"]
+            ), **wind["边框"], width=int(self.console.width * 0.7)
+        )
+        self.console.print(panel)
+
+    def boot_html_renderer(self) -> None:
+        """
+        HTML 渲染动画，模拟 DOM 构建与样式注入过程，分为结构展开、DOM 成树、样式渗透三阶段。
+        """
+        if self.design_level != const.SHOW_LEVEL:
+            return None
+
+        prefix = f"[bold #1E90FF][{const.DESC}::Render][/]"
+
+        tags = [
+            "<html>", "<head>", "<body>", "<div>", "<section>", "<span>", "<meta>", "<title>",
+            "<img>", "<button>", "<p>", "<script>", "<h1>", "<canvas>", "<figure>", "<keygen>",
+            "<meter>", "<output>", "<progress>", "<ruby>", "<source>", "<summary>", "<template>",
+            "<time>", "<track>", "<video>", "<bdi>", "<code>", "<mark>", "<rp>", "<rt>", "<audio>"
+        ]
+        lines_dom = ["─┬─", " ├─", " │", " ╰─", "╚══", "╠══", "╩══"]
+        styles = ["≡", "#", ":", "{", "}", "▓", "●", "░", "▤", "─"]
+
+        def render(tags_state: str, dom_state: str, css_state: str, phase_label: str) -> "Text":
+            out = [
+                f"{prefix} [bold #00CED1]{tags_state}[/]",
+                f"{prefix} [bold #FFD700]{dom_state}[/]",
+                f"{prefix} [bold #FF69B4]{css_state}[/]",
+                f"{prefix} [dim]{phase_label}[/]"
+            ]
+            return Text.from_markup("\n".join(out))
+
+        Design.console.print(f"\n[bold #87CEFA]{const.DESC} Booting HTML render engine ...\n")
+
+        cycles, delay = 20, 0.12
+
+        with Live(console=Design.console, refresh_per_second=24) as live:
+            for i in range(cycles):
+                tag_line = " ".join(random.choice(tags) for _ in range(4))
+                dom_line = " ".join(random.choice(lines_dom) for _ in range(6))
+                css_line = " ".join(random.choice(styles) for _ in range(18))
+                phase = random.choice([
+                    "Building DOM tree...",
+                    "Injecting layout nodes...",
+                    "Applying inline styles...",
+                    "Parsing CSS rules...",
+                    "Finalizing structure..."
+                ])
+                live.update(render(tag_line, dom_line, css_line, phase))
+                time.sleep(delay)
+
+        # 完成提示
+        Design.console.print(
+            "\n[bold #00FF88]>>> HTML layout finalized. Styles applied successfully <<<\n"
+        )
 
     def render_horizontal_pulse(self) -> None:
         """
         渲染报告时的横向光柱动画，表现为左右流动的亮块。
         """
-        if self.design_level == const.SHOW_LEVEL:
-            width = int(Design.console.width * 0.25)
-            charset = "⣿"
+        if self.design_level != const.SHOW_LEVEL:
+            return None
 
-            start_time = time.time()
-            with Live(refresh_per_second=20) as live:
-                while time.time() - start_time < random.randint(1, 5):
-                    if (offset := int((time.time() * 10) % (width * 2))) >= width:
-                        offset = width * 2 - offset
+        Design.console.print(f"\n[bold #87CEFA]{const.DESC} Rendering HTML content ...\n")
 
-                    frame = charset * offset + "[bold #FFFFFF on #00FFAA]" + charset + "[/]" + charset * (
-                            width - offset
+        width = int(Design.console.width * 0.25)
+        charset = "⣿"
+        duration = float(random.randint(1, 5))
+
+        start_time = time.time()
+        with Live(refresh_per_second=20) as live:
+            while time.time() - start_time < duration:
+                if (offset := int((time.time() * 10) % (width * 2))) >= width:
+                    offset = width * 2 - offset
+
+                frame = charset * offset + "[bold #FFFFFF on #00FFAA]" + charset + "[/]" + charset * (
+                        width - offset
+                )
+                panel = Panel.fit(
+                    Text.from_markup(frame),
+                    title=f"[bold #20B2AA]{const.DESC}", border_style="bold #5F875F", padding=(0, 2)
+                )
+                live.update(panel)
+                time.sleep(0.01)
+
+        Design.console.print("\n[bold #00FF88]>>> HTML output successfully generated <<<\n")
+
+    def pulse_track(self) -> None:
+        """
+        脉冲轨道动画，光点推进并带渐变尾迹。
+        """
+        if self.design_level != const.SHOW_LEVEL:
+            return None
+
+        Design.console.print(f"[bold #00F5FF]\n{const.DESC} Engine Linking ...\n")
+
+        length = (width := int(Design.console.width * 0.3)) - 4
+        trail_colors = ["#FFA500", "#FF8C00", "#FF6347", "#444444"]
+
+        with Live(console=Design.console, refresh_per_second=60) as live:
+            for _ in range(100):
+                for i in range(length):
+                    track = []
+                    for j in range(length):
+                        if j == i:
+                            track.append(f"[bold #FFD700]•")
+                        elif j < i and (i - j - 1) < len(trail_colors):
+                            color = trail_colors[i - j - 1]
+                            track.append(f"[bold {color}]⟶")
+                        else:
+                            track.append(f"[bold #00FF87]⟶")
+                    frame = "".join(track)
+                    live.update(
+                        Text.from_markup(frame)
                     )
-                    panel = Panel.fit(
-                        Text.from_markup(frame),
-                        title="Html Rendering", border_style="bold #20B2AA", padding=(0, 2)
-                    )
-                    live.update(panel)
                     time.sleep(0.01)
+
+        Design.console.print(f"[bold #00FFAA]\n>>> {const.DESC} Engine Link Complete <<<\n")
+
+    def collapse_star_expanded(self) -> None:
+        """
+        恒星坍缩动画（多粒子版本），粒子收缩到核心 ▣，带渐变色。
+        """
+        if self.design_level != const.SHOW_LEVEL:
+            return None
+
+        Design.console.print(f"[bold #00F5FF]\n{const.DESC} Engine Linking ...\n")
+
+        particles = 21
+        gradient = [
+            "#FFA07A", "#FF8C00", "#FF7F50", "#FF6347",
+            "#FF4500", "#FF3030", "#FF1493", "#FF00FF",
+            "#FFD700", "#FFFF33"
+        ]
+        gradient = gradient[:particles][::-1]  # 从外到内亮
+
+        sequence = []
+
+        # 收缩阶段
+        for i in range(particles, 0, -1):
+            dots = []
+            for j in range(i):
+                color = gradient[min(j, len(gradient) - 1)]
+                dots.append(f"[bold {color}]●")
+            padding = " " * (particles - i)
+            frame = f"{padding}(" + " ".join(dots) + ")"
+            sequence.append(frame)
+
+        # 核心态爆发帧
+        sequence.append(" " * particles + "[bold #FFFF99]▣")
+        sequence.append(" " * particles + "[bold #9AFF9A]▣")
+        sequence.append(" " * particles + "[bold #00F5FF]▣")
+
+        with Live(console=Design.console, refresh_per_second=30) as live:
+            for frame in sequence:
+                live.update(Text.from_markup(frame))
+                time.sleep(0.12)
+
+        Design.console.print(
+            f"[bold #00FFAA]\n>>> {const.DESC} Core Engine Link Complete <<<\n"
+        )
+
+    def neural_sync_loading(self) -> None:
+        """
+        神经链接激活（Neural Sync Initiation）。
+        """
+        if self.design_level != const.SHOW_LEVEL:
+            return None
+
+        Design.console.print(f"[bold #00F5FF]\n{const.DESC} Neural Engine Sync ...\n")
+
+        internal_width = (width := int(Design.console.width * 0.3)) - 4
+        total_steps = internal_width
+
+        sequence = []
+
+        # 滑动渐变色：亮色向右滑动，制造“光扫”感
+        gradient = [
+            "#555555", "#777777", "#00F5FF", "#66FFFF", "#D7FFFF"
+        ]
+
+        gradient_len = len(gradient)
+
+        # Phase 1: 从左向右推进 `•`，颜色跟随推进点滑动
+        for step in range(1, total_steps + 1):
+            frame = ""
+            for i in range(step):
+                color = gradient[min(step - i - 1, gradient_len - 1)]  # 从右往左套渐变色
+                frame += f"[bold {color}]•"
+            sequence.append(frame)
+
+        # Phase 2: 从右向左将 • 替换为 ▦，渐变颜色从右侧推入
+        fill_gradient = ["#9AFF9A", "#50F0B3", "#00D2FF", "#00BFFF", "#D7FFFF"]
+        fill_len = len(fill_gradient)
+
+        for i in range(1, total_steps + 1):
+            frame = ""
+            num_dots = total_steps - i
+            # 灰色残留 •
+            frame += "".join(f"[bold #444444]•" for _ in range(num_dots))
+            # 渐变推进 ▦
+            for j in range(i):
+                color = fill_gradient[min(j, fill_len - 1)]
+                frame += f"[bold {color}]▦"
+            sequence.append(frame)
+
+        with Live(auto_refresh=False, console=Design.console) as live:
+            for frame in sequence:
+                panel = Panel(
+                    Text.from_markup(frame), border_style="bold #00E5EE",
+                    title=f"[bold #20B2AA]{const.DESC}", width=width
+                )
+                live.update(panel, refresh=True)
+                time.sleep(0.02)
+
+        Design.console.print(f"\n[bold #7CFC00]>>> Sync Complete. {const.DESC} Intelligence Online. <<<\n")
+
+    def frame_grid_initializer(self) -> None:
+        """
+        视频拆帧前的初始化动画，用于模拟帧网格构建过程。
+        """
+        if self.design_level != const.SHOW_LEVEL:
+            return None
+
+        rows, cols = 3, 13
+        grid = [[" " for _ in range(cols)] for _ in range(rows)]
+        symbols = ["░", "▒", "▓", "□"]
+
+        def render_grid() -> "Text":
+            lines = []
+            for row in grid:
+                colored_line = " ".join(
+                    cell if cell.startswith("[") else f"[bold #00FFAA]{cell}"
+                    for cell in row
+                )
+                lines.append(f"[bold #00DDDD][{const.DESC}::Grid][/] {colored_line}")
+            return Text.from_markup("\n".join(lines))
+
+        Design.console.print(f"[bold #00F5FF]\n{const.DESC} Grid Loading ...\n")
+
+        with Live(render_grid(), console=Design.console, refresh_per_second=20) as live:
+            # 展开格点
+            for r in range(rows):
+                for c in range(cols):
+                    grid[r][c] = "·"
+                    live.update(render_grid())
+                    time.sleep(0.02)
+
+            # 激活填充流动
+            for _ in range(8):
+                for r in range(rows):
+                    for c in range(cols):
+                        grid[r][c] = random.choice(symbols)
+                live.update(render_grid())
+                time.sleep(0.1)
+
+            # 中心节点点亮
+            center_r, center_c = rows // 2, cols // 2
+            grid[center_r][center_c] = "[bold #39FF14]▣[/]"
+            live.update(render_grid())
+            time.sleep(0.5)
+
+        Design.console.print(f"\n[bold #7CFC00]>>> Frame Grid Online. Awaiting Extraction <<<\n")
+
+    def frame_stream_flux(self) -> None:
+        """
+        高级帧流动画：双行刷新 + 状态提示 + 矩阵感 HUD 效果。
+        """
+        if self.design_level != const.SHOW_LEVEL:
+            return None
+
+        symbols = ["▓", "▒", "░", "□", "▣"]
+        prefix = f"[bold #00FFCC][{const.DESC}::Flux]"
+
+        make_line: "typing.Callable" = lambda: " ".join(random.choice(symbols) for _ in range(12))
+
+        Design.console.print(
+            f"\n[bold #00FFFF]{const.DESC} Visual FrameStream Channel ...\n")
+
+        with Live(console=Design.console, refresh_per_second=20) as live:
+            for i in range(36):
+                top = make_line()
+                bottom = make_line()
+                content = (
+                    f"{prefix} [bold #99FFFF]{top}\n"
+                    f"{prefix} [bold #66FFCC]{bottom}"
+                )
+                live.update(Text.from_markup(content))
+                time.sleep(0.08)
+
+            # 最终完成状态
+            content = (
+                f"{prefix} [bold #39FF14]<< SYNCED >>\n"
+                f"{prefix} [bold #00FF88]Frame Flux Ready."
+            )
+            live.update(Text.from_markup(content))
+            time.sleep(0.4)
+
+        Design.console.print(f"[bold #7CFC00]\n>>> Frame Flux Online. Ready for Extraction <<<\n")
+
+    def boot_core_sequence(self) -> None:
+        """
+        模拟模型核心唤醒的启动动画，融合 AI 构建感与路径感知图式。
+        """
+        if self.design_level != const.SHOW_LEVEL:
+            return None
+
+        prefix = f"[bold #FFA500][{const.DESC}::Model][/]"
+
+        # 动态模块符号构成
+        lines = {
+            "Neural Link": ["═", "╪", "╋", "╂", "╫", "╬"],
+            "Tensor Flow": ["░", "▒", "▓", "▤", "▥", "▦"],
+            "Pulses Sync": ["⟳", "⟲", "↻", "↺", "▣", " "]
+        }
+
+        phrases = [
+            "融合路径中 ...",
+            "拓扑重建中 ...",
+            "核心对齐中 ...",
+            "神经接驳中 ...",
+            "通道加载中 ...",
+            "子图展开中 ..."
+        ]
+
+        make_row: "typing.Callable" = lambda x: "".join(random.choice(x) for _ in range(36))
+
+        Design.console.print("[bold #66FF99]Waking Up The Sequence Model ...\n")
+
+        with Live(console=Design.console, refresh_per_second=20) as live:
+            for i in range(100):
+                row1 = f"{prefix} [bold #87CEFA]{make_row(lines['Neural Link'])}[/]"
+                row2 = f"{prefix} [bold #00E5EE]{make_row(lines['Tensor Flow'])}[/]"
+                row3 = f"{prefix} [bold #FFB6C1]{make_row(lines['Pulses Sync'])}[/]"
+                desc = f"{prefix} [dim]{random.choice(phrases)}[/]"
+                live.update(Text.from_markup(f"{row1}\n{row2}\n{row3}\n{desc}"))
+                time.sleep(0.5)
+
+            # 完成提示
+            done = f"{prefix} [bold #39FF14]▣ Model Core Connected."
+            live.update(Text.from_markup(done))
+
+        Design.console.print(
+            f"[bold #7CFC00]\n>>> Sequence Compiler Engaged. {const.DESC} Intelligence Online <<<\n"
+        )
+
+    def boot_process_sequence(self) -> None:
+        """
+        三段式多进程启动动画，构建→同步→注入，模拟完整并行计算体系唤醒。
+        """
+        if self.design_level != const.SHOW_LEVEL:
+            return None
+
+        prefix = f"[bold #FF8C00][{const.DESC}::Boot][/]"
+        phases = [
+            {"symbols": ["○", "◌"], "prompt": "初始化计算核心..."},
+            {"symbols": ["◍", "◎", "◈"], "prompt": "节点握手与同步..."},
+            {"symbols": ["▣", "✶", "▶"], "prompt": "注入子任务通道..."}
+        ]
+
+        def render(state: list[str], prompt: str) -> "Text":
+            lines = [
+                f"{prefix} [#AAAAAA]P{index:02d}[/] [bold #00E5EE]{x}[/]"
+                for index, x in enumerate(state, start=1)
+            ]
+            lines.append(f"{prefix} [dim]{prompt}[/]")
+            return Text.from_markup("\n".join(lines))
+
+        workers, delay = 6, 0.12
+
+        Design.console.print(f"\n[bold #00FFAA]{const.DESC} Spawning Compute Nodes ...\n")
+
+        current_state = ["○"] * workers  # 初始化状态
+        with Live(console=Design.console, refresh_per_second=20) as live:
+            for phase in phases:
+                for _ in range(6):
+                    for i in range(workers):
+                        if random.random() < 0.8:
+                            current_state[i] = random.choice(phase["symbols"])
+                    live.update(render(current_state, phase["prompt"]))
+                    time.sleep(delay)
+
+            # 最终定格为完成状态
+            for i in range(workers):
+                current_state[i] = "▣"
+            live.update(render(current_state, "所有任务模块已就绪"))
+            time.sleep(0.5)
+
+        Design.console.print(f"\n[bold #39FF14]>>> ✔ Core Nodes Connected. Task Scheduling Ready <<<\n")
+
+    def boot_process_matrix(self) -> None:
+        """
+        多进程构建动画，节奏控制，模拟进程同步、状态切换与联通构建。
+        """
+        if self.design_level != const.SHOW_LEVEL:
+            return None
+
+        prefix = f"[bold #FF8C00][{const.DESC}::Matrix][/]"
+        status_chain = ["○", "◍", "◎", "◈", "◉", "▣"]
+        prompts = [
+            "调度通道握手中...", "核心状态响应中...", "传输缓冲同步中...",
+            "多核接入中...", "激活控制权...", "连接子任务流..."
+        ]
+
+        def render() -> "Text":
+            lines = []
+            for index, x in enumerate(range(workers), start=1):
+                tag = f"[#AAAAAA]P{index:02d}[/]"
+                symbol = status_chain[min(current_state[x], len(status_chain) - 1)]
+                color = "#00E5EE" if symbol != "▣" else "#39FF14"
+                lines.append(f"{prefix} {tag} [bold {color}]{symbol}[/]")
+            prompt = f"{prefix} [dim]{random.choice(prompts)}[/]"
+            return Text.from_markup("\n".join(lines + [prompt]))
+
+        current_state, delay = [0] * (workers := 6), 0.12  # 每个进程当前的状态索引
+
+        Design.console.print("\n[bold #00FFAA]Framix Spawning Compute Nodes ...\n")
+
+        with Live(console=Design.console, refresh_per_second=20) as live:
+            for step in range(workers + 4):
+                # 随机推进部分节点状态
+                for i in range(workers):
+                    if random.random() < 0.7 and current_state[i] < len(status_chain) - 1:
+                        current_state[i] += 1
+                live.update(render())
+                time.sleep(delay)
+
+            # 最终完成所有为▣
+            for i in range(workers):
+                current_state[i] = len(status_chain) - 1
+                live.update(render())
+                time.sleep(delay / 2)
+
+        Design.console.print(f"\n[bold #39FF14]>>> ✔ Core Nodes Connected. Task Scheduling Ready <<<\n")
 
     def content_pose(self, rlt, avg, dur, org, vd_start, vd_close, vd_limit, video_temp, frate) -> None:
         """
         根据日志等级展示当前视频处理过程中的关键帧率与时长信息。
         """
-        if self.design_level == const.SHOW_LEVEL:
-            table_style = {
-                "title_justify": "center", "show_header": True, "show_lines": True
-            }
+        if self.design_level != const.SHOW_LEVEL:
+            return None
 
-            table_info = Table(
-                title=f"[bold #F5F5DC]Video Info {os.path.basename(video_temp)}",
-                header_style="bold #F5F5DC", **table_style
-            )
-            table_info.add_column("视频尺寸", justify="left", width=14)
-            table_info.add_column("实际帧率", justify="left", width=22)
-            table_info.add_column("平均帧率", justify="left", width=22)
-            table_info.add_column("转换帧率", justify="left", width=22)
+        table_style = {
+            "title_justify": "center", "show_header": True, "show_lines": True
+        }
 
-            table_clip = Table(
-                title=f"[bold #D8BFD8]Video Clip {os.path.basename(video_temp)}",
-                header_style="bold #7FFFD4", **table_style
-            )
-            table_clip.add_column("视频时长", justify="left", width=14)
-            table_clip.add_column("开始时间", justify="left", width=22)
-            table_clip.add_column("结束时间", justify="left", width=22)
-            table_clip.add_column("持续时间", justify="left", width=22)
+        table_info = Table(
+            title=f"[bold #F5F5DC]Video Info {os.path.basename(video_temp)}",
+            header_style="bold #F5F5DC", **table_style
+        )
+        table_info.add_column("视频尺寸", justify="left", width=14)
+        table_info.add_column("实际帧率", justify="left", width=22)
+        table_info.add_column("平均帧率", justify="left", width=22)
+        table_info.add_column("转换帧率", justify="left", width=22)
 
-            info_list = [
-                f"[bold #87CEEB]{org}", f"[bold #87CEEB]{rlt}",
-                f"[bold #87CEEB]{avg}", f"[bold #87CEEB]{frate}"
-            ]
-            table_info.add_row(*info_list)
+        table_clip = Table(
+            title=f"[bold #D8BFD8]Video Clip {os.path.basename(video_temp)}",
+            header_style="bold #7FFFD4", **table_style
+        )
+        table_clip.add_column("视频时长", justify="left", width=14)
+        table_clip.add_column("开始时间", justify="left", width=22)
+        table_clip.add_column("结束时间", justify="left", width=22)
+        table_clip.add_column("持续时间", justify="left", width=22)
 
-            clip_list = [
-                f"[bold #87CEEB]{dur}",
-                f"[bold][[bold #EE82EE]{vd_start}[/]][/]",
-                f"[bold][[bold #EE82EE]{vd_close}[/]][/]",
-                f"[bold][[bold #EE82EE]{vd_limit}[/]][/]"
-            ]
-            table_clip.add_row(*clip_list)
+        info_list = [
+            f"[bold #87CEEB]{org}", f"[bold #87CEEB]{rlt}",
+            f"[bold #87CEEB]{avg}", f"[bold #87CEEB]{frate}"
+        ]
+        table_info.add_row(*info_list)
 
-            self.console.print(table_info)
-            self.console.print(table_clip)
+        clip_list = [
+            f"[bold #87CEEB]{dur}",
+            f"[bold][[bold #EE82EE]{vd_start}[/]][/]",
+            f"[bold][[bold #EE82EE]{vd_close}[/]][/]",
+            f"[bold][[bold #EE82EE]{vd_limit}[/]][/]"
+        ]
+        table_clip.add_row(*clip_list)
+
+        self.console.print(table_info)
+        self.console.print(table_clip)
 
     def assort_frame(self, begin_fr, final_fr, stage_cs) -> None:
         """
         根据日志等级输出帧片段处理的起止帧号及耗时统计。
         """
-        if self.design_level == const.SHOW_LEVEL:
-            table_style = {
-                "title_justify": "center", "show_header": True, "show_lines": True
-            }
+        if self.design_level != const.SHOW_LEVEL:
+            return None
 
-            table = Table(
-                title=f"[bold #EED5D2]{const.DESC} Assort Frame",
-                header_style="bold #D3D3D3", **table_style
-            )
-            table.add_column("开始帧", justify="left", width=22)
-            table.add_column("结束帧", justify="left", width=22)
-            table.add_column("总耗时", justify="left", width=22)
+        table_style = {
+            "title_justify": "center", "show_header": True, "show_lines": True
+        }
 
-            assort_list = [
-                f"[bold][[bold #C1FFC1]{begin_fr}[/]][/]",
-                f"[bold][[bold #FF4040]{final_fr}[/]][/]",
-                f"[bold][[bold #F4A460]{stage_cs}[/]][/]"
-            ]
-            table.add_row(*assort_list)
+        table = Table(
+            title=f"[bold #EED5D2]{const.DESC} Assort Frame",
+            header_style="bold #D3D3D3", **table_style
+        )
+        table.add_column("开始帧", justify="left", width=22)
+        table.add_column("结束帧", justify="left", width=22)
+        table.add_column("总耗时", justify="left", width=22)
 
-            self.console.print(table)
+        assort_list = [
+            f"[bold][[bold #C1FFC1]{begin_fr}[/]][/]",
+            f"[bold][[bold #FF4040]{final_fr}[/]][/]",
+            f"[bold][[bold #F4A460]{stage_cs}[/]][/]"
+        ]
+        table.add_row(*assort_list)
+
+        self.console.print(table)
 
 
 if __name__ == '__main__':
