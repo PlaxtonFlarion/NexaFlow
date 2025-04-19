@@ -888,6 +888,8 @@ class Missions(object):
         4. 根据配置执行快速分析或 Keras 深度分析。
         5. 渲染最终分析报告并完成任务。
         """
+
+        # Notes: Start from here
         if not (video_file_list := [
             video_file for video_file in video_file_list if os.path.isfile(video_file)]
         ):
@@ -898,7 +900,7 @@ class Missions(object):
         report = Report(option.total_place)
         report.title = f"{const.DESC}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
 
-        # Profession
+        # Notes: Profession
         task_list = []
         for video_file in video_file_list:
             report.query = f"{os.path.basename(video_file).split('.')[0]}_{time.strftime('%Y%m%d%H%M%S')}"
@@ -909,6 +911,7 @@ class Missions(object):
                  report.query, report.frame_path, report.extra_path, report.proto_path]
             )
 
+        # Notes: Analyzer
         if self.speed:
             await self.als_speed(
                 deploy, clipix, report, task_list
@@ -926,6 +929,7 @@ class Missions(object):
                 deploy, clipix, report, task_list, option=option, alynex=alynex
             )
 
+        # Notes: Create Report
         await self.combine(report)
 
     # """影像堆叠导航"""
@@ -967,7 +971,7 @@ class Missions(object):
         4. 执行任务分析并生成 HTML 报告。
         """
 
-        async def load_entries() -> typing.AsyncGenerator:
+        async def load_entries() -> "typing.AsyncGenerator":
             """
             加载视频数据条目。
             """
@@ -980,10 +984,9 @@ class Missions(object):
 
         # Notes: Start from here
         search = Search()
-
         clipix = Clipix(self.fmp, self.fpb)
 
-        # Profession
+        # Notes: Profession
         async for entries in load_entries():
             if entries:
                 report = Report(option.total_place)
@@ -1001,6 +1004,7 @@ class Missions(object):
                              report.query, report.frame_path, report.extra_path, report.proto_path]
                         )
 
+                    # Notes: Analyzer
                     if self.speed:
                         await self.als_speed(deploy, clipix, report, task_list)
                     else:
@@ -1016,7 +1020,7 @@ class Missions(object):
                             deploy, clipix, report, task_list, option=option, alynex=alynex
                         )
 
-                # Create Report
+                # Notes: Create Report
                 await self.combine(report)
 
     # """模型训练大师"""
@@ -1058,6 +1062,8 @@ class Missions(object):
             - 多任务使用进程池并发执行训练任务
         5. 分析结束后清除中间产物，记录训练日志。
         """
+
+        # Notes: Start from here
         if not (video_file_list := [
             video_file for video_file in video_file_list if os.path.isfile(video_file)]
         ):
@@ -1067,10 +1073,9 @@ class Missions(object):
         looper = asyncio.get_running_loop()
 
         clipix = Clipix(self.fmp, self.fpb)
-
         report = Report(option.total_place)
 
-        # Profession
+        # Notes: Profession
         task_list = []
         for video_file in video_file_list:
             report.title = f"Model_{uuid.uuid4()}"
@@ -1081,7 +1086,6 @@ class Missions(object):
                  report.query, report.frame_path, report.extra_path, report.proto_path]
             )
 
-        # Information
         originals, indicates = await self.fst_track(deploy, clipix, task_list)
 
         video_filter_list = await self.fst_waves(deploy, clipix, task_list, originals)
@@ -1100,26 +1104,24 @@ class Missions(object):
 
         eliminate = []
         for change, (video_temp, *_) in zip(change_result, task_list):
-            message_list = []
+            logger.debug(change)
             for message in change.splitlines():
                 if matcher := re.search(r"frame.*fps.*speed.*", message):
                     discover: typing.Any = lambda x: re.findall(r"(\w+)=\s*([\w.\-:/x]+)", x)
-                    message_list.append(
-                        format_msg := " ".join([f"{k}={v}" for k, v in discover(matcher.group())])
-                    )
-                    logger.debug(format_msg)
+                    fmt_msg = " ".join([f"{k}={v}" for k, v in discover(matcher.group())])
+                    self.design.show_panel(fmt_msg, Wind.METRIC)
+                    break
                 elif re.search(r"Error", message, re.IGNORECASE):
-                    self.design.show_panel("\n".join(message_list), Wind.KEEPER)
-            self.design.show_panel("\n".join(message_list), Wind.METRIC)
+                    self.design.show_panel(message, Wind.KEEPER)
+                    break
             eliminate.append(
                 looper.run_in_executor(None, os.remove, video_temp)
             )
         await asyncio.gather(*eliminate, return_exceptions=True)
 
-        # Initial Alynex
         alynex = Alynex(None, option, deploy, self.design)
 
-        # Ask Analyzer
+        # Notes: Analyzer
         if len(task_list) == 1:
             task = [
                 alynex.ask_exercise(target, query_path, src_size)
@@ -1190,6 +1192,8 @@ class Missions(object):
         4. 如果任务量大于 1，使用多进程池并发构建模型。
         5. 构建完成后输出成功信息或错误报告。
         """
+
+        # Notes: Start from here
         if not (video_data_list := [
             video_data for video_data in video_data_list if os.path.isdir(video_data)]
         ):
@@ -1289,11 +1293,10 @@ class Missions(object):
 
             return "rgb", image.ndim, f"Image: {list(image.shape)} is color image"
 
-        # Notes: Start from here
         alynex = Alynex(None, option, deploy, self.design)
-
         report = Report(option.total_place)
 
+        # Notes: Profession
         task_list = []
         for video_data in video_data_list:
             logger.debug(tip := f"搜索文件夹: {os.path.basename(video_data)}")
@@ -1330,6 +1333,7 @@ class Missions(object):
             logger.debug(tip := f"没有有效任务")
             return self.design.show_panel(tip, Wind.KEEPER)
 
+        # Notes: Analyzer
         if len(task_list) == 1:
             task = [
                 looper.run_in_executor(None, alynex.ks.build, *compile_data)
@@ -1545,6 +1549,7 @@ class Missions(object):
             )
             return resized
 
+        # Notes: Start from here
         manage = Manage(self.adb)
         device_list = await manage.operate_device()
 
@@ -1752,6 +1757,7 @@ class Missions(object):
                 logger.debug(tip := f"没有有效任务")
                 return self.design.show_panel(tip, Wind.KEEPER)
 
+            # Notes: Analyzer
             if self.speed:
                 await self.als_speed(
                     deploy, clipix, report, task_list
@@ -3354,7 +3360,9 @@ async def main() -> typing.Coroutine | None:
         parameters = list(dict.fromkeys(parameters))
         await function(parameters, _option, _deploy)
 
-    await _authorized()
+    Design.load_animation()  # 加载动画
+
+    await _authorized()  # 应用授权
 
     if _video_list := _lines.video:
         await _arithmetic(_missions.video_file_task, _video_list)
@@ -3369,8 +3377,8 @@ async def main() -> typing.Coroutine | None:
         await _arithmetic(_missions.build_model, _build_list)
 
     elif _lines.flick or _lines.carry or _lines.fully:
-        third_party_ver = await _scheduling()
-        await _missions.analysis(_option, _deploy, third_party_ver)
+        tp_ver = await _scheduling()
+        await _missions.analysis(_option, _deploy, tp_ver)
 
     elif _lines.paint:
         await _missions.painting(_option, _deploy)
@@ -3601,8 +3609,6 @@ if __name__ == '__main__':
         }
 
         _missions = Missions(_wires, _level, _power, *_positions, **_keywords)  # 初始化主要任务对象
-
-        Design.load_animation()  # 显示应用程序加载动画
 
         asyncio.run(main())
 

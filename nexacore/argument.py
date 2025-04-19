@@ -22,8 +22,12 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
 class Args(object):
     """Args Style"""
 
-    reconcilable: list[str] = []
-    discriminate: list[str] = []
+    discriminate: list[str] = [
+        "核心操控", "辅助利器", "视控精灵"
+    ]
+    reconcilable: list[str] = [
+        "像素工坊", "数据智绘", "图帧先行", "智析引擎", "漏洞追踪"
+    ]
 
     # 核心操控
     GROUP_MAJOR = {

@@ -31,7 +31,7 @@ from rich.progress import (
     Progress, BarColumn, TextColumn,
     SpinnerColumn, TimeRemainingColumn
 )
-from nexacore import argument
+from nexacore.argument import Args
 from nexaflow import const
 
 
@@ -275,9 +275,8 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             "title_justify": "center", "show_header": True, "show_lines": True
         }
 
-        for keys, values in argument.Args.ARGUMENT.items():
-            know = "[bold #FFE4E1]参数互斥[/]" if keys in [
-                "核心操控", "辅助利器", "视控精灵"] else "[bold #C1FFC1]参数兼容[/]"
+        for keys, values in Args.ARGUMENT.items():
+            know = "[bold #FFE4E1]参数互斥" if keys in Args.discriminate else "[bold #C1FFC1]参数兼容"
 
             table = Table(
                 title=f"[bold #FFDAB9]{const.DESC} | {const.ALIAS} CLI [bold #66CDAA]<{keys}>[/] <{know}>",
@@ -293,10 +292,10 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             ]
             for info in information:
                 cmds, push, kind, desc = info
-                push_color = "[bold #FFAFAF]" if push == "多次" else "[bold #CFCFCF]"
+                push_color = "#FFAFAF" if push == "多次" else "#CFCFCF"
                 table.add_row(
-                    f"[bold #FFDC00]{cmds}", f"{push_color}{push}", f"[bold #39CCCC]{desc}",
-                    f"[bold #d7afd7]{const.NAME} [bold #FFDC00]{cmds}[bold #7FDBFF]{kind}"
+                    f"[bold #FFDC00]{cmds}", f"[bold {push_color}]{push}", f"[bold #39CCCC]{desc}",
+                    f"[bold #D7AFD7]{const.NAME} [bold #FFDC00]{cmds}[bold #7FDBFF]{kind}"
                 )
             Design.console.print(table, "\t")
 
