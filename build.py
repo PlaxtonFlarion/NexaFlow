@@ -276,7 +276,7 @@ async def post_build() -> typing.Coroutine | None:
 
     Active.active("INFO")
 
-    Design.show_quantum_intro()
+    await Design.show_quantum_intro()
 
     ops, app, site_packages, target, rename, compile_cmd, launch = await packaging()
 
