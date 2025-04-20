@@ -23,6 +23,7 @@ import math
 import psutil
 import typing
 import asyncio
+from loguru import logger
 from rich.table import Table
 from rich.prompt import Prompt
 from screeninfo import get_monitors
@@ -149,7 +150,7 @@ class SourceMonitor(object):
 
             await asyncio.sleep(2)
 
-    async def evaluate_resources(self, first_examine: bool) -> tuple["Table", str]:
+    async def evaluate_resources(self, first_examine: bool) -> typing.Coroutine | tuple["Table", str]:
         """
         评估当前采样数据所反映的系统资源状况。
 
@@ -202,6 +203,79 @@ class SourceMonitor(object):
             self.history.clear()
         table.title = f"[bold #FFEC8B]**<* {const.DESC} Performance Warning *>**"
         return table, "unstable"
+
+
+class AsyncAnimationManager(object):
+    """
+    一个异步动画任务管理器，用于统一控制 CLI 动画的启动与停止。
+
+    该类支持仅运行一个动画任务，若有新任务启动则自动取消当前任务。
+    使用 asyncio.Event 控制动画函数的终止时机，使其适应非阻塞的异步 CLI 环境。
+
+    Attributes
+    ----------
+    __task : asyncio.Task | None
+        当前正在运行的动画任务（协程）。
+
+    __animation_event : asyncio.Event
+        控制动画任务停止的事件对象，供动画函数内部监听。
+    """
+
+    def __init__(self):
+        self.__task: asyncio.Task | None = None
+        self.__animation_event: asyncio.Event = asyncio.Event()
+
+    async def start(self, function: typing.Callable) -> typing.Coroutine | None:
+        """
+        启动一个异步动画函数（必须是 async def），若已有动画在运行会先取消。
+
+        Parameters
+        ----------
+        function : Callable[[asyncio.Event], Awaitable]
+            异步动画函数，需接受一个 asyncio.Event 参数以控制动画终止。
+
+        Returns
+        -------
+        Coroutine | None
+            启动新的动画任务。若有已有动画在运行，则先取消。
+
+        Notes
+        -----
+        - 调用该方法前，现有动画任务将通过 stop() 停止。
+        - 传入的 function 需在内部周期性检测 `event.is_set()` 以判断是否终止。
+        """
+        await self.stop()  # 若已有动画在运行，先取消
+
+        self.__animation_event.clear()
+
+        self.__task = asyncio.create_task(
+            function(self.__animation_event)
+        )
+
+    async def stop(self) -> typing.Coroutine | None:
+        """
+        停止当前动画任务（如存在），通过设置事件并 cancel 协程任务。
+
+        Returns
+        -------
+        Coroutine | None
+            协程任务被取消或无任务可取消时返回 None。
+
+        Notes
+        -----
+        - 若任务未完成，将尝试 cancel 并等待其正常退出。
+        - 动画函数应在检测到事件触发后自行退出，以避免阻塞。
+        """
+        if self.__task and not self.__task.done():
+            self.__animation_event.set()
+
+            self.__task.cancel()
+            try:
+                await self.__task
+            except asyncio.CancelledError:
+                logger.debug(f"Animation cancelled")
+
+        self.__task = None
 
 
 class Manage(object):
