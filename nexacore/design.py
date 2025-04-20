@@ -160,13 +160,6 @@ class Design(object):
                 time.sleep(0.05)
 
     @staticmethod
-    def clear_screen() -> None:
-        """
-        清空终端内容，自动适配平台，Windows 使用 'cls'，其他平台使用 'clear'。
-        """
-        os.system("cls" if os.name == "nt" else "clear")
-
-    @staticmethod
     def done() -> None:
         """
         显示任务完成状态的 ASCII 区块框提示，柔和浅绿，视觉愉悦。
