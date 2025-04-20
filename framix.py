@@ -76,7 +76,8 @@ from PIL import (
 from engine.device import Device
 from engine.switch import Switch
 from engine.manage import (
-    ScreenMonitor, SourceMonitor, Manage
+    ScreenMonitor, SourceMonitor,
+    AsyncAnimationManager, Manage
 )
 from engine.medias import (
     Record, Player
@@ -85,8 +86,8 @@ from engine.terminal import Terminal
 from engine.tinker import (
     Craft, Search, Active, Review, FramixError
 )
-from nexacore.argument import Wind
 from nexacore.cubicle import DB
+from nexacore.argument import Wind
 from nexacore.design import Design
 from nexacore.parser import Parser
 from nexacore.profile import (
@@ -147,6 +148,7 @@ class Missions(object):
         self.power = power  # 最大进程
 
         self.design = Design(self.level)
+        self.animation = AsyncAnimationManager()
 
         self.flick, self.carry, self.fully, self.speed, self.basic, self.keras, *_ = args
         *_, self.alone, self.whist, self.alike, self.shine, self.group = args
@@ -516,7 +518,7 @@ class Missions(object):
         """
         logger.debug(f"**<* 光速穿梭 *>**")
         self.design.show_panel(Wind.SPEED_TEXT, Wind.SPEED)
-        self.design.pulse_track()
+        await self.design.pulse_track()
 
         originals, indicates = await self.fst_track(deploy, clipix, task_list)
 
@@ -526,13 +528,15 @@ class Missions(object):
             (flt, frame_path) for flt, (*_, frame_path, _, _) in zip(video_filter_list, task_list)
         ]
 
+        await self.animation.start(self.design.frame_grid_initializer)
+
         detach_result = await asyncio.gather(
             *(clipix.pixels(
                 Switch.ask_video_detach, video_filter, video_temp, target, **points
             ) for (video_filter, target), (video_temp, *_), points in zip(video_target_list, task_list, indicates))
         )
 
-        self.design.frame_grid_initializer()
+        await self.animation.stop()
 
         for detach, (video_temp, *_) in zip(detach_result, task_list):
             logger.debug(detach)
@@ -546,12 +550,9 @@ class Missions(object):
                     self.design.show_panel(message, Wind.KEEPER)
                     break
 
-        async def render_speed(todo_list: list[list]) -> tuple:
-            total_path: typing.Any
-            query_path: typing.Any
-            frame_path: typing.Any
-            extra_path: typing.Any
-            proto_path: typing.Any
+        async def render_speed(
+                todo_list: list[list[typing.Union[str, "asyncio.subprocess.Process", None]]]
+        ) -> tuple:
 
             start, end, cost, scores, struct = 0, 0, 0, None, None
             *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo_list
@@ -564,20 +565,24 @@ class Missions(object):
                 "frame": os.path.basename(frame_path),
                 "style": "speed"
             }
-            logger.debug(f"Speeder: {(nest := json.dumps(result, ensure_ascii=False))}")
+
             await report.load(result)
+            logger.debug(f"Speeder: {(nest := json.dumps(result, ensure_ascii=False))}")
 
-            return result.get("style"), result.get("total"), result.get("title"), nest
+            return result, nest
 
-        self.design.boot_html_renderer()
+        await self.animation.start(self.design.boot_html_renderer)
 
         render_result = await asyncio.gather(
             *(render_speed(todo_list) for todo_list in task_list)
         )
 
+        await self.animation.stop()
+
         async with DB(Path(report.reset_path) / const.DB_FILES_NAME) as db:
             await asyncio.gather(
-                *(self.enforce(db, *ns) for ns in render_result)
+                *(self.enforce(db, rs["style"], rs["total"], rs["title"], ns)
+                  for rs, ns in render_result)
             )
             logger.debug(f"DB: {render_result}")
 
@@ -645,7 +650,7 @@ class Missions(object):
             logger.debug(f"**<* 基石阵地 *>**")
             self.design.show_panel(Wind.BASIC_TEXT, Wind.BASIC)
 
-        self.design.collapse_star_expanded()
+        await self.design.collapse_star_expanded()
 
         originals, indicates = await self.fst_track(deploy, clipix, task_list)
 
@@ -657,18 +662,20 @@ class Missions(object):
              ) for flt, (video_temp, *_) in zip(video_filter_list, task_list)
         ]
 
+        await self.animation.start(self.design.frame_grid_initializer)
+
         change_result = await asyncio.gather(
             *(clipix.pixels(
                 Switch.ask_video_change, video_filter, video_temp, target, **points
             ) for (video_filter, target), (video_temp, *_), points in zip(video_target_list, task_list, indicates))
         )
 
-        self.design.frame_grid_initializer()
+        await self.animation.stop()
 
         eliminate = []
         for change, (video_temp, *_) in zip(change_result, task_list):
             logger.debug(change)
-            for message in change.splitlines():
+            for message in reversed(change.splitlines()):
                 if matcher := re.search(r"frame.*fps.*speed.*", message):
                     discover: typing.Any = lambda x: re.findall(r"(\w+)=\s*([\w.\-:/x]+)", x)
                     fmt_msg = " ".join([f"{k}={v}" for k, v in discover(matcher.group())])
@@ -684,7 +691,7 @@ class Missions(object):
 
         if alynex.ks.model:
             deploy.view_deploy()
-            self.design.neural_sync_loading()
+            await self.design.neural_sync_loading()
 
         if len(task_list) == 1:
             task = [
@@ -695,9 +702,9 @@ class Missions(object):
             futures = await asyncio.gather(*task)
 
         else:
-            random.choice([
-                self.design.boot_process_matrix, self.design.boot_process_sequence
-            ])()
+            await random.choice(
+                [self.design.boot_process_matrix, self.design.boot_process_sequence]
+            )(min(5, max(2, len(task_list))))
 
             this_level = self.level
             self.level = "ERROR"
@@ -713,12 +720,10 @@ class Missions(object):
 
         atom_tmp = await Craft.achieve(self.atom_total_temp)
 
-        async def render_keras(future: "Review", todo_list: list[list]) -> tuple:
-            total_path: typing.Any
-            query_path: typing.Any
-            frame_path: typing.Any
-            extra_path: typing.Any
-            proto_path: typing.Any
+        async def render_keras(
+                future: "Review",
+                todo_list: list[list[typing.Union[str, "asyncio.subprocess.Process", None]]]
+        ) -> tuple:
 
             start, end, cost, scores, struct = future.material
             *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo_list
@@ -735,29 +740,34 @@ class Missions(object):
                 stages_inform = await report.ask_draw(
                     scores, struct, proto_path, atom_tmp, deploy.boost
                 )
-                logger.debug(tip := f"模版引擎渲染完成 {os.path.basename(stages_inform)}")
-                self.design.show_panel(tip, Wind.REPORTER)
-
                 result["extra"] = os.path.basename(extra_path)
                 result["proto"] = os.path.basename(stages_inform)
                 result["style"] = "keras"
             else:
                 result["style"] = "basic"
 
-            logger.debug(f"Restore: {(nest := json.dumps(result, ensure_ascii=False))}")
             await report.load(result)
+            logger.debug(f"Restore: {(nest := json.dumps(result, ensure_ascii=False))}")
 
-            return result.get("style"), result.get("total"), result.get("title"), nest
+            return result, nest
 
-        self.design.boot_html_renderer()
+        await self.animation.start(self.design.boot_html_renderer)
 
         render_result = await asyncio.gather(
             *(render_keras(future, todo_list) for future, todo_list in zip(futures, task_list) if future)
         )
 
-        async with DB(os.path.join(report.reset_path, const.DB_FILES_NAME).format()) as db:
+        await self.animation.stop()
+
+        for resp, _ in render_result:
+            if rp := resp.get("proto", None):
+                logger.debug(tip := f"模版引擎渲染完成 {Path(rp).name}")
+                self.design.show_panel(tip, Wind.REPORTER)
+
+        async with DB(Path(report.reset_path) / const.DB_FILES_NAME) as db:
             await asyncio.gather(
-                *(self.enforce(db, *ns) for ns in render_result)
+                *(self.enforce(db, rs["style"], rs["total"], rs["title"], ns)
+                  for rs, ns in render_result)
             )
             logger.debug(f"DB: {render_result}")
 
@@ -831,12 +841,16 @@ class Missions(object):
         logger.debug(tip := f"正在生成汇总报告 ...")
         self.design.show_panel(tip, Wind.REPORTER)
 
-        self.design.render_horizontal_pulse()
+        await self.animation.start(self.design.render_horizontal_pulse)
 
-        for resp in await asyncio.gather(
+        resp_state = await asyncio.gather(
             *(Report.ask_create_total_report(
                 m, self.group, share_form, total_form) for m in merge), return_exceptions=True
-        ):
+        )
+
+        await self.animation.stop()
+
+        for resp in resp_state:
             logger.debug(resp)
             if isinstance(resp, Exception):
                 self.design.show_panel(resp, Wind.KEEPER)
@@ -1110,18 +1124,20 @@ class Missions(object):
              ) for flt, (video_temp, *_) in zip(video_filter_list, task_list)
         ]
 
+        await self.animation.start(self.design.frame_grid_initializer)
+
         change_result = await asyncio.gather(
             *(clipix.pixels(
                 Switch.ask_video_change, video_filter, video_temp, target, **points
             ) for (video_filter, target), (video_temp, *_), points in zip(video_target_list, task_list, indicates))
         )
 
-        self.design.frame_grid_initializer()
+        await self.animation.stop()
 
         eliminate = []
         for change, (video_temp, *_) in zip(change_result, task_list):
             logger.debug(change)
-            for message in change.splitlines():
+            for message in reversed(change.splitlines()):
                 if matcher := re.search(r"frame.*fps.*speed.*", message):
                     discover: typing.Any = lambda x: re.findall(r"(\w+)=\s*([\w.\-:/x]+)", x)
                     fmt_msg = " ".join([f"{k}={v}" for k, v in discover(matcher.group())])
@@ -1147,9 +1163,9 @@ class Missions(object):
             futures = await asyncio.gather(*task)
 
         else:
-            random.choice([
-                self.design.boot_process_matrix, self.design.boot_process_sequence
-            ])()
+            await random.choice(
+                [self.design.boot_process_matrix, self.design.boot_process_sequence]
+            )(min(5, max(2, len(task_list))))
 
             this_level = self.level
             self.level = "ERROR"
@@ -1220,7 +1236,7 @@ class Missions(object):
             logger.debug(tip := f"没有有效任务")
             return self.design.show_panel(tip, Wind.KEEPER)
 
-        self.design.boot_core_sequence()
+        await self.design.boot_core_sequence()
 
         looper = asyncio.get_running_loop()
 
@@ -1364,9 +1380,9 @@ class Missions(object):
             futures = await asyncio.gather(*task)
 
         else:
-            random.choice([
-                self.design.boot_process_matrix, self.design.boot_process_sequence
-            ])()
+            await random.choice(
+                [self.design.boot_process_matrix, self.design.boot_process_sequence]
+            )(min(5, max(2, len(task_list))))
 
             this_level = self.level
             self.level = "ERROR"
@@ -2180,7 +2196,7 @@ class Missions(object):
                             await Terminal.cmd_line(first + [self.initial_deploy])
                             deploy.load_deploy(self.initial_deploy)
                             deploy.view_deploy()
-                            self.design.neural_sync_loading()
+                            await self.design.neural_sync_loading()
                             continue
 
                         elif select.isdigit():
