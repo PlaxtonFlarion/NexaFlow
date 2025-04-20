@@ -856,7 +856,7 @@ class Missions(object):
                 self.design.show_panel(resp, Wind.KEEPER)
             else:
                 self.design.show_panel(f"成功生成汇总报告 {(state := Path(resp)).name}", Wind.REPORTER)
-                self.design.show_panel(state.relative_to(Path(__file__).parent.parent), Wind.REPORTER)
+                self.design.show_panel(resp, Wind.REPORTER)
 
     # """时空纽带分析系统"""
     async def combine_view(self, merge: list) -> None:
