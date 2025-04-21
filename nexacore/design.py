@@ -327,7 +327,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         ]
         for info in information:
             table.add_row(*info)
-        Design.console.print(table, "\n")
+        Design.console.print("\n", table, "\n")
 
     @staticmethod
     def engine_topology_wave() -> None:
@@ -507,7 +507,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             return None
 
         self.console.print(
-            f"[bold #00F5FF]\n▶ {const.DESC} Grid Loading ...\n"
+            f"\n[bold #00F5FF]▶ {const.DESC} grid loading ...\n"
         )
 
         rows, cols = 3, 13
@@ -563,7 +563,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         finally:
             self.console.print(
-                f"\n[bold #7CFC00]>>> Frame Grid Online. Awaiting Extraction <<<\n"
+                f"\n[bold #7CFC00]>>> {const.DESC} frame grid online. Awaiting extraction. <<<\n"
             )
 
     async def boot_html_renderer(self, animation_event: "asyncio.Event") -> None:
@@ -573,7 +573,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         if self.design_level != const.SHOW_LEVEL:
             return None
 
-        self.console.print(f"\n[bold #87CEFA]▶ {const.DESC} Booting HTML render engine ...\n")
+        self.console.print(f"\n[bold #87CEFA]▶ {const.DESC} booting html render engine ...\n")
 
         prefix = f"[bold #1E90FF][{const.DESC}::Render][/]"
 
@@ -616,7 +616,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         finally:
             self.console.print(
-                "\n[bold #00FF88]>>> HTML layout finalized. Styles applied successfully <<<\n"
+                f"\n[bold #00FF88]>>> {const.DESC} HTML layout finalized. Styles applied successfully. <<<\n"
             )
 
     async def render_horizontal_pulse(self, animation_event: "asyncio.Event") -> None:
@@ -627,7 +627,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             return None
 
         self.console.print(
-            f"\n[bold #87CEFA]▶ {const.DESC} Rendering HTML content ...\n"
+            f"\n[bold #87CEFA]▶ {const.DESC} rendering html content ...\n"
         )
 
         width = int(self.console.width * 0.25)
@@ -656,10 +656,10 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         finally:
             self.console.print(
-                "\n[bold #00FF88]>>> HTML output successfully generated <<<\n"
+                "\n[bold #00FF88]>>> HTML output successfully generated. <<<\n"
             )
 
-    async def frame_stream_flux(self, animation_event: "asyncio.Event") -> None:
+    async def frame_stream_flux(self) -> None:
         """
         高级帧流动画：双行刷新 + 状态提示 + 矩阵感 HUD 效果。
         """
@@ -667,7 +667,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             return None
 
         self.console.print(
-            f"\n[bold #00FFFF]▶ {const.DESC} Visual FrameStream Channel ...\n"
+            f"\n[bold #00FFFF]▶ {const.DESC} visual frame stream channel ...\n"
         )
 
         symbols = ["▓", "▒", "░", "□", "▣"]
@@ -675,11 +675,8 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         make_line: callable = lambda: " ".join(random.choice(symbols) for _ in range(12))
 
-        live = Live(console=self.console, refresh_per_second=20)
-        live.start()
-
-        try:
-            while not animation_event.is_set():
+        with Live(console=self.console, refresh_per_second=20) as live:
+            for _ in range(30):
                 top = make_line()
                 bottom = make_line()
                 content = (
@@ -689,7 +686,6 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                 live.update(Text.from_markup(content))
                 await asyncio.sleep(0.12)
 
-        except asyncio.CancelledError:
             # 最终完成状态
             content = (
                 f"{prefix} [bold #39FF14]<< SYNCED >>\n"
@@ -698,12 +694,9 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             live.update(Text.from_markup(content))
             await asyncio.sleep(0.4)
 
-            live.stop()
-
-        finally:
-            self.console.print(
-                f"[bold #7CFC00]\n>>> Frame Flux Online. Ready for Extraction <<<\n"
-            )
+        self.console.print(
+            f"\n[bold #7CFC00]>>> {const.DESC} frame flux online. Ready for extraction. <<<\n"
+        )
 
     async def pulse_track(self) -> None:
         """
@@ -713,17 +706,17 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             return None
 
         self.console.print(
-            f"[bold #00F5FF]\n▶ {const.DESC} Engine Linking ...\n"
+            f"\n[bold #00F5FF]▶ {const.DESC} engine linking ...\n"
         )
 
         trail_colors = ["#FFA500", "#FF8C00", "#FF6347", "#444444"]
-        length = (width := int(self.console.width * 0.3)) - 4
+        width = int(self.console.width * 0.3) - 4
 
         with Live(console=self.console, refresh_per_second=60) as live:
             for _ in range(3):
-                for i in range(length):
+                for i in range(width):
                     track = []
-                    for j in range(length):
+                    for j in range(width):
                         if j == i:
                             track.append(f"[bold #FFD700]•")
                         elif j < i and (i - j - 1) < len(trail_colors):
@@ -738,7 +731,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                     await asyncio.sleep(0.01)
 
         self.console.print(
-            f"[bold #00FFAA]\n>>> {const.DESC} Engine Link Complete <<<\n"
+            f"\n[bold #00FFAA]>>> {const.DESC} engine link complete <<<\n"
         )
 
     async def collapse_star_expanded(self) -> None:
@@ -748,8 +741,36 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         if self.design_level != const.SHOW_LEVEL:
             return None
 
+        status_messages = [
+            f"core engine linking",
+            f"neural matrix syncing",
+            f"AI kernel initializing",
+            f"thread grid converging",
+            f"bus system in handshake",
+            f"logic shell activating",
+            f"data lattice aligning",
+            f"engine core stabilizing",
+            f"runtime environment loading",
+            f"execution unit binding",
+            f"cognitive field forming",
+            f"synaptic plane connecting",
+            f"cortex node handshake",
+            f"signal path entangling",
+            f"neuron loop synchronization",
+            f"axon stream initialized",
+            f"logic thread weaving",
+            f"impulse array streaming",
+            f"resonance field awakening",
+            f"quantum seed dispatching",
+            f"shell orbiting axis",
+            f"singularity calibration",
+            f"echo wave expanding",
+            f"stellar engine tethering",
+            f"temporal gate alignment",
+        ]
+
         self.console.print(
-            f"[bold #00F5FF]\n▶ {const.DESC} Engine Linking ...\n"
+            f"[bold #00F5FF]\n▶ {const.DESC} {random.choice(status_messages)} ...\n"
         )
 
         # 基本主题
@@ -828,6 +849,26 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
             return frames
 
+        async def flash_logo() -> typing.Coroutine | None:
+            # 打字效果
+            for i in range(1, len(view_char) + 1):
+                typed = view_char[:i]
+                live.update(
+                    Text.from_markup(f"[bold {random.choice(gradient)}]{spacing}{typed}[/]")
+                )  # 居中打字
+                await asyncio.sleep(0.06)
+
+            await asyncio.sleep(0.2)
+
+            # 闪烁完整彩色版本
+            for _ in range(5):
+                live.update(Text.from_markup(""))  # 清空
+                await asyncio.sleep(0.12)
+                live.update(
+                    Text.from_markup(f"[bold {random.choice(gradient)}]{spacing}{view_char}[/]")
+                )  # 显示完整带样式版本
+                await asyncio.sleep(0.12)
+
         with Live(console=self.console, refresh_per_second=30) as live:
             for _ in range(cycles):
                 for c in generate_cycle():
@@ -836,12 +877,13 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
             view_char = f"{const.DESC} (●) Engine"
             view_mode = random.choice(gradient)
-            align_center = particles + offset - len(view_char) // 2
+            spacing = " " * (particles + offset - len(view_char) // 2)
+            # live.update(
+            #     Text.from_markup(f"[bold {view_mode}]{spacing}{view_char}[/]")
+            # )
 
-            final = " " * align_center + f"[bold {view_mode}]{view_char}[/]"
-            live.update(Text.from_markup(final))
-
-            await asyncio.sleep(0.5)
+            await flash_logo()
+            await asyncio.sleep(0.2)
 
         self.console.print(f"\n[bold #7CFC00]{random.choice(wake_up_word)}\n")
 
@@ -853,7 +895,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             return None
 
         self.console.print(
-            f"[bold #00F5FF]\n▶ {const.DESC} Neural Engine Sync ...\n"
+            f"\n[bold #00F5FF]▶ {const.DESC} neural engine sync ...\n"
         )
 
         internal_width = (width := int(self.console.width * 0.3)) - 4
@@ -901,7 +943,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                 await asyncio.sleep(0.02)
 
         self.console.print(
-            f"\n[bold #7CFC00]>>> Sync Complete. {const.DESC} Intelligence Online. <<<\n"
+            f"\n[bold #7CFC00]>>> Sync complete. {const.DESC} intelligence online. <<<\n"
         )
 
     async def boot_core_sequence(self) -> None:
@@ -912,7 +954,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             return None
 
         self.console.print(
-            f"[bold #66FF99]▶ {const.DESC} Waking Up The Sequence Model ...\n"
+            f"\n[bold #66FF99]▶ {const.DESC} waking up the sequence model ...\n"
         )
 
         prefix = f"[bold #FFA500][{const.DESC}::Model][/]"
@@ -944,7 +986,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             live.update(Text.from_markup(done))
 
         self.console.print(
-            f"[bold #7CFC00]\n>>> Sequence Compiler Engaged. {const.DESC} Intelligence Online <<<\n"
+            f"\n[bold #7CFC00]>>> Sequence compiler engaged. {const.DESC} intelligence online. <<<\n"
         )
 
     async def boot_process_sequence(self, workers: int = 5) -> None:
@@ -955,7 +997,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             return None
 
         self.console.print(
-            f"\n[bold #00FFAA]▶ {const.DESC} Spawning Computer Nodes ...\n"
+            f"\n[bold #00FFAA]▶ {const.DESC} spawning computer nodes ...\n"
         )
 
         prefix = f"[bold #FF8C00][{const.DESC}::Boot][/]"
@@ -991,7 +1033,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             await asyncio.sleep(0.5)
 
         self.console.print(
-            f"\n[bold #39FF14]>>> ✔ Core Nodes Connected. Task Scheduling Ready <<<\n"
+            f"\n[bold #39FF14]>>> ✔ Core nodes connected. Task scheduling ready. <<<\n"
         )
 
     async def boot_process_matrix(self, workers: int = 5) -> None:
@@ -1002,10 +1044,10 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             return None
 
         self.console.print(
-            f"\n[bold #00FFAA]▶ {const.DESC} Spawning Computer Nodes ...\n"
+            f"\n[bold #00FFAA]▶ {const.DESC} spawning computer nodes ...\n"
         )
 
-        prefix = f"[bold #FF8C00][{const.DESC}::Matrix][/]"
+        prefix = f"[bold #FF8C00][{const.DESC}::Boot][/]"
 
         status_chain = ["○", "◍", "◎", "◈", "◉", "▣"]
         prompts = [
@@ -1041,7 +1083,309 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                 await asyncio.sleep(delay / 2)
 
         self.console.print(
-            f"\n[bold #39FF14]>>> ✔ Core Nodes Connected. Task Scheduling Ready <<<\n"
+            f"\n[bold #39FF14]>>> ✔ Core nodes connected. Task scheduling ready. <<<\n"
+        )
+
+    async def model_manifest(self) -> None:
+        # todo
+        if self.design_level != const.SHOW_LEVEL:
+            return None
+
+        self.console.print(
+            f"\n[bold #00F5FF]▶ {const.DESC} initializing neural pipelines ...\n"
+        )
+
+        # 神经构造字符集
+        charset = [
+            "⧉", "Σ", "ψ", "∇", "⊙", "⨁", "⌬", "∴", "░", "▒", "▓", "█"
+        ]
+        colors = [
+            "#A8A8A8", "#B2B2B2", "#BCBCBC", "#C6C6C6", "#D0D0D0", "#DADADA", "#E4E4E4", "#EEEEEE"
+        ]
+        logo_color = random.choice(
+            ["#FFD7AF", "#FFD75F", "#FFAFD7", "#FF87AF", "#FF5FAF"]
+        )
+
+        rows = random.randint(4, 6)
+        cols = rows * 3
+
+        def render_frame(current_row: int) -> "Text":
+            lines = []
+            for idx in range(current_row):
+                row = glyph_grid[idx]
+                # 加入轻微“漂移”偏移量
+                indent = " " * random.randint(8, 12)
+                lines.append(f"[bold {random.choice(colors)}]{indent}{' '.join(row)}[/]")
+            return Text.from_markup("\n".join(lines))
+
+        # 动画绘制过程
+        with Live(console=self.console, refresh_per_second=30) as live:
+            for _ in range(3):
+                # 构造字符画网格
+                glyph_grid = [
+                    [random.choice(charset) for _ in range(cols)] for _ in range(rows)
+                ]
+                letters = list(const.DESC.upper())
+                inserted_positions = set()
+
+                while letters:
+                    i = random.randint(0, rows - 1)
+                    j = random.randint(0, cols - 1)
+                    if (i, j) not in inserted_positions:
+                        glyph_grid[i][j] = f"[bold {logo_color}]{letters.pop(0)}[/]"
+                        inserted_positions.add((i, j))
+
+                for frame in range(1, rows + 1):
+                    live.update(render_frame(frame))
+                    await asyncio.sleep(0.12)
+
+            await asyncio.sleep(0.5)
+        self.console.print(
+            f"\n[bold #00FFAA]>>> {const.DESC} model instantiated. Core synthesis complete. <<<\n"
+        )
+
+    async def batch_runner_task_grid(self) -> None:
+        # todo
+        if self.design_level != const.SHOW_LEVEL:
+            return None
+
+        self.console.print(
+            f"\n[bold #00F5FF]▶ {const.DESC} scheduling batch tasks ...\n"
+        )
+
+        def render_grid() -> str:
+            padding = " " * offset
+            return "\n".join(
+                padding + " ".join(f"[{color}]{char}[/]" for char, color in row)
+                for row in grid
+            )
+
+        def render_focus() -> str:
+            padding = " " * offset
+            return "\n".join(
+                padding + " ".join(
+                    f"[bold reverse #FFFF33]{positions[(r, c)]}[/]" if (r, c) in positions
+                    else f"[dim]{char}[/]"
+                    for c, (char, _) in enumerate(row)
+                )
+                for r, row in enumerate(grid)
+            )
+
+        rows = random.randint(4, 6)
+        cols = rows * 2
+        offset = 10
+
+        # 空字符与样式池
+        empty_char = "□"
+        fill_chars = ["■", "▣", "▤", "▥", "▦", "▧", "▨", "▩"]
+
+        # 冷色调颜色池
+        colors = ["#00FFAA", "#00F5FF", "#1CE1D3", "#7CFC00", "#00FFFF", "#66FFCC"]
+
+        # 初始化网格为灰色空格
+        grid = [[(empty_char, "#444444") for _ in range(cols)] for _ in range(rows)]
+
+        # 洗牌：调度顺序随机化
+        coordinates = [(r, c) for r in range(rows) for c in range(cols)]
+        random.shuffle(coordinates)
+
+        letters = list(const.DESC.upper())
+        positions = {}
+        slots = random.sample(coordinates, len(letters))  # 随机 6 个格子
+
+        for pos, letter in zip(slots, letters):
+            positions[pos] = letter
+
+        with Live(console=self.console, refresh_per_second=30) as live:
+            for r, c in coordinates:
+                if (r, c) in positions:
+                    choice_char = f"[bold #FFD700]{positions[(r, c)]}[/]"  # 金色字母
+                else:
+                    choice_char = random.choice(fill_chars)
+                grid[r][c] = (
+                    choice_char, random.choice(colors)
+                )
+                live.update(Text.from_markup(render_grid()))
+                await asyncio.sleep(0.08)
+
+            # 收束帧，高亮字母
+            live.update(Text.from_markup(render_focus()))
+            await asyncio.sleep(1.5)
+
+        self.console.print(
+            f"\n[bold #00FFAA]>>> Task graph finalized. Ready to dispatch. <<<\n"
+        )
+
+    async def channel_animation(self) -> None:
+        # todo
+        if self.design_level != const.SHOW_LEVEL:
+            return None
+
+        self.console.print(
+            f"\n[bold #00F5FF]▶ {const.DESC} preparing multi-channel pipeline ...\n"
+        )
+
+        # 动态波形池（动画阶段）
+        stream = random.choice(
+            waves := ["▁▂▃▄▅▆▇█", "⎺⎻⎼⎽⎼⎻⎺", "░▒▓█▓▒░", "◜◝◞◟", "⋅∙•◦●"]
+        )
+        # 冷色调渐变色
+        gradient = ["#87CEFA", "#00CED1", "#20B2AA", "#00FFAA", "#7CFC00", "#ADFF2F"]
+        header = "[bold #00F5FF][Framix::Sync][/] Preparing multi-channel pipeline ..."
+
+        width = random.randint(28, 36)
+        cycles = random.randint(1, 3)
+        padding = 6
+        channels = random.randint(1, 3)
+        fade_frames = random.randint(8, 12)  # 前几帧淡入效果
+
+        # 每个通道可以选择方向
+        channel_directions = [random.choice([1, -1]) for _ in range(channels)]
+
+        # 构造一帧所有通道的渲染文本
+        def build_frame(offset: int) -> "Text":
+            lines = []
+            for ch in range(channels):
+                line = " " * padding
+                direction = channel_directions[ch]
+                for i in range(width):
+                    idx = (i * direction + offset) % len(gradient)
+                    color = gradient[idx]
+                    char = stream[(i + offset) % len(stream)]
+                    # 淡入效果
+                    if offset < fade_frames:
+                        line += f"[dim {color}]{char}[/]"
+                    else:
+                        line += f"[bold {color}]{char}[/]"
+                lines.append(line)
+            content = "\n".join(lines)
+            return Text.from_markup(content)
+
+        with Live(console=self.console, refresh_per_second=30) as live:
+            for frame in range(width * cycles):
+                live.update(build_frame(frame))
+                await asyncio.sleep(0.05)
+
+        self.console.print(
+            f"\n[bold #00FF88]>>> {const.DESC} sample channels synchronized successfully. <<<\n"
+        )
+
+    async def wave_converge_animation(self) -> None:
+        # todo
+        if self.design_level != const.SHOW_LEVEL:
+            return None
+
+        self.console.print(
+            f"\n[bold #00FFFF]▶ {const.DESC} spinning up autonomous loop engine ...\n"
+        )
+
+        width = 41
+        padding = 4
+        wave_chars = ["~", "≈", "≋", "≂"]
+
+        gradient_sets = {
+            "cyan_to_blue": [
+                "#00FFFF", "#33CCFF", "#3399FF", "#3366FF", "#3333FF", "#222288", "#111144"
+            ],
+            "green_to_teal": [
+                "#66FF66", "#33FF99", "#00FFCC", "#00CCCC", "#009999", "#006666", "#003333"
+            ],
+            "purple_to_pink": [
+                "#FF66FF", "#CC66FF", "#9966FF", "#6633FF", "#6633CC", "#661199", "#330066"
+            ],
+            "orange_to_red": [
+                "#FFCC66", "#FF9966", "#FF6666", "#FF3333", "#CC3333", "#992222", "#661111"
+            ],
+        }
+
+        color = random.choice(
+            logo_colors := [
+                "#00FFFF",  # 明亮蓝绿
+                "#00FF88",  # 青绿色
+                "#7CFC00",  # 草绿色
+                "#FFD700",  # 金黄
+                "#FF69B4",  # 粉红
+                "#FF4500",  # 橘红
+                "#FF6347",  # 番茄红
+                "#BA55D3",  # 紫罗兰
+                "#00CED1",  # 深青
+                "#ADD8E6",  # 淡蓝
+            ]
+        )
+
+        # 颜色梯度（左→中）+（中→右）
+        _, gradient = random.choice(list(gradient_sets.items()))
+
+        def render_wave_line_colored(step: int, wave_char: str) -> "Text":
+            text = Text(" " * padding)
+            wave_width = step
+
+            # 左侧波纹（渐变）
+            for i in range(wave_width):
+                color_l = gradient[i % len(gradient)]
+                text.append(wave_char, style=color_l)
+
+            # 中间空隙
+            middle = width - wave_width * 2
+            text.append(" " * middle)
+
+            # 右侧波纹（镜像渐变）
+            for j in reversed(range(wave_width)):
+                color_r = gradient[j % len(gradient)]
+                text.append(wave_char, style=color_r)
+
+            return text
+
+        def render_frame(step: int) -> "Text":
+            wave_char = wave_chars[step % len(wave_chars)]
+            lines = [
+                render_wave_line_colored(step, wave_char),
+                render_wave_line_colored(step, wave_char),
+                render_wave_line_colored(step, wave_char),
+            ]
+            return Text("\n").join(lines)
+
+        max_step = (width - padding * 2) // 2 + padding
+        final_symbol = f"{{{{ ⊕ {const.DESC} Engine ⊕ }}}}"
+
+        async def flash_logo() -> typing.Coroutine | None:
+            # 打字效果：从左到右逐字符打印
+            for i in range(1, len(final_symbol) + 1):
+                partial = final_symbol[:i]
+                centered = " " * padding + partial.center(width)
+                live.update(Text.from_markup("\n" + f"[bold {random.choice(logo_colors)}]{centered}[/]" + "\n"))
+                await asyncio.sleep(0.08)
+
+            await asyncio.sleep(0.3)
+
+            # 闪烁效果
+            full_line = " " * padding + final_symbol.center(width)
+            for _ in range(3):
+                live.update(
+                    Text.from_markup("\n" * 1 + "\n" + "\n")
+                )  # 隐藏
+                await asyncio.sleep(0.08)
+                live.update(
+                    Text.from_markup(
+                        "\n".join(
+                            ["", f"[bold {random.choice(logo_colors)}]{full_line}[/]", ""]
+                        )
+                    )
+                )  # 显示
+                await asyncio.sleep(0.08)
+
+        with Live(console=self.console, refresh_per_second=30) as live:
+            for _ in range(2):
+                for frame in range(max_step):
+                    live.update(render_frame(frame))
+                    await asyncio.sleep(0.05)
+
+            # 最终帧
+            await flash_logo()
+            await asyncio.sleep(0.5)
+
+        self.console.print(
+            f"\n[bold #7CFC00]>>> {const.DESC} loop engine stabilized. Watching environment. <<<\n"
         )
 
     def content_pose(self, rlt, avg, dur, org, vd_start, vd_close, vd_limit, video_temp, frate) -> None:

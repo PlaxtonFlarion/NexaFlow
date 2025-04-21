@@ -858,6 +858,8 @@ class Missions(object):
                 self.design.show_panel(f"成功生成汇总报告 {(state := Path(resp)).name}", Wind.REPORTER)
                 self.design.show_panel(resp, Wind.REPORTER)
 
+        # todo state展示树形结构
+
     # """时空纽带分析系统"""
     async def combine_view(self, merge: list) -> None:
         """
@@ -1179,12 +1181,14 @@ class Missions(object):
                 futures = await asyncio.gather(*task)
             self.level = this_level
 
-        pick_info_list = []
+        await self.design.channel_animation()
+
         for future in futures:
-            if future:
-                logger.debug(tip := f"保存: {os.path.basename(future)}")
-                pick_info_list.append(tip)
-        self.design.show_panel("\n".join(pick_info_list), Wind.PROVIDER)
+            logger.debug(future)
+            if isinstance(future, Exception):
+                self.design.show_panel(future, Wind.KEEPER)
+            else:
+                self.design.show_panel(f"保存样本: {Path(future).name}", Wind.PROVIDER)
 
         await asyncio.gather(
             *(looper.run_in_executor(None, os.remove, target)
@@ -1236,9 +1240,7 @@ class Missions(object):
             logger.debug(tip := f"没有有效任务")
             return self.design.show_panel(tip, Wind.KEEPER)
 
-        await self.design.boot_core_sequence()
-
-        looper = asyncio.get_running_loop()
+        await self.design.frame_stream_flux()
 
         async def conduct() -> list[str]:
             """
@@ -1331,6 +1333,8 @@ class Missions(object):
 
             return "rgb", image.ndim, f"Image: {list(image.shape)} is color image"
 
+        looper = asyncio.get_running_loop()
+
         alynex = Alynex(None, option, deploy, self.design)
         report = Report(option.total_place)
 
@@ -1371,6 +1375,8 @@ class Missions(object):
             logger.debug(tip := f"没有有效任务")
             return self.design.show_panel(tip, Wind.KEEPER)
 
+        await self.design.boot_core_sequence()
+
         # Notes: Analyzer
         if len(task_list) == 1:
             task = [
@@ -1395,11 +1401,14 @@ class Missions(object):
                 futures = await asyncio.gather(*task)
             self.level = this_level
 
-        final_model_list = []
+        await self.design.model_manifest()
+
         for future in futures:
-            logger.debug(tip := f"Model saved successfully {os.path.basename(future)}")
-            final_model_list.append(tip)
-        self.design.show_panel("\n".join(final_model_list), Wind.DESIGNER)
+            logger.debug(future)
+            if isinstance(future, Exception):
+                self.design.show_panel(future, Wind.KEEPER)
+            else:
+                self.design.show_panel(f"Model saved successfully: {Path(future).name}", Wind.DESIGNER)
 
     # """线迹创造者"""
     async def painting(self, option: "Option", deploy: "Deploy") -> None:
@@ -2132,7 +2141,7 @@ class Missions(object):
 
             choices = list(titles_.keys())
 
-            Design.simulation_progress(f"Ready")
+            await self.design.wave_converge_animation()
             Design.tips_document()
 
             while True:
@@ -2180,6 +2189,8 @@ class Missions(object):
                                 return await self.video_data_task(
                                     [Path(report.total_path).parent], option, deploy
                                 )
+
+                            continue
 
                         elif select == "create":
                             if any((self.speed, self.basic, self.keras)):
@@ -2268,6 +2279,8 @@ class Missions(object):
                 )
             except Exception as e:
                 raise FramixError(e)
+
+            await self.design.batch_runner_task_grid()
 
             await manage_.display_device()
 

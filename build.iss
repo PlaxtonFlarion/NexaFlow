@@ -13,12 +13,13 @@
 #define MyAppAssocName MyAppName + " File"
 #define MyAppAssocExt ".myp"
 #define MyAppAssocKey StringChange(MyAppAssocName, " ", "") + MyAppAssocExt
+#define MyAppId "{{C2D9D962-5920-4373-9F0A-102BA6BF9B32}}"
 
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
-AppId={{C2D9D962-5920-4373-9F0A-102BA6BF9B32}
+AppId={#MyAppId}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppVerName={#MyAppVerName}
@@ -54,6 +55,53 @@ begin
   WizardForm.WelcomeLabel2.Font.Name := 'Microsoft YaHei';
   WizardForm.WelcomeLabel2.Font.Size := 10;
   WizardForm.WelcomeLabel2.Font.Style := [fsItalic];
+end;
+
+function InitializeSetup(): Boolean;
+var
+  MyKeyStillExist: Boolean;
+  ResultCode: Integer;
+  uicmd: String;
+  userChoice: Integer;
+begin
+  Result := True;
+
+  // 检查是否已安装旧版本
+  if RegQueryStringValue(HKEY_LOCAL_MACHINE,
+    'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\' + ExpandConstant('{#MyAppId}') + '_is1',
+    'UninstallString', uicmd) then
+  begin
+    userChoice := MsgBox('检测到已安装 {#MyAppName} ，是否卸载后继续安装？', mbConfirmation, MB_YESNO);
+
+    if userChoice = IDYES then
+    begin
+      if Exec(RemoveQuotes(uicmd), '', '', SW_SHOW, ewWaitUntilTerminated, ResultCode) then
+      begin
+        Sleep(2000); // 注册表反应时间
+
+        MyKeyStillExist := RegKeyExists(HKEY_LOCAL_MACHINE,
+          'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\' + ExpandConstant('{#MyAppId}') + '_is1');
+
+        if MyKeyStillExist then
+        begin
+          Result := False;
+          Exit;
+        end;
+
+        Sleep(3000); // 卸载成功后，延迟 3 秒再继续安装
+      end
+      else
+      begin
+        Result := False;
+        Exit;
+      end;
+    end
+    else
+    begin
+      Result := False;
+      Exit;
+    end;
+  end;
 end;
 
 
