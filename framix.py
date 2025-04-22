@@ -857,8 +857,7 @@ class Missions(object):
             else:
                 self.design.show_panel(f"成功生成汇总报告 {(state := Path(resp)).name}", Wind.REPORTER)
                 self.design.show_panel(resp, Wind.REPORTER)
-
-        # todo state展示树形结构
+                self.design.show_file(state)
 
     # """时空纽带分析系统"""
     async def combine_view(self, merge: list) -> None:

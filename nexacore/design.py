@@ -22,6 +22,7 @@ import time
 import random
 import typing
 import asyncio
+from pathlib import Path
 from rich.live import Live
 from rich.tree import Tree
 from rich.text import Text
@@ -420,18 +421,18 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         ]
         after_replacement = replace_star(stages)
 
-        Design.notes(f"[bold][{colors[0]}]{const.DESC} Engine Initializing[/] ...")
+        Design.notes(f"[bold][bold {colors[0]}]{const.DESC} Engine Initializing[/] ...")
         for index, i in enumerate(after_replacement):
             Design.console.print(
                 Text.from_markup(i, style=f"bold {colors[index]}")
             )
             time.sleep(0.2)
-        Design.notes(f"[bold][{colors[0]}]Engine Loaded Successfully[/] ...\n")
+        Design.notes(f"[bold][bold {colors[0]}]Engine Loaded Successfully[/] ...\n")
 
     @staticmethod
     async def show_quantum_intro() -> None:
         """
-        星域构形动画（Quantum Star Boot）
+        星域构形动画（Quantum Star Boot）。
         """
         frames = [
             f"""\
@@ -498,6 +499,68 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             ), **wind["边框"], width=int(self.console.width * 0.7)
         )
         self.console.print(panel)
+
+    def show_file(self, file_path: "Path") -> None:
+        """
+        显示树状图。
+        """
+        if self.design_level != const.SHOW_LEVEL:
+            return None
+
+        color_schemes = {
+            "Ocean Breeze": ["#AFD7FF", "#87D7FF", "#5FAFD7"],  # 根 / 中间 / 文件
+            "Forest Pulse": ["#A8FFB0", "#87D75F", "#5FAF5F"],
+            "Neon Sunset": ["#FFAF87", "#FF875F", "#D75F5F"],
+            "Midnight Ice": ["#C6D7FF", "#AFAFD7", "#8787AF"],
+            "Cyber Mint": ["#AFFFFF", "#87FFFF", "#5FD7D7"]
+        }
+        file_icons = {
+            "folder": "📁",
+            ".json": "📦",
+            ".yaml": "🧾",
+            ".yml": "🧾",
+            ".md": "📝",
+            ".log": "📄",
+            ".html": "🌐",
+            ".sh": "🔧",
+            ".bat": "🔧",
+            ".db": "🗃️",
+            ".sqlite": "🗃️",
+            ".zip": "📦",
+            ".tar": "📦",
+            "default": "📄"
+        }
+        text_color = random.choice([
+            "#8A8A8A", "#949494", "#9E9E9E", "#A8A8A8", "#B2B2B2"
+        ])
+
+        root_color, folder_color, file_color = random.choice(list(color_schemes.values()))
+
+        choice_icon: callable = lambda x: file_icons["folder"] if (y := Path(x)).is_dir() else (
+            file_icons[n] if (n := y.name.lower()) in file_icons else file_icons["default"]
+        )
+
+        parts = file_path.parts
+
+        # 根节点
+        root = parts[0]
+        tree = Tree(
+            f"[bold {text_color}]{choice_icon(root)} {root}[/]", guide_style=f"bold {root_color}"
+        )
+        current_path = parts[0]
+        current_node = tree
+
+        # 处理中间的文件夹
+        for part in parts[1:-1]:
+            current_path = Path(current_path, part)
+            current_node = current_node.add(
+                f"[bold {text_color}]{choice_icon(current_path)} {part}[/]", guide_style=f"bold {folder_color}"
+            )
+
+        ext = (file := Path(parts[-1])).suffix.lower()
+        current_node.add(f"[bold {file_color}]{choice_icon(ext)} {file.name}[/]")
+
+        Design.console.print("\n", tree, "\n")
 
     async def frame_grid_initializer(self, animation_event: "asyncio.Event") -> None:
         """
@@ -633,6 +696,30 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         width = int(self.console.width * 0.25)
         charset = "⣿"
 
+        border_style = random.choice([
+            "bold #00CED1",  # 青蓝 | 科技感
+            "bold #7CFC00",  # 荧光绿 | 活力
+            "bold #FF69B4",  # 樱花粉 | 灵动
+            "bold #FFA500",  # 暖橙色 | 醒目
+            "bold #8A2BE2",  # 紫色光晕 | 魔幻科技
+        ])
+
+        color_pair = random.choice([
+            "[bold #000000 on #A8FF60]",  # 黑字荧光绿底
+            "[bold #FFFFFF on #3F3F46]",  # 白字暗灰底
+            "[bold #FFD700 on #000000]",  # 金字黑底
+            "[bold #00FFFF on #1E1E1E]",  # 霓虹蓝字 深灰底
+            "[bold #FF00FF on #2F004F]",  # 品红字 暗紫底
+        ])
+
+        title_color = random.choice([
+            "#00F5FF",  # 极光青蓝 · 清亮醒目
+            "#FFAFD7",  # 霓虹粉紫 · 柔光梦感
+            "#A6E22E",  # 荧光绿 · 聚焦提示
+            "#FFD700",  # 金黄 · 荣耀与完成状态
+            "#5FD7FF",  # 冰蓝 · 冷静科技感
+        ])
+
         live = Live(console=self.console, refresh_per_second=20)
         live.start()
 
@@ -641,12 +728,12 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                 if (offset := int((time.time() * 10) % (width * 2))) >= width:
                     offset = width * 2 - offset
 
-                frame = charset * offset + "[bold #FFFFFF on #00FFAA]" + charset + "[/]" + charset * (
+                frame = charset * offset + color_pair + charset + "[/]" + charset * (
                         width - offset
                 )
                 panel = Panel.fit(
                     Text.from_markup(frame),
-                    title=f"[bold #20B2AA]{const.DESC}", border_style="bold #5F875F", padding=(0, 2)
+                    title=f"[bold {title_color}]{const.DESC}", border_style=border_style, padding=(0, 2)
                 )
                 live.update(panel)
                 await asyncio.sleep(0.12)
@@ -731,7 +818,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                     await asyncio.sleep(0.01)
 
         self.console.print(
-            f"\n[bold #00FFAA]>>> {const.DESC} engine link complete <<<\n"
+            f"\n[bold #00FFAA]>>> {const.DESC} engine link complete. <<<\n"
         )
 
     async def collapse_star_expanded(self) -> None:
@@ -799,16 +886,16 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         ]
         # 唤醒词
         wake_up_word = [
-            f">>> ✔ {const.DESC} Neural Fabric Linked. Consciousness Online. <<<",
-            f">>> ✔ {const.DESC} Matrix Stabilized. Phase Sync Complete. <<<",
-            f">>> ✔ Core Pulse Achieved. {const.DESC} is Now Live. <<<",
-            f">>> ✔ {const.DESC} Boot Sequence Resolved. Quantum Path Active. <<<",
-            f">>> ✔ {const.DESC} Perception Grid Online. Awaiting Target Mapping. <<<",
-            f">>> ✔ {const.DESC} Core in Resonance. All Systems Synchronized. <<<",
-            f">>> ✔ {const.DESC} Synaptic Grid Activated. {const.DESC} Perception Fully Engaged. <<<",
-            f">>> ✔ Quantum Lattice Stabilized. {const.DESC} Now Self-Aware. <<<",
-            f">>> ✔ {const.DESC} Info Stream Linked. Cognitive Loop Complete. <<<",
-            f">>> ✔ Drive Pulse Stabilized. {const.DESC} Ready for Deployment. <<<"
+            f"{const.DESC} neural fabric linked. Consciousness online.",
+            f"{const.DESC} matrix stabilized. Phase sync complete.",
+            f"Core pulse achieved. {const.DESC} is now live.",
+            f"{const.DESC} boot sequence resolved. Quantum path active.",
+            f"{const.DESC} perception grid online. Awaiting target mapping.",
+            f"{const.DESC} core in resonance. All systems synchronized.",
+            f"{const.DESC} synaptic grid activated. {const.DESC} perception fully engaged.",
+            f"Quantum lattice stabilized. {const.DESC} now self-aware.",
+            f"{const.DESC} info stream linked. Cognitive loop complete.",
+            f"Drive pulse stabilized. {const.DESC} ready for deployment."
         ]
 
         gradient = random.choice(
@@ -876,7 +963,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                     await asyncio.sleep(0.02)
 
             view_char = f"{const.DESC} (●) Engine"
-            view_mode = random.choice(gradient)
+            # view_mode = random.choice(gradient)
             spacing = " " * (particles + offset - len(view_char) // 2)
             # live.update(
             #     Text.from_markup(f"[bold {view_mode}]{spacing}{view_char}[/]")
@@ -885,7 +972,9 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             await flash_logo()
             await asyncio.sleep(0.2)
 
-        self.console.print(f"\n[bold #7CFC00]{random.choice(wake_up_word)}\n")
+        self.console.print(
+            f"\n[bold #7CFC00]>>> ✔ {random.choice(wake_up_word)} <<<\n"
+        )
 
     async def neural_sync_loading(self) -> None:
         """
@@ -1087,7 +1176,9 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         )
 
     async def model_manifest(self) -> None:
-        # todo
+        """
+        神经网格显影动画。
+        """
         if self.design_level != const.SHOW_LEVEL:
             return None
 
@@ -1145,7 +1236,9 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         )
 
     async def batch_runner_task_grid(self) -> None:
-        # todo
+        """
+        任务调度网格动画。
+        """
         if self.design_level != const.SHOW_LEVEL:
             return None
 
@@ -1217,7 +1310,9 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         )
 
     async def channel_animation(self) -> None:
-        # todo
+        """
+        多通道色带流动画。
+        """
         if self.design_level != const.SHOW_LEVEL:
             return None
 
@@ -1227,11 +1322,10 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         # 动态波形池（动画阶段）
         stream = random.choice(
-            waves := ["▁▂▃▄▅▆▇█", "⎺⎻⎼⎽⎼⎻⎺", "░▒▓█▓▒░", "◜◝◞◟", "⋅∙•◦●"]
+            ["▁▂▃▄▅▆▇█", "⎺⎻⎼⎽⎼⎻⎺", "░▒▓█▓▒░", "◜◝◞◟", "⋅∙•◦●"]
         )
         # 冷色调渐变色
         gradient = ["#87CEFA", "#00CED1", "#20B2AA", "#00FFAA", "#7CFC00", "#ADFF2F"]
-        header = "[bold #00F5FF][Framix::Sync][/] Preparing multi-channel pipeline ..."
 
         width = random.randint(28, 36)
         cycles = random.randint(1, 3)
@@ -1271,7 +1365,9 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         )
 
     async def wave_converge_animation(self) -> None:
-        # todo
+        """
+        镜像波纹汇聚动画。
+        """
         if self.design_level != const.SHOW_LEVEL:
             return None
 
@@ -1298,20 +1394,18 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             ],
         }
 
-        color = random.choice(
-            logo_colors := [
-                "#00FFFF",  # 明亮蓝绿
-                "#00FF88",  # 青绿色
-                "#7CFC00",  # 草绿色
-                "#FFD700",  # 金黄
-                "#FF69B4",  # 粉红
-                "#FF4500",  # 橘红
-                "#FF6347",  # 番茄红
-                "#BA55D3",  # 紫罗兰
-                "#00CED1",  # 深青
-                "#ADD8E6",  # 淡蓝
-            ]
-        )
+        colors = [
+            "#00FFFF",  # 明亮蓝绿
+            "#00FF88",  # 青绿色
+            "#7CFC00",  # 草绿色
+            "#FFD700",  # 金黄
+            "#FF69B4",  # 粉红
+            "#FF4500",  # 橘红
+            "#FF6347",  # 番茄红
+            "#BA55D3",  # 紫罗兰
+            "#00CED1",  # 深青
+            "#ADD8E6",  # 淡蓝
+        ]
 
         # 颜色梯度（左→中）+（中→右）
         _, gradient = random.choice(list(gradient_sets.items()))
@@ -1353,7 +1447,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             for i in range(1, len(final_symbol) + 1):
                 partial = final_symbol[:i]
                 centered = " " * padding + partial.center(width)
-                live.update(Text.from_markup("\n" + f"[bold {random.choice(logo_colors)}]{centered}[/]" + "\n"))
+                live.update(Text.from_markup("\n" + f"[bold {random.choice(colors)}]{centered}[/]" + "\n"))
                 await asyncio.sleep(0.08)
 
             await asyncio.sleep(0.3)
@@ -1368,7 +1462,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                 live.update(
                     Text.from_markup(
                         "\n".join(
-                            ["", f"[bold {random.choice(logo_colors)}]{full_line}[/]", ""]
+                            ["", f"[bold {random.choice(colors)}]{full_line}[/]", ""]
                         )
                     )
                 )  # 显示
