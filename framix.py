@@ -1443,7 +1443,7 @@ class Missions(object):
         5. 展示图像预览，支持用户交互式选择是否保存。
         """
 
-        async def paint_lines(device: "Device") -> "Image":
+        async def paint_lines(device: "Device") -> typing.Coroutine | "Image":
             """
             从指定设备获取屏幕截图，并进行图像处理和网格绘制。
 
@@ -1599,7 +1599,19 @@ class Missions(object):
             )
             return resized
 
+        async def persistence(device: "Device", image: "Image") -> typing.Coroutine | None:
+            pic_path = Path(
+                report.query_path
+            ) / f"hook_{device.sn}_{random.randint(10000, 99999)}.png"
+
+            await asyncio.to_thread(image.save, pic_path)
+
+            logger.debug(tip := f"保存图片: {pic_path.name}")
+            self.design.show_panel(tip, Wind.DRAWER)
+
         # Notes: Start from here
+        await self.animation.start(self.design.pixel_bloom)
+
         manage = Manage(self.adb)
         device_list = await manage.operate_device()
 
@@ -1614,16 +1626,25 @@ class Missions(object):
             if action.strip().upper() == "Y":
                 report = Report(option.total_place)
                 report.title = f"Hooks_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
-                for device, resize_img in zip(device_list, resized_result):
-                    img_save_path = os.path.join(
-                        report.query_path, f"hook_{device.sn}_{random.randint(10000, 99999)}.png"
-                    )
-                    resize_img.save(img_save_path)
-                    logger.debug(tip_ := f"保存图片: {os.path.basename(img_save_path)}")
-                    self.design.show_panel(tip_, Wind.DRAWER)
-                break
+
+                # todo new
+                return await asyncio.gather(
+                    *(persistence(device, resize_img) for device, resize_img in zip(device_list, resized_result))
+                )
+
+                # todo original
+                # for device, resize_img in zip(device_list, resized_result):
+                #     img_save_path = os.path.join(
+                #         report.query_path, f"hook_{device.sn}_{random.randint(10000, 99999)}.png"
+                #     )
+                #     resize_img.save(img_save_path)
+                #     logger.debug(tip_ := f"保存图片: {os.path.basename(img_save_path)}")
+                #     self.design.show_panel(tip_, Wind.DRAWER)
+                # break
+
             elif action.strip().upper() == "N":
                 break
+
             else:
                 tip_ = f"没有该选项,请重新输入\n"
                 self.design.show_panel(tip_, Wind.KEEPER)

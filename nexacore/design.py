@@ -989,17 +989,32 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             f"\n[bold #00F5FF]▶ {const.DESC} neural engine sync ...\n"
         )
 
+        border_style = random.choice([
+            "bold #00CED1",  # 青蓝 | 科技感
+            "bold #7CFC00",  # 荧光绿 | 活力
+            "bold #FF69B4",  # 樱花粉 | 灵动
+            "bold #FFA500",  # 暖橙色 | 醒目
+            "bold #8A2BE2",  # 紫色光晕 | 魔幻科技
+        ])
+        title_color = random.choice([
+            "#00F5FF",  # 极光青蓝 · 清亮醒目
+            "#FFAFD7",  # 霓虹粉紫 · 柔光梦感
+            "#A6E22E",  # 荧光绿 · 聚焦提示
+            "#FFD700",  # 金黄 · 荣耀与完成状态
+            "#5FD7FF",  # 冰蓝 · 冷静科技感
+        ])
+
         internal_width = (width := int(self.console.width * 0.3)) - 4
         total_steps = internal_width
 
         sequence = []
 
         # 滑动渐变色：亮色向右滑动，制造“光扫”感
-        gradient = [
-            "#555555", "#777777", "#00F5FF", "#66FFFF", "#D7FFFF"
-        ]
+        gradient_lr_1 = ["#555555", "#777777", "#00F5FF", "#66FFFF", "#D7FFFF"]
+        gradient_lr_2 = ["#39FF14", "#66FF66", "#99FF99", "#CCFFCC", "#F0FFF0"]  # 荧光绿 → 淡绿
+        gradient_lr_3 = ["#00CED1", "#33D6DC", "#66DEE6", "#99E5F0", "#CCF2FA"]  # 冰蓝涌动感
 
-        gradient_len = len(gradient)
+        gradient_len = len(gradient := random.choice([gradient_lr_1, gradient_lr_2, gradient_lr_3]))
 
         # Phase 1: 从左向右推进 `•`，颜色跟随推进点滑动
         for step in range(1, total_steps + 1):
@@ -1010,8 +1025,11 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             sequence.append(frame)
 
         # Phase 2: 从右向左将 • 替换为 ▦，渐变颜色从右侧推入
-        fill_gradient = ["#9AFF9A", "#50F0B3", "#00D2FF", "#00BFFF", "#D7FFFF"]
-        fill_len = len(fill_gradient)
+        gradient_rl_1 = ["#9AFF9A", "#50F0B3", "#00D2FF", "#00BFFF", "#D7FFFF"]
+        gradient_rl_2 = ["#FF6EC7", "#FF91D4", "#FFB3E1", "#FFD6EE", "#FFF0FA"]  # 樱粉渐柔
+        gradient_rl_3 = ["#FFD700", "#FFE066", "#FFE999", "#FFF2CC", "#FFFBEF"]  # 金光散射
+
+        fill_len = len(fill_gradient := random.choice([gradient_rl_1, gradient_rl_2, gradient_rl_3]))
 
         for i in range(1, total_steps + 1):
             frame = ""
@@ -1024,11 +1042,11 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                 frame += f"[bold {color}]▦"
             sequence.append(frame)
 
-        with Live(auto_refresh=False, console=self.console) as live:
+        with Live(console=self.console, auto_refresh=False) as live:
             for frame in sequence:
                 panel = Panel(
-                    Text.from_markup(frame), border_style="bold #00E5EE",
-                    title=f"[bold #20B2AA]{const.DESC}", width=width
+                    Text.from_markup(frame), border_style=f"bold {border_style}",
+                    title=f"[bold {title_color}]{const.DESC}", width=width
                 )
                 live.update(panel, refresh=True)
                 await asyncio.sleep(0.02)
@@ -1121,7 +1139,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             for i in range(workers):
                 current_state[i] = "▣"
             live.update(render(current_state, "所有任务模块已就绪"))
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.2)
 
         self.console.print(
             f"\n[bold #7CFC00]>>> ✔ Core nodes connected. Task scheduling ready. <<<\n"
@@ -1172,6 +1190,8 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                 current_state[i] = len(status_chain) - 1
                 live.update(render())
                 await asyncio.sleep(delay / 2)
+
+            await asyncio.sleep(0.2)
 
         self.console.print(
             f"\n[bold #7CFC00]>>> ✔ Core nodes connected. Task scheduling ready. <<<\n"
@@ -1232,7 +1252,8 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                     live.update(render_frame(frame))
                     await asyncio.sleep(0.12)
 
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.2)
+
         self.console.print(
             f"\n[bold #7CFC00]>>> {const.DESC} model instantiated. Core synthesis complete. <<<\n"
         )
@@ -1305,6 +1326,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
             # 收束帧，高亮字母
             live.update(Text.from_markup(render_focus()))
+
             await asyncio.sleep(1.5)
 
         self.console.print(
@@ -1361,6 +1383,8 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             for frame in range(width * cycles):
                 live.update(build_frame(frame))
                 await asyncio.sleep(0.05)
+
+            await asyncio.sleep(0.2)
 
         self.console.print(
             f"\n[bold #7CFC00]>>> {const.DESC} sample channels synchronized successfully. <<<\n"
@@ -1478,7 +1502,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
             # 最终帧
             await flash_logo()
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.2)
 
         self.console.print(
             f"\n[bold #7CFC00]>>> {const.DESC} loop engine stabilized. Watching environment. <<<\n"
