@@ -636,7 +636,9 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         if self.design_level != const.SHOW_LEVEL:
             return None
 
-        self.console.print(f"\n[bold #87CEFA]▶ {const.DESC} booting html render engine ...\n")
+        self.console.print(
+            f"\n[bold #00F5FF]▶ {const.DESC} booting html render engine ...\n"
+        )
 
         prefix = f"[bold #1E90FF][{const.DESC}::Render][/]"
 
@@ -679,7 +681,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         finally:
             self.console.print(
-                f"\n[bold #00FF88]>>> {const.DESC} HTML layout finalized. Styles applied successfully. <<<\n"
+                f"\n[bold #7CFC00]>>> {const.DESC} HTML layout finalized. Styles applied successfully. <<<\n"
             )
 
     async def render_horizontal_pulse(self, animation_event: "asyncio.Event") -> None:
@@ -690,7 +692,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             return None
 
         self.console.print(
-            f"\n[bold #87CEFA]▶ {const.DESC} rendering html content ...\n"
+            f"\n[bold #00F5FF]▶ {const.DESC} rendering html content ...\n"
         )
 
         width = int(self.console.width * 0.25)
@@ -743,7 +745,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         finally:
             self.console.print(
-                "\n[bold #00FF88]>>> HTML output successfully generated. <<<\n"
+                "\n[bold #7CFC00]>>> HTML output successfully generated. <<<\n"
             )
 
     async def frame_stream_flux(self) -> None:
@@ -754,7 +756,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             return None
 
         self.console.print(
-            f"\n[bold #00FFFF]▶ {const.DESC} visual frame stream channel ...\n"
+            f"\n[bold #00F5FF]▶ {const.DESC} visual frame stream channel ...\n"
         )
 
         symbols = ["▓", "▒", "░", "□", "▣"]
@@ -818,7 +820,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                     await asyncio.sleep(0.01)
 
         self.console.print(
-            f"\n[bold #00FFAA]>>> {const.DESC} engine link complete. <<<\n"
+            f"\n[bold #7CFC00]>>> {const.DESC} engine link complete. <<<\n"
         )
 
     async def collapse_star_expanded(self) -> None:
@@ -1043,7 +1045,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             return None
 
         self.console.print(
-            f"\n[bold #66FF99]▶ {const.DESC} waking up the sequence model ...\n"
+            f"\n[bold #00F5FF]▶ {const.DESC} waking up the sequence model ...\n"
         )
 
         prefix = f"[bold #FFA500][{const.DESC}::Model][/]"
@@ -1086,7 +1088,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             return None
 
         self.console.print(
-            f"\n[bold #00FFAA]▶ {const.DESC} spawning computer nodes ...\n"
+            f"\n[bold #00F5FF]▶ {const.DESC} spawning computer nodes ...\n"
         )
 
         prefix = f"[bold #FF8C00][{const.DESC}::Boot][/]"
@@ -1122,7 +1124,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             await asyncio.sleep(0.5)
 
         self.console.print(
-            f"\n[bold #39FF14]>>> ✔ Core nodes connected. Task scheduling ready. <<<\n"
+            f"\n[bold #7CFC00]>>> ✔ Core nodes connected. Task scheduling ready. <<<\n"
         )
 
     async def boot_process_matrix(self, workers: int = 5) -> None:
@@ -1133,7 +1135,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             return None
 
         self.console.print(
-            f"\n[bold #00FFAA]▶ {const.DESC} spawning computer nodes ...\n"
+            f"\n[bold #00F5FF]▶ {const.DESC} spawning computer nodes ...\n"
         )
 
         prefix = f"[bold #FF8C00][{const.DESC}::Boot][/]"
@@ -1172,7 +1174,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                 await asyncio.sleep(delay / 2)
 
         self.console.print(
-            f"\n[bold #39FF14]>>> ✔ Core nodes connected. Task scheduling ready. <<<\n"
+            f"\n[bold #7CFC00]>>> ✔ Core nodes connected. Task scheduling ready. <<<\n"
         )
 
     async def model_manifest(self) -> None:
@@ -1232,7 +1234,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
             await asyncio.sleep(0.5)
         self.console.print(
-            f"\n[bold #00FFAA]>>> {const.DESC} model instantiated. Core synthesis complete. <<<\n"
+            f"\n[bold #7CFC00]>>> {const.DESC} model instantiated. Core synthesis complete. <<<\n"
         )
 
     async def batch_runner_task_grid(self) -> None:
@@ -1306,7 +1308,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             await asyncio.sleep(1.5)
 
         self.console.print(
-            f"\n[bold #00FFAA]>>> Task graph finalized. Ready to dispatch. <<<\n"
+            f"\n[bold #7CFC00]>>> Task graph finalized. Ready to dispatch. <<<\n"
         )
 
     async def channel_animation(self) -> None:
@@ -1361,7 +1363,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                 await asyncio.sleep(0.05)
 
         self.console.print(
-            f"\n[bold #00FF88]>>> {const.DESC} sample channels synchronized successfully. <<<\n"
+            f"\n[bold #7CFC00]>>> {const.DESC} sample channels synchronized successfully. <<<\n"
         )
 
     async def wave_converge_animation(self) -> None:
@@ -1372,7 +1374,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             return None
 
         self.console.print(
-            f"\n[bold #00FFFF]▶ {const.DESC} spinning up autonomous loop engine ...\n"
+            f"\n[bold #00F5FF]▶ {const.DESC} spinning up autonomous loop engine ...\n"
         )
 
         width = 41
@@ -1480,6 +1482,109 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         self.console.print(
             f"\n[bold #7CFC00]>>> {const.DESC} loop engine stabilized. Watching environment. <<<\n"
+        )
+
+    async def pixel_bloom(self) -> None:
+        if self.design_level != const.SHOW_LEVEL:
+            return None
+
+        self.console.print(
+            f"\n[bold #00F5FF]▶ {const.DESC} preparing canvas pipeline ...\n"
+        )
+
+        width, height, padding = 30, 5, " " * 8
+        logo = list(const.DESC)
+        symbols = ["⧉", "Σ", "ψ", "∇", "⊙", "⨁", "⌬", "░", "▒", "▓", "█"]
+        fade_symbols = ["█", "▓", "▒", "░", "·", "·"]
+
+        dim_backgrounds = random.choice([
+            "#D8E8E8",  # 云灰青
+            "#E6F0F2",  # 冰蓝白
+            "#F0EAE2",  # 柔奶白
+            "#F5F5DC",  # 象牙米
+            "#EAEAEA",  # 雾面银灰
+            "#FFEFD5",  # 浅金杏
+            "#E0F7FA",  # 雾水蓝
+            "#FFF8DC",  # 奶油色
+            "#F5F0FF",  # 淡紫灰
+            "#F0FFF0"  # 茶绿白
+        ])
+
+        colors = random.choice(
+            [
+                "#FFD700",  # 金色光芒 · 稳定核心感
+                "#00FFAA",  # 霓虹青绿 · 智能科技感
+                "#FF6EC7",  # 樱桃霓光 · AI 个性感
+                "#87CEFA",  # 冰湖蓝 · 安静扩散感
+                "#FF5F87",  # 激光粉 · 动感跃起
+                "#7CFC00",  # 荧光绿 · 脉冲活性
+                "#39FF14",  # 翠绿光 · 生长视觉
+                "#00FFFF",  # 纯蓝光 · 信号纯净感
+                "#FFAF00",  # 琥珀橙 · 稳定能量核心
+                "#BA55D3",  # 紫电波 · 深度神经模型
+                "#00CED1",  # 蓝绿中和 · 编译感
+                "#FF00FF"  # 电子紫 · 数字能量场
+            ]
+        )
+
+        center_r, center_c = height // 2, width // 2
+        grid = [[" " for _ in range(width)] for _ in range(height)]
+
+        def render() -> "Text":
+            return Text.from_markup(
+                "\n".join(
+                    padding + " ".join(
+                        cell if cell.startswith("[") else f"[dim {dim_backgrounds}]{cell}[/]" for cell in row
+                    ) for row in grid
+                )
+            )
+
+        in_bounds: callable = lambda x, y: 0 <= x < height and 0 <= y < width
+
+        with Live(console=self.console, refresh_per_second=30) as live:
+            max_radius = max(center_r, center_c)
+
+            # 爆破绽放
+            for layer in range(max_radius + 1):
+                for dr in range(-layer, layer + 1):
+                    for dc in range(-layer, layer + 1):
+                        r, c = center_r + dr, center_c + dc
+                        if in_bounds(r, c) and grid[r][c] == " ":
+                            grid[r][c] = random.choice(symbols)
+                live.update(render())
+                await asyncio.sleep(0.04)
+
+            # 渐淡
+            for fade in fade_symbols:
+                for r in range(height):
+                    for c in range(width):
+                        if not grid[r][c].startswith("["):
+                            grid[r][c] = fade
+                live.update(render())
+                await asyncio.sleep(0.03)
+
+            # 植入 LOGO
+            start_c = center_c - len(logo) // 2
+            for i, ch in enumerate(logo):
+                if in_bounds(center_r, start_c + i):
+                    grid[center_r][start_c + i] = f"[bold {colors}]{ch}[/]"
+            live.update(render())
+
+            # LOGO 闪烁 3 次
+            for _ in range(5):
+                await asyncio.sleep(0.15)
+                for i in range(len(logo)):
+                    grid[center_r][start_c + i] = " "
+                live.update(render())
+                await asyncio.sleep(0.1)
+                for i, ch in enumerate(logo):
+                    grid[center_r][start_c + i] = f"[bold {colors}]{ch}[/]"
+                live.update(render())
+
+            await asyncio.sleep(0.2)
+
+        self.console.print(
+            f"\n[bold #7CFC00]>>> {const.DESC} pixel glyph matrix stabilized. <<<"
         )
 
     def content_pose(self, rlt, avg, dur, org, vd_start, vd_close, vd_limit, video_temp, frate) -> None:
