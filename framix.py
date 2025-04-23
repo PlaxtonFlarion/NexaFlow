@@ -1610,7 +1610,7 @@ class Missions(object):
             self.design.show_panel(tip, Wind.DRAWER)
 
         # Notes: Start from here
-        await self.animation.start(self.design.pixel_bloom)
+        await self.design.pixel_bloom()
 
         manage = Manage(self.adb)
         device_list = await manage.operate_device()
@@ -1627,20 +1627,9 @@ class Missions(object):
                 report = Report(option.total_place)
                 report.title = f"Hooks_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
 
-                # todo new
                 return await asyncio.gather(
                     *(persistence(device, resize_img) for device, resize_img in zip(device_list, resized_result))
                 )
-
-                # todo original
-                # for device, resize_img in zip(device_list, resized_result):
-                #     img_save_path = os.path.join(
-                #         report.query_path, f"hook_{device.sn}_{random.randint(10000, 99999)}.png"
-                #     )
-                #     resize_img.save(img_save_path)
-                #     logger.debug(tip_ := f"保存图片: {os.path.basename(img_save_path)}")
-                #     self.design.show_panel(tip_, Wind.DRAWER)
-                # break
 
             elif action.strip().upper() == "N":
                 break

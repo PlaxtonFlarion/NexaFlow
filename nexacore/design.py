@@ -1608,7 +1608,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             await asyncio.sleep(0.2)
 
         self.console.print(
-            f"\n[bold #7CFC00]>>> {const.DESC} pixel glyph matrix stabilized. <<<"
+            f"\n[bold #7CFC00]>>> {const.DESC} pixel glyph matrix stabilized. <<<\n"
         )
 
     def content_pose(self, rlt, avg, dur, org, vd_start, vd_close, vd_limit, video_temp, frate) -> None:
