@@ -111,13 +111,6 @@ class Record(object):
         -------
         tuple
             包含视频文件路径和进程对象。
-
-        Notes
-        -----
-        - 初始化录制事件字典，包含 `head`、`done`、`stop` 和 `fail` 事件。
-        - 根据设备信息和可选参数构建录制命令。
-        - 启动录制进程并创建异步任务监控输出流。
-        - 通过 `asyncio.sleep(1)` 等待录制进程启动稳定。
         """
 
         async def input_stream() -> typing.Coroutine | None:
@@ -138,11 +131,12 @@ class Record(object):
                     events["notify"] = f"录制失败"
                     return events["fail"].set()
 
-        self.record_events[device.sn]: dict[str, "asyncio.Event"] = {
-            "head": asyncio.Event(), "done": asyncio.Event(),
-            "stop": asyncio.Event(), "fail": asyncio.Event(),
-            "remain": f"…", "notify": f"等待启动"
-        }
+        # todo
+        # self.record_events[device.sn]: dict[str, "asyncio.Event"] = {
+        #     "head": asyncio.Event(), "done": asyncio.Event(),
+        #     "stop": asyncio.Event(), "fail": asyncio.Event(),
+        #     "remain": f"…", "notify": f"等待启动"
+        # }
 
         bridle: "asyncio.Event" = self.record_events[device.sn]["stop"] if self.alone else self.melody_events
         events: dict[str, "asyncio.Event"] = self.record_events[device.sn]

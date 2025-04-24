@@ -2230,18 +2230,27 @@ class Missions(object):
                     Design.tips_document()
 
                 else:
-                    task_list = await anything_film(device_list, report)
+                    # todo
+                    record.record_events = {
+                        device.sn: {
+                            "head": asyncio.Event(), "done": asyncio.Event(),
+                            "stop": asyncio.Event(), "fail": asyncio.Event(),
+                            "remain": f"…", "notify": f"等待启动"
+                        } for device in device_list
+                    }
+                    task_list = await anything_film(device_list, report)  # 开始录制
 
                     # todo
                     record_ui_task = asyncio.create_task(
                         self.design.display_record_ui(record, amount)
                     )
                     await asyncio.gather(
-                        *(record.check_timer(device, amount) for device in device_list)
+                        *(record.check_timer(device, amount) for device in device_list)  # 启动计时
                     )
-                    await anything_over(device_list, task_list)
+                    await anything_over(device_list, task_list)  # 结束录制
                     await record_ui_task
-                    await anything_well(task_list, report)
+
+                    await anything_well(task_list, report)  # 任务结束
 
                     if await record.flunk_event():
                         device_list = await manage_.operate_device()
