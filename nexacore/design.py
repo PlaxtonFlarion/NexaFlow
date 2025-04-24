@@ -429,7 +429,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             Design.console.print(
                 Text.from_markup(i, style=f"bold {colors[index]}")
             )
-            time.sleep(0.2)
+            await asyncio.sleep(0.2)
         Design.notes(f"[bold][bold {colors[0]}]Engine Loaded Successfully[/] ...\n")
 
     @staticmethod
