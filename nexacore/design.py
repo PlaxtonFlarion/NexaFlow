@@ -690,14 +690,12 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
              "#FF1493", "#DB7093", "#BA55D3", "#9370DB", "#7B68EE"
         ] * 3
 
-        async def notify_color(notify: str) -> str:
-            return {
-                "等待启动": "#D7AFD7",
-                "正在录制": "#00FFFF",
-                "录制成功": "#00FF5F",
-                "录制失败": "#FF005F",
-                "主动停止": "#FFD700",
-            }.get(notify, "#FFFFFF")
+        color: callable = lambda x: {
+            "等待启动": "#D7AFD7",
+            "正在录制": "#00FFFF",
+            "录制成功": "#00FF5F",
+            "录制失败": "#FF005F",
+            "主动停止": "#FFD700"}.get(x, "#FFFFFF")
 
         async def build_ui() -> "Group":
             lines = []
@@ -713,13 +711,13 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                     "主动停止": "■",
                 }.get(notify, "•")
 
-                msg = f"[bold {notify_color(notify)}]{symbol} {sn}[/]"
+                msg = f"[bold {color(notify)}]{symbol} {sn}[/]"
 
                 if notify == "正在录制":
                     bar = render_bar(remain, amount)
-                    msg += f" 剩余 [bold #00FFFF]{remain:03d} 秒[/] {bar}"
+                    msg += f" [bold]剩余 [bold #00FFFF]{remain:03d} 秒[/] {bar}[/]"
                 else:
-                    msg += f" [bold]{notify} ...[/]"
+                    msg += f" [bold]剩余 [bold #00FFFF]{remain:03d} 秒[/] [bold {color(notify)}]{notify} ...[/]"
 
                 lines.append(Text.from_markup(msg))
 
