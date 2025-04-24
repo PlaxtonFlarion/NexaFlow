@@ -1771,23 +1771,18 @@ class Missions(object):
             - 所有处理结果将以调试信息的形式显示在控制面板中。
             """
             effective_list = await asyncio.gather(
-                *(record.ask_close_record(device, video_temp, transports)
-                  for device, (video_temp, transports, *_) in zip(device_list, task_list))
+                *(record.ask_close_record(device, transports)
+                  for device, (_, transports, *_) in zip(device_list, task_list))
             )
 
-            check_list = []
-            for idx, (effective, video_name) in enumerate(effective_list):
-                if "视频录制失败" in effective:
+            for (idx, effective), (video_temp, *_) in zip(enumerate(effective_list), task_list):
+                logger.debug(f"{(video_name := Path(video_temp).name)} status={effective}")
+                if isinstance(effective, Exception):
                     try:
                         task = task_list.pop(idx)
-                        logger.debug(tip := f"{effective}: {video_name} 移除: {os.path.basename(task[0])}")
-                        check_list.append(tip)
-                    except IndexError:
-                        continue
-                else:
-                    logger.debug(tip := f"{effective}: {video_name}")
-                    check_list.append(tip)
-            self.design.show_panel("\n".join(check_list), Wind.EXPLORER)
+                        logger.debug(f"移除: {Path(task[0]).name}")
+                    except IndexError as e:
+                        logger.debug(e)
 
         async def anything_well(task_list: list[list], report: "Report") -> None:
             """
@@ -2237,11 +2232,15 @@ class Missions(object):
                 else:
                     task_list = await anything_film(device_list, report)
 
+                    # todo
+                    record_ui_task = asyncio.create_task(
+                        self.design.display_record_ui(record, amount)
+                    )
                     await asyncio.gather(
                         *(record.check_timer(device, amount) for device in device_list)
                     )
-
                     await anything_over(device_list, task_list)
+                    await record_ui_task
                     await anything_well(task_list, report)
 
                     if await record.flunk_event():
@@ -3425,7 +3424,8 @@ async def main() -> typing.Coroutine | None:
         parameters = list(dict.fromkeys(parameters))
         await function(parameters, _option, _deploy)
 
-    Design.engine_topology_wave()  # 加载动画
+    # 启动仪式
+    await random.choice([Design.engine_topology_wave, Design.stellar_glyph_binding])()
 
     await _authorized()  # 应用授权
 

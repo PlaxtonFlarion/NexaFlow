@@ -23,6 +23,7 @@ import sys
 import time
 import random
 import typing
+import shutil
 import asyncio
 
 try:
@@ -31,9 +32,10 @@ try:
 except ImportError as e:
     raise ImportError("AudioPlayer requires pygame. install it first.")
 
+from loguru import logger
+from rich.text import Text
 from engine.device import Device
 from engine.terminal import Terminal
-from nexacore.design import Design
 from nexaflow import const
 
 
@@ -76,7 +78,7 @@ class Record(object):
     - 所有录制状态通过事件进行管理与清理。
     """
 
-    record_events: dict[dict[str, "asyncio.Event"]] = {}
+    record_events: dict[dict, typing.Any] = {}
     melody_events: "asyncio.Event" = asyncio.Event()
 
     def __init__(self, version: str, **kwargs):
@@ -120,24 +122,26 @@ class Record(object):
 
         async def input_stream() -> typing.Coroutine | None:
             async for line in transports.stdout:
-                Design.annal(stream := line.decode(const.CHARSET, "ignore").strip())
+                logger.debug(Text(stream := line.decode(const.CHARSET, "ignore").strip(), style="bold"))
                 if "Recording started" in stream:
+                    events["notify"] = f"正在录制"
                     events["head"].set()
                 elif "Recording complete" in stream:
+                    events["notify"] = f"录制成功"
                     bridle.set()
-                    events["done"].set()
-                    break
+                    return events["done"].set()
 
         async def error_stream() -> typing.Coroutine | None:
             async for line in transports.stderr:
-                Design.annal(stream := line.decode(const.CHARSET, "ignore").strip())
+                logger.debug(Text(stream := line.decode(const.CHARSET, "ignore").strip(), style="bold"))
                 if "Could not find" in stream or "connection failed" in stream or "Recorder error" in stream:
-                    events["fail"].set()
-                    break
+                    events["notify"] = f"录制失败"
+                    return events["fail"].set()
 
         self.record_events[device.sn]: dict[str, "asyncio.Event"] = {
             "head": asyncio.Event(), "done": asyncio.Event(),
             "stop": asyncio.Event(), "fail": asyncio.Event(),
+            "remain": f"…", "notify": f"等待启动"
         }
 
         bridle: "asyncio.Event" = self.record_events[device.sn]["stop"] if self.alone else self.melody_events
@@ -172,36 +176,8 @@ class Record(object):
         return video_temp, transports
 
     async def ask_close_record(
-            self, device: "Device", video_temp: str, transports: "asyncio.subprocess.Process"
-    ) -> tuple:
-        """
-        异步停止视频录制。
-
-        该方法通过终止录制进程及其子进程来停止视频录制，并监控录制完成状态。
-
-        Parameters
-        ----------
-        device : Device
-            设备对象，包含设备的标签 (tag) 和序列号 (sn)。
-
-        video_temp : str
-            视频文件的临时路径。
-
-        transports : asyncio.subprocess.Process
-            录制进程对象。
-
-        Returns
-        -------
-        tuple
-            包含描述信息和视频文件名称。
-
-        Notes
-        -----
-        - 初始化录制事件字典，包含 `done` 事件。
-        - 查找并终止录制进程的所有子进程。
-        - 等待录制完成事件触发，超时时返回失败信息。
-        - 如果录制成功完成，返回成功信息。
-        """
+            self, device: "Device", transports: "asyncio.subprocess.Process"
+    ) -> typing.Optional[Exception]:
 
         async def find_child(pid: str) -> list:
             """
@@ -210,7 +186,7 @@ class Record(object):
             if self.station == "win32":
                 child_pids = await Terminal.cmd_line(
                     [
-                        "powershell", "-Command", "Get-CimInstance", "Win32_Process", "|", "Where-Object",
+                        powershell_cmd, "-Command", "Get-CimInstance", "Win32_Process", "|", "Where-Object",
                         f"{{ $_.ParentProcessId -eq {pid} }}", "|", "Select-Object", "-ExpandProperty", "ProcessId"
                     ]
                 )
@@ -218,7 +194,7 @@ class Record(object):
                 child_pids = await Terminal.cmd_line(
                     ["pgrep", "-P", pid]
                 )
-            Design.notes(f"{desc} PID={child_pids}")
+            logger.debug(f"{desc} PID={child_pids}")
 
             return [
                 line.strip() for line in child_pids.splitlines() if line.strip().isdigit()
@@ -231,19 +207,19 @@ class Record(object):
             if self.station == "win32":
                 # Windows 使用 PowerShell 的 `Stop-Process`。
                 off = await Terminal.cmd_line(
-                    ["powershell", "-Command", "Stop-Process", "-Id", pid, "-Force"]
+                    [powershell_cmd, "-Command", "Stop-Process", "-Id", pid, "-Force"]
                 )
             else:
                 # 类 Unix 系统使用 `xargs kill -SIGINT`。
                 off = await Terminal.cmd_line(
                     ["xargs", "kill", "-SIGINT"], transmit=pid.encode()
                 )
-            Design.notes(f"{desc} OFF={off}")
+            logger.debug(f"{desc} OFF={off}")
 
         desc = f"{device.tag} {device.sn} PPID={(record_pid := transports.pid)}"
-
         events: dict[str, asyncio.Event] = self.record_events[device.sn]
-        banner: str = os.path.basename(video_temp)
+
+        powershell_cmd = shutil.which("pwsh") or shutil.which("powershell")
 
         if child_process_list := await find_child(record_pid):
             await asyncio.gather(
@@ -251,12 +227,16 @@ class Record(object):
             )
 
         try:
-            # 等待 `done` 事件的触发，超时则视为失败。
             await asyncio.wait_for(events["done"].wait(), 3)
-        except asyncio.TimeoutError:
-            return f"{desc} 视频录制失败", banner
-        else:
-            return f"{desc} 视频录制成功", banner
+        except asyncio.TimeoutError as e_:
+            return e_
+
+    @staticmethod
+    async def is_finished(events: dict) -> bool:
+        return any(
+            events.get(key).is_set() for key in {"stop", "fail", "done"} if isinstance(
+                events.get(key), asyncio.Event)
+        )
 
     async def check_timer(self, device: "Device", amount: int) -> None:
         """
@@ -275,13 +255,6 @@ class Record(object):
         Returns
         -------
         None
-
-        Notes
-        -----
-        - 使用 `head` 事件判断录制是否已启动。
-        - 若 `stop` 在倒计时中被触发，视为主动停止。
-        - 若 `fail` 在任意阶段被触发，视为录制失败。
-        - 每秒更新剩余时间，展示提示信息。
         """
         bridle = self.record_events[device.sn]["stop"] if self.alone else self.melody_events
         events = self.record_events[device.sn]
@@ -291,16 +264,26 @@ class Record(object):
         while True:
             if events["head"].is_set():
                 for i in range(amount):
-                    row = amount - i if amount - i <= 10 else 10
-                    Design.notes(f"{desc} 剩余时间 -> {amount - i:02} 秒 {'----' * row} ...")
+                    row = min(10, step := amount - i)
+                    logger.debug(f"{desc} 剩余时间 -> {step:02} 秒 {'----' * row} ...")
+                    events["remain"] = step
+
                     if bridle.is_set() and i != amount:
-                        return Design.notes(f"{desc} 主动停止 ...")
+                        events["remain"], events["notify"] = step, f"主动停止"
+                        return logger.debug(f"{desc} 主动停止 ...")
+
                     elif events["fail"].is_set():
-                        return Design.notes(f"{desc} 意外停止 ...")
+                        events["remain"] = step
+                        return logger.debug(f"{desc} 录制失败 ...")
+
                     await asyncio.sleep(1)
-                return Design.notes(f"{desc} 剩余时间 -> 00 秒")
+
+                events["remain"] = 0
+                return logger.debug(f"{desc} 剩余时间 -> 00 秒")
+
             elif events["fail"].is_set():
-                return Design.notes(f"{desc} 意外停止 ...")
+                return logger.debug(f"{desc} 录制失败 ...")
+
             await asyncio.sleep(0.2)
 
     async def check_event(self, device: "Device", exec_tasks: dict[str, "asyncio.Task"]) -> None:
@@ -339,7 +322,7 @@ class Record(object):
         if task := exec_tasks.get(device.sn, []):
             task.cancel()
 
-        return Design.notes(f"[bold #CD853F]{device.sn} Cancel task[/]")
+        return logger.debug(f"{device.sn} Cancel task")
 
     async def flunk_event(self) -> bool:
         """
@@ -379,7 +362,8 @@ class Record(object):
         self.melody_events.clear()
         for event_dict in self.record_events.values():
             for events in event_dict.values():
-                events.clear()
+                if isinstance(events, asyncio.Event):
+                    events.clear()
         self.record_events.clear()
 
 

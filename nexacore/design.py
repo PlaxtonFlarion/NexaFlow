@@ -28,11 +28,14 @@ from rich.tree import Tree
 from rich.text import Text
 from rich.table import Table
 from rich.panel import Panel
-from rich.console import Console
+from rich.console import (
+    Console, Group
+)
 from rich.progress import (
     Progress, BarColumn, TextColumn,
     SpinnerColumn, TimeRemainingColumn
 )
+from engine.medias import Record
 from nexacore.argument import Args
 from nexaflow import const
 
@@ -331,7 +334,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         Design.console.print("\n", table, "\n")
 
     @staticmethod
-    def engine_topology_wave() -> None:
+    async def engine_topology_wave() -> None:
         """
         启动时加载动画。
         """
@@ -428,6 +431,120 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             )
             time.sleep(0.2)
         Design.notes(f"[bold][bold {colors[0]}]Engine Loaded Successfully[/] ...\n")
+
+    @staticmethod
+    async def stellar_glyph_binding() -> None:
+        """
+        星域构形动画（v2.4）。
+        """
+        Design.console.print(
+            f"\n[bold #00F5FF]▶ {const.DESC} starts with the pulse between meaning and motion ...\n"
+        )
+
+        center_r, center_c = (height := 5) // 2, (width := 25) // 2
+
+        logo_chars = list(logo := f"{const.DESC} Engine")
+        colors = [
+            "#FFD700",  # 金色
+            "#00FFAA",  # 绿松
+            "#FF6EC7",  # 樱桃粉
+            "#87CEFA",  # 天蓝
+            "#FF8C00",  # 暗橙
+            "#FF69B4",  # 粉红
+            "#00CED1",  # 深青
+            "#C1FFC1",  # 薄荷绿
+            "#FFB6C1",  # 柔粉
+            "#7FFFD4",  # 爱丽丝蓝
+            "#ADFF2F",  # 青黄
+            "#DDA0DD",  # 淡紫
+        ]
+        field_chars = ["⧉", "⨁", "⊚", "⌬", "░", "▒", "▓"]
+        background_chars = [".", ":", "·", " "]
+
+        # Aurora Flux（极光流光）
+        aurora_flux = [
+            "#D1FFFF", "#A1F9FF", "#71F2FF", "#41EBFF", "#21D4FF",
+            "#1DBFFF", "#1CA6F2", "#39B2F2", "#57C3F2", "#74D3F2",
+            "#90E2F2", "#ABF0F7", "#C6FDFF"
+        ]
+        # Solar Flare（日冕烈焰）
+        solar_flare = [
+            "#FFF4C1", "#FFE28A", "#FFCF4D", "#FFBB00", "#FFA000",
+            "#FF8000", "#FF5F00", "#FF3A00", "#FF301A", "#FF5A3A",
+            "#FF7C5C", "#FFA180", "#FFC7A6"
+        ]
+        # Plasma Orchid（等离子兰花）
+        plasma_orchid = [
+            "#FFE6FF", "#F4CCFF", "#EAB2FF", "#DE99FF", "#D380FF",
+            "#C866FF", "#BD4DFF", "#C06BFF", "#CC85FF", "#D89EFF",
+            "#E4B7FF", "#F1D1FF", "#FDEAFF"
+        ]
+
+        logo_colors = random.choice([aurora_flux, solar_flare, plasma_orchid])
+
+        start_col = center_c - (len(logo) // 2)
+        center_logo_area = [(center_r, start_col + i) for i in range(len(logo))]
+
+        valid_positions = [
+            (r, c) for r in range(height) for c in range(width)
+            if (r, c) not in center_logo_area and not (r == center_r and c == center_c)
+        ]
+        embed_positions = random.sample(valid_positions, len(logo_chars))
+        embed_map = {pos: logo_chars[i] for i, pos in enumerate(embed_positions)}
+
+        def render(reveal_step: int = -1, flicker=False) -> "Text":
+            grid = [[" " for _ in range(width)] for _ in range(height)]
+
+            grid[center_r][center_c] = f"[bold {random.choice(colors)}]▣[/]"
+
+            for idx, (r, c) in enumerate(embed_positions):
+                if reveal_step > idx:
+                    grid[r][c] = f"[dim #444444]·[/]"  # 残影
+                else:
+                    grid[r][c] = f"[bold {random.choice(colors)}]{embed_map[(r, c)]}[/]"
+
+            random.shuffle(logo_colors)
+            for i in range(min(reveal_step + 1, len(logo_chars))):
+                col = start_col + i
+                if 0 <= col < width:
+                    grid[center_r][col] = f"[bold {logo_colors[i]}]{logo_chars[i]}[/]"
+
+            for r in range(height):
+                for c in range(width):
+                    if grid[r][c] == " ":
+                        if flicker and random.random() < 0.1:
+                            grid[r][c] = f"[bold {random.choice(colors)}]{random.choice(field_chars)}[/]"
+                        else:
+                            ch = random.choices(background_chars, weights=[1, 1, 1, 6])[0]
+                            grid[r][c] = f"[dim #333333]{ch}[/]"
+
+            pad = " " * 2
+            lines = [pad + " ".join(row) for row in grid]
+            return Text.from_markup("\n".join(lines))
+
+        with Live(console=Design.console, refresh_per_second=30) as live:
+            # 阶段 1：能量预热
+            for _ in range(12):
+                live.update(render(reveal_step=-1, flicker=True))
+                await asyncio.sleep(0.08)
+
+            # 阶段 2：逐字打字 + 吸附
+            for i in range(len(logo_chars)):
+                live.update(render(reveal_step=i))
+                await asyncio.sleep(0.08)
+
+            # 阶段 3：中心 LOGO 闪三下
+            for _ in range(3):
+                live.update(render(reveal_step=len(logo_chars)))
+                await asyncio.sleep(0.1)
+                live.update(render(reveal_step=len(logo_chars)))
+                await asyncio.sleep(0.12)
+
+        await asyncio.sleep(0.2)
+
+        Design.console.print(
+            f"\n[bold #7CFC00]>>> {const.DESC} engine online. Each glyph pulses like a star—each frame, a fragment. <<<\n"
+        )
 
     @staticmethod
     async def show_quantum_intro() -> None:
@@ -561,6 +678,70 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         current_node.add(f"[bold {file_color}]{choice_icon(ext)} {file.name}[/]")
 
         Design.console.print("\n", tree, "\n")
+
+    async def display_record_ui(self, record: "Record", amount: int) -> None:
+        if self.design_level != const.SHOW_LEVEL:
+            return None
+
+        # 高密度渐变色
+        colors = [
+             "#00FFFF", "#1CE1D1", "#3CD3A8", "#6FDA7B", "#B0DB4F",
+             "#FFD700", "#FFA500", "#FF8C00", "#FF6347", "#FF4500",
+             "#FF1493", "#DB7093", "#BA55D3", "#9370DB", "#7B68EE"
+        ] * 3
+
+        async def notify_color(notify: str) -> str:
+            return {
+                "等待启动": "#D7AFD7",
+                "正在录制": "#00FFFF",
+                "录制成功": "#00FF5F",
+                "录制失败": "#FF005F",
+                "主动停止": "#FFD700",
+            }.get(notify, "#FFFFFF")
+
+        async def build_ui() -> "Group":
+            lines = []
+            for sn, status in record.record_events.items():
+                remain: int = status.get("remain")
+                notify: str = status.get("notify")
+
+                symbol: dict = {
+                    "等待启动": "…",
+                    "正在录制": "⣿",
+                    "录制成功": "✔",
+                    "录制失败": "✘",
+                    "主动停止": "■",
+                }.get(notify, "•")
+
+                msg = f"[bold {notify_color(notify)}]{symbol} {sn}[/]"
+
+                if notify == "正在录制":
+                    bar = render_bar(remain, amount)
+                    msg += f" 剩余 [bold #00FFFF]{remain:03d} 秒[/] {bar}"
+                else:
+                    msg += f" [bold]{notify} ...[/]"
+
+                lines.append(Text.from_markup(msg))
+
+            return Group(*lines)
+
+        # 渐变进度条渲染
+        async def render_bar(remain: int, length: int = 40, symbol: str = "⣿") -> str:
+            progress_bar = ""
+
+            for i in range(length):
+                if i < int(length * remain / amount):
+                    progress_bar += f"[{colors[i % len(colors)]}]{symbol}[/]"
+                else:
+                    progress_bar += "[grey30]·[/]"
+
+            return progress_bar
+
+        with Live(await build_ui(), console=self.console, refresh_per_second=10) as live:
+            # 如果所有设备都完成则退出刷新
+            while all(record.is_finished(events) for events in record.record_events.values()):
+                live.update(await build_ui())
+                await asyncio.sleep(0.5)
 
     async def frame_grid_initializer(self, animation_event: "asyncio.Event") -> None:
         """
@@ -1687,4 +1868,5 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
 
 if __name__ == '__main__':
+    asyncio.run(Design().stellar_glyph_binding())
     pass
