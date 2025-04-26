@@ -321,7 +321,8 @@ if __name__ == "__main__":
         asyncio.run(post_build())
     except FramixError as _e:
         compile_log(_e)
-        sys.exit(Design.fail())
+        Design.fail()
+        sys.exit(1)
     except KeyboardInterrupt:
         sys.exit(Design.exit())
     else:

@@ -876,16 +876,16 @@ def show_progress(
     """
 
     # 设置进度条的配色方案
-    desc, color_begin, color_final = f"{const.DESC} : Analyzer ", f"\033[1m\033[38;5;{color}m", "\033[0m"
+    desc, color_begin, color_final = f"{const.DESC}", f"\033[1m\033[38;5;{color}m", "\033[0m"
     bar_format = f"{color_begin}{{l_bar}}%{{bar}}%|{{n_fmt:5}}/{{total_fmt:5}}{color_final}"
 
     # 确定进度条宽度的终端尺寸
     try:
         columns = shutil.get_terminal_size().columns
     except OSError:
-        columns = 150  # 无法获取终端大小时的后备值
+        columns = 100  # 无法获取终端大小时的后备值
 
-    progress_bar_length = int(columns * 0.8)
+    progress_bar_length = int(columns * 0.6)
 
     # 根据输入参数配置 tqdm
     if items:
@@ -969,6 +969,60 @@ def draw_line(
 
     # 保存图像
     image.save(save_path) if save_path else image.save(image_path)
+
+
+def generate_gradient_colors(start_hex: str, close_hex: str, steps: int) -> list[str]:
+    """
+    生成从起始颜色到结束颜色的线性渐变色列表。
+
+    Parameters
+    ----------
+    start_hex : str
+        起始颜色的十六进制表示，例如 "#FF0000"。
+
+    close_hex : str
+        结束颜色的十六进制表示，例如 "#00FF00"。
+
+    steps : int
+        生成的渐变步数，决定中间插值的精细程度。
+
+    Returns
+    -------
+    list[str]
+        按顺序排列的十六进制渐变色列表。
+
+    Notes
+    -----
+    - 起始和结束颜色都包含在返回列表中。
+    - 当 steps = 1 时，仅返回起始颜色。
+    - 内部通过 RGB 空间线性插值得到渐变色，再转换回十六进制表示。
+    """
+
+    def hex_to_rgb(hex_color: str) -> tuple:
+        """
+        将十六进制颜色字符串转换为 RGB 三元组。
+        """
+        hex_color = hex_color.lstrip("#")
+        return tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
+
+    def rgb_to_hex(rgb: tuple) -> str:
+        """
+        将 RGB 三元组转换为十六进制颜色字符串。
+        """
+        return "#{:02X}{:02X}{:02X}".format(*rgb)
+
+    start_rgb = hex_to_rgb(start_hex)
+    close_rgb = hex_to_rgb(close_hex)
+
+    gradient = []
+    for step in range(steps):
+        ratio = step / (steps - 1) if steps > 1 else 0  # 防止除0
+        r = int(start_rgb[0] + (close_rgb[0] - start_rgb[0]) * ratio)
+        g = int(start_rgb[1] + (close_rgb[1] - start_rgb[1]) * ratio)
+        b = int(start_rgb[2] + (close_rgb[2] - start_rgb[2]) * ratio)
+        gradient.append(rgb_to_hex((r, g, b)))
+
+    return gradient
 
 
 if __name__ == '__main__':

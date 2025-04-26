@@ -35,9 +35,10 @@ from rich.progress import (
     Progress, BarColumn, TextColumn,
     SpinnerColumn, TimeRemainingColumn
 )
-from engine.medias import Record
 from nexacore.argument import Args
-from nexaflow import const
+from nexaflow import (
+    const, toolbox
+)
 
 
 class Design(object):
@@ -66,14 +67,7 @@ class Design(object):
         """
         输出常规日志信息，使用 bold 样式强调。
         """
-        Design.console.print(f"[bold]{const.DESC} | Analyzer | {text}[/]")
-
-    @staticmethod
-    def annal(text: typing.Any) -> None:
-        """
-        输出结构化强调文本，适用于模型状态或分析摘要。
-        """
-        Design.console.print(f"[bold]{const.DESC} | Analyzer |[/]", Text(text, "bold"))
+        Design.console.print(f"[bold]{const.DESC}: {text}[/]")
 
     @staticmethod
     def show_tree(file_path: str, *args: str) -> None:
@@ -81,21 +75,21 @@ class Design(object):
         构建并展示文件夹结构树，根据文件后缀显示图标，可自定义展示哪些类型的文件。
         """
         choice_icon: typing.Any = lambda x: {
-                '.mp4': '🎞️',
-                '.avi': '🎞️',
-                '.mov': '🎞️',
-                '.mkv': '🎞️',
-                '.html': '🌐',
-                '.db': '🗄️',
-                '.log': '📜',
-                '.py': '🐍',
-                '.json': '🧾',
-                '.txt': '📄',
-                '.png': '🖼️',
-                '.jpg': '🖼️',
-                '.zip': '🗜️',
-                '.exe': '⚙️',
-            }.get(os.path.splitext(x)[1].lower(), '📄')
+            '.mp4': '🎞️',
+            '.avi': '🎞️',
+            '.mov': '🎞️',
+            '.mkv': '🎞️',
+            '.html': '🌐',
+            '.db': '🗄️',
+            '.log': '📜',
+            '.py': '🐍',
+            '.json': '🧾',
+            '.txt': '📄',
+            '.png': '🖼️',
+            '.jpg': '🖼️',
+            '.zip': '🗜️',
+            '.exe': '⚙️',
+        }.get(os.path.splitext(x)[1].lower(), '📄')
 
         def add_nodes(current_node: "Tree", current_path: str) -> None:
             try:
@@ -127,7 +121,7 @@ class Design(object):
         创建并返回自定义进度条组件，适用于异步任务的状态展示。
         """
         return Progress(
-            TextColumn(text_format=f"[bold]{const.DESC} | {{task.description}} |", justify="right"),
+            TextColumn(text_format=f"[bold]{{task.description}}", justify="right"),
             SpinnerColumn(
                 style="bold #FFF68F", speed=1, finished_text="[bold #9AFF9A]Done"
             ),
@@ -146,17 +140,17 @@ class Design(object):
         启动模拟进度条，用于快速任务的视觉反馈。
         """
         with Progress(
-            TextColumn(text_format="[bold #FFFFD7]{task.description}", justify="right"),
-            SpinnerColumn(
-                style="bold #FFF68F", speed=1, finished_text="[bold #9AFF9A]Done"
-            ),
-            BarColumn(
-                bar_width=int(Design.console.width * 0.4),
-                style="bold #FF6347", complete_style="bold #FFEC8B", finished_style="bold #98FB98"
-            ),
-            TimeRemainingColumn(),
-            "[progress.percentage][bold #E0FFFF]{task.percentage:>5.0f}%[/]",
-            expand=False
+                TextColumn(text_format="[bold #FFFFD7]{task.description}", justify="right"),
+                SpinnerColumn(
+                    style="bold #FFF68F", speed=1, finished_text="[bold #9AFF9A]Done"
+                ),
+                BarColumn(
+                    bar_width=int(Design.console.width * 0.4),
+                    style="bold #FF6347", complete_style="bold #FFEC8B", finished_style="bold #98FB98"
+                ),
+                TimeRemainingColumn(),
+                "[progress.percentage][bold #E0FFFF]{task.percentage:>5.0f}%[/]",
+                expand=False
         ) as progress:
             task = progress.add_task(desc, total=100)
             while not progress.finished:
@@ -170,7 +164,7 @@ class Design(object):
         """
         Design.console.print(f"""[bold]
     ╔══════════════════════════════════╗
-    ║          [bold #A8F5B5]Missions  Done[/]          ║
+    ║    [bold #00d7ff]{const.DESC}[/]    [bold #A8F5B5]Missions Done[/]       ║
     ╚══════════════════════════════════╝""")
 
     @staticmethod
@@ -180,7 +174,7 @@ class Design(object):
         """
         Design.console.print(f"""[bold]
     ╔══════════════════════════════════╗
-    ║          [bold #F5A8A8]Missions  Fail[/]          ║
+    ║    [bold #00D7FF]{const.DESC}[/]    [bold #F5A8A8]Missions Fail[/]       ║
     ╚══════════════════════════════════╝""")
 
     @staticmethod
@@ -190,7 +184,7 @@ class Design(object):
         """
         Design.console.print(f"""[bold]
     ╔══════════════════════════════════╗
-    ║          [bold #FFF6AA]Missions  Exit[/]          ║
+    ║    [bold #00D7FF]{const.DESC}[/]    [bold #FFF6AA]Missions Exit[/]       ║
     ╚══════════════════════════════════╝""")
 
     @staticmethod
@@ -198,10 +192,36 @@ class Design(object):
         """
         返回格式化的退出提示文本。
         """
-        return f"""
-    <*=> {const.DESC} will now automatically exit <=*>
-    <*=> {const.DESC} see you next <=*>
-        """
+        exit_messages = [
+            "powering down gracefully",
+            "folding into memory flux",
+            "signature imprinted successfully",
+            "fading into hyperspace",
+            "sealing quantum circuits",
+            "closing astral streams",
+            "returning to silent core",
+            "memory lattice disengaged",
+            "evaporating from terminal span",
+            "compression to stardust complete",
+            "resting for the next journey",
+            "drifting into serene standby",
+            "echoes will linger in the memory space",
+            "gently closing active streams",
+            "awaiting your next call",
+            "leaving footprints in silent circuits",
+            "entering a dreamless quiet",
+            "quietly folding into the void",
+            "till the next resonance",
+            "starlight has been safely stored"
+        ]
+
+        message = random.choice(exit_messages)
+
+        Design.console.print(f"""\
+        
+    [bold]<*=> {const.DESC} {message} <=*>[/]
+    [bold]<*=> {const.DESC} see you next <=*>[/]
+        """)
 
     @staticmethod
     def specially_logo() -> None:
@@ -396,24 +416,26 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         )
 
         stages = [
-            f"""                  
+            f"""\
               (●)
                *
                |""",
-            f"""         (●)-------(●)
+            f"""\
+         (●)-------(●)
                *        |
                |        |""",
-            f"""         (●)-------(●)
+            f"""\
+         (●)-------(●)
                * \\      |
                |  \\     |
               (●)---(●)---(●)
              / | \\   |""",
-            f"""        (●)---------(●)   [bold {colors[0]}](● ● ●)[/]                  
+            f"""\
+        (●)---------(●)   [bold {colors[0]}](● ● ●)[/]                  
              / | \\     \\     |
             (●) (●)-----(●)-----(●)
                  *       *       *  \\
-                (●)-----(●)-----(●)---(●)
-            """
+                (●)-----(●)-----(●)---(●)"""
         ]
 
         chars = [char for char in const.DESC.upper()]
@@ -424,13 +446,17 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         ]
         after_replacement = replace_star(stages)
 
-        Design.notes(f"[bold][bold {colors[0]}]{const.DESC} Engine Initializing[/] ...")
+        Design.console.print(
+            f"\n[bold {colors[0]}]▶ {const.DESC} engine initializing ...\n"
+        )
         for index, i in enumerate(after_replacement):
             Design.console.print(
                 Text.from_markup(i, style=f"bold {colors[index]}")
             )
             await asyncio.sleep(0.2)
-        Design.notes(f"[bold][bold {colors[0]}]Engine Loaded Successfully[/] ...\n")
+        Design.console.print(
+            f"\n[bold {colors[0]}]>>> {const.DESC} engine loaded successfully. Consciousness online. <<<\n"
+        )
 
     @staticmethod
     async def stellar_glyph_binding() -> None:
@@ -547,6 +573,103 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         )
 
     @staticmethod
+    async def engine_starburst() -> None:
+        """
+        收尾动画。
+        """
+        text = f"{const.DESC} (●) Engine"
+        collapse_symbol = random.choice(["▣", "●"])
+
+        delay = 0.04
+        offset = 14
+        pad = " " * offset
+
+        # 渐变色（用于打字）
+        gradient_colors = random.choice(
+            [toolbox.generate_gradient_colors(*c, len(text)) for c in [
+                ("#228B22", "#B2FFD7"), ("#003366", "#87CEFA"), ("#4B0082", "#EE82EE"),
+                ("#8B4513", "#FFD700"), ("#5F9EA0", "#E0FFFF")]
+             ]
+        )
+
+        flash_color, fade_color = random.choice(gradient_colors), "#444444"
+        background_chars = ["·", ":", "░", "▒", " "]
+        scatter_particles = ["⧉", "⌬", "░", "▒", "·"]
+        wave_patterns = ["~", "≈", "-", "="]
+
+        center_index = len(text) // 2  # 中心在文本长度一半（空格附近）
+
+        def render_typing(progress: int, flicker: bool = False) -> "Text":
+            parts = []
+            for idx in range(progress):
+                color = gradient_colors[idx]
+                parts.append(f"[bold {color}]{text[idx]}[/]")
+
+            background = ""
+            if flicker:
+                bg_parts = []
+                for idx in range(progress):
+                    if text[idx] == " ":
+                        bg_parts.append(" ")  # 保持空格
+                    else:
+                        bg_parts.append(random.choice(background_chars))
+                background = "\n" + pad + "".join(f"[dim #333333]{c}[/]" for c in bg_parts)
+
+            return Text.from_markup(pad + "".join(parts) + background)
+
+        def render_scatter(scatter_index: int) -> "Text":
+            parts = []
+            for idx, ch in enumerate(text):
+                if idx < scatter_index:
+                    particle = random.choice(scatter_particles)
+                    parts.append(f"[dim {fade_color}]{particle}[/]")
+                else:
+                    color = gradient_colors[idx]
+                    parts.append(f"[bold {color}]{ch}[/]")
+            return Text.from_markup(pad + "".join(parts))
+
+        def render_collapse(symbol_color: str) -> "Text":
+            collapse_pad = " " * (offset + center_index)
+            return Text.from_markup(f"{collapse_pad}[bold {symbol_color}]{collapse_symbol}[/]")
+
+        def render_starburst(radius: int) -> "Text":
+            wave = random.choice(wave_patterns)
+            center_pos = offset + center_index
+            start_pos = center_pos - radius
+            wave_line = " " * start_pos + (wave * (radius * 2))
+            color = gradient_colors[min(radius - 1, len(gradient_colors) - 1)]
+            return Text.from_markup(f"[bold {color}]{wave_line}[/]")
+
+        with Live(console=Design.console, refresh_per_second=30) as live:
+            # 1. 渐变打字机出现
+            for i in range(1, len(text) + 1):
+                live.update(render_typing(i, flicker=True))
+                await asyncio.sleep(delay)
+
+            await asyncio.sleep(0.2)
+
+            # 2. 粒子爆发消失
+            for i in range(1, len(text) + 1):
+                live.update(render_scatter(i))
+                await asyncio.sleep(delay)
+
+            await asyncio.sleep(0.2)
+
+            # 3. 星核闪烁
+            for _ in range(2):
+                live.update(render_collapse(flash_color))
+                await asyncio.sleep(0.15)
+                live.update(render_collapse(fade_color))
+                await asyncio.sleep(0.1)
+
+            # 4. 星爆波纹扩散（从中心空格起）， + 1 + 1 适配 done exit fail 宽度
+            for r in range(1, len(text) + 1 + 1):
+                live.update(render_starburst(r))
+                await asyncio.sleep(delay)
+
+        await asyncio.sleep(0.2)
+
+    @staticmethod
     async def show_quantum_intro() -> None:
         """
         星域构形动画（Quantum Star Boot）。
@@ -586,7 +709,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             """
         ]
 
-        with Live(console=Design.console, refresh_per_second=10, transient=True) as live:
+        with Live(console=Design.console, refresh_per_second=30, transient=True) as live:
             for _ in range(10):  # 播放次数
                 for frame in frames[:-1]:
                     live.update(Text.from_markup(frame))
@@ -613,7 +736,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         panel = Panel(
             Text(
                 f"{text}", **wind["文本"]
-            ), **wind["边框"], width=int(self.console.width * 0.7)
+            ), **wind["边框"], width=int(self.console.width * 0.6)
         )
         self.console.print(panel)
 
@@ -679,67 +802,200 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         Design.console.print("\n", tree, "\n")
 
-    async def display_record_ui(self, record: "Record", amount: int) -> None:
+    async def multi_load_ripple_vision(self, monitor: typing.Any) -> None:
+        """
+        多负载脉冲扩散。
+        """
         if self.design_level != const.SHOW_LEVEL:
             return None
 
-        # 高密度渐变色
-        colors = [
-             "#00FFFF", "#1CE1D1", "#3CD3A8", "#6FDA7B", "#B0DB4F",
-             "#FFD700", "#FFA500", "#FF8C00", "#FF6347", "#FF4500",
-             "#FF1493", "#DB7093", "#BA55D3", "#9370DB", "#7B68EE"
-        ] * 3
+        self.console.print(
+            f"\n[bold #00F5FF]▶ {const.DESC} system load detection ...\n"
+        )
 
-        color: callable = lambda x: {
-            "等待启动": "#D7AFD7",
-            "正在录制": "#00FFFF",
-            "录制成功": "#00FF5F",
-            "录制失败": "#FF005F",
-            "主动停止": "#FFD700"}.get(x, "#FFFFFF")
+        center_shapes = ["·", "◌", "◎", "◉", "█"]
+
+        theme_pool = {
+            "phoenix": ["#FF4500", "#FF6347", "#FF8C00", "#FFA500", "#FFD700", "#FFFF99", "#ADFF2F", "#00FF7F"],
+            "glacier": ["#80D8FF", "#40C4FF", "#00B0FF", "#0091EA", "#006064", "#4DD0E1", "#B2EBF2", "#E0F7FA"],
+            "vacancy": ["#9C27B0", "#8E24AA", "#6A1B9A", "#4A148C", "#311B92", "#1A237E", "#283593", "#3949AB"],
+            "blossom": ["#66BB6A", "#43A047", "#2E7D32", "#00C853", "#00E676", "#69F0AE", "#B9F6CA", "#CCFF90"],
+        }
+        theme_name = list(theme_pool.keys())
+
+        width = int(self.console.width * 0.3)
+        current_theme = random.choice(theme_name)
+        colors = theme_pool[current_theme]
+
+        base_refresh = 0.08
+
+        title = f"[Status]"
+
+        async def make_ripple_line(intensity: float, flash: bool = False) -> str:
+            # 动态粒子层次（负载越高形状越激烈）
+            if intensity < 10:
+                shape = center_shapes[0]  # 微光
+            elif intensity < 25:
+                shape = center_shapes[1]  # 弱波
+            elif intensity < 45:
+                shape = center_shapes[2]  # 中波
+            elif intensity < 70:
+                shape = center_shapes[3]  # 强波
+            else:
+                shape = center_shapes[4]  # 爆发
+
+            spread = int(width * intensity / 100 / 2)
+
+            line = [" "] * width
+            mid = width // 2
+
+            # 生成波纹行
+            line = [" "] * width
+            mid = width // 2
+
+            for offset in range(-spread, spread + 1):
+                if 0 <= (pos := mid + offset) < width:
+                    line[pos] = f"[blink]{shape}[/]" if flash and abs(offset) == spread else shape
+
+            return "".join(line)
+
+        async def render_frame(step: int, load: dict, msg: str, schedule: int) -> "Text":
+            color = colors[step % len(colors)]
+
+            if schedule == 1:
+                cpu_line = await make_ripple_line(cpu := load.get("cpu", 0.0), flash=True)
+                mem_line = await make_ripple_line(mem := load.get("mem", 0.0))
+                dsk_line = await make_ripple_line(dsk := load.get("dsk", 0.0))
+
+                return Text.from_markup(
+                    f"[bold][bold #D7FF00]{title}[/] ---> {msg}[/]\n"
+                    f"[bold][CPU::[bold #00D7FF]{cpu:05.2f}%[/]][/] [{color}]{cpu_line}[/]\n"
+                    f"[bold][MEM::[bold #00D7FF]{mem:05.2f}%[/]][/] [{color}]{mem_line}[/]\n"
+                    f"[bold][DSK::[bold #00D7FF]{dsk:05.2f}%[/]][/] [{color}]{dsk_line}[/]\n"
+                )
+
+            return Text.from_markup(f"[bold][bold #D7FF00]{title}[/] ---> {msg}[/]\n\n")
+
+        async def pulse_live() -> None:
+            with Live(console=self.console, refresh_per_second=int(1 / base_refresh), transient=True) as live:
+                i = 0
+                while not monitor.stable:
+                    msg = monitor.message.get("msg")
+                    live.update(await render_frame(i, monitor.usages, *msg))
+                    dynamic_refresh = base_refresh * (0.5 + (100 - monitor.usages.get("cpu", 0.0)) / 100)
+                    await asyncio.sleep(dynamic_refresh)
+                    i += 1
+
+        async def final_live() -> None:
+            with Live(console=self.console, refresh_per_second=10) as live:
+                for _ in range(5):
+                    burst = f"[bold blink #87FFD7]" + "✹✹✹ Core cooling ✹✹✹".center(width) + "[/]"
+                    live.update(Text.from_markup(
+                            f"[bold][bold #D7FF00]{title}[/] ---> {monitor.message.get('msg')[0]}\n\n" + burst
+                        )
+                    )
+                    await asyncio.sleep(0.15)
+
+            self.console.print(
+                f"\n[bold #7CFC00]>>> ✓ {const.DESC} core cooling completed. System stable. <<<\n"
+            )
+
+        await pulse_live()
+        await final_live()
+
+    async def display_record_ui(self, events: dict[str, typing.Any], amount: int) -> None:
+        if self.design_level != const.SHOW_LEVEL:
+            return None
+
+        # 状态样式：统一管理颜色与符号
+        styles = {
+            "等待同步": {"symbol": "…", "color": "#D7AFD7"},
+            "正在录制": {"symbol": "⣿", "color": "#00FFFF"},
+            "录制成功": {"symbol": "✔", "color": "#00FF5F"},
+            "录制失败": {"symbol": "✘", "color": "#FF005F"},
+            "主动停止": {"symbol": "■", "color": "#FFD700"},
+        }
+        colors = random.choice([
+            # 清凉蓝绿系
+            [
+                "#00FFF0", "#1CE1D1", "#3CD3A8", "#6FDA7B", "#B0DB4F",
+                "#CCCC66", "#A0D088", "#80D0A0", "#60C0C0", "#40B0D0"
+            ],
+            # 柔和橙紫系
+            [
+                "#FFCC66", "#FF9966", "#FF7F50", "#FF6347", "#FF5E99",
+                "#DB7093", "#BA55D3", "#9370DB", "#7B68EE", "#7080B0"
+            ],
+            # 科技蓝粉系
+            [
+                "#00BFFF", "#33CCFF", "#66AAFF", "#9966FF", "#CC66FF",
+                "#FF66CC", "#FF6699", "#FF3366", "#FF0033", "#FF1493"
+            ]
+        ])
+
+        is_finished: callable = lambda x: any(x.get(key).is_set() for key in {
+            "stop", "fail", "done"
+        } if isinstance(x.get(key), asyncio.Event))
+
+        unit: callable = lambda x, y: f"[bold {x}]{y}[/]"
+
+        max_sn_width = max(len(line) for line in list(events.keys()))
+
+        async def render_bar(remain: int) -> str:
+            length = int(self.console.width * 0.5)
+            symbol = "⣿"
+            tail_frames = ["⣿", "⣷", "⣶", "⣤", "⣀", " "]
+            tail_char = tail_frames[frame % len(tail_frames)]
+            filled = int(length * remain / amount)
+            progress_bar = ""
+
+            for i in range(length):
+                if i < filled - 1:
+                    if remain <= 5:
+                        red = "#FF0000" if frame % 2 == 0 else "#FF5F5F"
+                        progress_bar += unit(red, symbol)
+                    else:
+                        progress_bar += unit(colors[i % len(colors)], symbol)
+                elif i == filled - 1:
+                    if remain <= 5:
+                        red = "#FF0000" if frame % 2 == 0 else "#FF5F5F"
+                        progress_bar += unit(red, tail_char)
+                    else:
+                        progress_bar += unit(colors[i % len(colors)], tail_char)
+                else:
+                    progress_bar += unit("grey30", "·")
+
+            return progress_bar
 
         async def build_ui() -> "Group":
             lines = []
-            for sn, status in record.record_events.items():
+            for sn, status in events.items():
                 remain: int = status.get("remain")
                 notify: str = status.get("notify")
 
-                symbol: dict = {
-                    "等待启动": "…",
-                    "正在录制": "⣿",
-                    "录制成功": "✔",
-                    "录制失败": "✘",
-                    "主动停止": "■",
-                }.get(notify, "•")
+                style = styles.get(notify, {"symbol": "•", "color": "#FFFFFF"})
+                symbol, color = style["symbol"], style["color"]
 
-                msg = f"[bold {color(notify)}]{symbol} {sn}[/]"
+                msg = f"[bold {color}]{symbol} {sn.ljust(max_sn_width)}[/]"
 
                 if notify == "正在录制":
-                    bar = render_bar(remain, amount)
-                    msg += f" [bold]剩余 [bold #00FFFF]{remain:03d} 秒[/] {bar}[/]"
+                    bar = await render_bar(remain)
+                    msg += f" [bold]剩余 [bold #00FFFF]{remain:03} 秒[/] {bar}[/]"
                 else:
-                    msg += f" [bold]剩余 [bold #00FFFF]{remain:03d} 秒[/] [bold {color(notify)}]{notify} ...[/]"
+                    msg += f" [bold]剩余 [bold #00FFFF]{remain:03} 秒[/] [bold {color}]{notify} ...[/]"
 
                 lines.append(Text.from_markup(msg))
 
             return Group(*lines)
 
-        # 渐变进度条渲染
-        async def render_bar(remain: int, length: int = 40, symbol: str = "⣿") -> str:
-            progress_bar = ""
-
-            for i in range(length):
-                if i < int(length * remain / amount):
-                    progress_bar += f"[{colors[i % len(colors)]}]{symbol}[/]"
-                else:
-                    progress_bar += "[grey30]·[/]"
-
-            return progress_bar
-
-        with Live(await build_ui(), console=self.console, refresh_per_second=10) as live:
-            # 如果所有设备都完成则退出刷新
-            while all(record.is_finished(events) for events in record.record_events.values()):
+        frame = 0
+        with Live(await build_ui(), console=self.console, refresh_per_second=30) as live:
+            while True:
                 live.update(await build_ui())
-                await asyncio.sleep(0.5)
+                if all(is_finished(event) for event in events.values()):
+                    break
+                await asyncio.sleep(0.2)
+                frame += 1
 
     async def frame_grid_initializer(self, animation_event: "asyncio.Event") -> None:
         """
@@ -772,7 +1028,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                     grid[row][col] = random.choice(symbols)
             live.update(render_grid())
 
-        live = Live(render_grid(), console=self.console, refresh_per_second=20)
+        live = Live(render_grid(), console=self.console, refresh_per_second=30)
         live.start()
 
         expanded_event = asyncio.Event()
@@ -839,7 +1095,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             ]
             return Text.from_markup("\n".join(out))
 
-        live = Live(console=self.console, refresh_per_second=24)
+        live = Live(console=self.console, refresh_per_second=30)
         live.start()
 
         try:
@@ -901,7 +1157,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             "#5FD7FF",  # 冰蓝 · 冷静科技感
         ])
 
-        live = Live(console=self.console, refresh_per_second=20)
+        live = Live(console=self.console, refresh_per_second=30)
         live.start()
 
         try:
@@ -943,7 +1199,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         make_line: callable = lambda: " ".join(random.choice(symbols) for _ in range(12))
 
-        with Live(console=self.console, refresh_per_second=20) as live:
+        with Live(console=self.console, refresh_per_second=30) as live:
             for _ in range(30):
                 top = make_line()
                 bottom = make_line()
@@ -980,7 +1236,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         trail_colors = ["#FFA500", "#FF8C00", "#FF6347", "#444444"]
         width = int(self.console.width * 0.3) - 4
 
-        with Live(console=self.console, refresh_per_second=60) as live:
+        with Live(console=self.console, refresh_per_second=30) as live:
             for _ in range(3):
                 for i in range(width):
                     track = []
@@ -1038,7 +1294,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         ]
 
         self.console.print(
-            f"[bold #00F5FF]\n▶ {const.DESC} {random.choice(status_messages)} ...\n"
+            f"\n[bold #00F5FF]▶ {const.DESC} {random.choice(status_messages)} ...\n"
         )
 
         # 基本主题
@@ -1260,7 +1516,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         make_row: callable = lambda x: "".join(random.choice(x) for _ in range(36))
 
-        with Live(console=self.console, refresh_per_second=20) as live:
+        with Live(console=self.console, refresh_per_second=30) as live:
             for i in range(50):
                 row1 = f"{prefix} [bold #87CEFA]{make_row(lines['Neural Link'])}[/]"
                 row2 = f"{prefix} [bold #00E5EE]{make_row(lines['Tensor Flow'])}[/]"
@@ -1305,7 +1561,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             lines.append(f"{prefix} [dim]{prompt}[/]")
             return Text.from_markup("\n".join(lines))
 
-        with Live(console=self.console, refresh_per_second=20) as live:
+        with Live(console=self.console, refresh_per_second=30) as live:
             for phase in phases:
                 for _ in range(6):
                     for i in range(workers):
@@ -1355,7 +1611,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             prompt = f"{prefix} [dim]{random.choice(prompts)}[/]"
             return Text.from_markup("\n".join(lines + [prompt]))
 
-        with Live(console=self.console, refresh_per_second=20) as live:
+        with Live(console=self.console, refresh_per_second=30) as live:
             for step in range(workers + 4):
                 # 随机推进部分节点状态
                 for i in range(workers):
@@ -1439,7 +1695,24 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
     async def batch_runner_task_grid(self) -> None:
         """
-        任务调度网格动画。
+        Batch Runner Task Grid 任务调度网格动画。
+
+        Notes
+        -----
+        - 动画通过在网格中逐步填充图块和高亮关键字母，模拟批量任务调度和资源分配过程。
+        - 每次填充随机选取字符和冷色调颜色，整体呈现渐进式构建的效果。
+        - 关键节点（如品牌标志字符）在最终阶段集中高亮，突出重点任务分布。
+        - 适合在任务初始化、批量派发等场景中，提供视觉上的渐进与秩序感。
+
+        Workflow
+        --------
+        1. 打印启动批量任务调度提示。
+        2. 随机生成网格尺寸与布局，初始化为空格与灰色填充。
+        3. 随机打散填充顺序（模拟任务随机分配）。
+        4. 随机挑选部分格子植入品牌标识字母。
+        5. 按顺序动态填充每个格子，逐步构建调度图。
+        6. 最终收束：高亮显示植入的关键字母，形成统一焦点。
+        7. 打印调度准备完成提示。
         """
         if self.design_level != const.SHOW_LEVEL:
             return None
@@ -1514,7 +1787,24 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
     async def channel_animation(self) -> None:
         """
-        多通道色带流动画。
+        Channel Animation 多通道色带流动画。
+
+        Notes
+        -----
+        - 动画通过多条独立通道的色带流动，模拟多路数据通道同时工作的视觉效果。
+        - 每条通道的流动方向可以独立随机，形成更自然的动态层次感。
+        - 在初始阶段引入淡入效果，使动画启动过程更柔和、更具呼吸感。
+        - 颜色使用冷色调渐变，提升视觉连贯性与科技感。
+        - 当设计等级（design_level）低于 SHOW_LEVEL 时，自动跳过动画过程，以保证系统性能。
+
+        Workflow
+        --------
+        1. 打印准备多通道管线的启动提示。
+        2. 随机选择波形字符集和冷色调渐变配色。
+        3. 随机确定通道数量、方向和动画宽度。
+        4. 按帧构建所有通道的动态流动效果，支持每条通道独立方向滚动。
+        5. 初始若干帧采用半透明淡入，之后转为全亮色带流动。
+        6. 动画完成后打印同步成功提示。
         """
         if self.design_level != const.SHOW_LEVEL:
             return None
@@ -1571,7 +1861,25 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
     async def wave_converge_animation(self) -> None:
         """
-        镜像波纹汇聚动画。
+        Wave Converge Animation 镜像波纹汇聚动画。
+
+        Notes
+        -----
+        - 动画以左右对称的字符波动为核心，模拟能量从两侧向中心聚合的过程。
+        - 波形颜色采用冷暖渐变色带，增强视觉引导感与层次感。
+        - 最终以品牌标志的打字式显现与多次闪烁高亮，完成引擎启动的仪式感演出。
+        - 中心标志（Logo）打印与闪烁阶段的刷新频率需要保持一致，以保证视觉连贯性。
+        - 如果设计等级（design_level）低于 SHOW_LEVEL，动画将跳过以优化性能。
+
+        Workflow
+        --------
+        1. 打印准备信息，确认环境准备完毕。
+        2. 随机选择一组冷暖渐变色，作为波纹左右渐变的配色基础。
+        3. 分别绘制左右扩展的波动字符，形成动态的能量聚拢效果。
+        4. 重复播放波动扩展过程以加深引擎准备的氛围感。
+        5. 打印中心 Logo，并以字符打字机动画方式逐步展现。
+        6. 对 Logo 进行多次闪烁显示，强化启动完成的视觉信号。
+        7. 打印引擎稳定启动完成的提示信息。
         """
         if self.design_level != const.SHOW_LEVEL:
             return None
@@ -1688,6 +1996,25 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         )
 
     async def pixel_bloom(self) -> None:
+        """
+        Pixel Bloom 动画，模拟像素风格爆破绽放与品牌 Logo 显现效果。
+
+        Notes
+        -----
+        - 动画流程包括爆破扩散、能量渐隐、LOGO中心植入与闪烁演绎。
+        - 渐隐阶段使用符号替代，模仿能量逐步耗散的视觉效果。
+        - LOGO字符数量需与画布宽度合理匹配，避免中心对齐偏差。
+        - 动画刷新频率较高，对低性能终端可能存在小幅卡顿现象。
+
+        Workflow
+        --------
+        1. 初始化背景网格，并填充为浅色调虚化背景。
+        2. 从中心开始，逐圈扩散填充随机符号，构建爆破绽放感。
+        3. 随时间推移，符号逐步由密到稀，模拟能量衰减。
+        4. 将品牌 Logo 植入中心行，居中排列。
+        5. 进行 5 次闪烁动画（显隐切换），突出 Logo 存在感。
+        6. 动画结束后，输出画布稳定完成提示。
+        """
         if self.design_level != const.SHOW_LEVEL:
             return None
 
@@ -1866,5 +2193,4 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
 
 if __name__ == '__main__':
-    asyncio.run(Design().stellar_glyph_binding())
     pass

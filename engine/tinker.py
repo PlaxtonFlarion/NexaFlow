@@ -22,6 +22,7 @@ import re
 import typing
 import aiofiles
 from loguru import logger
+from rich.text import Text
 from rich.tree import Tree
 from rich.console import Console
 from rich.logging import (
@@ -68,30 +69,67 @@ class FramixError(_FramixBaseError):
     __repr__ = __str__
 
 
-class _RichSink(RichHandler):
+class Active(object):
     """
-    基于 RichHandler 的日志输出接收器，用于自定义控制台美化输出。
+    日志激活器类，用于配置日志系统的输出通道与格式。
 
-    _RichSink 继承自 rich.logging.RichHandler，重载 emit 方法，
-    将日志信息通过 rich 控制台格式化输出，适用于实时、美观的日志展示。
-
-    Parameters
-    ----------
-    console : Console
-        rich 提供的 Console 实例，用于渲染日志文本与样式。
+    通过接入自定义的 Rich 控制台处理器（_RichSink），将日志输出格式化为高亮、
+    美观、结构化的信息流，适用于 CLI 终端中的即时日志反馈。
     """
 
-    def __init__(self, console: "Console"):
-        super().__init__(
-            console=console, rich_tracebacks=True, show_path=False, show_time=False
+    class _RichSink(RichHandler):
+        """
+        基于 RichHandler 的日志输出接收器，用于自定义控制台美化输出。
+
+        _RichSink 继承自 rich.logging.RichHandler，重载 emit 方法，
+        将日志信息通过 rich 控制台格式化输出，适用于实时、美观的日志展示。
+
+        Parameters
+        ----------
+        console : Console
+            rich 提供的 Console 实例，用于渲染日志文本与样式。
+        """
+        level_style = {
+            "DEBUG": "bold #00BFFF",  # 亮蓝（冰蓝）
+            "INFO": "bold #00FF7F",  # 清新绿
+            "WARNING": "bold #FFD700",  # 金黄（警告）
+            "ERROR": "bold #FF4500",  # 橘红（明显错误）
+            "CRITICAL": "bold #FF1493",  # 鲜玫红（致命警告）
+        }
+
+        def __init__(self, console: "Console"):
+            super().__init__(
+                console=console, rich_tracebacks=True, show_path=False,
+                show_time=False, markup=False, highlighter=False
+            )
+
+        def emit(self, record: "LogRecord") -> None:
+            """
+            重载日志处理器的输出逻辑，将格式化后的记录打印到指定控制台。
+            """
+            self.console.print(
+                Text(self.format(record), style=self.level_style.get(record.levelname, "")),
+                markup=False, highlight=False
+            )
+
+    @staticmethod
+    def active(log_level: str) -> None:
+        """
+        配置并激活 Rich 控制台日志处理器。
+
+        移除默认日志处理器，添加自定义 _RichSink 实例，结合 rich.console
+        提供彩色输出支持，并通过传入的 log_level 控制日志等级。
+
+        Parameters
+        ----------
+        log_level : str
+            日志等级（如 "INFO", "DEBUG", "WARNING", "ERROR"），不区分大小写。
+        """
+        logger.remove(0)
+        logger.add(
+            Active._RichSink(Design.console),
+            level=log_level.upper(), format=const.PRINT_FORMAT, diagnose=False
         )
-
-    def emit(self, record: "LogRecord") -> None:
-        """
-        重载日志处理器的输出逻辑，将格式化后的记录打印到指定控制台。
-        """
-        log_message = self.format(record)
-        self.console.print(log_message)
 
 
 class Entry(object):
@@ -290,33 +328,6 @@ class Search(object):
 
         Design.console.print(root_tree)
         return collection_list
-
-
-class Active(object):
-    """
-    日志激活器类，用于配置日志系统的输出通道与格式。
-
-    通过接入自定义的 Rich 控制台处理器（_RichSink），将日志输出格式化为高亮、
-    美观、结构化的信息流，适用于 CLI 终端中的即时日志反馈。
-    """
-
-    @staticmethod
-    def active(log_level: str) -> None:
-        """
-        配置并激活 Rich 控制台日志处理器。
-
-        移除默认日志处理器，添加自定义 _RichSink 实例，结合 rich.console
-        提供彩色输出支持，并通过传入的 log_level 控制日志等级。
-
-        Parameters
-        ----------
-        log_level : str
-            日志等级（如 "INFO", "DEBUG", "WARNING", "ERROR"），不区分大小写。
-        """
-        logger.remove(0)
-        logger.add(
-            _RichSink(Design.console), level=log_level.upper(), format=const.PRINT_FORMAT, diagnose=False
-        )
 
 
 class Review(object):

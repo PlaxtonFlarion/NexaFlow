@@ -101,8 +101,8 @@ F_SCRIPT = f"script.json"
 NOTE_LEVEL = f"DEBUG"
 SHOW_LEVEL = f"INFO"
 
-WHILE_FORMAT = f"[bold]{{time:YYYY-MM-DD HH:mm:ss.SSS}} | <level>{{level: <8}}</level> | {{name}}:{{function}}:{{line}} - <level>{{message}}</level>"
-PRINT_FORMAT = f"[bold]{DESC} | <level>{{level: <8}}</level> | <level>{{message}}</level>"
+WHILE_FORMAT = f"{{time:YYYY-MM-DD HH:mm:ss.SSS}} | <level>{{level: <8}}</level> | {{name}}:{{function}}:{{line}} - <level>{{message}}</level>"
+PRINT_FORMAT = f"{DESC} | <level>{{level: <8}}</level> | <level>{{message}}</level>"
 WRITE_FORMAT = f"<green>{{time:YYYY-MM-DD HH:mm:ss.SSS}}</green> | <level>{{level: <8}}</level> | <level>{{message}}</level>"
 
 

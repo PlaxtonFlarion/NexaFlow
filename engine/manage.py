@@ -18,6 +18,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
 # このファイルは Framix(画帧秀) ライセンスの下でライセンスされています。詳細は LICENSE.md ファイルを参照してください。
 """
 
+import os
 import re
 import math
 import psutil
@@ -64,145 +65,211 @@ class ScreenMonitor(object):
 
 class SourceMonitor(object):
     """
-    系统资源监控器类。
+    系统资源监测器。
 
-    本类用于动态监控系统的 CPU 和内存使用情况，并判断当前资源是否足够稳定以执行视频分析任务。
-    包含资源采样、评估和反馈展示等功能。
+    用于实时采样CPU、内存和磁盘使用率，判断系统是否处于稳定状态，从而决定是否可以安全地进行后续高负载操作。
+
+    Class Attributes
+    ----------------
+    __message : dict
+        内部共享的信息字典，包含默认提示文本、状态记录和基础资源阈值设置。
+
+    Instance Attributes
+    -------------------
+    cpu_threshold : int
+        CPU使用率的稳定阈值，超过此值判定为系统繁忙。
+
+    mem_threshold : int
+        内存使用率的稳定阈值，超过此值判定为系统繁忙。
+
+    usages : dict
+        当前系统资源使用情况，包括"cpu"、"mem"和"disk"占用率。
+
+    afresh : int
+        当系统不稳定时，重新检测前等待的秒数。
+
+    __stable : bool
+        系统是否稳定的标志位。
+
+    Notes
+    -----
+    - 自动根据CPU核心数和总内存调整合理的阈值，适配不同硬件环境。
+    - 检测流程采用两阶段：快速预检+稳定性深度采样，确保准确可靠。
+
+    Workflow
+    --------
+    1. 快速采样初步检测系统负载状态；
+    2. 若初步检测不通过，则进行深度稳定性采样；
+    3. 在多轮采样后确认系统是否满足运行条件。
     """
-
-    history: list[tuple[float, float, float]] = []
+    __message: dict[typing.Any, typing.Any] = {
+        "msg": ["...", 0],
+        "status": [],
+        "base_cpu_threshold": 60,
+        "base_mem_threshold": 80,
+    }
 
     def __init__(self):
         """
-        初始化系统资源监控器。
+        初始化SourceMonitor对象，基于系统硬件资源智能调整阈值。
 
-        Notes
-        -----
-        - 设置 CPU 和内存使用阈值。
-        - 计算逻辑根据当前系统的 CPU 核心数量和内存总量动态设定性能标准。
+        - CPU阈值：基础值 + 核心数补偿（最多增加40）
+        - 内存阈值：基础值 - 总内存量补偿（每20GB减少1%）
         """
-        base_cpu_usage_threshold = 50
-        base_mem_usage_threshold = 70
+        cpu_cores = psutil.cpu_count()
+        mem_total = psutil.virtual_memory().total / (1024 ** 3)
 
-        self.cpu_cores = psutil.cpu_count()
-        self.mem_total = psutil.virtual_memory().total / (1024 ** 3)
+        self.cpu_threshold = self.message["base_cpu_threshold"] + min(40, int(cpu_cores * 1.5))
+        self.mem_threshold = max(50, self.message["base_mem_threshold"] - mem_total / 20)
 
-        self.cpu_usage_threshold = base_cpu_usage_threshold + min(85, int(self.cpu_cores * 0.5))
-        self.mem_usage_threshold = max(50, base_mem_usage_threshold - self.mem_total / 10)
-        self.mem_spare_threshold = max(1, self.mem_total * 0.2)
+        self.usages = {}  # 当前资源使用情况
+        self.afresh = 10  # 失败后重试等待秒数
 
-    async def monitor(self) -> None:
+        self.__stable = False  # 初始默认为不稳定状态
+
+    @property
+    def message(self) -> dict[typing.Any, typing.Any]:
         """
-        异步资源监控任务入口。
-
-        该方法会持续采样系统的 CPU 和内存状态，在采集 5 次数据后对系统资源进行评估。
-        若资源达标则终止监控，否则重启采样过程，直到资源稳定为止。
-
-        Notes
-        -----
-        - 每次评估的周期为 5 次采样，每次采样间隔约为 2 秒。
-        - 每次评估后会显示一个资源概览表格，并根据结果决定是否继续监控。
-        - 使用 `rich.progress` 显示进度条。
-
-        Workflow
-        --------
-        1. 初始化进度条并开始资源采样；
-        2. 每次采样后记录 CPU 使用率、内存使用率和可用内存；
-        3. 采样达到 5 次后调用 `evaluate_resources` 进行评估；
-        4. 如果资源评估结果为稳定，终止进度条并展示结果；
-        5. 若不稳定，则清空采样记录并重启评估过程；
-        6. 每轮采样之间等待 2 秒。
-        """
-        first_examine = True
-        progress = Design.show_progress()
-        task = progress.add_task(description=f"Analyzer", total=5)
-        progress.start()
-
-        while True:
-            current_cpu_usage = psutil.cpu_percent(1)
-            memory_info = psutil.virtual_memory()
-            current_mem_usage = memory_info.percent
-            current_mem_spare = memory_info.available / (1024 ** 3)
-
-            self.history.append((current_cpu_usage, current_mem_usage, current_mem_spare))
-            progress.update(task, advance=1)
-
-            if first_examine:
-                table, explain = await self.evaluate_resources(True)
-                if explain == "stable":
-                    progress.update(task, completed=5)
-                    progress.stop()
-                    return Design.console.print(table)
-                first_examine = False
-
-            elif len(self.history) >= 5:
-                table, explain = await self.evaluate_resources(False)
-                if explain == "stable":
-                    progress.update(task)
-                    progress.stop()
-                    return Design.console.print(table)
-
-                progress.stop()
-                Design.console.print(table)
-                progress = Design.show_progress()
-                task = progress.add_task(description=f"Analyzer", total=5)
-                progress.start()
-
-            await asyncio.sleep(2)
-
-    async def evaluate_resources(self, first_examine: bool) -> typing.Coroutine | tuple["Table", str]:
-        """
-        评估当前采样数据所反映的系统资源状况。
-
-        Parameters
-        ----------
-        first_examine : bool
-            是否为首次采样，用于判断是否清空历史记录。
+        获取当前内部状态信息。
 
         Returns
         -------
-        tuple
-            返回两个元素：
-            - Table: 格式化后的资源使用情况表格（rich.Table）。
-            - str: 资源稳定状态，值为 "stable" 或 "unstable"。
-
-        Notes
-        -----
-        - 若平均 CPU 使用率低于阈值，内存使用率低于阈值，且可用内存高于阈值，视为资源稳定；
-        - 否则视为资源不稳定，需重新采样；
-        - 当检测为稳定后会清空历史记录；
-        - 每次结果将以表格形式展示在控制台。
+        dict
+            包含当前提示信息、状态列表、基础CPU和内存阈值等。
         """
-        avg_cpu_usage = sum(i[0] for i in self.history) / len(self.history)
-        avg_mem_usage = sum(i[1] for i in self.history) / len(self.history)
-        avg_mem_spare = sum(i[2] for i in self.history) / len(self.history)
+        return self.__message
 
-        table = Table(
-            header_style="bold #F5F5DC",
-            title_justify="center",
-            show_header=True,
-            show_lines=True
-        )
-        table.add_column("CPU Usage", justify="left", width=18)
-        table.add_column("Memory Usage", justify="left", width=18)
-        table.add_column("Memory Available", justify="left", width=18)
-        information = [
-            f"[bold #D2B48C]{avg_cpu_usage:.2f} %",
-            f"[bold #D2B48C]{avg_mem_usage:.2f} %",
-            f"[bold #D2B48C]{avg_mem_spare:.2f} G",
-        ]
-        table.add_row(*information)
+    @message.setter
+    def message(self, value: typing.Any):
+        """
+        设置内部状态信息。
 
-        if (avg_cpu_usage <= self.cpu_usage_threshold and avg_mem_usage <= self.mem_usage_threshold
-                and avg_mem_spare >= self.mem_spare_threshold):
-            self.history.clear()
-            table.title = f"[bold #54FF9F]**<* {const.DESC} Performance Success *>**"
-            return table, "stable"
+        Parameters
+        ----------
+        value : typing.Any
+            新的状态信息字典。
+        """
+        self.__message = value
 
-        if not first_examine:
-            self.history.clear()
-        table.title = f"[bold #FFEC8B]**<* {const.DESC} Performance Warning *>**"
-        return table, "unstable"
+    @property
+    def stable(self) -> bool:
+        """
+        获取当前系统稳定性标志。
+
+        Returns
+        -------
+        bool
+            系统是否稳定。
+        """
+        return self.__stable
+
+    @stable.setter
+    def stable(self, value: bool):
+        """
+        设置系统稳定性标志。
+
+        Parameters
+        ----------
+        value : bool
+            设定系统是否稳定，必须为布尔类型。
+
+        Raises
+        -------
+        AssertionError
+            当传入值不是布尔类型时抛出。
+        """
+        assert type(value) is bool, f"Stable must be a boolean value."
+        self.__stable = value
+
+    async def sample_average(self, duration: float, interval: float = 0.5) -> dict:
+        """
+        持续采样指定时长内的CPU、内存和磁盘使用率，并计算平均值。
+
+        Parameters
+        ----------
+        duration : float
+            采样总时长（秒）。
+
+        interval : float, optional
+            每次采样的间隔（秒），默认0.5秒。
+
+        Returns
+        -------
+        dict
+            包括"cpu"、"mem"、"dsk"的平均使用率百分比。
+        """
+        cpu_samples, mem_samples, dsk_samples = [], [], []
+
+        elapsed = 0.0
+
+        while elapsed < duration:
+            cpu = psutil.cpu_percent(interval=None)
+            mem = psutil.virtual_memory().percent
+            dsk = psutil.disk_usage(os.sep).percent
+
+            self.usages = {
+                **{"cpu": cpu, "mem": mem, "dsk": dsk}
+            }
+
+            cpu_samples.append(cpu)
+            mem_samples.append(mem)
+            dsk_samples.append(dsk)
+
+            await asyncio.sleep(interval)
+            elapsed += interval
+            self.message["msg"] = [f"[bold #00D7FF]Checking {float(duration - elapsed):.1f} s[/]", 1]
+
+        return {
+            "cpu": sum(cpu_samples) / len(cpu_samples),
+            "mem": sum(mem_samples) / len(mem_samples),
+            "dsk": sum(dsk_samples) / len(dsk_samples),
+        }
+
+    async def system_stable(self, avg_dict: dict) -> bool:
+        """
+        判断当前资源使用率是否低于阈值，认为系统是否稳定。
+
+        Parameters
+        ----------
+        avg_dict : dict
+            包含当前平均CPU、内存和磁盘使用率。
+
+        Returns
+        -------
+        bool
+            如果所有资源均低于各自阈值则返回True，否则返回False。
+        """
+        return all((avg_dict["cpu"] < self.cpu_threshold, avg_dict["mem"] < self.mem_threshold))
+
+    async def monitor_stable(self) -> None:
+        """
+        持续监控系统状态，直到系统资源使用率低于阈值。
+
+        Workflow
+        --------
+        - 首先快速采样一次初步判断。
+        - 若不稳定，则循环采样，并在每轮采样失败后等待一段时间。
+        - 成功采样并符合稳定条件后，更新稳定状态标志。
+        """
+        begin_avg = await self.sample_average(duration=2.0, interval=0.2)
+        if await self.system_stable(begin_avg):
+            self.message["msg"] = ["[bold #87FFAF]Stable[/]", 1]
+            await asyncio.sleep(0.5)
+            self.stable = True
+            return
+
+        while not self.stable:
+            self.message["msg"] = ["[bold #FFAFAF]Unstable[/]", 1]
+            again_avg = await self.sample_average(duration=10.0, interval=1.0)
+            if await self.system_stable(again_avg):
+                self.stable = True
+                break
+
+            for i in range(self.afresh):
+                self.message["msg"] = [f"[bold 	#FFD700]Retry after {float(self.afresh - i):.1f} s[/]", 0]
+                await asyncio.sleep(1)
+            self.message["msg"] = [f"[bold #A8A8A8]...[/]", 1]
+            await asyncio.sleep(0.5)
 
 
 class AsyncAnimationManager(object):
@@ -377,7 +444,7 @@ class Manage(object):
                 return list(self.device_dict.values())
 
             for index, device in enumerate(self.device_dict.values()):
-                Design.notes(f"[bold][bold #FFFACD]Connect:[/] [{index + 1:02}] {device}[/]")
+                Design.console.print(f"[bold][bold #FFFACD]Connect:[/] [{index + 1:02}] {device}[/]")
 
             if (action := Prompt.ask(
                     "[bold #FFEC8B]请输入序列号选择一台设备[/]", console=Design.console, default="00")) == "00":
@@ -386,15 +453,18 @@ class Manage(object):
             try:
                 choose_device = self.device_dict[action]
             except KeyError as e:
-                Design.notes(f"{const.ERR}序列号不存在 -> {e}[/]\n")
+                Design.console.print(f"{const.ERR}序列号不存在 -> {e}[/]\n")
                 await asyncio.sleep(1)
                 continue
 
             self.device_dict = {action: choose_device}
             return list(self.device_dict.values())
 
-    async def display_device(self) -> None:
-        Design.console.print(f"[bold]<Link> <{'单设备模式' if len(self.device_dict) == 1 else '多设备模式'}>[/]")
+    async def display_device(self, ctrl: str) -> None:
+        mode = "单设备模式" if len(self.device_dict) == 1 else "多设备模式"
+        Design.console.print(
+            f"[bold]<Link> <{mode}> **<*{ctrl}*>**[/]"
+        )
         for device in self.device_dict.values():
             Design.console.print(f"[bold #00FFAF]Connect:[/] [bold]{device}[/]")
 
@@ -435,7 +505,7 @@ class Manage(object):
         action = Prompt.ask("[bold #FFEC8B]Select Display[/]", console=Design.console, choices=choices)
         sn, display_id = re.split(r";", action, re.S)
         select_dict[sn].id, screen = int(display_id), select_dict[sn].display[int(display_id)]
-        Design.notes(f"{const.SUC}{sn} -> ID=[{display_id}] DISPLAY={list(screen)}")
+        Design.console.print(f"{const.SUC}{sn} -> ID=[{display_id}] DISPLAY={list(screen)}")
 
 
 if __name__ == '__main__':

@@ -23,17 +23,17 @@ import sys
 import time
 import random
 import typing
+import psutil
 import shutil
 import asyncio
 
 try:
     os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
     import pygame
-except ImportError as e:
+except ImportError:
     raise ImportError("AudioPlayer requires pygame. install it first.")
 
 from loguru import logger
-from rich.text import Text
 from engine.device import Device
 from engine.terminal import Terminal
 from nexaflow import const
@@ -115,9 +115,8 @@ class Record(object):
 
         async def input_stream() -> typing.Coroutine | None:
             async for line in transports.stdout:
-                logger.debug(Text(stream := line.decode(const.CHARSET, "ignore").strip(), style="bold"))
+                logger.debug(stream := line.decode(const.CHARSET, "ignore").strip())
                 if "Recording started" in stream:
-                    events["notify"] = f"正在录制"
                     events["head"].set()
                 elif "Recording complete" in stream:
                     events["notify"] = f"录制成功"
@@ -126,18 +125,12 @@ class Record(object):
 
         async def error_stream() -> typing.Coroutine | None:
             async for line in transports.stderr:
-                logger.debug(Text(stream := line.decode(const.CHARSET, "ignore").strip(), style="bold"))
+                logger.debug(stream := line.decode(const.CHARSET, "ignore").strip())
                 if "Could not find" in stream or "connection failed" in stream or "Recorder error" in stream:
                     events["notify"] = f"录制失败"
                     return events["fail"].set()
 
-        # todo
-        # self.record_events[device.sn]: dict[str, "asyncio.Event"] = {
-        #     "head": asyncio.Event(), "done": asyncio.Event(),
-        #     "stop": asyncio.Event(), "fail": asyncio.Event(),
-        #     "remain": f"…", "notify": f"等待启动"
-        # }
-
+        # Notes: Start from here
         bridle: "asyncio.Event" = self.record_events[device.sn]["stop"] if self.alone else self.melody_events
         events: dict[str, "asyncio.Event"] = self.record_events[device.sn]
 
@@ -172,65 +165,133 @@ class Record(object):
     async def ask_close_record(
             self, device: "Device", transports: "asyncio.subprocess.Process"
     ) -> typing.Optional[Exception]:
+        """
+        关闭指定设备的视频录制进程，确保子进程优雅退出。
 
-        async def find_child(pid: str) -> list:
-            """
-            获取录制进程的所有子进程 PID。
-            """
-            if self.station == "win32":
-                child_pids = await Terminal.cmd_line(
-                    [
-                        powershell_cmd, "-Command", "Get-CimInstance", "Win32_Process", "|", "Where-Object",
-                        f"{{ $_.ParentProcessId -eq {pid} }}", "|", "Select-Object", "-ExpandProperty", "ProcessId"
-                    ]
-                )
-            else:
-                child_pids = await Terminal.cmd_line(
-                    ["pgrep", "-P", pid]
-                )
-            logger.debug(f"{desc} PID={child_pids}")
+        在 Windows 平台使用 PowerShell 或系统 API 查找并终止子进程；在 macOS 平台使用 shell 命令杀死子进程。
+        同时监听录制结束事件，确保录制流程的完整性和资源的及时释放。
 
-            return [
-                line.strip() for line in child_pids.splitlines() if line.strip().isdigit()
-            ] if child_pids else []
+        Parameters
+        ----------
+        device : Device
+            需要关闭录制任务的目标设备对象。
 
-        async def stop_child(pid: str) -> None:
+        transports : asyncio.subprocess.Process
+            与设备录制进程相关联的异步子进程对象，包含录制状态与进程ID。
+
+        Returns
+        -------
+        Optional[Exception]
+            如果关闭过程超时，返回 TimeoutError 异常；如果顺利完成，返回 None。
+
+        Notes
+        -----
+        - 内部定义了 win_stop_child 和 mac_stop_child，用于不同系统环境下的子进程终止。
+        - 优先使用 PowerShell 强制终止子进程（若可用）；否则退回 psutil 终止逻辑。
+        - 如果录制停止事件在限定时间内未触发，会返回 asyncio.TimeoutError 异常作为提示。
+        - 本方法适用于 Windows 与 macOS，Linux 未特别支持。
+        """
+
+        async def kit_find_pids() -> list["psutil.Process"]:
             """
-            逐个终止子进程。
+            查找并返回父进程 ID 为 `ppid` 的所有子进程列表。
+
+            Returns
+            -------
+            list[psutil.Process]
+                匹配到的所有子进程对象组成的列表，如果没有则返回空列表。
+
+            Notes
+            -----
+            - 使用 psutil.Process(ppid).children() 方法递归查找子进程。
+            - 如果父进程不存在（NoSuchProcess），捕获异常并返回空列表。
             """
-            if self.station == "win32":
-                # Windows 使用 PowerShell 的 `Stop-Process`。
-                off = await Terminal.cmd_line(
-                    [powershell_cmd, "-Command", "Stop-Process", "-Id", pid, "-Force"]
-                )
-            else:
-                # 类 Unix 系统使用 `xargs kill -SIGINT`。
-                off = await Terminal.cmd_line(
-                    ["xargs", "kill", "-SIGINT"], transmit=pid.encode()
-                )
+            try:
+                return psutil.Process(ppid).children(recursive=True)
+            except psutil.NoSuchProcess as e:
+                logger.debug(e)
+                return []
+
+        async def kit_stop_pids(child: "psutil.Process") -> None:
+            """
+            尝试优雅终止指定的子进程，如果超时则强制杀死。
+
+            Parameters
+            ----------
+            child : psutil.Process
+                需要终止的子进程对象。
+
+            Notes
+            -----
+            - 首先调用 terminate() 请求子进程自行退出。
+            - 如果 5 秒内未退出，则调用 kill() 强制终止子进程。
+            - 整个操作运行在后台线程中，避免阻塞事件循环。
+            """
+            try:
+                await asyncio.to_thread(child.terminate)
+                await asyncio.to_thread(child.wait, 5)
+            except asyncio.TimeoutError as e:
+                logger.debug(e)
+                await asyncio.to_thread(child.kill)
+
+        async def win_stop_child(pid: str) -> None:
+            """
+            在 Windows 平台，使用 PowerShell 命令终止指定 PID 的进程。
+
+            Parameters
+            ----------
+            pid : str
+                需要终止的子进程 ID。
+
+            Notes
+            -----
+            - 通过执行 `Stop-Process` 命令，并强制终止指定进程。
+            - 终止操作通过异步子进程执行，并捕获执行日志。
+            """
+            off = await Terminal.cmd_line([pwsh, "-Command", "Stop-Process", "-Id", pid, "-Force"])
             logger.debug(f"{desc} OFF={off}")
 
-        desc = f"{device.tag} {device.sn} PPID={(record_pid := transports.pid)}"
+        async def mac_stop_child(pid: str) -> None:
+            """
+            在 macOS 平台，使用 shell 命令终止指定父 PID 的所有子进程。
+
+            Parameters
+            ----------
+            pid : str
+                父进程 ID，根据它查找并终止所有子进程。
+
+            Notes
+            -----
+            - 使用 `pgrep -P` 查找所有子进程，再通过 `xargs kill -15` 发送优雅终止信号。
+            - 终止操作通过异步子进程执行，并捕获执行日志。
+            """
+            off = await Terminal.cmd_line_shell(f"pgrep -P {pid} | xargs kill -15")
+            logger.debug(f"{desc} OFF={off}")
+
+        # Notes: Start from here
+        desc = f"{device.tag} {device.sn} PPID={(ppid := transports.pid)}"
         events: dict[str, asyncio.Event] = self.record_events[device.sn]
 
-        powershell_cmd = shutil.which("pwsh") or shutil.which("powershell")
+        if self.station == "win32":
+            if pwsh := shutil.which("pwsh") or shutil.which("powershell"):
+                if child_pids := await Terminal.cmd_line([
+                    pwsh, "-Command", "Get-CimInstance", "Win32_Process", "|", "Where-Object",
+                    f"{{ $_.ParentProcessId -eq {ppid} }}", "|", "Select-Object", "-ExpandProperty", "ProcessId"
+                ]):
+                    pids_list = [line.strip() for line in child_pids.splitlines()]
+                    await asyncio.gather(*(win_stop_child(pid) for pid in pids_list))
 
-        if child_process_list := await find_child(record_pid):
-            await asyncio.gather(
-                *(stop_child(pid) for pid in child_process_list if pid)
-            )
+            else:
+                if child_process_list := await kit_find_pids():
+                    await asyncio.gather(*(kit_stop_pids(child) for child in child_process_list))
+
+        elif self.station == "darwin":
+            await mac_stop_child(ppid)
 
         try:
             await asyncio.wait_for(events["done"].wait(), 3)
         except asyncio.TimeoutError as e_:
             return e_
-
-    @staticmethod
-    async def is_finished(events: dict) -> bool:
-        return any(
-            events.get(key).is_set() for key in {"stop", "fail", "done"} if isinstance(
-                events.get(key), asyncio.Event)
-        )
 
     async def check_timer(self, device: "Device", amount: int) -> None:
         """
@@ -257,13 +318,16 @@ class Record(object):
 
         while True:
             if events["head"].is_set():
+                events["notify"] = f"正在录制"
+
                 for i in range(amount):
-                    row = min(10, step := amount - i)
-                    logger.debug(f"{desc} 剩余时间 -> {step:02} 秒 {'----' * row} ...")
+                    logger.debug(
+                        f"{desc} 剩余时间 -> {step:02} 秒 {'----' * min(10, step := amount - i)} ..."
+                    )
                     events["remain"] = step
 
                     if bridle.is_set() and i != amount:
-                        events["remain"], events["notify"] = step, f"主动停止"
+                        events["remain"] = step
                         return logger.debug(f"{desc} 主动停止 ...")
 
                     elif events["fail"].is_set():

@@ -693,6 +693,11 @@ class Missions(object):
             deploy.view_deploy()
             await self.design.neural_sync_loading()
 
+        monitor = SourceMonitor()
+        monitor_task = asyncio.create_task(monitor.monitor_stable())
+        await self.design.multi_load_ripple_vision(monitor)
+        await monitor_task
+
         if len(task_list) == 1:
             task = [
                 alynex.ask_analyzer(target, frame_path, extra_path, src_size)
@@ -856,7 +861,6 @@ class Missions(object):
                 self.design.show_panel(resp, Wind.KEEPER)
             else:
                 self.design.show_panel(f"成功生成汇总报告 {(state := Path(resp)).name}", Wind.REPORTER)
-                self.design.show_panel(resp, Wind.REPORTER)
                 self.design.show_file(state)
 
     # """时空纽带分析系统"""
@@ -1154,6 +1158,11 @@ class Missions(object):
 
         alynex = Alynex(None, option, deploy, self.design)
 
+        monitor = SourceMonitor()
+        monitor_task = asyncio.create_task(monitor.monitor_stable())
+        await self.design.multi_load_ripple_vision(monitor)
+        await monitor_task
+
         # Notes: Analyzer
         if len(task_list) == 1:
             task = [
@@ -1193,6 +1202,8 @@ class Missions(object):
             *(looper.run_in_executor(None, os.remove, target)
               for (_, target) in video_target_list)
         )
+
+        Design.console.print()
 
     # """模型编译大师"""
     async def build_model(self, video_data_list: list, option: "Option", deploy: "Deploy") -> None:
@@ -1376,6 +1387,11 @@ class Missions(object):
 
         await self.design.boot_core_sequence()
 
+        monitor = SourceMonitor()
+        monitor_task = asyncio.create_task(monitor.monitor_stable())
+        await self.design.multi_load_ripple_vision(monitor)
+        await monitor_task
+
         # Notes: Analyzer
         if len(task_list) == 1:
             task = [
@@ -1408,6 +1424,8 @@ class Missions(object):
                 self.design.show_panel(future, Wind.KEEPER)
             else:
                 self.design.show_panel(f"Model saved successfully: {Path(future).name}", Wind.DESIGNER)
+
+        Design.console.print()
 
     # """线迹创造者"""
     async def painting(self, option: "Option", deploy: "Deploy") -> None:
@@ -1635,8 +1653,9 @@ class Missions(object):
                 break
 
             else:
-                tip_ = f"没有该选项,请重新输入\n"
-                self.design.show_panel(tip_, Wind.KEEPER)
+                self.design.show_panel(f"没有该选项,请重新输入\n", Wind.KEEPER)
+
+        Design.console.print()
 
     # """循环节拍器 | 脚本驱动者 | 全域执行者"""
     async def analysis(self, option: "Option", deploy: "Deploy", tp_ver: typing.Any) -> None:
@@ -1692,9 +1711,9 @@ class Missions(object):
             - 每个设备会以异步方式开启录制任务，并按窗口位置进行排列。
             - 返回的列表中，每一项对应一个设备的完整录制上下文。
             """
-            Design.notes(f"**<* {('独立' if self.alone else '全局')}控制模式 *>**")
-
-            await source_monitor.monitor()
+            monitor_task = asyncio.create_task(monitor.monitor_stable())
+            await self.design.multi_load_ripple_vision(monitor)
+            await monitor_task
 
             for device in device_list:
                 logger.debug(f"Wait Device Online -> {device.tag} {device.sn}")
@@ -1703,7 +1722,7 @@ class Missions(object):
             )
 
             media_screen_w, media_screen_h = ScreenMonitor.screen_size()
-            Design.notes(f"Media Screen W={media_screen_w} H={media_screen_h}")
+            logger.debug(f"Media Screen W={media_screen_w} H={media_screen_h}")
 
             todo_list = []
             format_folder = time.strftime("%Y%m%d%H%M%S")
@@ -1760,10 +1779,6 @@ class Missions(object):
             task_list : list of list
                 每个设备对应的录制任务信息，包括录制文件路径和传输对象等。
 
-            Returns
-            -------
-            None
-
             Notes
             -----
             - 每台设备调用关闭录制方法 `ask_close_record`，回收资源并返回状态。
@@ -1776,11 +1791,11 @@ class Missions(object):
             )
 
             for (idx, effective), (video_temp, *_) in zip(enumerate(effective_list), task_list):
-                logger.debug(f"{(video_name := Path(video_temp).name)} status={effective}")
+                logger.debug(f"{Path(video_temp).name} status={effective}")
                 if isinstance(effective, Exception):
                     try:
                         task = task_list.pop(idx)
-                        logger.debug(f"移除: {Path(task[0]).name}")
+                        logger.debug(f"移除录制失败项: {Path(task[0]).name}")
                     except IndexError as e:
                         logger.debug(e)
 
@@ -2084,7 +2099,7 @@ class Missions(object):
 
             for exec_pairs in exec_pairs_list:
                 if len(live_devices) == 0:
-                    return self.design.notes(f"[bold #F0FFF0 on #000000]All tasks canceled")
+                    return Design.notes(f"[bold #F0FFF0 on #000000]All tasks canceled ...")
 
                 for exec_func, exec_vals, exec_args, exec_kwds in exec_pairs:
                     exec_vals = replace_star(exec_vals)
@@ -2106,7 +2121,7 @@ class Missions(object):
                         *exec_tasks.values(), return_exceptions=True
                     )
                 except asyncio.CancelledError:
-                    return self.design.notes(f"[bold #F0FFF0 on #000000]All tasks canceled")
+                    return Design.notes(f"[bold #F0FFF0 on #000000]All tasks canceled ...")
                 finally:
                     exec_tasks.clear()
 
@@ -2150,7 +2165,7 @@ class Missions(object):
 
             while True:
                 try:
-                    await manage_.display_device()
+                    await manage_.display_device(ctrl_)
                     run_tip = f"<<<按 Enter 开始 [bold #D7FF5F]{amount}[/] 秒>>>"
 
                     if action := Prompt.ask(f"[bold #5FD7FF]{run_tip}", console=Design.console):
@@ -2159,6 +2174,7 @@ class Missions(object):
                             continue
 
                         elif select == "cancel":
+                            Design.console.print()
                             Design.exit()
                             sys.exit(Design.closure())
 
@@ -2230,20 +2246,18 @@ class Missions(object):
                     Design.tips_document()
 
                 else:
-                    # todo
                     record.record_events = {
                         device.sn: {
-                            "head": asyncio.Event(), "done": asyncio.Event(),
-                            "stop": asyncio.Event(), "fail": asyncio.Event(),
-                            "remain": f"…", "notify": f"等待启动"
+                            **{i: asyncio.Event() for i in ["head", "done", "stop", "fail"]},
+                            "remain": 0, "notify": f"等待同步"
                         } for device in device_list
                     }
+                    record_ui_task = asyncio.create_task(
+                        self.design.display_record_ui(record.record_events, amount)
+                    )
+
                     task_list = await anything_film(device_list, report)  # 开始录制
 
-                    # todo
-                    record_ui_task = asyncio.create_task(
-                        self.design.display_record_ui(record, amount)
-                    )
                     await asyncio.gather(
                         *(record.check_timer(device, amount) for device in device_list)  # 启动计时
                     )
@@ -2299,7 +2313,7 @@ class Missions(object):
 
             await self.design.batch_runner_task_grid()
 
-            await manage_.display_device()
+            await manage_.display_device(ctrl_)
 
             for script_dict in script_storage:
                 report = Report(option.total_place)
@@ -2398,6 +2412,8 @@ class Missions(object):
                 if any((self.speed, self.basic, self.keras)):
                     await self.combine(report)
 
+            Design.console.print()
+
         # Notes: Start from here
         manage_ = Manage(self.adb)
 
@@ -2415,11 +2431,13 @@ class Missions(object):
         titles_ = {"speed": "Speed", "basic": "Basic", "keras": "Keras"}
         input_title_ = next((title_ for key_, title_ in titles_.items() if getattr(self, key_)), "Video")
 
+        ctrl_ = f"静默守护模式" if self.whist else f"{('独立' if self.alone else '全局')}控制模式"
+
         record = Record(
             tp_ver, alone=self.alone, whist=self.whist, frate=deploy.frate
         )
         player = Player()
-        source_monitor = SourceMonitor()
+        monitor = SourceMonitor()
 
         return await flick_loop() if self.flick else await other_loop()
 
@@ -3466,6 +3484,8 @@ async def main() -> typing.Coroutine | None:
     else:
         Design.help_document()
 
+    await Design.engine_starburst()
+
 
 if __name__ == '__main__':
     """  
@@ -3691,10 +3711,12 @@ if __name__ == '__main__':
         sys.exit(Design.closure())
     except (OSError, RuntimeError, MemoryError):
         Design.console.print_exception()
-        sys.exit(Design.fail())
+        Design.fail()
+        sys.exit(1)
     except FramixError as _error:
         Design.console.print(_error)
-        sys.exit(Design.fail())
+        Design.fail()
+        sys.exit(1)
     else:
         Design.done()
         sys.exit(Design.closure())
