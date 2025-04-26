@@ -288,9 +288,18 @@ class AsyncAnimationManager(object):
         控制动画任务停止的事件对象，供动画函数内部监听。
     """
 
-    def __init__(self):
+    def __init__(self, function: typing.Optional[typing.Callable] = None):
         self.__task: asyncio.Task | None = None
         self.__animation_event: asyncio.Event = asyncio.Event()
+        self.__function = function
+
+    async def __aenter__(self):
+        await self.start(self.__function)
+
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.stop()
 
     async def start(self, function: typing.Callable) -> typing.Coroutine | None:
         """

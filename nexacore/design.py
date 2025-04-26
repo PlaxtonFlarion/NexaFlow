@@ -192,7 +192,7 @@ class Design(object):
         """
         返回格式化的退出提示文本。
         """
-        exit_messages = [
+        messages = [
             "powering down gracefully",
             "folding into memory flux",
             "signature imprinted successfully",
@@ -214,13 +214,41 @@ class Design(object):
             "till the next resonance",
             "starlight has been safely stored"
         ]
+        suffixes = [
+            # 科技感
+            "Engine", "Core", "Circuit", "Nexus", "Drive", "Matrix", "Stream", "Protocol",
+            # 宇宙感
+            "Orbit", "Pulse", "Astrolink", "Starfield", "Continuum", "Quantum", "Horizon", "Nebula",
+            # 能量/引擎感
+            "Reactor", "Dynamo", "Accelerator", "Forge", "Spark"
+            # 记忆/精神感
+            "Echo", "Dreamline", "Reverb", "Trace", "Reflection",
+            # 程序/智能感
+            "Synth", "Conduit", "Shell", "Instance", "HorizonOS"
+        ]
+        colors = [
+            "#00FFC6",  # 电光青绿
+            "#00A2FF",  # 天蓝霓光
+            "#7B68EE",  # 微光紫蓝
+            "#FF8C00",  # 深橙燃光
+            "#FFD700",  # 亮金荣耀
+            "#39FF14",  # 荧光绿能
+            "#FF69B4",  # 樱粉脉冲
+            "#8A2BE2",  # 闪耀紫电
+            "#20B2AA",  # 青松冷光
+            "#FF4500",  # 烈焰红流
+            "#00FA9A",  # 明绿微芒
+            "#FF1493",  # 深粉核心
+        ]
 
-        message = random.choice(exit_messages)
+        message = random.choice(messages)
+        suffix = random.choice(suffixes)
+        color = random.choice(colors)
 
         Design.console.print(f"""\
         
-    [bold]<*=> {const.DESC} {message} <=*>[/]
-    [bold]<*=> {const.DESC} see you next <=*>[/]
+    [bold #D0D0D0]<*=> {const.DESC} {message} <=*>[/]
+    [bold #D0D0D0]<*=> [bold {color}]{const.DESC} {suffix}[/] <=*>[/]
         """)
 
     @staticmethod
@@ -229,6 +257,7 @@ class Design(object):
         打印程序启动时的 ASCII 风格 Logo，并以随机柔和色渲染输出。
         """
         logo = f"""\
+
 __________                        _____        
 ___  ____/____________ _______ ______(_)___  __
 __  /_   __  ___/  __ `/_  __ `__ \\_  /__  |/_/
@@ -354,10 +383,70 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         Design.console.print("\n", table, "\n")
 
     @staticmethod
-    async def engine_topology_wave() -> None:
+    async def show_quantum_intro() -> None:
+        """
+        星域构形动画（Quantum Star Boot）。
+        """
+        frames = [
+            f"""\
+
+    [#808080]        ░░░░░░░░░░
+            ░░░░        ░░░░
+         ░░░░    [#00FFFF]●[/]    ░░░░
+            ░░░░        ░░░░
+                ░░░░░░░░░░[/]
+            """,
+            f"""\
+
+    [#999999]        ████▓▓████
+          ▓▓██            ██▓▓
+      ██▓▓    [#00FFDD]◉[/]     ▓▓██
+          ▓▓██            ██▓▓
+              ████████████[/]
+            """,
+            f"""\
+
+    [#AAAAAA]        ▓▓▓▓▓▓▓▓▓▓
+          ████    [#00FFB7]◎[/]    ████
+        ██▓▓            ▓▓██
+          ████        ████
+              ▓▓▓▓▓▓▓▓▓▓[/]
+            """,
+            f"""\
+
+[bold #00FFC0]╔═════════════════════════════╗
+║                             ║
+║       [bold #FFD700]{const.DESC} Compiler[/]       ║
+║                             ║
+╚═════════════════════════════╝
+            """
+        ]
+
+        with Live(console=Design.console, refresh_per_second=30, transient=True) as live:
+            for _ in range(10):  # 播放次数
+                for frame in frames[:-1]:
+                    live.update(Text.from_markup(frame))
+                    await asyncio.sleep(0.2)
+
+        # 渲染最终面板
+        final_panel = Panel.fit(
+            frames[-1], border_style="bold #7FFFD4"
+        )
+
+        Design.console.print(final_panel)
+        Design.console.print(f"\n{const.DECLARE}")
+        await asyncio.sleep(1)
+
+        Design.simulation_progress("Compiler Ready")
+
+    @staticmethod
+    async def engine_topology_wave(level: str) -> None:
         """
         启动时加载动画。
         """
+        if level != const.SHOW_LEVEL:
+            return None
+
         neon_flow = [
             "#39FF14", "#00FFFF", "#FF00FF", "#FFFF33"
         ]
@@ -459,10 +548,13 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         )
 
     @staticmethod
-    async def stellar_glyph_binding() -> None:
+    async def stellar_glyph_binding(level: str) -> None:
         """
         星域构形动画（v2.4）。
         """
+        if level != const.SHOW_LEVEL:
+            return None
+
         Design.console.print(
             f"\n[bold #00F5FF]▶ {const.DESC} starts with the pulse between meaning and motion ...\n"
         )
@@ -573,10 +665,13 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         )
 
     @staticmethod
-    async def engine_starburst() -> None:
+    async def engine_starburst(level: str) -> None:
         """
         收尾动画。
         """
+        if level != const.SHOW_LEVEL:
+            return None
+
         text = f"{const.DESC} (●) Engine"
         collapse_symbol = random.choice(["▣", "●"])
 
@@ -668,63 +763,6 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                 await asyncio.sleep(delay)
 
         await asyncio.sleep(0.2)
-
-    @staticmethod
-    async def show_quantum_intro() -> None:
-        """
-        星域构形动画（Quantum Star Boot）。
-        """
-        frames = [
-            f"""\
-
-    [#808080]        ░░░░░░░░░░
-            ░░░░        ░░░░
-         ░░░░    [#00FFFF]●[/]    ░░░░
-            ░░░░        ░░░░
-                ░░░░░░░░░░[/]
-            """,
-            f"""\
-
-    [#999999]        ████▓▓████
-          ▓▓██            ██▓▓
-      ██▓▓    [#00FFDD]◉[/]     ▓▓██
-          ▓▓██            ██▓▓
-              ████████████[/]
-            """,
-            f"""\
-
-    [#AAAAAA]        ▓▓▓▓▓▓▓▓▓▓
-          ████    [#00FFB7]◎[/]    ████
-        ██▓▓            ▓▓██
-          ████        ████
-              ▓▓▓▓▓▓▓▓▓▓[/]
-            """,
-            f"""\
-
-[bold #00FFC0]╔═════════════════════════════╗
-║                             ║
-║       [bold #FFD700]{const.DESC} Compiler[/]       ║
-║                             ║
-╚═════════════════════════════╝
-            """
-        ]
-
-        with Live(console=Design.console, refresh_per_second=30, transient=True) as live:
-            for _ in range(10):  # 播放次数
-                for frame in frames[:-1]:
-                    live.update(Text.from_markup(frame))
-                    await asyncio.sleep(0.2)
-
-        # 渲染最终面板
-        final_panel = Panel.fit(
-            frames[-1], border_style="bold #7FFFD4"
-        )
-
-        Design.console.print(final_panel)
-        Design.console.print(f"\n{const.DECLARE}")
-        await asyncio.sleep(1)
-
-        Design.simulation_progress("Compiler Ready")
 
     def show_panel(self, text: typing.Any, wind: dict) -> None:
         """
@@ -903,7 +941,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         await pulse_live()
         await final_live()
 
-    async def display_record_ui(self, events: dict[str, typing.Any], amount: int) -> None:
+    async def display_record_ui(self, record: typing.Any, amount: int) -> None:
         if self.design_level != const.SHOW_LEVEL:
             return None
 
@@ -939,7 +977,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         unit: callable = lambda x, y: f"[bold {x}]{y}[/]"
 
-        max_sn_width = max(len(line) for line in list(events.keys()))
+        max_sn_width = max(len(line) for line in list(record.events.keys()))
 
         async def render_bar(remain: int) -> str:
             length = int(self.console.width * 0.5)
@@ -969,7 +1007,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         async def build_ui() -> "Group":
             lines = []
-            for sn, status in events.items():
+            for sn, status in record.events.items():
                 remain: int = status.get("remain")
                 notify: str = status.get("notify")
 
@@ -992,7 +1030,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         with Live(await build_ui(), console=self.console, refresh_per_second=30) as live:
             while True:
                 live.update(await build_ui())
-                if all(is_finished(event) for event in events.values()):
+                if all(is_finished(event) for event in record.events.values()):
                     break
                 await asyncio.sleep(0.2)
                 frame += 1

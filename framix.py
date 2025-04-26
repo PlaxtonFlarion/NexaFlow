@@ -12,15 +12,15 @@
 #                                                         #
 ###########################################################
 
-# ==== Note: 版权申明 ====
+# ==== Notes: 版权申明 ====
 # 版权所有 (c) 2024  Framix(画帧秀)
 # 此文件受 Framix(画帧秀) 许可证的保护。您可以在 LICENSE.md 文件中查看详细的许可条款。
 
-# ==== Note: License ====
+# ==== Notes: License ====
 # Copyright (c) 2024  Framix(画帧秀)
 # This file is licensed under the Framix(画帧秀) License. See the LICENSE.md file for more details.
 
-# ==== Note: ライセンス ====
+# ==== Notes: ライセンス ====
 # Copyright (c) 2024  Framix(画帧秀)
 # このファイルは Framix(画帧秀) ライセンスの下でライセンスされています。詳細は LICENSE.md ファイルを参照してください。
 
@@ -121,11 +121,6 @@ def signal_processor(*_, **__) -> None:
     ----------
     *_, **__ : Any
         占位参数，用于兼容 signal.signal 的回调签名要求。
-
-    Returns
-    -------
-    None
-        无返回值，调用后程序将终止。
     """
     Design.exit()
     sys.exit(Design.closure())
@@ -312,11 +307,6 @@ class Missions(object):
 
         nest : str
             嵌套标识，用于记录子任务、子路径或层级结构。
-
-        Returns
-        -------
-        None
-            此方法不返回任何值，数据写入后直接完成异步操作。
         """
         await db.create(column_list := ["style", "total", "title", "nest"])
         await db.insert(column_list, [style, total, title, nest])
@@ -495,11 +485,6 @@ class Missions(object):
         task_list : list of list
             视频任务列表，每项包含视频路径及其对应的处理参数集。
 
-        Returns
-        -------
-        None
-            无返回值，所有中间产出通过日志与报告对象完成落地。
-
         Notes
         -----
         - 本方法为异步方法，建议在 `asyncio` 事件循环中调用。
@@ -616,11 +601,6 @@ class Missions(object):
                 alynex : Alynex
                     分析工具实例，包含 Keras 模型状态与分析方法。
 
-        Returns
-        -------
-        None
-            函数不返回值，所有分析结果通过日志与报告系统输出。
-
         Notes
         -----
         - 本方法需在异步环境下运行。
@@ -697,6 +677,7 @@ class Missions(object):
         monitor_task = asyncio.create_task(monitor.monitor_stable())
         await self.design.multi_load_ripple_vision(monitor)
         await monitor_task
+        logger.debug(f"系统负载检测通过: {monitor.usages}")
 
         if len(task_list) == 1:
             task = [
@@ -787,11 +768,6 @@ class Missions(object):
         ----------
         report : Report
             报告引擎对象，包含报告路径、数据范围以及合并配置。
-
-        Returns
-        -------
-        None
-            无返回值，分析结果通过日志与报告系统落地输出。
         """
         if report.range_list:
             function = getattr(self, "combine_view" if self.speed else "combine_main")
@@ -816,11 +792,6 @@ class Missions(object):
 
         merge : list of str
             子报告路径列表，所有待整合的报告资源将统一纳入汇总流程中。
-
-        Returns
-        -------
-        None
-            函数无返回值，生成结果将通过日志与报告系统落地呈现。
 
         Notes
         -----
@@ -898,11 +869,6 @@ class Missions(object):
 
         deploy : Deploy
             部署配置对象，提供具体的处理规则，如帧率、剪辑时长、输出格式等。
-
-        Returns
-        -------
-        None
-            无返回值。处理结果通过日志记录和报告面板进行呈现。
 
         Notes
         -----
@@ -983,11 +949,6 @@ class Missions(object):
         deploy : Deploy
             视频处理部署对象，定义处理参数，如时间区间、输出格式、帧率限制等。
 
-        Returns
-        -------
-        None
-            无返回值。分析结果通过报告对象记录并输出。
-
         Notes
         -----
         - 利用 `Search` 类对输入路径加速检索，自动组织数据结构。
@@ -1009,6 +970,7 @@ class Missions(object):
             加载视频数据条目。
             """
             for video_data in video_data_list:
+                logger.debug(f"查找文件夹: {video_data}")
                 if isinstance(search_result := search.accelerate(video_data), Exception):
                     logger.debug(search_result)
                     self.design.show_panel(search_result, Wind.KEEPER)
@@ -1071,11 +1033,6 @@ class Missions(object):
 
         deploy : Deploy
             部署配置对象，定义训练过程中涉及的视频处理参数，如帧率、剪辑时间、输出路径等。
-
-        Returns
-        -------
-        None
-            无返回值。训练结果通过日志和报告系统进行记录与展示。
 
         Notes
         -----
@@ -1162,6 +1119,7 @@ class Missions(object):
         monitor_task = asyncio.create_task(monitor.monitor_stable())
         await self.design.multi_load_ripple_vision(monitor)
         await monitor_task
+        logger.debug(f"系统负载检测通过: {monitor.usages}")
 
         # Notes: Analyzer
         if len(task_list) == 1:
@@ -1220,11 +1178,6 @@ class Missions(object):
 
         deploy : Deploy
             视频部署配置对象，用于提供图像格式、尺寸要求、路径约束等信息。
-
-        Returns
-        -------
-        None
-            无返回值。所有构建信息将通过日志系统记录并展示。
 
         Notes
         -----
@@ -1391,6 +1344,7 @@ class Missions(object):
         monitor_task = asyncio.create_task(monitor.monitor_stable())
         await self.design.multi_load_ripple_vision(monitor)
         await monitor_task
+        logger.debug(f"系统负载检测通过: {monitor.usages}")
 
         # Notes: Analyzer
         if len(task_list) == 1:
@@ -1439,11 +1393,6 @@ class Missions(object):
 
         deploy : Deploy
             绘图部署配置对象，包含颜色模式、图像尺寸、裁剪方式以及保存选项等参数。
-
-        Returns
-        -------
-        None
-            无返回值，图像处理和结果保存过程在函数内部完成。
 
         Notes
         -----
@@ -1673,11 +1622,6 @@ class Missions(object):
         tp_ver : typing.Any
             依赖的 scrcpy 三方应用版本。
 
-        Returns
-        -------
-        None
-            函数通过协程异步执行分析任务，无返回值。
-
         Notes
         -----
         - 若指定 `--flick` 参数，将启用交互式录制流程（flick_loop），由用户手动控制录制与时间。
@@ -1810,10 +1754,6 @@ class Missions(object):
 
             report : Report
                 当前分析过程关联的报告对象。
-
-            Returns
-            -------
-            None
 
             Notes
             -----
@@ -2049,10 +1989,6 @@ class Missions(object):
             *args : any
                 用于替换命令参数中 "*" 的外部输入数据，逐一映射到对应位置。
 
-            Returns
-            -------
-            None
-
             Notes
             -----
             - 如果 exec_func 为 "audio_player"，将使用 player 对象单独执行。
@@ -2066,24 +2002,6 @@ class Missions(object):
                 "".join(next(y, "*") if c == "*" else c for c in i)
                 if isinstance(i, str) else (next(y, "*") if i == "*" else i) for i in x
             ]
-            """
-            Parameters
-            ----------
-            x : list
-                包含字符串或任意元素的列表。支持元素为字符串时内部多个 * 的替换。
-
-            Returns
-            -------
-            list
-                返回一个替换 * 后的新列表，其中每个 * 被 args 中依次替换的值所替代。
-
-            Notes
-            -----
-            - 可替换嵌入字符串内的多个 `*`；
-            - 支持非字符串元素中的 * 替换；
-            - 若 args 替换值不足，则使用 "*" 作为默认值；
-            - 替换顺序严格按 args 中的顺序。
-            """
 
             live_devices = {device.sn: device for device in device_list}.copy()
 
@@ -2780,11 +2698,7 @@ class Alynex(object):
 
         该方法用于在分析任务执行前加载指定路径下的 Keras 模型，并根据部署参数验证模型输入通道的正确性。
         若加载失败或验证不通过，将抛出异常并清除模型状态。
-
-        Returns
-        -------
-        None
-            本方法不返回值。模型状态通过 `self.ks.model` 保持。
+        模型状态通过 `self.ks.model` 保持。
         """
         try:
             if mp := self.matrix:
@@ -2845,6 +2759,7 @@ class Alynex(object):
         logger.debug(f"{(task_desc_ := '加载视频帧: ' f'{video.name}')}")
         self.design.show_panel(f"{task_name_}\n{task_info_}\n{task_desc_}", Wind.LOADER)
 
+        # 调整视频尺寸，保持宽高比
         if self.deploy.shape:
             w, h, ratio = await Switch.ask_magic_frame(src_size, self.deploy.shape)
             shape, scale = (w, h), None
@@ -2882,10 +2797,6 @@ class Alynex(object):
         -------
         Optional[str]
             若找到可成功打开的视频文件，返回该文件路径；否则返回 None。
-
-        Raises
-        ------
-        None
 
         Notes
         -----
@@ -3451,8 +3362,10 @@ async def main() -> typing.Coroutine | None:
         parameters = list(dict.fromkeys(parameters))
         await function(parameters, _option, _deploy)
 
-    # 启动仪式
-    await random.choice([Design.engine_topology_wave, Design.stellar_glyph_binding])()
+    # Notes: Start from here
+    await random.choice(
+        [Design.engine_topology_wave, Design.stellar_glyph_binding]
+    )(_level)  # 启动仪式
 
     await _authorized()  # 应用授权
 
@@ -3484,7 +3397,7 @@ async def main() -> typing.Coroutine | None:
     else:
         Design.help_document()
 
-    await Design.engine_starburst()
+    await Design.engine_starburst(_level)  # 结尾动画
 
 
 if __name__ == '__main__':
@@ -3595,14 +3508,10 @@ if __name__ == '__main__':
         ):
             os.makedirs(_src_total_place, exist_ok=True)
 
-        freeze_support()  # 在 Windows 平台上启动多进程时确保冻结的可执行文件可以正确运行。
+        # Notes: 在 Windows 平台上启动多进程时确保冻结的可执行文件可以正确运行。
+        freeze_support()
 
-        """
-        **命令行参数解析器解析命令行参数**
-
-        注意:
-            此代码块必须在 `__main__` 块下调用，否则可能会导致多进程模块无法正确加载。
-        """
+        # Notes: 此代码块必须在 `__main__` 块下调用，否则可能会导致多进程模块无法正确加载。
         _parser = Parser()
         _lines = _parser.parse_cmd
 
@@ -3649,7 +3558,7 @@ if __name__ == '__main__':
         _option.color_model = _option.color_model or const.COLOR_MODEL
         for _attr_key, _attribute_value in _option.options.items():
             logger.debug(f"{_option.__class__.__name__} Current Key {_attr_key}")
-            # 如果命令行中包含配置参数，无论是否存在配置文件，都将覆盖配置文件，以命令行参数为第一优先级
+            # Notes: 如果命令行中包含配置参数，无论是否存在配置文件，都将覆盖配置文件，以命令行参数为第一优先级。
             if any(_line.lower().startswith(f"--{(_attr_adapt := _attr_key.split('_')[0])}") for _line in _wires):
                 setattr(_option, _attr_key, getattr(_lines, _attr_adapt))
                 logger.debug(f"  Set <{_attr_key}> {_attribute_value} -> {getattr(_option, _attr_key)}")
@@ -3702,8 +3611,10 @@ if __name__ == '__main__':
             "fpb": _fpb
         }
 
-        _missions = Missions(_wires, _level, _power, *_positions, **_keywords)  # 初始化主要任务对象
+        # Notes: 初始化主要任务对象
+        _missions = Missions(_wires, _level, _power, *_positions, **_keywords)
 
+        # Notes: Start from here
         asyncio.run(main())
 
     except KeyboardInterrupt:
