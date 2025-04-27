@@ -1050,7 +1050,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         grid = [[" " for _ in range(cols)] for _ in range(rows)]
         symbols = ["░", "▒", "▓", "□"]
 
-        def render_grid() -> "Text":
+        async def render_grid() -> "Text":
             lines = []
             for row in grid:
                 colored_line = " ".join(
@@ -1060,13 +1060,13 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                 lines.append(f"[bold #00DDDD][{const.DESC}::Grid][/] {colored_line}")
             return Text.from_markup("\n".join(lines))
 
-        def fill_flow() -> None:
+        async def fill_flow() -> None:
             for row in range(rows):
                 for col in range(cols):
                     grid[row][col] = random.choice(symbols)
-            live.update(render_grid())
+            live.update(await render_grid())
 
-        live = Live(render_grid(), console=self.console, refresh_per_second=30)
+        live = Live(await render_grid(), console=self.console, refresh_per_second=30)
         live.start()
 
         expanded_event = asyncio.Event()
@@ -1076,23 +1076,23 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             for r in range(rows):
                 for c in range(cols):
                     grid[r][c] = "·"
-                    live.update(render_grid())
+                    live.update(await render_grid())
                     await asyncio.sleep(0.02)
             expanded_event.set()  # 格点展开完毕
 
             # 激活填充流动
             while not animation_event.is_set():
-                fill_flow()
+                await fill_flow()
                 await asyncio.sleep(0.12)
 
         except asyncio.CancelledError:
             # 格点未展开完毕，填充流动
             if not expanded_event.is_set():
-                fill_flow()
+                await fill_flow()
 
             # 中心节点点亮
             grid[rows // 2][cols // 2] = "[bold #39FF14]▣[/]"
-            live.update(render_grid())
+            live.update(await render_grid())
             await asyncio.sleep(0.5)
 
             live.stop()
@@ -1124,7 +1124,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         lines_dom = ["─┬─", " ├─", " │", " ╰─", "╚══", "╠══", "╩══"]
         styles = ["≡", "#", ":", "{", "}", "▓", "●", "░", "▤", "─"]
 
-        def render(tags_state: str, dom_state: str, css_state: str, phase_label: str) -> "Text":
+        async def render(tags_state: str, dom_state: str, css_state: str, phase_label: str) -> "Text":
             out = [
                 f"{prefix} [bold #00CED1]{tags_state}[/]",
                 f"{prefix} [bold #FFD700]{dom_state}[/]",
@@ -1146,7 +1146,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                     "Building DOM tree...", "Injecting layout nodes...", "Applying inline styles...",
                     "Parsing CSS rules...", "Finalizing structure..."
                 ])
-                live.update(render(tag_line, dom_line, css_line, phase))
+                live.update(await render(tag_line, dom_line, css_line, phase))
                 await asyncio.sleep(0.12)
 
         except asyncio.CancelledError:
