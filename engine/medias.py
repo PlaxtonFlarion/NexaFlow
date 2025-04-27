@@ -141,7 +141,7 @@ class Record(object):
         if device.id != 0:
             cmd += [f"--display-id={device.id}"]
 
-        loc_name = ["--window-x", "--window-y", "--window-width", "--window-height"]
+        loc_name = ["--window-x", "--window-y", "--max-size"]
         cmd += [f"{k}={v}" for k, v in zip(loc_name, loc)] if (loc := kwargs.get("location", ())) else []
 
         if self.whist:
@@ -306,10 +306,6 @@ class Record(object):
 
         amount : int
             倒计时的总秒数。
-
-        Returns
-        -------
-        None
         """
         bridle = self.record_events[device.sn]["stop"] if self.alone else self.melody_events
         events = self.record_events[device.sn]
@@ -321,8 +317,9 @@ class Record(object):
                 events["notify"] = f"正在录制"
 
                 for i in range(amount):
+                    step = amount - i
                     logger.debug(
-                        f"{desc} 剩余时间 -> {step:02} 秒 {'----' * min(10, step := amount - i)} ..."
+                        f"{desc} 剩余时间 -> {step:02} 秒 {'----' * min(10, step)} ..."
                     )
                     events["remain"] = step
 
@@ -357,10 +354,6 @@ class Record(object):
 
         exec_tasks : dict
             异步任务字典，key 是设备序列号，value 是任务实例。
-
-        Returns
-        -------
-        None
 
         Notes
         -----
@@ -406,10 +399,6 @@ class Record(object):
         清理所有录制事件状态。
 
         该方法在一次录制任务结束后调用，用于重置所有事件对象，防止状态残留影响后续任务。
-
-        Returns
-        -------
-        None
 
         Notes
         -----

@@ -22,6 +22,7 @@ import time
 import random
 import typing
 import asyncio
+import colorsys
 from pathlib import Path
 from rich.live import Live
 from rich.tree import Tree
@@ -215,15 +216,10 @@ class Design(object):
             "starlight has been safely stored"
         ]
         suffixes = [
-            # 科技感
             "Engine", "Core", "Circuit", "Nexus", "Drive", "Matrix", "Stream", "Protocol",
-            # 宇宙感
             "Orbit", "Pulse", "Astrolink", "Starfield", "Continuum", "Quantum", "Horizon", "Nebula",
-            # 能量/引擎感
             "Reactor", "Dynamo", "Accelerator", "Forge", "Spark"
-            # 记忆/精神感
             "Echo", "Dreamline", "Reverb", "Trace", "Reflection",
-            # 程序/智能感
             "Synth", "Conduit", "Shell", "Instance", "HorizonOS"
         ]
         colors = [
@@ -325,16 +321,178 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         """
         展示命令行参数文档（来自 ARGUMENT 配置），以表格形式高亮各类参数分组。
         """
+
+        def theme_colors(theme_name: str) -> dict:
+            """
+            根据主题名返回对应的配色方案。
+            """
+            theme_name = theme_name.lower()
+
+            themes = {
+                "galaxy": {  # 银河轨迹 - 冷色科技风
+                    "mutex": "#7FDBFF",  # 参数互斥
+                    "compatible": "#3D9970",  # 参数兼容
+                    "title_main": "#00BFFF",
+                    "title_keys": "#20C997",
+                    "header": "#17A2B8",
+                    "name": "#D7AFD7",  # ✨ 加了专属NAME颜色
+                    "cmds": "#5DADE2",
+                    "push_multi": "#A569BD",
+                    "push_single": "#85929E",
+                    "desc": "#76D7C4",
+                    "method": "#85C1E9",
+                },
+                "sunrise": {  # 晨曦暖阳 - 柔和橙粉风
+                    "mutex": "#FF6F61",
+                    "compatible": "#FFA07A",
+                    "title_main": "#FFD700",
+                    "title_keys": "#FF8C00",
+                    "header": "#FF7F50",
+                    "name": "#FFB6C1",
+                    "cmds": "#FF6347",
+                    "push_multi": "#FFB6C1",
+                    "push_single": "#FFE4E1",
+                    "desc": "#F4A460",
+                    "method": "#FFDAB9",
+                },
+                "cyberpunk": {  # 夜幕疾驰 - 霓虹暗色风
+                    "mutex": "#FF4136",
+                    "compatible": "#2ECC40",
+                    "title_main": "#AAAAAA",
+                    "title_keys": "#01FF70",
+                    "header": "#39CCCC",
+                    "name": "#AAAAAA",
+                    "cmds": "#FF851B",
+                    "push_multi": "#FF4136",
+                    "push_single": "#AAAAAA",
+                    "desc": "#7FDBFF",
+                    "method": "#2ECC40",
+                },
+                "twilight": {  # 苍穹残光
+                    "mutex": "#4682B4",
+                    "compatible": "#6B8E23",
+                    "title_main": "#708090",
+                    "title_keys": "#FFD700",
+                    "header": "#556B2F",
+                    "name": "#B0A4A4",
+                    "cmds": "#1E90FF",
+                    "push_multi": "#B0C4DE",
+                    "push_single": "#778899",
+                    "desc": "#DAA520",
+                    "method": "#87CEFA",
+                },
+                "sunfire": {  # 烈日长空
+                    "mutex": "#FF4500",
+                    "compatible": "#FFA500",
+                    "title_main": "#FF6347",
+                    "title_keys": "#FFD700",
+                    "header": "#FF8C00",
+                    "name": "#FFC1A6",
+                    "cmds": "#FF7F50",
+                    "push_multi": "#FFDAB9",
+                    "push_single": "#FFEFD5",
+                    "desc": "#FFB347",
+                    "method": "#FF9966",
+                },
+                "mistwood": {  # 迷雾森林
+                    "mutex": "#2E8B57",
+                    "compatible": "#3CB371",
+                    "title_main": "#556B2F",
+                    "title_keys": "#00FA9A",
+                    "header": "#228B22",
+                    "name": "#9ACD32",
+                    "cmds": "#66CDAA",
+                    "push_multi": "#8FBC8F",
+                    "push_single": "#C1FFC1",
+                    "desc": "#2E8B57",
+                    "method": "#7FFFD4",
+                }
+            }
+
+            return themes[theme_name]
+
+        def hsv_to_hex(h: float, s: float, v: float) -> str:
+            """
+            HSV -> HEX颜色。
+            """
+            r, g, b = colorsys.hsv_to_rgb(h, s, v)
+            return f"#{int(r * 255):02X}{int(g * 255):02X}{int(b * 255):02X}"
+
+        def typing_animation_dynamic() -> None:
+            """
+            动态HSV色轮打字动画。
+            """
+            theme_hue_ranges = {
+                "galaxy": (0.5, 0.7),
+                "sunrise": (0.05, 0.12),
+                "cyberpunk": (0.8, 0.95),
+                "twilight": (0.55, 0.7),
+                "sunfire": (0.02, 0.08),
+                "mistwood": (0.3, 0.45),
+            }
+            theme_saturation_value = {
+                "galaxy": (0.6, 0.95),
+                "sunrise": (0.8, 0.95),
+                "cyberpunk": (0.7, 0.9),
+                "twilight": (0.5, 0.85),
+                "sunfire": (0.9, 0.95),
+                "mistwood": (0.7, 0.9),
+            }
+
+            delay_base = 0.08
+            typed = Text()
+            cursor = "▋"
+            padding = " " * (offset := 4)
+            text = f"""{padding}^* {const.DESC} | {const.ALIAS} *^"""
+
+            hue_min, hue_max = theme_hue_ranges.get(theme, (0.5, 0.7))
+            saturation, value = theme_saturation_value.get(theme, (0.6, 0.95))
+
+            # 初始化从 hue_min 开始
+            hue = hue_min
+            total_hue_range = hue_max - hue_min
+            hue_step = total_hue_range / max(len(text) * 0.5, 1)  # 让一行文字大致滑动一圈
+
+            typed.append(" " * offset)
+
+            with Live(typed, refresh_per_second=30, console=Design.console) as live:
+                for char in text[offset:]:
+                    current_hue = random.uniform(hue_min, hue_max)
+                    color = hsv_to_hex(current_hue, saturation, value)
+                    typed.append(char, style=f"bold {color}")
+                    typed.append(cursor, style="bold #AAAAAA")
+                    live.update(typed)
+
+                    time.sleep(delay_base + random.uniform(-0.02, 0.03))
+
+                    typed = typed[:-1]
+
+                    # hue向前大步滑动一点，跨度更明显
+                    hue += hue_step * random.uniform(0.8, 1.2)
+
+                    # 保持hue在[min, max]范围内循环
+                    if hue > hue_max:
+                        hue = hue_min + (hue - hue_max)
+
+                typed.append(cursor, style="bold #AAAAAA")
+                live.update(typed)
+
         table_style = {
             "title_justify": "center", "show_header": True, "show_lines": True
         }
 
+        tc = theme_colors(theme := random.choice([
+            "galaxy", "sunrise", "cyberpunk", "twilight", "sunfire", "mistwood"
+        ]))
+
         for keys, values in Args.ARGUMENT.items():
-            know = "[bold #FFE4E1]参数互斥" if keys in Args.discriminate else "[bold #C1FFC1]参数兼容"
+            know = f"[bold {tc['mutex']}]参数互斥" \
+                if keys in Args.discriminate else f"[bold {tc['compatible']}]参数兼容"
 
             table = Table(
-                title=f"[bold #FFDAB9]{const.DESC} | {const.ALIAS} CLI [bold #66CDAA]<{keys}>[/] <{know}>",
-                header_style="bold #FF851B", **table_style
+                title=f"[bold {tc['title_main']}]{const.DESC} | {const.ALIAS} "
+                      f"CLI [bold {tc['title_keys']}]<{keys}>[/] <{know}>",
+                header_style=f"bold {tc['header']}", **table_style
             )
             table.add_column("命令", justify="left", no_wrap=True, width=7)
             table.add_column("传递", justify="left", no_wrap=True, width=4)
@@ -346,12 +504,15 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             ]
             for info in information:
                 cmds, push, kind, desc = info
-                push_color = "#FFAFAF" if push == "多次" else "#CFCFCF"
+                push_color = f"{tc['push_multi']}" if push == "多次" else f"{tc['push_single']}"
                 table.add_row(
-                    f"[bold #FFDC00]{cmds}", f"[bold {push_color}]{push}", f"[bold #39CCCC]{desc}",
-                    f"[bold #D7AFD7]{const.NAME} [bold #FFDC00]{cmds}[bold #7FDBFF]{kind}"
+                    f"[bold {tc['cmds']}]{cmds}", f"[bold {push_color}]{push}",
+                    f"[bold {tc['desc']}]{desc}",
+                    f"[bold {tc['name']}]{const.NAME} [bold {tc['cmds']}]{cmds}[bold {tc['method']}]{kind}"
                 )
-            Design.console.print(table, "\t")
+            Design.console.print(table, "\n")
+
+        typing_animation_dynamic()
 
     @staticmethod
     def tips_document() -> None:
@@ -869,7 +1030,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         title = f"[Status]"
 
-        async def make_ripple_line(intensity: float, flash: bool = False) -> str:
+        def make_ripple_line(intensity: float, flash: bool = False) -> str:
             # 动态粒子层次（负载越高形状越激烈）
             if intensity < 10:
                 shape = center_shapes[0]  # 微光
@@ -884,9 +1045,6 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
             spread = int(width * intensity / 100 / 2)
 
-            line = [" "] * width
-            mid = width // 2
-
             # 生成波纹行
             line = [" "] * width
             mid = width // 2
@@ -897,13 +1055,13 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
             return "".join(line)
 
-        async def render_frame(step: int, load: dict, msg: str, schedule: int) -> "Text":
+        def render_frame(step: int, load: dict, msg: str, schedule: int) -> "Text":
             color = colors[step % len(colors)]
 
             if schedule == 1:
-                cpu_line = await make_ripple_line(cpu := load.get("cpu", 0.0), flash=True)
-                mem_line = await make_ripple_line(mem := load.get("mem", 0.0))
-                dsk_line = await make_ripple_line(dsk := load.get("dsk", 0.0))
+                cpu_line = make_ripple_line(cpu := load.get("cpu", 0.0), flash=True)
+                mem_line = make_ripple_line(mem := load.get("mem", 0.0))
+                dsk_line = make_ripple_line(dsk := load.get("dsk", 0.0))
 
                 return Text.from_markup(
                     f"[bold][bold #D7FF00]{title}[/] ---> {msg}[/]\n"
@@ -919,7 +1077,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                 i = 0
                 while not monitor.stable:
                     msg = monitor.message.get("msg")
-                    live.update(await render_frame(i, monitor.usages, *msg))
+                    live.update(render_frame(i, monitor.usages, *msg))
                     dynamic_refresh = base_refresh * (0.5 + (100 - monitor.usages.get("cpu", 0.0)) / 100)
                     await asyncio.sleep(dynamic_refresh)
                     i += 1
@@ -944,6 +1102,13 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
     async def display_record_ui(self, record: typing.Any, amount: int) -> None:
         if self.design_level != const.SHOW_LEVEL:
             return None
+
+        self.console.print("""\
+        
+        [bold]┌─────────────┐
+        │ [bold #AFD700]●[/] REC       │
+        └─────────────┘[/]       
+        """)
 
         # 状态样式：统一管理颜色与符号
         styles = {
@@ -977,9 +1142,9 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         unit: callable = lambda x, y: f"[bold {x}]{y}[/]"
 
-        max_sn_width = max(len(line) for line in list(record.events.keys()))
+        max_sn_width = max(len(line) for line in list(record.record_events.keys()))
 
-        async def render_bar(remain: int) -> str:
+        def render_bar(remain: int) -> str:
             length = int(self.console.width * 0.5)
             symbol = "⣿"
             tail_frames = ["⣿", "⣷", "⣶", "⣤", "⣀", " "]
@@ -1005,9 +1170,9 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
             return progress_bar
 
-        async def build_ui() -> "Group":
+        def build_ui() -> "Group":
             lines = []
-            for sn, status in record.events.items():
+            for sn, status in record.record_events.items():
                 remain: int = status.get("remain")
                 notify: str = status.get("notify")
 
@@ -1017,7 +1182,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                 msg = f"[bold {color}]{symbol} {sn.ljust(max_sn_width)}[/]"
 
                 if notify == "正在录制":
-                    bar = await render_bar(remain)
+                    bar = render_bar(remain)
                     msg += f" [bold]剩余 [bold #00FFFF]{remain:03} 秒[/] {bar}[/]"
                 else:
                     msg += f" [bold]剩余 [bold #00FFFF]{remain:03} 秒[/] [bold {color}]{notify} ...[/]"
@@ -1027,13 +1192,17 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             return Group(*lines)
 
         frame = 0
-        with Live(await build_ui(), console=self.console, refresh_per_second=30) as live:
+        with Live(build_ui(), console=self.console, refresh_per_second=30) as live:
             while True:
-                live.update(await build_ui())
-                if all(is_finished(event) for event in record.events.values()):
+                live.update(build_ui())
+                if all(is_finished(event) for event in record.record_events.values()):
                     break
                 await asyncio.sleep(0.2)
                 frame += 1
+
+        self.console.print(
+            f"\n[bold #7CFC00]>>> {const.DESC} Recording ends. Next round ready. <<<\n"
+        )
 
     async def frame_grid_initializer(self, animation_event: "asyncio.Event") -> None:
         """
@@ -1050,7 +1219,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         grid = [[" " for _ in range(cols)] for _ in range(rows)]
         symbols = ["░", "▒", "▓", "□"]
 
-        async def render_grid() -> "Text":
+        def render_grid() -> "Text":
             lines = []
             for row in grid:
                 colored_line = " ".join(
@@ -1060,13 +1229,13 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                 lines.append(f"[bold #00DDDD][{const.DESC}::Grid][/] {colored_line}")
             return Text.from_markup("\n".join(lines))
 
-        async def fill_flow() -> None:
+        def fill_flow() -> None:
             for row in range(rows):
                 for col in range(cols):
                     grid[row][col] = random.choice(symbols)
-            live.update(await render_grid())
+            live.update(render_grid())
 
-        live = Live(await render_grid(), console=self.console, refresh_per_second=30)
+        live = Live(render_grid(), console=self.console, refresh_per_second=30)
         live.start()
 
         expanded_event = asyncio.Event()
@@ -1076,23 +1245,23 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             for r in range(rows):
                 for c in range(cols):
                     grid[r][c] = "·"
-                    live.update(await render_grid())
+                    live.update(render_grid())
                     await asyncio.sleep(0.02)
             expanded_event.set()  # 格点展开完毕
 
             # 激活填充流动
             while not animation_event.is_set():
-                await fill_flow()
+                fill_flow()
                 await asyncio.sleep(0.12)
 
         except asyncio.CancelledError:
             # 格点未展开完毕，填充流动
             if not expanded_event.is_set():
-                await fill_flow()
+                fill_flow()
 
             # 中心节点点亮
             grid[rows // 2][cols // 2] = "[bold #39FF14]▣[/]"
-            live.update(await render_grid())
+            live.update(render_grid())
             await asyncio.sleep(0.5)
 
             live.stop()
@@ -1124,7 +1293,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         lines_dom = ["─┬─", " ├─", " │", " ╰─", "╚══", "╠══", "╩══"]
         styles = ["≡", "#", ":", "{", "}", "▓", "●", "░", "▤", "─"]
 
-        async def render(tags_state: str, dom_state: str, css_state: str, phase_label: str) -> "Text":
+        def render(tags_state: str, dom_state: str, css_state: str, phase_label: str) -> "Text":
             out = [
                 f"{prefix} [bold #00CED1]{tags_state}[/]",
                 f"{prefix} [bold #FFD700]{dom_state}[/]",
@@ -1146,7 +1315,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                     "Building DOM tree...", "Injecting layout nodes...", "Applying inline styles...",
                     "Parsing CSS rules...", "Finalizing structure..."
                 ])
-                live.update(await render(tag_line, dom_line, css_line, phase))
+                live.update(render(tag_line, dom_line, css_line, phase))
                 await asyncio.sleep(0.12)
 
         except asyncio.CancelledError:
@@ -1379,9 +1548,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         particles, offset, cycles = 27, 3, 3
 
-        def generate_cycle() -> list[str]:
-            frames = []
-
+        async def generate_cycle() -> typing.AsyncGenerator[str, None]:
             # Phase 1: 收缩
             for i in range(particles, 0, -1):
                 dots = [
@@ -1389,15 +1556,11 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                     for j in range(i)
                 ]
                 padding = " " * (particles - i + offset)
-                frame = f"{padding}(" + " ".join(dots) + ")"
-                frames.append(frame)
+                yield f"{padding}(" + " ".join(dots) + ")"
+                # frames.append(frame)
 
-            # Phase 2: 爆发
-            frames += [
-                " " * (particles + offset) + "[bold #FFFF99]▣",
-                " " * (particles + offset) + "[bold #9AFF9A]▣",
-                " " * (particles + offset) + "[bold #00F5FF]▣",
-            ]
+            for point in ["[bold #FFFF99]▣", "[bold #9AFF9A]▣", "[bold #00F5FF]▣"]:
+                yield " " * (particles + offset) + point
 
             # Phase 3: 扩散
             for i in range(1, particles + 1):
@@ -1406,45 +1569,37 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                     for j in range(i)
                 ]
                 padding = " " * (particles - i)
-                frame = f"{padding}<<< " + " ".join(dots) + " >>>"
-                frames.append(frame)
+                yield f"{padding}<<< " + " ".join(dots) + " >>>"
 
-            return frames
-
-        async def flash_logo() -> typing.Coroutine | None:
+        async def flash_logo() -> typing.AsyncGenerator[str, None]:
             # 打字效果
             for i in range(1, len(view_char) + 1):
                 typed = view_char[:i]
-                live.update(
-                    Text.from_markup(f"[bold {random.choice(gradient)}]{spacing}{typed}[/]")
-                )  # 居中打字
+                yield Text.from_markup(
+                    f"[bold {random.choice(gradient)}]{spacing}{typed}[/]"  # 居中打字
+                )
                 await asyncio.sleep(0.06)
 
             await asyncio.sleep(0.2)
 
             # 闪烁完整彩色版本
             for _ in range(5):
-                live.update(Text.from_markup(""))  # 清空
+                yield Text.from_markup("")  # 清空
                 await asyncio.sleep(0.12)
-                live.update(
-                    Text.from_markup(f"[bold {random.choice(gradient)}]{spacing}{view_char}[/]")
-                )  # 显示完整带样式版本
+                yield Text.from_markup(f"[bold {random.choice(gradient)}]{spacing}{view_char}[/]")
                 await asyncio.sleep(0.12)
 
         with Live(console=self.console, refresh_per_second=30) as live:
             for _ in range(cycles):
-                for c in generate_cycle():
-                    live.update(Text.from_markup(c))
+                async for frame in generate_cycle():
+                    live.update(Text.from_markup(frame))
                     await asyncio.sleep(0.02)
 
             view_char = f"{const.DESC} (●) Engine"
-            # view_mode = random.choice(gradient)
             spacing = " " * (particles + offset - len(view_char) // 2)
-            # live.update(
-            #     Text.from_markup(f"[bold {view_mode}]{spacing}{view_char}[/]")
-            # )
 
-            await flash_logo()
+            async for frame in flash_logo():
+                live.update(frame)
             await asyncio.sleep(0.2)
 
         self.console.print(
@@ -1993,12 +2148,14 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         max_step = (width - padding * 2) // 2 + padding
         final_symbol = f"{{{{ ⊕ {const.DESC} Engine ⊕ }}}}"
 
-        async def flash_logo() -> typing.Coroutine | None:
+        async def flash_logo() -> typing.AsyncGenerator[str, None]:
             # 打字效果：从左到右逐字符打印
             for i in range(1, len(final_symbol) + 1):
                 partial = final_symbol[:i]
                 centered = " " * padding + partial.center(width)
-                live.update(Text.from_markup("\n" + f"[bold {random.choice(colors)}]{centered}[/]" + "\n"))
+                yield Text.from_markup(
+                    "\n" + f"[bold {random.choice(colors)}]{centered}[/]" + "\n"
+                )
                 await asyncio.sleep(0.08)
 
             await asyncio.sleep(0.3)
@@ -2006,17 +2163,11 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             # 闪烁效果
             full_line = " " * padding + final_symbol.center(width)
             for _ in range(3):
-                live.update(
-                    Text.from_markup("\n" * 1 + "\n" + "\n")
-                )  # 隐藏
+                yield Text.from_markup("\n" * 1 + "\n" + "\n")  # 隐藏
                 await asyncio.sleep(0.08)
-                live.update(
-                    Text.from_markup(
-                        "\n".join(
-                            ["", f"[bold {random.choice(colors)}]{full_line}[/]", ""]
-                        )
-                    )
-                )  # 显示
+                yield Text.from_markup(
+                    "\n".join(["", f"[bold {random.choice(colors)}]{full_line}[/]", ""])  # 显示
+                )
                 await asyncio.sleep(0.08)
 
         with Live(console=self.console, refresh_per_second=30) as live:
@@ -2026,7 +2177,8 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                     await asyncio.sleep(0.05)
 
             # 最终帧
-            await flash_logo()
+            async for frame in flash_logo():
+                live.update(frame)
             await asyncio.sleep(0.2)
 
         self.console.print(
@@ -2097,6 +2249,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         center_r, center_c = height // 2, width // 2
         grid = [[" " for _ in range(width)] for _ in range(height)]
+        in_bounds: callable = lambda x, y: 0 <= x < height and 0 <= y < width
 
         def render() -> "Text":
             return Text.from_markup(
@@ -2107,9 +2260,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                 )
             )
 
-        in_bounds: callable = lambda x, y: 0 <= x < height and 0 <= y < width
-
-        with Live(console=self.console, refresh_per_second=30) as live:
+        async def bloom() -> typing.AsyncGenerator[str, None]:
             max_radius = max(center_r, center_c)
 
             # 爆破绽放
@@ -2119,7 +2270,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                         r, c = center_r + dr, center_c + dc
                         if in_bounds(r, c) and grid[r][c] == " ":
                             grid[r][c] = random.choice(symbols)
-                live.update(render())
+                yield render()
                 await asyncio.sleep(0.04)
 
             # 渐淡
@@ -2128,7 +2279,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                     for c in range(width):
                         if not grid[r][c].startswith("["):
                             grid[r][c] = fade
-                live.update(render())
+                yield render()
                 await asyncio.sleep(0.03)
 
             # 植入 LOGO
@@ -2136,19 +2287,22 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             for i, ch in enumerate(logo):
                 if in_bounds(center_r, start_c + i):
                     grid[center_r][start_c + i] = f"[bold {colors}]{ch}[/]"
-            live.update(render())
+            yield render()
 
             # LOGO 闪烁 3 次
             for _ in range(5):
                 await asyncio.sleep(0.15)
                 for i in range(len(logo)):
                     grid[center_r][start_c + i] = " "
-                live.update(render())
+                yield render()
                 await asyncio.sleep(0.1)
                 for i, ch in enumerate(logo):
                     grid[center_r][start_c + i] = f"[bold {colors}]{ch}[/]"
-                live.update(render())
+                yield render()
 
+        with Live(console=self.console, refresh_per_second=30) as live:
+            async for frame in bloom():
+                live.update(frame)
             await asyncio.sleep(0.2)
 
         self.console.print(
@@ -2231,4 +2385,10 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
 
 if __name__ == '__main__':
+    Design.console.print("""\
+
+    [bold]┌─────────────┐
+    │ [bold #AFD700]●[/] REC       │
+    └─────────────┘[/]       
+    """)
     pass

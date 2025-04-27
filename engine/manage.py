@@ -40,27 +40,37 @@ class ScreenMonitor(object):
     """
 
     @staticmethod
-    def screen_size(index: int = 0) -> tuple[int, int]:
+    def screen_size(index: int) -> tuple[int, int, int, int]:
         """
-        获取指定屏幕的分辨率（宽度和高度）。
+        Screen Size 获取指定索引的屏幕尺寸信息。
 
         Parameters
         ----------
-        index : int, optional
-            屏幕索引，默认为主屏幕（0）。
+        index : typing.Union[str, int]
+            屏幕索引号，用于在多显示器环境中指定目标屏幕。
 
         Returns
         -------
-        tuple[int, int]
-            返回指定屏幕的宽度和高度，格式为 (width, height)。
+        tuple[int, int, int, int]
+            返回屏幕的位置信息和尺寸：(x坐标, y坐标, 宽度, 高度)。
 
         Notes
         -----
-        - 该方法依赖 `screeninfo` 库，确保环境中已安装该库。
-        - 如果系统存在多个显示器，可通过指定 index 获取对应的分辨率。
+        - 调用 `screeninfo` 库获取本地屏幕列表。
+        - 如果索引超出可用范围，自动回退到第一个屏幕，保证函数稳定性。
+
+        Workflow
+        --------
+        1. 根据传入的索引查找对应屏幕。
+        2. 捕获索引错误并回退到默认屏幕。
+        3. 返回屏幕的位置信息和尺寸。
         """
-        screen = get_monitors()[index]
-        return screen.width, screen.height
+        try:
+            screen = get_monitors()[index]
+        except IndexError:
+            screen = get_monitors()[0]
+
+        return screen.x, screen.y, screen.width, screen.height
 
 
 class SourceMonitor(object):

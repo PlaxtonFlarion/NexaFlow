@@ -47,6 +47,8 @@ class _Phone(object):
         except IndexError:
             self.id = 0
 
+        self.screen_w, self.screen_h = self.display[self.id]
+
     def __str__(self):
         """
         格式化设备对象为字符串描述。

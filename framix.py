@@ -146,7 +146,7 @@ class Missions(object):
         self.animation = AsyncAnimationManager()
 
         self.flick, self.carry, self.fully, self.speed, self.basic, self.keras, *_ = args
-        *_, self.alone, self.whist, self.alike, self.shine, self.group = args
+        *_, self.alone, self.whist, self.alter, self.alike, self.shine, self.group = args
 
         self.atom_total_temp: str = kwargs["atom_total_temp"]
         self.main_share_temp: str = kwargs["main_share_temp"]
@@ -1655,47 +1655,56 @@ class Missions(object):
             - 每个设备会以异步方式开启录制任务，并按窗口位置进行排列。
             - 返回的列表中，每一项对应一个设备的完整录制上下文。
             """
-            monitor_task = asyncio.create_task(monitor.monitor_stable())
-            await self.design.multi_load_ripple_vision(monitor)
-            await monitor_task
 
-            for device in device_list:
-                logger.debug(f"Wait Device Online -> {device.tag} {device.sn}")
+            logger.debug(f"Wait Device Online -> ...")
             await asyncio.gather(
                 *(device.device_online() for device in device_list)
             )
 
-            media_screen_w, media_screen_h = ScreenMonitor.screen_size()
-            logger.debug(f"Media Screen W={media_screen_w} H={media_screen_h}")
+            media_x, media_y, media_w, media_h = ScreenMonitor.screen_size(self.alter)
+            logger.debug(f"Media Screen x={media_x} y={media_y} w={media_w} h={media_h}")
 
             todo_list = []
             format_folder = time.strftime("%Y%m%d%H%M%S")
 
-            margin_x, margin_y = 50, 75
-            window_x, window_y = 50, 75
-            max_y_height = 0
+            min_screen_w = min(w_list) if (w_list := [
+                device.screen_w for device in device_list if device.screen_w > device.screen_h]) else None
+            min_screen_h = min(h_list) if (h_list := [
+                device.screen_h for device in device_list if device.screen_h > device.screen_w]) else None
+
+            window_x, window_y = media_x + (margin_x := 50), media_y + (margin_y := 75)
+            max_y_height, proportion = 0, 0.35
+
             for device in device_list:
-                device_x, device_y = device.display[device.id]
-                device_x, device_y = int(device_x * 0.25), int(device_y * 0.25)
+                raw_x, raw_y = device.screen_w, device.screen_h
+
+                raw_x, raw_y = (
+                    raw_x, min_screen_h or raw_y
+                ) if device.screen_h > device.screen_w else (min_screen_w or raw_x, raw_y)
+
+                device_x, device_y = int(raw_x * proportion), int(raw_y * proportion)
 
                 # 检查是否需要换行
-                if window_x + device_x + margin_x > media_screen_w:
+                if window_x + device_x + margin_x > media_x + media_w:
                     # 重置当前行的开始位置
-                    window_x = 50
-                    if (new_y_height := window_y + max_y_height) + device_y > media_screen_h:
+                    window_x = media_x + margin_x
+
+                    if (new_y_height := window_y + max_y_height) + device_y > media_h:
                         # 如果新行加设备高度超出屏幕底部，则只增加一个 margin_y
                         window_y += margin_y
                     else:
                         # 否则按计划设置新行的起始位置
-                        window_y = new_y_height
-                    # 重置当前行的最大高度
-                    max_y_height = 0
-                # 更新当前行的最大高度
-                max_y_height = max(max_y_height, device_y)
+                        window_y += margin_y + new_y_height
+
+                    max_y_height = 0  # 重置当前行的最大高度
+
+                max_y_height = max(max_y_height, device_y)  # 更新当前行的最大高度
+
                 # 位置确认
-                location = window_x, window_y, device_x, device_y
+                location = window_x, window_y, device_y
                 # 移动到下一个设备的起始位置
                 window_x += device_x + margin_x
+
                 # 延时投屏
                 await asyncio.sleep(0.5)
 
@@ -2171,7 +2180,7 @@ class Missions(object):
                         } for device in device_list
                     }
                     record_ui_task = asyncio.create_task(
-                        self.design.display_record_ui(record.record_events, amount)
+                        self.design.display_record_ui(record, amount)
                     )
 
                     task_list = await anything_film(device_list, report)  # 开始录制
@@ -2355,7 +2364,6 @@ class Missions(object):
             tp_ver, alone=self.alone, whist=self.whist, frate=deploy.frate
         )
         player = Player()
-        monitor = SourceMonitor()
 
         return await flick_loop() if self.flick else await other_loop()
 
@@ -3589,12 +3597,15 @@ if __name__ == '__main__':
         """
         _flick, _carry, _fully = _lines.flick, _lines.carry, _lines.fully
         _speed, _basic, _keras = _lines.speed, _lines.basic, _lines.keras
-        _alone, _whist = _lines.alone, _lines.whist
+        _alone, _whist, _alter = _lines.alone, _lines.whist, _lines.alter
         _alike, _shine = _lines.alike, _lines.shine
         _group = _lines.group
 
         # 打包位置参数
-        _positions = _flick, _carry, _fully, _speed, _basic, _keras, _alone, _whist, _alike, _shine, _group
+        _positions = (
+            _flick, _carry, _fully, _speed, _basic, _keras,
+            _alone, _whist, _alter, _alike, _shine, _group
+        )
 
         # 打包关键字参数
         _keywords = {
