@@ -2260,7 +2260,7 @@ framix --shape 200,200 --build <文件夹路径> --build <文件夹路径> --bui
     - **schematic**
     - **...**
   - **framix.bat**
-  - **FramixStructure**
+  - **Structure**
     - **Framix_Model**
       - **Keras_Gray_W256_H256**
       - **Keras_Hued_W256_H256** 
@@ -2288,7 +2288,7 @@ framix --shape 200,200 --build <文件夹路径> --build <文件夹路径> --bui
       - **Resources**
         - **framix_macos_bg.png**
         - ...
-      - **FramixStructure**
+      - **Structure**
         - **Framix_Model**
           - **Keras_Gray_W256_H256**
           - **Keras_Hued_W256_H256**
