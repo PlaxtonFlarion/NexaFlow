@@ -249,7 +249,7 @@ class Record(object):
             - 终止操作通过异步子进程执行，并捕获执行日志。
             """
             off = await Terminal.cmd_line([pwsh, "-Command", "Stop-Process", "-Id", pid, "-Force"])
-            logger.debug(f"{desc} OFF={off}")
+            logger.debug(f"{desc} PID={pid} OFF={off}")
 
         async def mac_stop_child(pid: str) -> None:
             """
@@ -266,7 +266,7 @@ class Record(object):
             - 终止操作通过异步子进程执行，并捕获执行日志。
             """
             off = await Terminal.cmd_line_shell(f"pgrep -P {pid} | xargs kill -15")
-            logger.debug(f"{desc} OFF={off}")
+            logger.debug(f"{desc} PID={pid} OFF={off}")
 
         # Notes: Start from here
         desc = f"{device.tag} {device.sn} PPID={(ppid := transports.pid)}"

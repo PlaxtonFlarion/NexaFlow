@@ -771,7 +771,11 @@ class Missions(object):
         """
         if report.range_list:
             function = getattr(self, "combine_view" if self.speed else "combine_main")
-            return await function([os.path.dirname(report.total_path)])
+            final_path = rtp if (rtp := report.total_path).startswith(
+                const.R_TOTAL_TAG
+            ) else os.path.dirname(rtp)
+
+            return await function([final_path])
 
         logger.debug(tip := f"没有可以生成的报告")
         return self.design.show_panel(tip, Wind.KEEPER)
@@ -1559,7 +1563,7 @@ class Missions(object):
                             text, fill=(255, 182, 193), font=font
                         )
 
-                resized.show()
+                await asyncio.to_thread(resized.show)
 
             await Terminal.cmd_line(
                 [self.adb, "-s", device.sn, "shell", "rm", f"{image_folder}/{image}"]
@@ -1631,85 +1635,131 @@ class Missions(object):
         - 模型加载失败不会中止主流程，但将不执行 Keras 分析路径。
         """
 
-        async def anything_film(device_list: list["Device"], report: "Report") -> list[list]:
+        async def distributions(
+                device_list: list["Device"]
+        ) -> typing.AsyncGenerator[tuple["Device", tuple[int, int, int]], None]:
             """
-            初始化所有设备，计算窗口布局并启动对应的视频录制任务。
+            设备布局与位置分配。
 
             Parameters
             ----------
             device_list : list of Device
-                所有待启动录制的设备对象列表。
+                需要布局的设备对象列表。
+
+            Yields
+            ------
+            tuple[Device, tuple[int, int, int]]
+                逐个返回设备对象及其分配好的显示位置：(窗口x坐标, 窗口y坐标, 缩放后最大边长)。
+
+            Notes
+            -----
+            - 初步将设备画面按30%比例缩放。
+            - 若最大边尺寸仍超过1024像素，进行二次按比例压缩。
+            - 超出屏幕宽度自动换行；超出屏幕高度时增加纵向边距。
+            - 保证每个设备窗口不会超出显示屏幕区域。
+
+            Workflow
+            --------
+            1. 获取主屏幕大小作为布局参考。
+            2. 按设备屏幕尺寸初步缩放。
+            3. 若单边过大则再次压缩。
+            4. 自动判断是否换行，合理排列所有设备窗口。
+            5. 逐个返回设备与对应位置。
+            """
+
+            # 获取屏幕尺寸信息
+            media_x, media_y, media_w, media_h = ScreenMonitor.screen_size(self.alter)
+            logger.debug(f"Media Screen x={media_x} y={media_y} w={media_w} h={media_h}")
+
+            # 初始化窗口起点及布局参数
+            window_x, window_y = media_x + (margin_x := 50), media_y + (margin_y := 75)
+            max_y_height, max_base_size, initial_scale = 0, 1024, 0.3
+
+            # 遍历设备列表
+            for device in device_list:
+                raw_w, raw_h = device.screen_w, device.screen_h  # 获取设备原始宽高
+
+                # 初步比例预缩放
+                device_w = int(raw_w * initial_scale)
+                device_h = int(raw_h * initial_scale)
+
+                # 最大边统一限制到 1024
+                if (current_max := max(device_w, device_h)) > max_base_size:
+                    adjust_scale = max_base_size / current_max
+                    device_w = int(device_w * adjust_scale)
+                    device_h = int(device_h * adjust_scale)
+
+                max_side = max(device_w, device_h)
+
+                logger.debug(
+                    f"device_w={device_w} device_h={device_h}"
+                )
+
+                # 若超出屏幕右边界，换行显示
+                if window_x + device_w > media_x + media_w:
+                    window_x = media_x + margin_x  # 重置 x 的起始位置
+
+                    # 若纵向超出屏幕底部
+                    if (new_y_height := window_y + max_y_height) + device_h > media_h:
+                        window_y += margin_y  # 增加 margin_y 简单下移
+                    else:
+                        window_y += new_y_height  # 否则按最大高度推进
+
+                    max_y_height = 0  # 重置当前行最大高度
+
+                max_y_height = max(max_y_height, device_h)  # 更新当前行最大设备高度
+
+                location = window_x, window_y, max_side  # 生成设备位置信息
+                logger.debug(
+                    f"window_x={window_x} window_y={window_y} max_side={max_side}"
+                )
+
+                yield device, location  # 逐个设备 yield 设备对象和位置参数
+
+                window_x += device_w + margin_x  # 横向排列推进
+
+        async def anything_film(device_list: list["Device"], report: "Report") -> list[list]:
+            """
+            批量启动设备录制任务。
+
+            Parameters
+            ----------
+            device_list : list of Device
+                需要启动录制的设备对象列表。
 
             report : Report
-                报告实例对象，用于配置路径、生成标题和视频存储目录。
+                报告对象，包含录制过程中的路径和标识信息。
 
             Returns
             -------
             list of list
-                每个任务的参数集合，包含录制临时路径、传输对象、
-                视频与数据存储路径、报告标题等信息，供后续分析使用。
+                每个设备对应的录制任务信息列表，包括：
+                [临时视频路径, 录制子进程, 总存储路径, 标题, 查询路径, 查询名称, 帧路径, 附加路径, 协议路径]。
 
             Notes
             -----
-            - 该函数还负责根据屏幕尺寸计算窗口摆放布局，避免设备画面重叠。
-            - 每个设备会以异步方式开启录制任务，并按窗口位置进行排列。
-            - 返回的列表中，每一项对应一个设备的完整录制上下文。
-            """
+            - 等待所有设备进入在线状态。
+            - 为每个设备分配布局位置并启动录屏。
+            - 每个设备录制完成后加入待办列表，统一管理。
 
+            Workflow
+            --------
+            1. 异步检测所有设备上线。
+            2. 为每个设备确定合适的录制窗口位置。
+            3. 启动设备录屏并保存相关路径和进程信息。
+            4. 间隔延迟，避免过载，逐个处理所有设备。
+            5. 返回完整的待办录制任务列表。
+            """
             logger.debug(f"Wait Device Online -> ...")
             await asyncio.gather(
                 *(device.device_online() for device in device_list)
             )
 
-            media_x, media_y, media_w, media_h = ScreenMonitor.screen_size(self.alter)
-            logger.debug(f"Media Screen x={media_x} y={media_y} w={media_w} h={media_h}")
-
             todo_list = []
             format_folder = time.strftime("%Y%m%d%H%M%S")
 
-            min_screen_w = min(w_list) if (w_list := [
-                device.screen_w for device in device_list if device.screen_w > device.screen_h]) else None
-            min_screen_h = min(h_list) if (h_list := [
-                device.screen_h for device in device_list if device.screen_h > device.screen_w]) else None
-
-            window_x, window_y = media_x + (margin_x := 50), media_y + (margin_y := 75)
-            max_y_height, proportion = 0, 0.35
-
-            for device in device_list:
-                raw_x, raw_y = device.screen_w, device.screen_h
-
-                raw_x, raw_y = (
-                    raw_x, min_screen_h or raw_y
-                ) if device.screen_h > device.screen_w else (min_screen_w or raw_x, raw_y)
-
-                device_x, device_y = int(raw_x * proportion), int(raw_y * proportion)
-
-                # 检查是否需要换行
-                if window_x + device_x + margin_x > media_x + media_w:
-                    # 重置当前行的开始位置
-                    window_x = media_x + margin_x
-
-                    if (new_y_height := window_y + max_y_height) + device_y > media_h:
-                        # 如果新行加设备高度超出屏幕底部，则只增加一个 margin_y
-                        window_y += margin_y
-                    else:
-                        # 否则按计划设置新行的起始位置
-                        window_y += margin_y + new_y_height
-
-                    max_y_height = 0  # 重置当前行的最大高度
-
-                max_y_height = max(max_y_height, device_y)  # 更新当前行的最大高度
-
-                # 位置确认
-                location = window_x, window_y, device_y
-                # 移动到下一个设备的起始位置
-                window_x += device_x + margin_x
-
-                # 延时投屏
-                await asyncio.sleep(0.5)
-
+            async for device, location in distributions(device_list):
                 report.query = os.path.join(format_folder, device.sn)
-
                 video_temp, transports = await record.ask_start_record(
                     device, report.video_path, location=location
                 )
@@ -1717,6 +1767,7 @@ class Missions(object):
                     [video_temp, transports, report.total_path, report.title, report.query_path,
                      report.query, report.frame_path, report.extra_path, report.proto_path]
                 )
+                await asyncio.sleep(0.5)
 
             return todo_list
 

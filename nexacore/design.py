@@ -546,7 +546,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
     @staticmethod
     async def show_quantum_intro() -> None:
         """
-        星域构形动画（Quantum Star Boot）。
+        星域构形动画。
         """
         frames = [
             f"""\
@@ -603,7 +603,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
     @staticmethod
     async def engine_topology_wave(level: str) -> None:
         """
-        启动时加载动画。
+        启动动画。
         """
         if level != const.SHOW_LEVEL:
             return None
@@ -711,7 +711,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
     @staticmethod
     async def stellar_glyph_binding(level: str) -> None:
         """
-        星域构形动画（v2.4）。
+        启动动画。
         """
         if level != const.SHOW_LEVEL:
             return None
@@ -1003,7 +1003,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
     async def multi_load_ripple_vision(self, monitor: typing.Any) -> None:
         """
-        多负载脉冲扩散。
+        多负载脉冲扩散动画。
         """
         if self.design_level != const.SHOW_LEVEL:
             return None
@@ -1100,6 +1100,9 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         await final_live()
 
     async def display_record_ui(self, record: typing.Any, amount: int) -> None:
+        """
+        实时动态更新多任务录制状态面板，展示设备录制进度、剩余时间和最终结果的半屏彩色进度条动画。
+        """
         if self.design_level != const.SHOW_LEVEL:
             return None
 
@@ -1206,7 +1209,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
     async def frame_grid_initializer(self, animation_event: "asyncio.Event") -> None:
         """
-        视频拆帧前的初始化动画，用于模拟帧网格构建过程。
+        模拟帧网格构建过程。
         """
         if self.design_level != const.SHOW_LEVEL:
             return None
@@ -1467,7 +1470,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
     async def collapse_star_expanded(self) -> None:
         """
-        恒星坍缩动画（多粒子版本），粒子收缩到核心 ▣，带渐变色。
+        恒星坍缩动画，粒子收缩到核心，带渐变色。
         """
         if self.design_level != const.SHOW_LEVEL:
             return None
@@ -1608,7 +1611,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
     async def neural_sync_loading(self) -> None:
         """
-        神经链接激活（Neural Sync Initiation）。
+        神经链接激活。
         """
         if self.design_level != const.SHOW_LEVEL:
             return None
@@ -1888,24 +1891,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
     async def batch_runner_task_grid(self) -> None:
         """
-        Batch Runner Task Grid 任务调度网格动画。
-
-        Notes
-        -----
-        - 动画通过在网格中逐步填充图块和高亮关键字母，模拟批量任务调度和资源分配过程。
-        - 每次填充随机选取字符和冷色调颜色，整体呈现渐进式构建的效果。
-        - 关键节点（如品牌标志字符）在最终阶段集中高亮，突出重点任务分布。
-        - 适合在任务初始化、批量派发等场景中，提供视觉上的渐进与秩序感。
-
-        Workflow
-        --------
-        1. 打印启动批量任务调度提示。
-        2. 随机生成网格尺寸与布局，初始化为空格与灰色填充。
-        3. 随机打散填充顺序（模拟任务随机分配）。
-        4. 随机挑选部分格子植入品牌标识字母。
-        5. 按顺序动态填充每个格子，逐步构建调度图。
-        6. 最终收束：高亮显示植入的关键字母，形成统一焦点。
-        7. 打印调度准备完成提示。
+        任务调度网格动画。
         """
         if self.design_level != const.SHOW_LEVEL:
             return None
@@ -1980,24 +1966,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
     async def channel_animation(self) -> None:
         """
-        Channel Animation 多通道色带流动画。
-
-        Notes
-        -----
-        - 动画通过多条独立通道的色带流动，模拟多路数据通道同时工作的视觉效果。
-        - 每条通道的流动方向可以独立随机，形成更自然的动态层次感。
-        - 在初始阶段引入淡入效果，使动画启动过程更柔和、更具呼吸感。
-        - 颜色使用冷色调渐变，提升视觉连贯性与科技感。
-        - 当设计等级（design_level）低于 SHOW_LEVEL 时，自动跳过动画过程，以保证系统性能。
-
-        Workflow
-        --------
-        1. 打印准备多通道管线的启动提示。
-        2. 随机选择波形字符集和冷色调渐变配色。
-        3. 随机确定通道数量、方向和动画宽度。
-        4. 按帧构建所有通道的动态流动效果，支持每条通道独立方向滚动。
-        5. 初始若干帧采用半透明淡入，之后转为全亮色带流动。
-        6. 动画完成后打印同步成功提示。
+        多通道色带流动画。
         """
         if self.design_level != const.SHOW_LEVEL:
             return None
@@ -2054,25 +2023,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
     async def wave_converge_animation(self) -> None:
         """
-        Wave Converge Animation 镜像波纹汇聚动画。
-
-        Notes
-        -----
-        - 动画以左右对称的字符波动为核心，模拟能量从两侧向中心聚合的过程。
-        - 波形颜色采用冷暖渐变色带，增强视觉引导感与层次感。
-        - 最终以品牌标志的打字式显现与多次闪烁高亮，完成引擎启动的仪式感演出。
-        - 中心标志（Logo）打印与闪烁阶段的刷新频率需要保持一致，以保证视觉连贯性。
-        - 如果设计等级（design_level）低于 SHOW_LEVEL，动画将跳过以优化性能。
-
-        Workflow
-        --------
-        1. 打印准备信息，确认环境准备完毕。
-        2. 随机选择一组冷暖渐变色，作为波纹左右渐变的配色基础。
-        3. 分别绘制左右扩展的波动字符，形成动态的能量聚拢效果。
-        4. 重复播放波动扩展过程以加深引擎准备的氛围感。
-        5. 打印中心 Logo，并以字符打字机动画方式逐步展现。
-        6. 对 Logo 进行多次闪烁显示，强化启动完成的视觉信号。
-        7. 打印引擎稳定启动完成的提示信息。
+        镜像波纹汇聚动画。
         """
         if self.design_level != const.SHOW_LEVEL:
             return None
@@ -2187,23 +2138,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
     async def pixel_bloom(self) -> None:
         """
-        Pixel Bloom 动画，模拟像素风格爆破绽放与品牌 Logo 显现效果。
-
-        Notes
-        -----
-        - 动画流程包括爆破扩散、能量渐隐、LOGO中心植入与闪烁演绎。
-        - 渐隐阶段使用符号替代，模仿能量逐步耗散的视觉效果。
-        - LOGO字符数量需与画布宽度合理匹配，避免中心对齐偏差。
-        - 动画刷新频率较高，对低性能终端可能存在小幅卡顿现象。
-
-        Workflow
-        --------
-        1. 初始化背景网格，并填充为浅色调虚化背景。
-        2. 从中心开始，逐圈扩散填充随机符号，构建爆破绽放感。
-        3. 随时间推移，符号逐步由密到稀，模拟能量衰减。
-        4. 将品牌 Logo 植入中心行，居中排列。
-        5. 进行 5 次闪烁动画（显隐切换），突出 Logo 存在感。
-        6. 动画结束后，输出画布稳定完成提示。
+        模拟像素风格爆破绽放与品牌 Logo 显现效果。
         """
         if self.design_level != const.SHOW_LEVEL:
             return None
