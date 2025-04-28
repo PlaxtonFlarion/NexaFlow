@@ -3,7 +3,7 @@
 
 #define MyAppName "Framix"
 #define MyEngineName "FramixEngine"
-#define MyAssetsName "FramixStructure"
+#define MyAssetsName "Structure"
 #define MyAppVersion "1.0.0"
 #define MyAppVerName MyAppName + " v" + MyAppVersion
 #define MyAppPublisher "AceKeppel"
@@ -116,7 +116,7 @@ Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.i
 [Files]
 Source: "applications\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ;Source: "schematic\resources\automation\{#MyAppBatName}"; DestDir: "{app}"; Flags: ignoreversion
-;Source: "Specially\Framix_Model\*"; DestDir: "{app}\Specially\Framix_Model"; Flags: ignoreversion recursesubdirs createallsubdirs
+;Source: "Structure\Framix_Model\*"; DestDir: "{app}\Structure\Framix_Model"; Flags: ignoreversion recursesubdirs createallsubdirs
 ;Source: "applications\{#MyEngineName}\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 ;Source: "schematic\*"; DestDir: "{app}\{#MyEngineName}\schematic"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
