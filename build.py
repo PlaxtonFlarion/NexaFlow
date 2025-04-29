@@ -137,7 +137,7 @@ async def authorized_tools(ops: str, *args: "Path", **__) -> typing.Coroutine | 
 
 async def packaging() -> tuple[
     str, "Path", "Path", typing.Union["Path"],
-    typing.Union[tuple["Path", "Path"]], list[str], tuple["Path", "Path"]
+    typing.Union[tuple["Path", "Path"]], list[str], tuple["Path", "Path"], str
 ]:
     """
     构建独立应用的打包编译命令与目录结构信息。
@@ -162,6 +162,8 @@ async def packaging() -> tuple[
 
         launch = launch / f"{const.NAME}.bat", target.parent
 
+        support = "Windows"
+
     elif ops == "darwin":
         target = app / f"{const.DESC}.app" / f"Contents" / f"MacOS"
         rename = target.parent.parent, app / f"{const.DESC}.app"
@@ -175,11 +177,12 @@ async def packaging() -> tuple[
 
         launch = launch / f"{const.NAME}.sh", target
 
+        support = "MacOS"
+
     else:
         raise FramixError(f"Unsupported platforms {ops}")
 
     compile_cmd += [
-        f"--nofollow-import-to=*.tests",
         f"--nofollow-import-to=keras,tensorflow,tensorboard,uiautomator2",
         f"--include-module=pdb,deprecation",
         f"--include-package=engine,nexacore,nexaflow,sklearn,sklearn.tree",
@@ -206,7 +209,7 @@ async def packaging() -> tuple[
     except asyncio.TimeoutError as e:
         compile_log(f"writer={compile_cmd[2]} {e}")
 
-    return ops, app, site_packages, target, rename, compile_cmd, launch
+    return ops, app, site_packages, target, rename, compile_cmd, launch, support
 
 
 async def post_build() -> typing.Coroutine | None:
@@ -282,19 +285,23 @@ async def post_build() -> typing.Coroutine | None:
 
     await Design.show_quantum_intro()
 
-    ops, app, site_packages, target, rename, compile_cmd, launch = await packaging()
+    ops, app, site_packages, target, rename, compile_cmd, launch, support = await packaging()
 
     done_list, fail_list = [], []
 
     schematic = app.parent / const.F_SCHEMATIC
-    # structure = app.parent / const.F_STRUCTURE / const.F_SRC_MODEL_PLACE
+    r, s, t = schematic / "resources", schematic / "supports" / support, schematic / "templates"
 
     local_pack, local_file = [
-        (schematic, target / schematic.name),
-        # (structure, target.parent / const.F_STRUCTURE / structure.name)
+        (r, target / schematic.name / r.name),
+        (s, target / schematic.name / s.name),
+        (t, target / schematic.name / t.name),
     ], [
         launch
     ]
+
+    for folder in [const.F_SRC_OPERA_PLACE, const.F_SRC_MODEL_PLACE, const.F_SRC_TOTAL_PLACE]:
+        (target.parent / const.F_STRUCTURE / folder).mkdir(exist_ok=True)
 
     dependencies = {
         "本地模块": local_pack,
