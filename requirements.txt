@@ -1,4 +1,4 @@
-Nuitka~=2.4.8
+Nuitka~=2.6.9
 aiofiles~=23.2.1
 aiosqlite~=0.20.0
 tqdm~=4.66.1

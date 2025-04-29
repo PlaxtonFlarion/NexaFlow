@@ -179,9 +179,13 @@ async def packaging() -> tuple[
         raise FramixError(f"Unsupported platforms {ops}")
 
     compile_cmd += [
-        f"--nofollow-import-to=tensorflow,uiautomator2",
+        f"--nofollow-import-to=tests,examples,test,test.support,email,tkinter",
+        f"--nofollow-import-to=keras,tensorflow,tensorboard,uiautomator2",
         f"--include-module=pdb,deprecation",
-        f"--include-package=ml_dtypes,distutils,site,google,absl,wrapt,gast,astunparse,termcolor,opt_einsum,flatbuffers,h5py,adbutils,pygments",
+        f"--include-package=sklearn.tree",
+        f"--include-package=ml_dtypes,distutils,site,google,absl,wrapt,gast",
+        f"--include-package=astunparse,termcolor,opt_einsum,flatbuffers,h5py",
+        f"--include-package=adbutils,pygments",
         f"--show-progress", f"--show-memory", f"--output-dir={app}", f"{const.NAME}.py"
     ]
 
@@ -283,11 +287,11 @@ async def post_build() -> typing.Coroutine | None:
     done_list, fail_list = [], []
 
     schematic = app.parent / const.F_SCHEMATIC
-    structure = app.parent / const.F_STRUCTURE / const.F_SRC_MODEL_PLACE  # Note: Framix Only
+    # structure = app.parent / const.F_STRUCTURE / const.F_SRC_MODEL_PLACE
 
     local_pack, local_file = [
         (schematic, target / schematic.name),
-        (structure, target.parent / const.F_STRUCTURE / structure.name)
+        # (structure, target.parent / const.F_STRUCTURE / structure.name)
     ], [
         launch
     ]
