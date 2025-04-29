@@ -179,10 +179,10 @@ async def packaging() -> tuple[
         raise FramixError(f"Unsupported platforms {ops}")
 
     compile_cmd += [
-        f"--nofollow-import-to=tests,examples,test,test.support,email,tkinter",
+        f"--nofollow-import-to=*.tests",
         f"--nofollow-import-to=keras,tensorflow,tensorboard,uiautomator2",
         f"--include-module=pdb,deprecation",
-        f"--include-package=sklearn.tree",
+        f"--include-package=engine,nexacore,nexaflow,sklearn,sklearn.tree",
         f"--include-package=ml_dtypes,distutils,site,google,absl,wrapt,gast",
         f"--include-package=astunparse,termcolor,opt_einsum,flatbuffers,h5py",
         f"--include-package=adbutils,pygments",
