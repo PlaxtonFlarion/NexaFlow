@@ -34,6 +34,11 @@ from engine.terminal import Terminal
 from nexacore.design import Design
 from nexaflow import const
 
+try:
+    import nuitka
+except ImportError:
+    raise FramixError(f"Use Nuitka 1.9.5 for stable builds")
+
 compile_log: typing.Any = lambda x: Design.console.print(
     f"[bold]{const.DESC} | [bold #FFAF5F]Compiler[/] | {x}"
 )
@@ -122,8 +127,6 @@ async def find_dumpbin() -> str:
     ]
 
     find_result = await Terminal.cmd_line(cmd)
-
-    install_path = (Path(find_result.strip()) / "VC" / "Tools" / "MSVC")
 
     if not (tools_dir := Path(find_result.strip()) / "VC" / "Tools" / "MSVC").exists():
         raise FramixError("找不到 MSVC 工具目录 -> VC/Tools/MSVC")
@@ -221,7 +224,7 @@ async def packaging() -> tuple[
 
     launch = app.parent / const.F_SCHEMATIC / "resources" / "automation"
 
-    compile_cmd = [exe := sys.executable, "-m", "nuitka"]
+    compile_cmd = [exe := sys.executable, "-m", "nuitka", "--standalone"]
 
     if (ops := sys.platform) == "win32":
         await check_architecture(ops)
@@ -231,13 +234,12 @@ async def packaging() -> tuple[
         rename = target, app / f"{const.DESC}Engine"
 
         compile_cmd += [
-            f"--mode=standalone",
             f"--windows-icon-from-ico=schematic/resources/icons/framix_icn_2.ico",
         ]
 
         launch = launch / f"{const.NAME}.bat", target.parent
-        binary_file = target / f"{const.NAME}.exe"
-        arch_info = [dumpbin, "/headers", binary_file]
+        binary_file = rename[1] / f"{const.NAME}.exe"
+        arch_info = [dumpbin, "/headers", f"{str(Path(__file__).parent / binary_file)}"]
 
         support = "Windows"
 
@@ -254,7 +256,7 @@ async def packaging() -> tuple[
 
         launch = launch / f"{const.NAME}.sh", target
         binary_file = target / f"{const.NAME}"
-        arch_info = ["file", binary_file]
+        arch_info = ["file", f"{str(Path(__file__).parent / binary_file)}"]
 
         support = "MacOS"
 
@@ -278,15 +280,10 @@ async def packaging() -> tuple[
     compile_log(f"rename={rename}")
     compile_log(f"launch={launch}")
 
-    try:
-        if writer := await asyncio.wait_for(
-                Terminal.cmd_line([exe, "-m", "pip", "show", compile_cmd[2]]), timeout=5
-        ):
-            compile_log(f"writer={writer}")
-        else:
-            compile_log(f"writer={compile_cmd[2]}")
-    except asyncio.TimeoutError as e:
-        compile_log(f"writer={compile_cmd[2]} {e}")
+    writer = await Terminal.cmd_line([exe, "-m", "pip", "show", compile_cmd[2]])
+    if ver := re.search(r"(?<=Version:\s).*", writer):
+        if ver.group().strip() != "1.9.5":
+            raise FramixError(f"Use Nuitka 1.9.5 for stable builds")
 
     return ops, app, site_packages, target, rename, compile_cmd, launch, arch_info, support
 
@@ -361,7 +358,8 @@ async def post_build() -> typing.Coroutine | None:
             if not (child := target.parent / const.F_STRUCTURE / folder).exists():
                 await asyncio.to_thread(child.mkdir, parents=True, exist_ok=True)
 
-        compile_log(await Terminal.cmd_line(arch_info))
+        if Path(arch_info[-1]).exists():
+            compile_log(await Terminal.cmd_line(arch_info))
 
     # ==== Note: Start from here ====
     build_start_time = time.time()

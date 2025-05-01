@@ -371,7 +371,7 @@ class Record(object):
         if task := exec_tasks.get(device.sn, []):
             task.cancel()
 
-        return logger.debug(f"{device.sn} Cancel task ...")
+        return logger.debug(f"{device.sn} Cancel tasks ...")
 
     async def flunk_event(self) -> bool:
         """

@@ -189,6 +189,18 @@ class Design(object):
     ╚══════════════════════════════════╝""")
 
     @staticmethod
+    def force_end() -> None:
+        slogans = [
+            "Stellar flux interrupted", "Core convergence aborted",
+        ]
+        Design.console.print(f"""[bold]
+    ╔════════════════════ [bold #FFD75F]WARN[/] ════════════════════╗
+    ║ [bold #F5A8A8][!] {random.choice(slogans)}.[/]                ║
+    ║ [bold #FFAF5F]Errors or incomplete data may have occurred.[/] ║
+    ╚══════════════════════════════════════════════╝[/]
+        """)
+
+    @staticmethod
     def closure() -> str:
         """
         返回格式化的退出提示文本。

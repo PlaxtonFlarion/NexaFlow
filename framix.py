@@ -121,8 +121,8 @@ def signal_processor(*_, **__) -> None:
     *_, **__ : Any
         占位参数，用于兼容 signal.signal 的回调签名要求。
     """
-    Design.exit()
-    sys.exit(Design.closure())
+    Design.force_end()
+    sys.exit(130)
 
 
 class Missions(object):
@@ -2092,9 +2092,6 @@ class Missions(object):
 
             for exec_pairs in exec_pairs_list:
                 if len(live_devices) == 0:
-                    await asyncio.gather(
-                        *stop_tasks.values(), return_exceptions=True
-                    )
                     return Design.notes(f"[bold #F0FFF0 on #000000]Device tasks canceled ...")
 
                 for exec_func, exec_vals, exec_args, exec_kwds in exec_pairs:
@@ -2109,7 +2106,7 @@ class Missions(object):
                             exec_tasks[device.sn] = asyncio.create_task(
                                 call_commands(
                                     device, live_devices, exec_func, exec_vals, exec_args, exec_kwds
-                                )
+                                ), name="exec"
                             )
 
                 try:
@@ -2117,9 +2114,6 @@ class Missions(object):
                         *exec_tasks.values(), return_exceptions=True
                     )
                 except asyncio.CancelledError:
-                    await asyncio.gather(
-                        *stop_tasks.values(), return_exceptions=True
-                    )
                     return Design.notes(f"[bold #F0FFF0 on #000000]Exec tasks canceled ...")
                 finally:
                     exec_tasks.clear()
@@ -2129,9 +2123,8 @@ class Missions(object):
                         logger.debug(status)
                         self.design.show_panel(status, Wind.KEEPER)
 
-            await asyncio.gather(
-                *stop_tasks.values(), return_exceptions=True
-            )
+            for task in stop_tasks.values():
+                task.cancel()
 
         async def flick_loop() -> typing.Coroutine | None:
             """
