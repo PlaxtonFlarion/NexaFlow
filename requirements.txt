@@ -7,7 +7,7 @@ Jinja2~=3.1.3
 psutil~=5.9.8
 pygame~=2.5.2
 screeninfo~=0.8.1
-Nuitka==1.9.5
+Nuitka==2.7
 uiautomator2==3.2.9
 numpy==1.26.2
 keras==2.14.0

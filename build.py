@@ -36,8 +36,9 @@ from nexaflow import const
 
 try:
     import nuitka
+    nuitka_version = "2.7"
 except ImportError:
-    raise FramixError(f"Use Nuitka 1.9.5 for stable builds")
+    raise FramixError(f"Use Nuitka {nuitka_version} for stable builds")
 
 compile_log: typing.Any = lambda x: Design.console.print(
     f"[bold]{const.DESC} | [bold #FFAF5F]Compiler[/] | {x}"
@@ -223,7 +224,7 @@ async def packaging() -> tuple[
 
     launch = app.parent / const.F_SCHEMATIC / "resources" / "automation"
 
-    compile_cmd = [exe := sys.executable, "-m", "nuitka", "--standalone"]
+    compile_cmd = [exe := sys.executable, "-m", "nuitka"]
 
     if (ops := sys.platform) == "win32":
         await check_architecture(ops)
@@ -233,6 +234,7 @@ async def packaging() -> tuple[
         rename = target, app / f"{const.DESC}Engine"
 
         compile_cmd += [
+            f"--mode=standalone"
             f"--windows-icon-from-ico=schematic/resources/icons/framix_icn_2.ico",
         ]
 
@@ -281,8 +283,9 @@ async def packaging() -> tuple[
 
     writer = await Terminal.cmd_line([exe, "-m", "pip", "show", compile_cmd[2]])
     if ver := re.search(r"(?<=Version:\s).*", writer):
-        if ver.group().strip() != "1.9.5":
-            raise FramixError(f"Use Nuitka 1.9.5 for stable builds")
+        if ver.group().strip() != nuitka_version:
+            raise FramixError(f"Use Nuitka {nuitka_version} for stable builds")
+        compile_log(f"writer={writer}")
 
     return ops, app, site_packages, target, rename, compile_cmd, launch, arch_info, support
 
