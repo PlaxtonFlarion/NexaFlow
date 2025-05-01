@@ -64,8 +64,7 @@ async def check_architecture(ops: str) -> None:
     is_64bit = sys.maxsize > 2**32
     python_version = sys.version.split()[0]
 
-    compile_log(f"<Windows> 环境检测中 ...")
-    compile_log(f"<Version> {python_version} ({'64-bit' if is_64bit else '32-bit'})")
+    compile_log(f"<Python> {python_version} ({'64-bit' if is_64bit else '32-bit'})")
 
     if is_64bit:
         return compile_log(f"✅ 当前 Python 是 64 位，符合 {const.DESC} 打包要求。")
