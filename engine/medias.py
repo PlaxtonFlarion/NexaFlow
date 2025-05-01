@@ -363,9 +363,7 @@ class Record(object):
         """
         if self.alone and (events := self.record_events.get(device.sn, None)):
             bridle = events["stop"], events["done"], events["fail"]
-            while True:
-                if any(event.is_set() for event in bridle):
-                    break
+            while not any(event.is_set() for event in bridle):
                 await asyncio.sleep(1)
         else:
             await self.melody_events.wait()
@@ -373,7 +371,7 @@ class Record(object):
         if task := exec_tasks.get(device.sn, []):
             task.cancel()
 
-        return logger.debug(f"{device.sn} Cancel task")
+        return logger.debug(f"{device.sn} Cancel task ...")
 
     async def flunk_event(self) -> bool:
         """

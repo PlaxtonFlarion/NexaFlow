@@ -49,7 +49,6 @@ import signal
 import shutil
 import random
 import typing
-import inspect
 import asyncio
 import datetime
 import tempfile
@@ -1718,42 +1717,59 @@ class Missions(object):
 
                 window_x += device_w + margin_x  # 横向排列推进
 
-        async def anything_film(device_list: list["Device"], report: "Report") -> list[list]:
+        async def anything_film(
+                device_list: list["Device"],
+                report: "Report",
+                amount: typing.Optional[int] = None
+        ) -> tuple[typing.Optional["asyncio.Task"], list[list]]:
             """
-            批量启动设备录制任务。
+            启动所有设备的录制任务，并初始化事件队列与 UI 显示任务。
 
             Parameters
             ----------
-            device_list : list of Device
-                需要启动录制的设备对象列表。
+            device_list : list["Device"]
+                所有待启动录制的设备列表。
 
             report : Report
-                报告对象，包含录制过程中的路径和标识信息。
+                当前任务对应的报告对象，用于管理路径与标题等元信息。
+
+            amount : Optional[int], default=None
+                可选的倒计时时长，若提供则启动 UI 倒计时展示任务。
 
             Returns
             -------
-            list of list
-                每个设备对应的录制任务信息列表，包括：
-                [临时视频路径, 录制子进程, 总存储路径, 标题, 查询路径, 查询名称, 帧路径, 附加路径, 协议路径]。
+            tuple
+                第一个元素为 record UI 展示任务（若无 amount 则为 None）；
+                第二个元素为所有设备的录制任务信息集合。
 
             Notes
             -----
-            - 等待所有设备进入在线状态。
-            - 为每个设备分配布局位置并启动录屏。
-            - 每个设备录制完成后加入待办列表，统一管理。
+            - 每个设备会异步等待上线后开始录制。
+            - 自动分配屏幕坐标，避免画面重叠。
+            - 若提供 amount 参数，会启动一个 UI 倒计时任务。
+            - 每个设备的录制事件集包含 "head"、"done"、"stop"、"fail" 四种控制状态。
 
             Workflow
             --------
-            1. 异步检测所有设备上线。
-            2. 为每个设备确定合适的录制窗口位置。
-            3. 启动设备录屏并保存相关路径和进程信息。
-            4. 间隔延迟，避免过载，逐个处理所有设备。
-            5. 返回完整的待办录制任务列表。
+            1. 等待所有设备准备就绪；
+            2. 初始化录制事件；
+            3. 若提供倒计时参数，则创建 UI 展示任务；
+            4. 遍历设备进行录制启动；
+            5. 返回 UI 任务（若有）与所有设备任务数据。
             """
-            logger.debug(f"Wait Device Online -> ...")
+            logger.debug(f"Wait Device Online ...")
             await asyncio.gather(
                 *(device.device_online() for device in device_list)
             )
+
+            record.record_events = {
+                device.sn: {
+                    **{i: asyncio.Event() for i in ["head", "done", "stop", "fail"]},
+                    "remain": 0, "notify": "等待同步"} for device in device_list
+            }
+            record_ui_task = asyncio.create_task(
+                self.design.display_record_ui(record, amount)
+            ) if amount else None
 
             todo_list = []
             format_folder = time.strftime("%Y%m%d%H%M%S")
@@ -1769,7 +1785,7 @@ class Missions(object):
                 )
                 await asyncio.sleep(0.5)
 
-            return todo_list
+            return record_ui_task, todo_list
 
         async def anything_over(device_list: list["Device"], task_list: list[list]) -> None:
             """
@@ -1918,64 +1934,6 @@ class Missions(object):
 
             return exec_dict
 
-        async def call_commands(
-                bean: typing.Any, live_devices: dict,
-                exec_func: str, exec_vals: list, exec_args: list, exec_kwds: dict
-        ) -> typing.Any:
-            """
-            执行指定对象的指令函数（异步或同步），并捕获运行结果与异常。
-
-            Parameters
-            ----------
-            bean : typing.Any
-                可执行指令的对象实例（如 Device 或 Player 实例）。
-
-            live_devices : dict
-                当前存活的设备字典，key 为设备编号（sn），value 为设备实例。
-
-            exec_func : str
-                待执行的函数名称字符串。
-
-            exec_vals : list
-                函数调用的主参数（位于 args 前的显式参数值）。
-
-            exec_args : list
-                函数调用的扩展位置参数（*args）。
-
-            exec_kwds : dict
-                函数调用的关键字参数（**kwargs）。
-
-            Returns
-            -------
-            typing.Any
-                如果函数有返回值则返回，若无返回值或异常中断则返回 None。
-
-            Raises
-            ------
-            FramixError
-                - 当函数执行异常或找不到目标函数时抛出 FramixError 异常。
-            """
-            if not (callable(function := getattr(bean, exec_func, None))):
-                logger.debug(tip := f"No callable {exec_func}")
-                return self.design.show_panel(tip, Wind.KEEPER)
-
-            sn = getattr(bean, "sn", bean.__class__.__name__)
-            try:
-                logger.debug(tip := f"{sn} {function.__name__} {exec_vals}")
-                self.design.show_panel(tip, Wind.EXPLORER)
-
-                if inspect.iscoroutinefunction(function):
-                    if call_result := await function(*exec_vals, *exec_args, **exec_kwds):
-                        logger.debug(tip := f"Returns: {call_result}")
-                        return self.design.show_panel(tip, Wind.EXPLORER)
-
-            except asyncio.CancelledError:
-                live_devices.pop(sn)
-                logger.debug(tip := f"{sn} Call Commands Exit")
-                self.design.show_panel(tip, Wind.EXPLORER)
-            except Exception as e:
-                return FramixError(e)
-
         async def pack_commands(resolve_list: list) -> list:
             """
             将脚本中解析得到的命令描述列表，转换为标准格式的指令元组序列。
@@ -2034,6 +1992,65 @@ class Missions(object):
 
             return exec_pairs_list
 
+        async def call_commands(
+                bean: typing.Any, live_devices: dict,
+                exec_func: str, exec_vals: list, exec_args: list, exec_kwds: dict
+        ) -> typing.Any:
+            """
+            执行指定对象的指令函数（异步或同步），并捕获运行结果与异常。
+
+            Parameters
+            ----------
+            bean : typing.Any
+                可执行指令的对象实例（如 Device 或 Player 实例）。
+
+            live_devices : dict
+                当前存活的设备字典，key 为设备编号（sn），value 为设备实例。
+
+            exec_func : str
+                待执行的函数名称字符串。
+
+            exec_vals : list
+                函数调用的主参数（位于 args 前的显式参数值）。
+
+            exec_args : list
+                函数调用的扩展位置参数（*args）。
+
+            exec_kwds : dict
+                函数调用的关键字参数（**kwargs）。
+
+            Returns
+            -------
+            typing.Any
+                如果函数有返回值则返回，若无返回值或异常中断则返回 None。
+
+            Raises
+            ------
+            FramixError
+                - 当函数执行异常或找不到目标函数时抛出 FramixError 异常。
+            """
+            if not (callable(function := getattr(bean, exec_func, None))):
+                logger.debug(tip := f"No callable: {exec_func}")
+                return self.design.show_panel(tip, Wind.KEEPER)
+
+            sn = getattr(bean, "sn", bean.__class__.__name__)
+
+            try:
+                logger.debug(tip := f"{sn} {function.__name__} {exec_vals}")
+                self.design.show_panel(tip, Wind.EXPLORER)
+
+                resp = await function(*exec_vals, *exec_args, **exec_kwds)
+                logger.debug(tip := f"Returns: func={exec_func} resp={resp}")
+                return self.design.show_panel(tip, Wind.EXPLORER)
+
+            except asyncio.CancelledError:
+                live_devices.pop(sn)
+                logger.debug(tip := f"{sn} Call commands canceled ...")
+                self.design.show_panel(tip, Wind.EXPLORER)
+
+            except Exception as e:
+                return e
+
         async def exec_commands(device_list: list["Device"], exec_pairs_list: list, *args) -> None:
             """
             在多个设备上并发执行一组命令任务，支持通配符参数替换。
@@ -2065,19 +2082,20 @@ class Missions(object):
 
             live_devices = {device.sn: device for device in device_list}.copy()
 
-            exec_tasks: dict[str, "asyncio.Task"] = {}
-            stop_tasks: list["asyncio.Task"] = []
+            exec_tasks: dict[str, typing.Optional["asyncio.Task"]] = {}
+            stop_tasks: dict[str, typing.Optional["asyncio.Task"]] = {}
 
             for device in device_list:
-                stop_tasks.append(
-                    asyncio.create_task(
-                        record.check_event(device, exec_tasks), name="stop"
-                    )
+                stop_tasks[device.sn] = asyncio.create_task(
+                    record.check_event(device, exec_tasks), name="stop"
                 )
 
             for exec_pairs in exec_pairs_list:
                 if len(live_devices) == 0:
-                    return Design.notes(f"[bold #F0FFF0 on #000000]All tasks canceled ...")
+                    await asyncio.gather(
+                        *stop_tasks.values(), return_exceptions=True
+                    )
+                    return Design.notes(f"[bold #F0FFF0 on #000000]Device tasks canceled ...")
 
                 for exec_func, exec_vals, exec_args, exec_kwds in exec_pairs:
                     exec_vals = replace_star(exec_vals)
@@ -2099,7 +2117,10 @@ class Missions(object):
                         *exec_tasks.values(), return_exceptions=True
                     )
                 except asyncio.CancelledError:
-                    return Design.notes(f"[bold #F0FFF0 on #000000]All tasks canceled ...")
+                    await asyncio.gather(
+                        *stop_tasks.values(), return_exceptions=True
+                    )
+                    return Design.notes(f"[bold #F0FFF0 on #000000]Exec tasks canceled ...")
                 finally:
                     exec_tasks.clear()
 
@@ -2108,8 +2129,9 @@ class Missions(object):
                         logger.debug(status)
                         self.design.show_panel(status, Wind.KEEPER)
 
-            for stop in stop_tasks:
-                stop.cancel()
+            await asyncio.gather(
+                *stop_tasks.values(), return_exceptions=True
+            )
 
         async def flick_loop() -> typing.Coroutine | None:
             """
@@ -2224,25 +2246,22 @@ class Missions(object):
                     Design.tips_document()
 
                 else:
-                    record.record_events = {
-                        device.sn: {
-                            **{i: asyncio.Event() for i in ["head", "done", "stop", "fail"]},
-                            "remain": 0, "notify": f"等待同步"
-                        } for device in device_list
-                    }
-                    record_ui_task = asyncio.create_task(
-                        self.design.display_record_ui(record, amount)
+                    # 开始录制
+                    record_ui_task, task_list = await anything_film(
+                        device_list, report, amount
                     )
 
-                    task_list = await anything_film(device_list, report)  # 开始录制
-
+                    # 启动计时
                     await asyncio.gather(
-                        *(record.check_timer(device, amount) for device in device_list)  # 启动计时
+                        *(record.check_timer(device, amount) for device in device_list)
                     )
-                    await anything_over(device_list, task_list)  # 结束录制
+
+                    # 结束录制
+                    await anything_over(device_list, task_list)
                     await record_ui_task
 
-                    await anything_well(task_list, report)  # 任务结束
+                    # 任务结束
+                    await anything_well(task_list, report)
 
                     if await record.flunk_event():
                         device_list = await manage_.operate_device()
@@ -2349,7 +2368,7 @@ class Missions(object):
                                 await exec_commands(device_list, prefix_list)
 
                             # start record 开始录屏
-                            task_list = await anything_film(device_list, report)
+                            _, task_list = await anything_film(device_list, report)
 
                             # action 主要任务
                             if action_list:

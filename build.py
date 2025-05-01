@@ -49,6 +49,25 @@ async def is_virtual_env() -> typing.Coroutine | None:
     raise FramixError("[!] 当前不是虚拟环境")
 
 
+async def check_architecture(ops: str) -> None:
+    """
+    仅在 Windows 下检测 Python 是否为 64 位。
+    """
+    if ops != "win32":
+        return None
+
+    is_64bit = sys.maxsize > 2**32
+    python_version = sys.version.split()[0]
+
+    compile_log(f"<Windows> 环境检测中 ...")
+    compile_log(f"<Version> {python_version} ({'64-bit' if is_64bit else '32-bit'})")
+
+    if is_64bit:
+        return compile_log(f"✅ 当前 Python 是 64 位，符合 {const.DESC} 打包要求。")
+
+    raise FramixError(f"❌ 当前为 32 位 Python，建议更换为 64 位版本。")
+
+
 async def find_site_packages() -> typing.Coroutine | "Path":
     """
     自动查找当前虚拟环境中的 `site-packages` 路径。
@@ -64,6 +83,58 @@ async def find_site_packages() -> typing.Coroutine | "Path":
                     return (sub / base_site).resolve()
 
     raise FramixError(f"[!] Site packages path not found in virtual environment")
+
+
+async def find_vcvars64() -> str:
+    """
+    查找 vcvars64.bat 的完整路径，用于配置 MSVC 构建环境。
+    """
+    vswhere = Path(r"C:\Program Files (x86)", "Microsoft Visual Studio", "Installer", "vswhere.exe")
+    if not vswhere.exists():
+        raise FramixError("未找到 vswhere.exe -> 请安装 Visual Studio Build Tools")
+
+    cmd = [
+        str(vswhere), "-latest", "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+        "-products", "*", "-property", "installationPath"
+    ]
+
+    find_result = await Terminal.cmd_line(cmd)
+
+    vcvars = Path(find_result.strip()) / "VC" / "Auxiliary" / "Build" / "vcvars64.bat"
+
+    if not vcvars.exists():
+        raise FramixError(f"找不到 vcvars64.bat -> {vcvars}")
+
+    return str(vcvars)
+
+
+async def find_dumpbin() -> str:
+    """
+    查找最新 MSVC 工具链中的 dumpbin.exe 路径。
+    """
+    vswhere = Path(r"C:\Program Files (x86)", "Microsoft Visual Studio", "Installer", "vswhere.exe")
+    if not vswhere.exists():
+        raise FramixError("未找到 vswhere.exe -> 请安装 Visual Studio Build Tools")
+
+    cmd = [
+        str(vswhere), "-latest", "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+        "-products", "*", "-property", "installationPath"
+    ]
+
+    find_result = await Terminal.cmd_line(cmd)
+
+    install_path = (Path(find_result.strip()) / "VC" / "Tools" / "MSVC")
+
+    if not (tools_dir := Path(find_result.strip()) / "VC" / "Tools" / "MSVC").exists():
+        raise FramixError("找不到 MSVC 工具目录 -> VC/Tools/MSVC")
+
+    if not (version_dirs := [d for d in tools_dir.iterdir() if d.is_dir()]):
+        raise FramixError("未检测到任何 VC 工具版本目录")
+
+    if not (dumpbin := sorted(version_dirs)[-1] / "bin" / "Hostx64" / "x64" / "dumpbin.exe").exists():
+        raise FramixError(f"找不到 dumpbin.exe -> {dumpbin}")
+
+    return str(dumpbin)
 
 
 async def rename_sensitive(src: "Path", dst: "Path") -> typing.Coroutine | None:
@@ -137,7 +208,7 @@ async def authorized_tools(ops: str, *args: "Path", **__) -> typing.Coroutine | 
 
 async def packaging() -> tuple[
     str, "Path", "Path", typing.Union["Path"],
-    typing.Union[tuple["Path", "Path"]], list[str], tuple["Path", "Path"], str
+    typing.Union[tuple["Path", "Path"]], list[str], tuple["Path", "Path"], list, str
 ]:
     """
     构建独立应用的打包编译命令与目录结构信息。
@@ -150,17 +221,23 @@ async def packaging() -> tuple[
 
     launch = app.parent / const.F_SCHEMATIC / "resources" / "automation"
 
-    compile_cmd = [exe := sys.executable, "-m", "nuitka", "--standalone"]
+    compile_cmd = [exe := sys.executable, "-m", "nuitka"]
 
     if (ops := sys.platform) == "win32":
+        await check_architecture(ops)
+        _, dumpbin = await asyncio.gather(find_vcvars64(), find_dumpbin())
+
         target = app / f"{const.DESC}.dist"
         rename = target, app / f"{const.DESC}Engine"
 
         compile_cmd += [
+            f"--mode=standalone",
             f"--windows-icon-from-ico=schematic/resources/icons/framix_icn_2.ico",
         ]
 
         launch = launch / f"{const.NAME}.bat", target.parent
+        binary_file = target / f"{const.NAME}.exe"
+        arch_info = [dumpbin, "/headers", binary_file]
 
         support = "Windows"
 
@@ -176,6 +253,8 @@ async def packaging() -> tuple[
         ]
 
         launch = launch / f"{const.NAME}.sh", target
+        binary_file = target / f"{const.NAME}"
+        arch_info = ["file", binary_file]
 
         support = "MacOS"
 
@@ -185,7 +264,7 @@ async def packaging() -> tuple[
     compile_cmd += [
         f"--nofollow-import-to=keras,tensorflow,tensorboard,uiautomator2",
         f"--include-module=pdb,deprecation",
-        f"--include-package=engine,nexacore,nexaflow,sklearn,sklearn.tree",
+        f"--include-package=sklearn.tree",
         f"--include-package=ml_dtypes,distutils,site,google,absl,wrapt,gast",
         f"--include-package=astunparse,termcolor,opt_einsum,flatbuffers,h5py",
         f"--include-package=adbutils,pygments",
@@ -209,7 +288,7 @@ async def packaging() -> tuple[
     except asyncio.TimeoutError as e:
         compile_log(f"writer={compile_cmd[2]} {e}")
 
-    return ops, app, site_packages, target, rename, compile_cmd, launch, support
+    return ops, app, site_packages, target, rename, compile_cmd, launch, arch_info, support
 
 
 async def post_build() -> typing.Coroutine | None:
@@ -278,6 +357,12 @@ async def post_build() -> typing.Coroutine | None:
         await rename_sensitive(*rename)
         await sweep_cache_tree(app)
 
+        for folder in [const.F_SRC_OPERA_PLACE, const.F_SRC_MODEL_PLACE, const.F_SRC_TOTAL_PLACE]:
+            if not (child := target.parent / const.F_STRUCTURE / folder).exists():
+                await asyncio.to_thread(child.mkdir, parents=True, exist_ok=True)
+
+        compile_log(await Terminal.cmd_line(arch_info))
+
     # ==== Note: Start from here ====
     build_start_time = time.time()
 
@@ -285,7 +370,9 @@ async def post_build() -> typing.Coroutine | None:
 
     await Design.show_quantum_intro()
 
-    ops, app, site_packages, target, rename, compile_cmd, launch, support = await packaging()
+    compiles = await packaging()
+    ops, app, site_packages, target, rename, *_ = compiles
+    *_, compile_cmd, launch, arch_info, support = compiles
 
     done_list, fail_list = [], []
 
@@ -299,10 +386,6 @@ async def post_build() -> typing.Coroutine | None:
     ], [
         launch
     ]
-
-    for folder in [const.F_SRC_OPERA_PLACE, const.F_SRC_MODEL_PLACE, const.F_SRC_TOTAL_PLACE]:
-        if not (child := target.parent / const.F_STRUCTURE / folder).exists():
-            await asyncio.to_thread(child.mkdir, parents=True, exist_ok=True)
 
     dependencies = {
         "本地模块": local_pack,
