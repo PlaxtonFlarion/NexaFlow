@@ -64,7 +64,7 @@ class Design(object):
         self.design_level = design_level.upper()
 
     @staticmethod
-    def notes(text: typing.Any) -> None:
+    def info(text: typing.Any) -> None:
         """
         输出常规日志信息，使用 bold 样式强调。
         """

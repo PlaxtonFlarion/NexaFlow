@@ -2092,7 +2092,7 @@ class Missions(object):
 
             for exec_pairs in exec_pairs_list:
                 if len(live_devices) == 0:
-                    return Design.notes(f"[bold #F0FFF0 on #000000]Device tasks canceled ...")
+                    return logger.debug(f"Device tasks canceled ...")
 
                 for exec_func, exec_vals, exec_args, exec_kwds in exec_pairs:
                     exec_vals = replace_star(exec_vals)
@@ -2114,7 +2114,7 @@ class Missions(object):
                         *exec_tasks.values(), return_exceptions=True
                     )
                 except asyncio.CancelledError:
-                    return Design.notes(f"[bold #F0FFF0 on #000000]Exec tasks canceled ...")
+                    return logger.debug(f"Exec tasks canceled ...")
                 finally:
                     exec_tasks.clear()
 
@@ -2175,7 +2175,7 @@ class Missions(object):
                             if match := re.search(r"(?<=header\s).*", select):
                                 if hd := match.group().strip():
                                     src_hd, a, b = f"{input_title_}_{time.strftime('%Y%m%d_%H%M%S')}", 10000, 99999
-                                    Design.notes(f"{const.SUC}New title set successfully")
+                                    Design.info(f"{const.SUC}New title set successfully")
                                     report.title = f"{src_hd}_{hd}" if hd else f"{src_hd}_{random.randint(a, b)}"
                                     continue
                             raise FramixError(f"命名方式应为 header .*")
@@ -2211,7 +2211,7 @@ class Missions(object):
                             raise FramixError(f"当前处于 影像捕手 模式，请使用 digest 指令进行分析并生成报告")
 
                         elif select == "deploy":
-                            Design.notes(f"{const.WRN}请完全退出编辑器再继续操作")
+                            Design.info(f"{const.WRN}请完全退出编辑器再继续操作")
                             deploy.dump_deploy(self.initial_deploy)
                             if sys.platform == "win32":
                                 first = ["notepad++"] if shutil.which("notepad++") else ["Notepad"]
@@ -2226,15 +2226,15 @@ class Missions(object):
                         elif select.isdigit():
                             timer_value = int(select)
                             if timer_value > upper_bound or timer_value < lower_bound:
-                                bound_tips = f"{lower_bound} <= [bold #FFD7AF]Time[/] <= {upper_bound}"
-                                Design.notes(f"[bold #FFFF87]{bound_tips}")
+                                bound_tips = f"{lower_bound} <= Time <= {upper_bound}"
+                                Design.info(f"{const.WRN}{bound_tips}")
                             amount = max(lower_bound, min(upper_bound, timer_value))
 
                         else:
                             raise FramixError(f"未知命令 {select}")
 
                 except FramixError as e:
-                    Design.notes(f"{const.WRN}{e}")
+                    Design.info(f"{const.WRN}{e}")
                     Design.simulation_progress("Try again")
                     Design.tips_document()
 

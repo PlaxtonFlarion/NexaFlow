@@ -22,6 +22,7 @@ import time
 import shutil
 import typing
 import asyncio
+import plistlib
 from pathlib import Path
 from rich.progress import (
     BarColumn, TimeElapsedColumn,
@@ -209,6 +210,34 @@ async def authorized_tools(ops: str, *args: "Path", **__) -> typing.Coroutine | 
         compile_log(f"[!] Authorize resp={resp}")
 
 
+async def edit_plist_fields(ops: str, app: str, updates: dict[str, str]) -> typing.Coroutine | None:
+    """
+    编辑 macOS 应用的 Info.plist 文件字段。
+    """
+    if ops != "darwin":
+        return None
+
+    if not (plist := Path(app) / "Contents" / "Info.plist").exists():
+        raise FramixError(f"未找到 Info.plist 文件: {plist}")
+
+    # 读取原始 plist
+    with plist.open("rb") as f:
+        plist_data = plistlib.load(f)
+
+    # 显示原始值
+    compile_log(f"正在修改 Info.plist: {plist}")
+    for key, new_value in updates.items():
+        old_value = plist_data.get(key, "<未定义>")
+        compile_log(f" - {key}: {old_value}  ->  {new_value}")
+        plist_data[key] = new_value
+
+    # 写入修改后的内容
+    with plist.open("wb") as f:
+        plistlib.dump(plist_data, f)
+
+    compile_log("修改完成，已写入 Info.plist。")
+
+
 async def packaging() -> tuple[
     str, "Path", "Path", typing.Union["Path"],
     typing.Union[tuple["Path", "Path"]], list[str], tuple["Path", "Path"], list, str
@@ -362,6 +391,8 @@ async def post_build() -> typing.Coroutine | None:
 
         if Path(arch_info[-1]).exists():
             compile_log(await Terminal.cmd_line(arch_info))
+
+        await edit_plist_fields(ops, rename[-1], {"CFBundleExecutable": launch[0].name})
 
     # ==== Note: Start from here ====
     build_start_time = time.time()
