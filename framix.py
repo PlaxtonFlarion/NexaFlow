@@ -292,7 +292,7 @@ class Missions(object):
         """
         停止当前任务，通常用于信号处理中断后资源释放的清理阶段。
         """
-        logger.warning("""close tasks""")
+        logger.warning("""close tasks""")  # todo
         await self.animation.stop()  # 终止所有正在运行的异步动画任务
 
     @staticmethod
