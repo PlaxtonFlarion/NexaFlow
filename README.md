@@ -2193,7 +2193,7 @@ framix --shape 200,200 --build <文件夹路径> --build <文件夹路径> --bui
 - 安装 **[Nuitka](https://nuitka.net/)**
   - 导航到您的 **Python** 脚本所在的目录
     ```
-    pip install nuitka
+    pip install nuitka==2.7
     ```
 
 - 确保在项目根目录下有一个 `requirements.txt` 文件，其中列出了所有的依赖包
@@ -2261,9 +2261,11 @@ framix --shape 200,200 --build <文件夹路径> --build <文件夹路径> --bui
     - **...**
   - **framix.bat**
   - **Structure**
+    - **Framix_Mix**
     - **Framix_Model**
       - **Keras_Gray_W256_H256**
-      - **Keras_Hued_W256_H256** 
+      - **Keras_Hued_W256_H256**
+    - **Framix_Report**
 
 ---
 
@@ -2284,33 +2286,18 @@ framix --shape 200,200 --build <文件夹路径> --build <文件夹路径> --bui
       - **MacOS**
         - **schematic**
         - **framix.sh**
+        - **framix**
         - **...**
       - **Resources**
         - **framix_macos_bg.png**
         - ...
       - **Structure**
+        - **Framix_Mix**
         - **Framix_Model**
           - **Keras_Gray_W256_H256**
           - **Keras_Hued_W256_H256**
+        - **Framix_Report**
       - **Info.plist**
-
-#### 修改 Info.plist 文件
-```
-<key>CFBundleExecutable</key>
-<string>framix.sh</string> <!-- 设置启动脚本 -->
-```
-
-#### 赋予执行权限
-
-- **framix**
-```
-chmod +x /Applications/Framix.app/Contents/MacOS/framix
-```
-
-- **framix.sh**
-```
-chmod +x /Applications/Framix.app/Contents/MacOS/framix.sh
-```
 
 ---
 
