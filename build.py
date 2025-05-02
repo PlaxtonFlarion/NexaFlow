@@ -263,7 +263,7 @@ async def packaging() -> tuple[
         rename = target, app / f"{const.DESC}Engine"
 
         compile_cmd += [
-            f"--mode=standalone"
+            f"--mode=standalone",
             f"--windows-icon-from-ico=schematic/resources/icons/framix_icn_2.ico",
         ]
 
@@ -296,10 +296,10 @@ async def packaging() -> tuple[
     compile_cmd += [
         f"--nofollow-import-to=keras,tensorflow,tensorboard,uiautomator2",
         f"--include-module=pdb,deprecation",
-        f"--include-package=sklearn.tree",
-        f"--include-package=ml_dtypes,distutils,site,google,absl,wrapt,gast",
-        f"--include-package=astunparse,termcolor,opt_einsum,flatbuffers,h5py",
-        f"--include-package=adbutils,pygments",
+        f"--include-package=pygments",
+        f"--include-package=absl,gast,flatbuffers,opt_einsum,h5py,ml_dtypes,wrapt",
+        f"--include-package=astunparse,distutils,google,site,termcolor",
+        f"--include-package=adbutils",
         f"--show-progress", f"--show-memory", f"--output-dir={app}", f"{const.NAME}.py"
     ]
 

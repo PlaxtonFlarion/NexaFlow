@@ -108,6 +108,26 @@ from nexaflow.classifier.keras_classifier import KerasStruct
 _T = typing.TypeVar("_T")  # 定义类型变量
 
 
+# """Signal Processor"""
+def signal_processor(*_, **__) -> None:
+    """
+    程序信号处理函数，用于响应中断（如 Ctrl+C）时的清理与退出操作。
+
+    该函数通常注册为信号处理器，用于在用户主动中止程序执行时，
+    优雅地清理状态、打印退出提示，并安全终止进程。
+
+    Parameters
+    ----------
+    *_ : Any
+        占位参数，兼容 signal.signal 回调的签名要求。
+
+    **__ : Any
+        占位参数，兼容 signal.signal 回调的签名要求。
+    """
+    Design.force_end()
+    sys.exit(130)
+
+
 class Missions(object):
     """
     Missions Engine
@@ -264,36 +284,6 @@ class Missions(object):
         )
 
         return loop_complete
-
-    # """Signal Processor"""
-    def signal_processor(self, *_, **__) -> None:
-        """
-        程序信号处理函数，用于响应中断（如 Ctrl+C）时的清理与退出操作。
-
-        该函数通常注册为信号处理器，用于在用户主动中止程序执行时，
-        优雅地清理状态、打印退出提示，并安全终止进程。
-
-        Parameters
-        ----------
-        *_ : Any
-            占位参数，兼容 signal.signal 回调的签名要求。
-
-        **__ : Any
-            占位参数，兼容 signal.signal 回调的签名要求。
-        """
-        loop = asyncio.get_running_loop()
-        loop.create_task(self.close_tasks())
-
-        Design.force_end()
-        sys.exit(130)
-
-    # """Close Tasks"""
-    async def close_tasks(self) -> None:
-        """
-        停止当前任务，通常用于信号处理中断后资源释放的清理阶段。
-        """
-        logger.warning("""close tasks""")  # todo
-        await self.animation.stop()  # 终止所有正在运行的异步动画任务
 
     @staticmethod
     async def enforce(db: "DB", style: str, total: str, title: str, nest: str) -> None:
@@ -3700,7 +3690,7 @@ if __name__ == '__main__':
         _missions = Missions(_wires, _level, _power, *_positions, **_keywords)
 
         # Notes: 设置 Ctrl + C 信号处理方式
-        signal.signal(signal.SIGINT, _missions.signal_processor)
+        signal.signal(signal.SIGINT, signal_processor)
 
         # Notes: Start from here
         asyncio.run(main())

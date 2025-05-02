@@ -1,26 +1,78 @@
-aiofiles~=23.2.1
-aiosqlite~=0.20.0
-tqdm~=4.66.1
-rich~=13.7.0
-loguru~=0.7.1
-Jinja2~=3.1.3
-psutil~=5.9.8
-pygame~=2.5.2
-screeninfo~=0.8.1
-Nuitka==2.7
-uiautomator2==3.2.9
-numpy==1.26.2
-keras==2.14.0
-findit==0.5.9
-Pillow==9.5.0
-imageio==2.34.0
-imageio-ffmpeg==0.4.9
-moviepy==1.0.3
-matplotlib==3.8.2
-opencv-python==4.8.1.78
-scikit-image==0.18.3
-scikit-learn==1.6.1
-tensorflow==2.14.0
-tensorflow-intel==2.14.0; sys_platform == 'win32'
-tensorflow-macos==2.14.0; sys_platform == 'darwin'
-tensorflow-metal==1.1.0; sys_platform == 'darwin'
+# =========================================================
+# Framix 项目依赖清单
+# Python 3.11 + Nuitka 2.7 构建环境
+# =========================================================
+
+# -------------------------------
+# Async / IO / 系统工具
+# -------------------------------
+aiofiles                  ~=23.2.1     # 异步文件处理
+aiosqlite                 ~=0.20.0     # 异步 SQLite 支持
+psutil                    ~=5.9.8      # 系统资源监控
+screeninfo                ~=0.8.1      # 获取屏幕分辨率
+tqdm                      ~=4.66.1     # 终端进度条
+loguru                    ~=0.7.1      # 日志记录
+
+# -------------------------------
+# 渲染 / 界面 / 终端输出
+# -------------------------------
+rich                      ~=14.0.0     # 富终端格式化
+Jinja2                    ~=3.1.3      # 模板引擎
+pygame                    ~=2.5.2      # 2D UI 渲染引擎
+
+# -------------------------------
+# 图像 / 视频 / 多媒体处理
+# -------------------------------
+Pillow                    ==9.5.0      # 图像处理库
+imageio                   ==2.34.0     # 图像读写
+imageio-ffmpeg            ==0.4.9      # 视频编解码支持
+moviepy                   ==1.0.3      # 视频剪辑工具
+opencv-python             ==4.8.1.78   # OpenCV 图像分析
+matplotlib                ==3.8.2      # 图表绘制
+
+# -------------------------------
+# 数值计算 / 科学计算
+# -------------------------------
+numpy                     ==1.26.4     # 数组/矩阵基础
+scipy                     ==1.11.4     # 科学计算库
+joblib                    ==1.4.2      # 模型持久化
+threadpoolctl             ==3.6.0      # 控制多线程库
+
+# -------------------------------
+# 机器学习 / 图像识别
+# -------------------------------
+scikit-learn              ==1.4.2      # 传统 ML 算法
+scikit-image              ==0.18.3     # 图像处理算法
+keras                     ==2.14.0     # 深度学习接口
+tensorflow                ==2.14.0     # TensorFlow 主框架
+tensorflow-estimator      ==2.14.0     # Estimator 模型训练支持
+tensorboard               ==2.14.1     # TensorBoard 可视化支持
+tensorboard-data-server   ==0.7.2      # TensorBoard 数据服务
+
+# --- TensorFlow 平台优化版本 ---
+tensorflow-intel          ==2.14.0     ; sys_platform == "win32"
+tensorflow-macos          ==2.14.0     ; sys_platform == "darwin"
+tensorflow-metal          ==1.1.0      ; sys_platform == "darwin"
+
+# --- TensorFlow 内部运行依赖 ---
+absl-py                   ==2.2.2      # TF 日志/配置支持
+gast                      ==0.6.0      # Graph 模型解析
+flatbuffers               ==25.2.10    # TF 模型序列化
+opt_einsum                ==3.4.0      # 优化计算表达式
+protobuf                  ==4.25.7     # 模型文件格式
+h5py                      ==3.13.0     # HDF5 文件存储
+ml-dtypes                 ==0.2.0      # 新型数值类型
+wrapt                     ==1.14.1     # 内部装饰器支持
+typing_extensions         ==4.13.2     # 类型提示扩展
+
+# -------------------------------
+# 项目核心功能组件
+# -------------------------------
+findit                    ==0.5.9      # 屏幕元素定位
+uiautomator2              ==3.2.9      # 安卓 UI 自动化
+lxml                      ==4.9.3      # UI 节点结构解析
+
+# -------------------------------
+# 编译器
+# -------------------------------
+Nuitka                    ==2.7        # Python → C 打包编译器
