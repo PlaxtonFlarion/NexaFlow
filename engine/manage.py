@@ -284,52 +284,55 @@ class SourceMonitor(object):
 
 class AsyncAnimationManager(object):
     """
-    一个异步动画任务管理器，用于统一控制 CLI 动画的启动与停止。
+    管理异步动画任务的上下文工具类。
 
-    该类支持仅运行一个动画任务，若有新任务启动则自动取消当前任务。
-    使用 asyncio.Event 控制动画函数的终止时机，使其适应非阻塞的异步 CLI 环境。
+    该类用于封装动画生命周期的启动与终止逻辑，支持通过 `async with` 语句自动管理动画执行流程。
+
+    Parameters
+    ----------
+    function : Optional[Callable]
+        接收一个 asyncio.Event 的异步动画函数，必须为 async def。
 
     Attributes
     ----------
-    __task : asyncio.Task | None
-        当前正在运行的动画任务（协程）。
+    __task : Optional[asyncio.Task]
+        当前运行的动画任务对象。
 
-    __animation_event : asyncio.Event
-        控制动画任务停止的事件对象，供动画函数内部监听。
+    __animation_event : Optional[asyncio.Event]
+        控制动画终止的事件信号，用于优雅中断动画。
+
+    __function : Optional[Callable]
+        初始化传入的动画函数。
     """
 
-    def __init__(self, function: typing.Optional[typing.Callable] = None):
-        self.__task: asyncio.Task | None = None
-        self.__animation_event: asyncio.Event = asyncio.Event()
+    def __init__(self, function: typing.Optional["typing.Callable"] = None):
+        self.__task: typing.Optional["asyncio.Task"] = None
+        self.__animation_event: typing.Optional["asyncio.Event"] = asyncio.Event()
         self.__function = function
 
     async def __aenter__(self):
+        """
+        异步上下文进入方法，自动调用 start() 启动动画。
+        """
         await self.start(self.__function)
 
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """
+        异步上下文退出方法，自动调用 stop() 停止动画。
+        """
         await self.stop()
 
-    async def start(self, function: typing.Callable) -> typing.Coroutine | None:
+    async def start(self, function: "typing.Callable") -> typing.Optional["typing.Coroutine"]:
         """
-        启动一个异步动画函数（必须是 async def），若已有动画在运行会先取消。
+         启动指定动画函数任务，若已有动画在运行将优雅取消。
 
-        Parameters
-        ----------
-        function : Callable[[asyncio.Event], Awaitable]
-            异步动画函数，需接受一个 asyncio.Event 参数以控制动画终止。
-
-        Returns
-        -------
-        Coroutine | None
-            启动新的动画任务。若有已有动画在运行，则先取消。
-
-        Notes
-        -----
-        - 调用该方法前，现有动画任务将通过 stop() 停止。
-        - 传入的 function 需在内部周期性检测 `event.is_set()` 以判断是否终止。
-        """
+         Parameters
+         ----------
+         function : Callable
+             接收 asyncio.Event 参数的异步动画函数。
+         """
         await self.stop()  # 若已有动画在运行，先取消
 
         self.__animation_event.clear()
@@ -338,19 +341,14 @@ class AsyncAnimationManager(object):
             function(self.__animation_event)
         )
 
-    async def stop(self) -> typing.Coroutine | None:
+    async def stop(self) -> typing.Optional["typing.Coroutine"]:
         """
-        停止当前动画任务（如存在），通过设置事件并 cancel 协程任务。
-
-        Returns
-        -------
-        Coroutine | None
-            协程任务被取消或无任务可取消时返回 None。
+        停止当前动画任务（如存在），设置终止事件并取消任务对象。
 
         Notes
         -----
-        - 若任务未完成，将尝试 cancel 并等待其正常退出。
-        - 动画函数应在检测到事件触发后自行退出，以避免阻塞。
+        - 若无任务正在运行则跳过处理。
+        - 使用 asyncio.CancelledError 捕获取消异常。
         """
         if self.__task and not self.__task.done():
             self.__animation_event.set()
@@ -359,7 +357,7 @@ class AsyncAnimationManager(object):
             try:
                 await self.__task
             except asyncio.CancelledError:
-                logger.debug(f"Animation cancelled")
+                logger.debug(f"Animation cancelled ...")
 
         self.__task = None
 
