@@ -478,6 +478,21 @@ framix --build <文件夹路径> --build <文件夹路径> --build <文件夹路
 framix --flick
 ```
 #### 📔 分析配置:
+- Structure
+  - Framix_Mix
+    - option.json
+```json
+{
+    "total_place": "报告文件夹路径",
+    "model_place": "模型文件夹路径",
+    "faint_model": "灰度模型名称",
+    "color_model": "彩色模型名称"
+}
+```
+
+- Structure
+  - Framix_Mix
+    - deploy.json
 ```json
 {
     "FST":{
@@ -495,7 +510,7 @@ framix --flick
         "color":false,
         "begin":[0, 1],
         "final":[-1, -1],
-        "thres":0.97,
+        "thres":0.98,
         "shift":3,
         "slide":1,
         "block":3,

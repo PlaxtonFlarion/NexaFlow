@@ -77,6 +77,8 @@ pyobjc-framework-Cocoa         ==11.0       ; sys_platform == "darwin"
 
 # --- Notes: TensorFlow 平台优化版本 Windows ------------------------------------------
 tensorflow-intel               ==2.14.0     ; sys_platform == "win32"
+# 官方发布的 TensorFlow Windows 版本（带 Intel 优化）
+
 tensorflow-io-gcs-filesystem   ==0.31.0     ; sys_platform == "win32"
 # TensorFlow 对 Google Cloud Storage 的支持（Windows 推荐版本）
 
