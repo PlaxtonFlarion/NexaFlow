@@ -1,0 +1,28 @@
+# 顶层配置文件标记
+root = true
+
+# 所有文件的默认规则
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Markdown 文件：保留尾部空格用于换行
+[*.md]
+trim_trailing_whitespace = false
+
+# Windows 批处理脚本：使用 CRLF + tab 缩进
+[*.bat]
+end_of_line = crlf
+indent_style = tab
+
+# Inno Setup 安装脚本：使用 CRLF + 4 空格缩进（可改 tab）
+[*.iss]
+end_of_line = crlf
+
+# Unix Shell 脚本：使用 LF + 2空格缩进（便于嵌套）
+[*.sh]
+indent_size = 2
