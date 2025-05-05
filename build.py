@@ -300,7 +300,8 @@ async def packaging() -> tuple[
         f"--include-package=absl,gast,flatbuffers,opt_einsum,h5py,ml_dtypes,wrapt",
         f"--include-package=astunparse,distutils,google,site,termcolor",
         f"--include-package=adbutils",
-        f"--show-progress", f"--show-memory", f"--output-dir={app}", f"{const.NAME}.py"
+        f"--assume-yes-for-downloads", f"--show-progress", f"--show-memory",
+        f"--output-dir={app}", f"{const.NAME}.py"
     ]
 
     compile_log(f"system={ops}")
