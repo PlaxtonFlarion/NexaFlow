@@ -1639,7 +1639,7 @@ class Missions(object):
 
         async def distributions(
                 device_list: list["Device"]
-        ) -> typing.AsyncGenerator[tuple["Device", tuple[int, int, int]], None]:
+        ) -> typing.AsyncGenerator[tuple["Device", tuple[int, int, int, int]], None]:
             """
             设备布局与位置分配。
 
