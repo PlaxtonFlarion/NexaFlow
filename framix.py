@@ -1675,7 +1675,7 @@ class Missions(object):
 
             # 初始化窗口起点及布局参数
             window_x, window_y = media_x + (margin_x := 50), media_y + (margin_y := 75)
-            max_y_height, max_base_size, initial_scale = 0, 1024, 0.3
+            max_y_height, max_base_size, initial_scale = 0, int(min(media_w, media_h) * 0.8), 0.3
 
             # 遍历设备列表
             for device in device_list:
@@ -1685,17 +1685,11 @@ class Missions(object):
                 device_w = int(raw_w * initial_scale)
                 device_h = int(raw_h * initial_scale)
 
-                # 最大边统一限制到 1024
+                # 最大边统一限制到媒体最小边的80%
                 if (current_max := max(device_w, device_h)) > max_base_size:
                     adjust_scale = max_base_size / current_max
                     device_w = int(device_w * adjust_scale)
                     device_h = int(device_h * adjust_scale)
-
-                max_side = max(device_w, device_h)
-
-                logger.debug(
-                    f"device_w={device_w} device_h={device_h}"
-                )
 
                 # 若超出屏幕右边界，换行显示
                 if window_x + device_w > media_x + media_w:
@@ -1711,9 +1705,9 @@ class Missions(object):
 
                 max_y_height = max(max_y_height, device_h)  # 更新当前行最大设备高度
 
-                location = window_x, window_y, max_side  # 生成设备位置信息
+                location = window_x, window_y, device_w, device_h  # 生成设备位置信息
                 logger.debug(
-                    f"window_x={window_x} window_y={window_y} max_side={max_side}"
+                    f"window_x={window_x} window_y={window_y} device_w={device_w} device_h={device_h}"
                 )
 
                 yield device, location  # 逐个设备 yield 设备对象和位置参数
@@ -3475,14 +3469,14 @@ async def main() -> typing.Coroutine | None:
 
 
 if __name__ == '__main__':
-    """  
+    """
     **应用程序入口点，根据命令行参数初始化并运行主进程**
 
     ***********************
     *                     *
     *  Welcome to Framix  *
     *                     *
-    ***********************    
+    ***********************
     """
 
     try:

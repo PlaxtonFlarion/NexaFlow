@@ -141,7 +141,7 @@ class Record(object):
         if device.id != 0:
             cmd += [f"--display-id={device.id}"]
 
-        loc_name = ["--window-x", "--window-y", "--max-size"]
+        loc_name = ["--window-x", "--window-y", "--window-width", "--window-height"]
         cmd += [f"{k}={v}" for k, v in zip(loc_name, loc)] if (loc := kwargs.get("location", ())) else []
 
         if self.whist:
