@@ -254,7 +254,7 @@ class Design(object):
         color = random.choice(colors)
 
         Design.console.print(f"""\
-        
+
     [bold #D0D0D0]<*=> {const.DESC} {message} <=*>[/]
     [bold #D0D0D0]<*=> [bold {color}]{const.DESC} {suffix}[/] <=*>[/]
         """)
@@ -266,11 +266,11 @@ class Design(object):
         """
         logo = f"""\
 
-__________                        _____        
+__________                        _____
 ___  ____/____________ _______ ______(_)___  __
 __  /_   __  ___/  __ `/_  __ `__ \\_  /__  |/_/
-_  __/   _  /   / /_/ /_  / / / / /  / __>  <  
-/_/      /_/    \\__,_/ /_/ /_/ /_//_/  /_/|_|                                                 
+_  __/   _  /   / /_/ /_  / / / / /  / __>  <
+/_/      /_/    \\__,_/ /_/ /_/ /_//_/  /_/|_|
         """
         soft_bright_colors = random.choice(
             [
@@ -693,7 +693,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
               (●)---(●)---(●)
              / | \\   |""",
             f"""\
-        (●)---------(●)   [bold {colors[0]}](● ● ●)[/]                  
+        (●)---------(●)   [bold {colors[0]}](● ● ●)[/]
              / | \\     \\     |
             (●) (●)-----(●)-----(●)
                  *       *       *  \\
@@ -848,7 +848,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         text = f"{const.DESC} (●) Engine"
         collapse_symbol = random.choice(["▣", "●"])
 
-        delay = 0.04
+        delay = 0.02
         offset = 14
         pad = " " * offset
 
@@ -1119,10 +1119,10 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             return None
 
         self.console.print("""\
-        
+
         [bold]┌─────────────┐
         │ [bold #AFD700]●[/] REC       │
-        └─────────────┘[/]       
+        └─────────────┘[/]
         """)
 
         # 状态样式：统一管理颜色与符号
@@ -1221,7 +1221,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
     async def frame_grid_initializer(self, animation_event: "asyncio.Event") -> None:
         """
-        模拟帧网格构建过程。
+        模拟帧网格构建过程，融合多套色彩主题以增强视觉层次。
         """
         if self.design_level != const.SHOW_LEVEL:
             return None
@@ -1229,6 +1229,25 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         self.console.print(
             f"\n[bold #00F5FF]▶ {const.DESC} grid loading ...\n"
         )
+
+        # 八套主题色
+        grid_themes = [
+            ["#00FFCC", "#00FFFF", "#33FFCC", "#66FFEE", "#00FF99", "#7CFC00"],  # Neon Matrix
+            ["#FF4500", "#FF6347", "#FF7F50", "#FFA07A", "#FFD700", "#FFC107"],  # Magma Core
+            ["#8A2BE2", "#BA55D3", "#00CED1", "#40E0D0", "#00BFFF", "#9370DB"],  # Aurora Byte
+            ["#B0E0E6", "#E0FFFF", "#AFEEEE", "#ADD8E6", "#D8F8FF", "#FFFFFF"],  # Frost Signal
+            ["#FFD700", "#FFDEAD", "#C0C0C0", "#999999", "#FFB6C1", "#E6E6FA"],  # Quantum Ember
+            ["#00FF7F", "#00FA9A", "#20B2AA", "#3CB371", "#2E8B57", "#66CDAA"],  # Bio Pulse
+            ["#FF69B4", "#FF1493", "#FFB6C1", "#FFC0CB", "#FF85A2", "#FF94C2"],  # Petal Sync
+            ["#7FFFD4", "#76EEC6", "#66CDAA", "#5F9EA0", "#4682B4", "#48D1CC"],  # Ocean Byte
+        ]
+        color_pool = random.choice(grid_themes)
+
+        # 中心颜色随机
+        center_color = random.choice(color_pool)
+
+        # Grid 标识颜色随机
+        label_color = random.choice(color_pool)
 
         rows, cols = 3, 13
         grid = [[" " for _ in range(cols)] for _ in range(rows)]
@@ -1238,10 +1257,10 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             lines = []
             for row in grid:
                 colored_line = " ".join(
-                    cell if cell.startswith("[") else f"[bold #00FFAA]{cell}"
+                    cell if cell.startswith("[") else f"[bold {random.choice(color_pool)}]{cell}"
                     for cell in row
                 )
-                lines.append(f"[bold #00DDDD][{const.DESC}::Grid][/] {colored_line}")
+                lines.append(f"[bold {label_color}][{const.DESC}::Grid][/] {colored_line}")
             return Text.from_markup("\n".join(lines))
 
         def fill_flow() -> None:
@@ -1275,7 +1294,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                 fill_flow()
 
             # 中心节点点亮
-            grid[rows // 2][cols // 2] = "[bold #39FF14]▣[/]"
+            grid[rows // 2][cols // 2] = f"[bold {center_color}]▣[/]"
             live.update(render_grid())
             await asyncio.sleep(0.5)
 
