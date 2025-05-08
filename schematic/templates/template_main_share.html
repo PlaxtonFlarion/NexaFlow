@@ -243,6 +243,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
         /* 一张图片的容器 */
         .image-box {
             width: 100%;
+            height: 100%;
             border-radius: 10px;
             margin: 20px 10px;
             text-align: center;
@@ -253,16 +254,16 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
             transition: transform 0.3s ease, box-shadow 0.5s ease;
         }
         .image-box img {
-            max-height: 80%;
-            max-width: 90%;
+            width: 90%;
+            height: 90%;
+            object-fit: contain;
             margin: 10px auto;
             border-radius: 10px;
         }
         .image-box img:hover {
-            transform: scale(1.01);
-            box-shadow: 0px 0px 1px 0px rgb(0 0 0 / 90%);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
             cursor: zoom-in;
+            transform: scale(1.01);
+            transition: transform 0.3s ease;
         }
         .image-box img:active {
             transform: scale(0.95);
@@ -389,11 +390,14 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
         }
         #info-wrapper {
             display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 10%;
             text-align: center;
         }
         .img-info, .lightbox-logo {
             margin: 0 10px 20px;
-            padding: 5px;
+            padding: 2px 0 2px 0;
             border-radius: 10px;
             font-weight: bold;
             transition: background-color 0.3s;
@@ -426,10 +430,10 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
             transform: scale(0.95);
         }
         #lightbox-img {
-            max-width: 60%;
+            max-width: 75%;
             height: 60%;
             margin: 10px;
-            object-fit: cover;
+            object-fit: contain;
             border-radius: 10px;
             box-shadow: 0px 0px 10px 6px rgb(242 242 11 / 45%);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -758,8 +762,8 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
             <div class="extra" style="display: none;">
                 <div class="extra-container">
                     {% for extra in res.extra_list %}
-                    <div class="extra-image">
-                        <img src="{{ extra.src }}" class="img-extra" alt="extraImage">
+                    <div class="extra-image-div">
+                        <img src="{{ extra.src }}" class="extra-image" alt="extraImage">
                         <p>{{ extra.frames_id }}</p>
                     </div>
                     {% endfor %}
@@ -780,7 +784,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
                     <p>ID: <span id="frame-id"></span></p>
                 </div>
                 <div class="lightbox-logo">
-                    <p><span id="box-logo">{{ name }}</span></p>
+                    <p><span id="box-logo">{{ box_desc }}</span></p>
                 </div>
                 <div class="img-info">
                     <p>TS: <span id="timestamp"></span></p>
@@ -1002,7 +1006,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
                         // 显示缩略图
                         images = currentImages;
                         boxSideBar('0 -> 0', 'none', '0.00000', 'none');
-                    
+
                     } else if (selectedImage.length === 1) {
                         // 显示缩略图
                         images = currentImages;
@@ -1263,7 +1267,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
                 timeDivs[diffIndex].classList.add('effect-off');
                 resContainers[diffIndex].style.display = 'none';
                 options[diffIndex].style.display = 'none';
-                
+
                 boxSideBar('0 -> 0', 'none', '0.00000', 'none');
 
                 images = allImages;
@@ -1284,7 +1288,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
                 timeDivs[diffIndex].classList.add('effect-off');
                 resContainers[diffIndex].style.display = 'none';
                 options[diffIndex].style.display = 'none';
-                
+
                 let diff1 = resMark[0].closest('.image-box').querySelector('img');
                 boxSideBar(diff1.dataset.frame, '', '0.00000', 'none');
 
@@ -1308,7 +1312,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
                 let timestamp1 = Number(resMark[0].closest('.image-box').querySelector('img').getAttribute('data-timestamp'));
                 let timestamp2 = Number(resMark[1].closest('.image-box').querySelector('img').getAttribute('data-timestamp'));
                 let diff = Math.abs(timestamp2 - timestamp1).toFixed(5);
-                
+
                 boxSideBar(frame1 + ' -> ' + frame2, '', diff, '');
 
                 timeDivs[diffIndex].textContent = diff;
@@ -1320,7 +1324,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
                 // 隐藏缩略图
                 images = allImages.filter(img => img.parentElement.style.display === '');
                 updateIndex();
-                
+
                 updateThumbnails();
                 scrollToActive();
                 updateButtonStatus();
@@ -1350,7 +1354,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
         function closeAlert() {
             document.getElementById('custom-alert').style.display = 'none';
         }
-        
+
         // 复制
         async function copyAction(content) {
             try {
@@ -1366,7 +1370,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
         function showNotification(message, isError = false) {
             const notification = document.getElementById('notification');
             notification.textContent = message;
-            
+
             // 根据是否是错误状态，切换样式
             notification.classList.toggle('error', isError);
             notification.classList.add('show');
@@ -1540,29 +1544,29 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
                         .extra-container:hover {
                             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
                         }
-                        .extra-image {
-                            max-width: 350px;
-                            max-height: 700px;
+                        .extra-image-div {
+                            width: 100%;
+                            height: 100%;
                             flex-basis: calc(100% / 6 - 20px);
                             margin: 10px;
                             text-align: center;
                         }
-                        .img-extra {
-                            margin: 20px;
-                            max-height: 80%;
-                            max-width: 80%;
+                        .extra-image {
+                        	width: 90%;
+                            height: 90%;
+                            object-fit: contain;
                         }
-                        .img-extra:hover {
+                        .extra-image:hover {
                             cursor: zoom-in;
                             box-shadow: 0 0 10px 5px rgb(0 0 0 / 30%);
                             transform: scale(1.03);
                             transition: all 0.3s ease;
                         }
-                        .img-extra:active {
+                        .extra-image:active {
                             transform: scale(0.98);
                         }
                         p {
-                            margin: 0;
+                            margin: 15px 0 0 0;
                             font-size: 20px;
                             font-weight: bold;
                             color: #0d96a7;
@@ -1575,6 +1579,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
                             transform: translate(-50%, -50%);
                             z-index: 9999;
                             cursor: zoom-in;
+                            object-fit: contain;
                         }
                         .zoomed-in:hover {
                             cursor: crosshair;
@@ -1593,18 +1598,18 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
                             backdrop-filter: blur(30px);
                         }
 
-                        @media screen and (orientation: landscape) {
-                            .zoomed-in {
-                                max-width: 80%;
-                                max-height: 80%;
-                            }
-                        }
-                        @media screen and (orientation: portrait) {
-                            .zoomed-in {
-                                max-width: 50%;
-                                max-height: 50%;
-                            }
-                        }
+<!--                        @media screen and (orientation: landscape) {-->
+<!--                            .zoomed-in {-->
+<!--                                max-width: 80%;-->
+<!--                                max-height: 80%;-->
+<!--                            }-->
+<!--                        }-->
+<!--                        @media screen and (orientation: portrait) {-->
+<!--                            .zoomed-in {-->
+<!--                                max-width: 50%;-->
+<!--                                max-height: 50%;-->
+<!--                            }-->
+<!--                        }-->
                     </style>
                 `;
 
@@ -1613,7 +1618,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
                 // 添加JS代码到新的 <script> 元素
                 scriptElement.textContent = `
                     document.addEventListener('click', function(e) {
-                        if (e.target.classList.contains('img-extra')) {
+                        if (e.target.classList.contains('extra-image')) {
                             // 创建覆盖层
                             const overlay = document.createElement('div');
                             overlay.classList.add('overlay');
@@ -1623,6 +1628,15 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
                             zoomedImage.src = e.target.src;
                             zoomedImage.classList.add('zoomed-in');
                             zoomedImage.style.zIndex = "9999";  // 确保z-index高于overlay
+
+                            // 加载完成后判断宽高比例
+                            zoomedImage.onload = function () {
+                                if (zoomedImage.naturalHeight > zoomedImage.naturalWidth) {
+                                    zoomedImage.style.height = "80%";
+                                } else {
+                                    zoomedImage.style.width = "50%";
+                                }
+                            };
 
                             // 点击放大图片或覆盖层移除它们
                             zoomedImage.addEventListener('click', function() {
@@ -1687,7 +1701,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
             });
 
             // 点击放大图片，再次点击并退出
-            let extraImg = Array.from(document.querySelectorAll('.img-extra'));
+            let extraImg = Array.from(document.querySelectorAll('.extra-image'));
             extraImg.forEach((ex, index) => {
                 ex.addEventListener('click', function(e) {
                     // 创建一个新的 img 元素并设置属性

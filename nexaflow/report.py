@@ -286,7 +286,7 @@ class Report(object):
         images_list = [i for result in transform_result for i in result]
 
         html_temp = Template(style_loc).render(
-            name=const.NAME, title=title, images_list=images_list
+            box_desc=const.DESC, title=title, images_list=images_list
         )
 
         team = serial if serial else random.randint(10000, 99999)

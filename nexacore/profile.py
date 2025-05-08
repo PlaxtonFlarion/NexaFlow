@@ -41,11 +41,6 @@ def dump_parameters(src: typing.Any, dst: dict) -> None:
     dst : dict
         待写入的配置数据字典。
 
-    Returns
-    -------
-    None
-        不返回任何值，写入完成后直接关闭文件。
-
     Notes
     -----
     - 使用 UTF-8 编码（或由 `const.CHARSET` 指定）进行文件写入；
@@ -333,11 +328,6 @@ class Deploy(object):
             输出文件路径，可以是字符串路径或类文件对象。
             最终将把 deploy 配置以 JSON 格式保存至该路径。
 
-        Returns
-        -------
-        None
-            不返回任何值，但会在磁盘写入部署配置文件。
-
         Notes
         -----
         - 在写入前，会对 `deploys` 数据结构做深拷贝，防止原始配置被污染；
@@ -368,11 +358,6 @@ class Deploy(object):
         ----------
         deploy_file : Any
             指定的部署文件路径，可以是字符串路径或类文件对象，包含部署参数的 JSON 配置。
-
-        Returns
-        -------
-        None
-            方法不返回值，但会更新对象内部的参数映射 deploys。
 
         Notes
         -----
@@ -405,11 +390,6 @@ class Deploy(object):
     def view_deploy(self) -> None:
         """
         以表格形式在控制台展示当前部署参数的详细信息。
-
-        Returns
-        -------
-        None
-            该方法不会返回值，但会在终端以表格方式输出参数配置详情。
 
         Notes
         -----
@@ -560,10 +540,6 @@ class Option(object):
         option_file : typing.Any
             配置文件路径，支持字符串或路径对象。
 
-        Returns
-        -------
-        None
-
         Notes
         -----
         - 配置文件应为合法的 JSON 格式；
@@ -592,10 +568,6 @@ class Option(object):
         option_file : typing.Any
             保存配置的目标文件路径。
 
-        Returns
-        -------
-        None
-
         Notes
         -----
         - 若目录不存在则自动创建；
@@ -607,9 +579,32 @@ class Option(object):
 
 
 class Script(object):
+    """
+    Script 类用于管理自动化流程中的脚本文件初始化与结构生成。
+
+    此类目前提供静态方法 `dump_script`，用于快速创建符合脚本规范的默认模板，
+    适用于初始配置生成、脚本编辑器集成或测试流程的标准化输入准备。
+    """
 
     @staticmethod
     def dump_script(script_file: typing.Any) -> None:
+        """
+        生成默认脚本结构并写入指定文件路径，用于初始化脚本模板。
+
+        Parameters
+        ----------
+        script_file : Any
+            脚本文件的保存路径，可以是字符串路径或 Path-like 对象。
+            如果路径的上级目录不存在，将自动创建。
+
+        Notes
+        -----
+        - 输出的脚本结构包含 ID-X 节点、解析参数（parser）、循环次数（looper）、
+          前缀 / 主体 / 后缀动作等字段；
+        - 所有动作字段默认包含空的命令（cmds）和参数值（vals）；
+        - 文件写入通过 `dump_parameters` 函数实现，格式通常为 JSON 或 YAML；
+        - 若 `script_file` 路径中的目录不存在，将自动递归创建。
+        """
         scripts = {
             "command": [
                 {
