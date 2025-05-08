@@ -1984,12 +1984,12 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                     choice_char, random.choice(colors)
                 )
                 live.update(Text.from_markup(render_grid()))
-                await asyncio.sleep(0.08)
+                await asyncio.sleep(0.04)
 
             # 收束帧，高亮字母
             live.update(Text.from_markup(render_focus()))
 
-            await asyncio.sleep(1.5)
+            await asyncio.sleep(0.5)
 
         self.console.print(
             f"\n[bold #7CFC00]>>> Task graph finalized. Ready to dispatch. <<<\n"
