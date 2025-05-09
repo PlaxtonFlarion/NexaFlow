@@ -804,12 +804,12 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
         {% for res in images_list %}
         <div class="image-container" data-query="{{ res.query }}" data-start="{{ res.stage.start }}" data-end="{{ res.stage.end }}">
             {% for image in res.image_list %}
-            <div class="image-box {{ 'selected' if (image.frames_id| int) == res.stage.start or (image.frames_id| int) == res.stage.end else '' }}" style="display: {{ 'none' if (image.frames_id| int) != res.stage.start and (image.frames_id| int) != res.stage.end else '' }}">
+            <div class="image-box {{ 'selected' if (image.frames_id| int) == res.stage.start or (image.frames_id| int) == res.stage.end else '' }}">
                 <img src="{{ image.src }}" class="img-fluid" alt="Image" data-frame="{{ image.frames_id }}" data-timestamp="{{ image.timestamp }}">
                 <div class="mark-button-div">
                     <button class="mark-button {{ 'marked' if (image.frames_id| int) == res.stage.start or (image.frames_id| int) == res.stage.end else '' }}">标记</button>
                 </div>
-                <div class="info">
+                <div class="info" data-id="{{ image.frames_id }}" data-ts="{{ image.timestamp }}">
                     <span>{{ image.frames_id }} - {{ image.timestamp }}</span>
                 </div>
             </div>
@@ -1465,6 +1465,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
                 const startImage = container.querySelector(`img[data-frame="${startFrame}"]`);
                 const endImage = container.querySelector(`img[data-frame="${endFrame}"]`);
 
+                // 比较首尾帧的时间戳
                 if (startImage && endImage) {
                     const startTime = parseFloat(startImage.getAttribute('data-timestamp'));
                     const endTime = parseFloat(endImage.getAttribute('data-timestamp'));
@@ -1479,6 +1480,13 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
                     const timeDivs = Array.from(document.querySelectorAll('.time-difference'));
                     timeDivs[index].classList.add('effect-off');
                 }
+
+                // 页面加载时，隐藏非标记的首尾帧
+                container.querySelectorAll('.image-box').forEach((box, idx) => {
+                    if (!box.classList.contains('selected')) {
+                        box.style.display = 'none';
+                    }
+                });
             });
         });
 
