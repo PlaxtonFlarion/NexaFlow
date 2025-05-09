@@ -286,12 +286,10 @@ class Report(object):
         images_list = [i for result in transform_result for i in result]
 
         html_temp = Template(style_loc).render(
-            box_desc=const.DESC, title=title, images_list=images_list
+            app_desc=const.DESC, title=title, images_list=images_list
         )
 
         team = serial if serial else random.randint(10000, 99999)
-
-        # html = Path(os.path.join(total, title, f"{title}_{team}.html"))
         html = total / title / f"{title}_{team}.html"
 
         async with aiofiles.open(html, "w", encoding=const.CHARSET) as range_file:
@@ -463,7 +461,10 @@ class Report(object):
             raise FramixError(f"没有可以汇总的报告 ...")
 
         html_temp = Template(total_loc).render(
-            head=const.R_TOTAL_HEAD, report_time=time.strftime('%Y.%m.%d %H:%M:%S'), total_list=total_list
+            head=const.R_TOTAL_HEAD,
+            app_desc=const.DESC,
+            report_time=time.strftime('%Y.%m.%d %H:%M:%S'),
+            total_list=total_list
         )
 
         salt: "typing.Callable" = lambda: "".join(
@@ -624,7 +625,7 @@ class Report(object):
             background_color=const.BACKGROUND_COLOR,
             cost_dict=cost_dict,
             timestamp=timestamp,
-            name=const.NAME,
+            app_desc=const.DESC,
             version_code=const.VERSION
         )
 

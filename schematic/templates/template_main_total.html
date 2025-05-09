@@ -22,7 +22,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>画帧秀 - Main - Total</title>
+    <title>{{ app_desc }} - Main - Total</title>
     <style>
         .loading {
             position: fixed;
@@ -352,11 +352,11 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
         document.addEventListener("DOMContentLoaded", function() {
             showLoadingAnimation();
         });
-        
+
         async function copyAction(content) {
             try {
                 await navigator.clipboard.writeText(content);
-                console.log('Data successfully copied to clipboard!');               
+                console.log('Data successfully copied to clipboard!');
                 const notification = document.getElementById('notification');
                 notification.style.display = 'block';
                 setTimeout(() => notification.style.display = 'none', 1000);
