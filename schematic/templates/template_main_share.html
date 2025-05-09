@@ -350,7 +350,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
             gap: 18px;
         }
         /* 通用按钮与链接样式 */
-        .all-copy, .all-reselect, .quick-reselect, .ex-info, .proto-link {
+        .all-copy, .all-reselect, .quick-reselect, .ex-info, .linked {
             margin: 6px;
             padding: 5px 30px;
             border: none;
@@ -370,22 +370,22 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
             background-image: linear-gradient(135deg, #00c9ff, #92fe9d);
         }
         /* 次要信息按钮 & 链接：蓝紫渐变 */
-        .ex-info, .proto-link {
+        .ex-info, .linked {
             background-image: linear-gradient(135deg, #667eea, #764ba2);
         }
         /* 悬停高光动画 */
-        .all-copy:hover, .all-reselect:hover, .quick-reselect:hover, .ex-info:hover, .proto-link:hover {
+        .all-copy:hover, .all-reselect:hover, .quick-reselect:hover, .ex-info:hover, .linked:hover {
             transform: scale(1.05);
             background-position: right center;
             box-shadow: 0 6px 20px rgba(0, 201, 255, 0.4);
             color: #ffffff;
         }
         /* 点击反馈 */
-        .all-copy:active, .all-reselect:active, .quick-reselect:active, .ex-info:active, .proto-link:active {
+        .all-copy:active, .all-reselect:active, .quick-reselect:active, .ex-info:active, .linked:active {
             transform: scale(0.95);
         }
         /* 链接专属调整 */
-        .proto-link:visited {
+        .linked:visited {
             color: #e0e0e0;
         }
 
@@ -827,33 +827,23 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
                     <button class="all-reselect">全部重选</button>
                     <button class="quick-reselect">快速重选</button>
                 </div>
-                {% if res.get('proto') %}
+                {% if res.get('extra') or res.get('proto') %}
                 <div class="option-two">
-                    <button class="ex-info">额外帧</button>
-                    <a href="{{ res.proto }}" target="_blank" class="proto-link">阶段帧</a>
+                    {% if res.get('extra') %}
+                    <a href="{{ res.extra }}" target="_blank" class="linked">额外帧</a>
+                    {% endif %}
+
+                    {% if res.get('proto') %}
+                    <a href="{{ res.proto }}" target="_blank" class="linked">阶段帧</a>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>
-
-            <!--额外帧-->
-            {% if res.get('extra_list') %}
-            <div class="extra" style="display: none;">
-                <div class="extra-container">
-                    {% for extra in res.extra_list %}
-                    <div class="extra-image-div">
-                        <img src="{{ extra.src }}" class="extra-image" alt="extraImage">
-                        <p>{{ extra.frames_id }}</p>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-
         </div>
         {% endfor %}
     </div>
 
-    <!--灯箱查看器-->
+    <!-- 灯箱查看器 -->
     <div id="lightbox">
         <div class="content">
             <button id="prev" class="nav-button" style="position: absolute; left: 0;"><</button>
@@ -882,7 +872,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
         </div>
     </div>
 
-    <!--警告提示框-->
+    <!-- 警告提示框 -->
     <div id="custom-alert" class="alert">
         <div class="alert-content">
             <span class="alert-message"></span>
@@ -890,16 +880,16 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
         </div>
     </div>
 
-    <!--缩略图悬浮提示-->
+    <!-- 缩略图悬浮提示 -->
     <div id="tooltip"></div>
 
-    <!--复制提示框-->
+    <!-- 通知消息 -->
     <div id="notification"></div>
 
-    <!--复制提示框-->
+    <!-- toast提示 -->
     <div id="toast" class="toast"></div>
 
-    <!--主页图片选择器-->
+    <!-- 主图选择器 -->
     <script>
         var containers = document.querySelectorAll('.image-container');
         containers.forEach((container, idx) => {
@@ -1413,7 +1403,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
         }
     </script>
 
-    <!--提示框-->
+    <!--辅助功能-->
     <script>
         // 开启警告提示框
         function showAlert(message) {
@@ -1561,219 +1551,6 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
                     option.style.display = 'none';
                 });
                 boxSideBar('0 -> 0', '0.00000', 'none');
-            });
-        });
-
-        // 额外信息标签
-        var extraButtons = Array.from(document.querySelectorAll('.ex-info'));
-        extraButtons.forEach((ex, index) => {
-            ex.addEventListener('click', function(e) {
-                const newWindow = window.open('', '_blank');
-                // 获取当前点击的按钮的父容器
-                const parentContainer = e.currentTarget.closest('.image-container');
-                // 在父容器内找到 extra 内容，获取原有内容，并进行复制
-                const originalContent = parentContainer.querySelector('.extra').cloneNode(true);
-                // 添加样式
-                const styles = `
-                    <style>
-                        .loader-wrapper {
-                            position: fixed;
-                            top: 0;
-                            left: 0;
-                            width: 100%;
-                            height: 100%;
-                            z-index: 9999;
-                            background-color: rgba(255, 255, 255, 0.9);
-                            display: flex;
-                            justify-content: center;
-                            align-items: center;
-                        }
-                        .loader {
-                            border: 30px solid #f3f3f3;
-                            border-top: 30px solid #3498db;
-                            border-radius: 50%;
-                            width: 200px;
-                            height: 200px;
-                            animation: spin 1s linear infinite;
-                        }
-                        @keyframes spin {
-                            0% { transform: rotate(0deg); }
-                            100% { transform: rotate(360deg); }
-                        }
-
-                        .extra-container {
-                            display: flex;
-                            flex-wrap: wrap;
-                            justify-content: space-around;
-                            border: 1px solid #ccc;
-                            padding: 16px;
-                            margin: 16px;
-                            border-radius: 8px;
-                            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-                            transition: all 0.3s ease;
-                        }
-                        .extra-container:hover {
-                            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
-                        }
-                        .extra-image-div {
-                            width: 100%;
-                            height: 100%;
-                            flex-basis: calc(100% / 6 - 20px);
-                            margin: 10px;
-                            text-align: center;
-                        }
-                        .extra-image {
-                        	width: 90%;
-                            object-fit: contain;
-                        }
-                        .extra-image:hover {
-                            cursor: zoom-in;
-                            box-shadow: 0 0 10px 5px rgb(0 0 0 / 30%);
-                            transform: scale(1.03);
-                            transition: all 0.3s ease;
-                        }
-                        .extra-image:active {
-                            transform: scale(0.98);
-                        }
-                        p {
-                            margin: 15px 0 0 0;
-                            font-size: 20px;
-                            font-weight: bold;
-                            color: #0d96a7;
-                        }
-
-                        .zoomed-in {
-                            position: fixed;
-                            top: 50%;
-                            left: 50%;
-                            transform: translate(-50%, -50%);
-                            z-index: 9999;
-                            cursor: zoom-in;
-                            object-fit: contain;
-                        }
-                        .zoomed-in:hover {
-                            cursor: crosshair;
-                            box-shadow: 0px 0px 100px rgba(255,192,203,0.5);
-                            transition: box-shadow 0.5s ease;
-                        }
-
-                        .overlay {
-                            position: fixed;
-                            top: 0;
-                            left: 0;
-                            width: 100%;
-                            height: 100%;
-                            background: rgba(0, 0, 0, 0.3);
-                            z-index: 9998;
-                            background-color: rgba(0, 0, 0, 0.3);
-                            backdrop-filter: blur(30px);
-                            -webkit-backdrop-filter: blur(30px);
-                        }
-                    </style>
-                `;
-
-                // 创建一个新的 <script> 元素
-                const scriptElement = newWindow.document.createElement('script');
-                // 添加JS代码到新的 <script> 元素
-                scriptElement.textContent = `
-                    document.addEventListener('click', function(e) {
-                        if (e.target.classList.contains('extra-image')) {
-                            // 创建覆盖层
-                            const overlay = document.createElement('div');
-                            overlay.classList.add('overlay');
-
-                            // 创建放大的图片
-                            const zoomedImage = document.createElement('img');
-                            zoomedImage.src = e.target.src;
-                            zoomedImage.classList.add('zoomed-in');
-                            zoomedImage.style.zIndex = "9999";  // 确保z-index高于overlay
-
-                            // 加载完成后判断宽高比例
-                            zoomedImage.onload = function () {
-                                if (zoomedImage.naturalHeight > zoomedImage.naturalWidth) {
-                                    zoomedImage.style.height = "80%";
-                                } else {
-                                    zoomedImage.style.width = "50%";
-                                }
-                            };
-
-                            // 点击放大图片或覆盖层移除它们
-                            zoomedImage.addEventListener('click', function() {
-                                document.body.removeChild(zoomedImage);
-                                document.body.removeChild(overlay);
-                            });
-
-                            overlay.addEventListener('click', function() {
-                                document.body.removeChild(zoomedImage);
-                                document.body.removeChild(overlay);
-                            });
-
-                            // 将覆盖层和放大的图片添加到页面
-                            document.body.appendChild(overlay);
-                            document.body.appendChild(zoomedImage);
-                        }
-                    });
-
-                    // 监听load事件来隐藏加载动画
-                    window.addEventListener('load', () => {
-                        const loaderWrapper = document.querySelector('.loader-wrapper');
-                        if (loaderWrapper) {
-                            setTimeout(() => {
-                                loaderWrapper.style.opacity = "0";
-                                loaderWrapper.style.transition = "opacity 0.3s ease";
-                                setTimeout(() => {
-                                    loaderWrapper.style.display = "none";
-                                }, 500);
-                            }, 1000);
-                        }
-                    });
-                `;
-
-                // 修改复制内容的可见性
-                originalContent.style.display = 'block';
-                // 创建完整的HTML结构
-                var htmlContent = `
-                    <html>
-                    <head>
-                        <title>{{ app_desc }} - Main - Extra</title>
-                        ${styles}
-                    </head>
-                    <body>
-                        ${originalContent.outerHTML}
-                    </body>
-                    </html>
-                `;
-                // 将修改后的内容写入新窗口
-                newWindow.document.write(htmlContent);
-                // 将新的 <script> 元素添加到新窗口的 <body>
-                newWindow.document.body.appendChild(scriptElement);
-                // 创建加载遮罩，创建加载动画
-                const loaderWrapper = newWindow.document.createElement('div');
-                loaderWrapper.className = 'loader-wrapper';
-                const loader = newWindow.document.createElement('div');
-                loader.className = 'loader';
-                // 将加载动画添加到遮罩中，将遮罩添加到页面的body中
-                loaderWrapper.appendChild(loader);
-                newWindow.document.body.appendChild(loaderWrapper);
-
-                newWindow.document.close();
-            });
-
-            // 点击放大图片，再次点击并退出
-            let extraImg = Array.from(document.querySelectorAll('.extra-image'));
-            extraImg.forEach((ex, index) => {
-                ex.addEventListener('click', function(e) {
-                    // 创建一个新的 img 元素并设置属性
-                    const zoomedImage = document.createElement('img');
-                    zoomedImage.src = e.target.src;
-                    zoomedImage.classList.add('zoomed-in');
-                    // 添加点击事件以退出放大效果
-                    zoomedImage.addEventListener('click', function() {
-                        document.body.removeChild(zoomedImage);
-                    });
-                    // 将新的 img 元素添加到 body
-                    document.body.appendChild(zoomedImage);
-                });
             });
         });
     </script>

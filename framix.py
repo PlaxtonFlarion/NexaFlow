@@ -151,6 +151,7 @@ class Missions(object):
         *_, self.alone, self.whist, self.alter, self.alike, self.shine, self.group = args
 
         self.atom_total_temp: str = kwargs["atom_total_temp"]
+        self.line_total_temp: str = kwargs["line_total_temp"]
         self.main_share_temp: str = kwargs["main_share_temp"]
         self.main_total_temp: str = kwargs["main_total_temp"]
         self.view_share_temp: str = kwargs["view_share_temp"]
@@ -706,7 +707,9 @@ class Missions(object):
                 futures = await asyncio.gather(*task)
             self.level = this_level
 
-        atom_tmp = await Craft.achieve(self.atom_total_temp)
+        atom_tmp, line_tmp = await asyncio.gather(
+            *(Craft.achieve(tmp) for tmp in (self.atom_total_temp, self.line_total_temp))
+        )
 
         async def render_keras(
                 future: "Review",
@@ -725,10 +728,12 @@ class Missions(object):
             }
 
             if struct:
-                stages_inform = await report.ask_draw(
-                    scores, struct, proto_path, atom_tmp, deploy.boost
+                rp_timestamp = toolbox.get_timestamp_str()
+                extras_inform, stages_inform = await asyncio.gather(
+                    report.ask_line(extra_path, proto_path, line_tmp, rp_timestamp),
+                    report.ask_draw(scores, struct, proto_path, atom_tmp, deploy.boost, rp_timestamp)
                 )
-                result["extra"] = os.path.basename(extra_path)
+                result["extra"] = os.path.basename(extras_inform)
                 result["proto"] = os.path.basename(stages_inform)
                 result["style"] = "keras"
             else:
@@ -3515,6 +3520,7 @@ if __name__ == '__main__':
 
         # 设置模板文件路径
         _atom_total_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_atom_total.html")
+        _line_total_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_line_total.html")
         _main_share_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_main_share.html")
         _main_total_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_main_total.html")
         _view_share_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_view_share.html")
@@ -3668,6 +3674,7 @@ if __name__ == '__main__':
         # 打包关键字参数
         _keywords = {
             "atom_total_temp": _atom_total_temp,
+            "line_total_temp": _line_total_temp,
             "main_share_temp": _main_share_temp,
             "main_total_temp": _main_total_temp,
             "view_share_temp": _view_share_temp,

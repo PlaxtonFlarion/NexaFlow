@@ -162,8 +162,33 @@ class Report(object):
             self.range_list.append(inform)
 
     @staticmethod
+    async def write_html_file(html: str, html_template: str) -> None:
+        """
+        将渲染后的 HTML 模板异步写入指定路径文件中。
+
+        Parameters
+        ----------
+        html : str
+            输出 HTML 文件的路径，若文件已存在将被覆盖。
+
+        html_template : str
+            渲染后的 HTML 字符串内容。
+
+        Notes
+        -----
+        - 使用 aiofiles 实现异步文件写入；
+        - 写入时采用 UTF-8 或项目指定编码 `const.CHARSET`。
+        """
+        async with aiofiles.open(html, "w", encoding=const.CHARSET) as range_file:
+            await range_file.write(html_template)
+
+    @staticmethod
     async def ask_create_report(
-            total: "Path", title: str, serial: str, parts_list: list, style_loc: str
+            total: "Path",
+            title: str,
+            serial: str,
+            parts_list: list,
+            style_loc: str
     ) -> typing.Optional[dict]:
         """
         生成单个分析报告的 HTML 文件。
@@ -250,7 +275,7 @@ class Report(object):
             frame_list.sort(key=lambda x: x["frames_id"])
             return frame_list
 
-        async def transform(inform_part: dict) -> list[dict]:
+        async def transform(inform_part: dict) -> dict[str, typing.Any]:
             """
             转换报告数据字典，整合图像与阶段信息。
 
@@ -263,27 +288,24 @@ class Report(object):
             extra = inform_part.get("extra", "")
             proto = inform_part.get("proto", "")
 
-            image_list, extra_list = await asyncio.gather(
-                *(acquire(query, i) for i in [frame, extra])
-            )
+            image_list = await acquire(query, frame)
 
-            return [
-                {
-                    "query": query,
-                    "stage": stage,
-                    "image_list": image_list,
-                    "extra_list": extra_list,
-                    "proto": os.path.join(query, proto) if proto else None
-                }
-            ]
+            return {
+                "query": query,
+                "stage": stage,
+                "image_list": image_list,
+                "extra": os.path.join(query, extra) if extra else None,
+                "proto": os.path.join(query, proto) if proto else None,
+            }
 
+        # Notes: Start from here
         if not parts_list:
             return None
 
         transform_result = await asyncio.gather(
             *(transform(parts) for parts in parts_list)
         )
-        images_list = [i for result in transform_result for i in result]
+        images_list = [result for result in transform_result]
 
         html_temp = Template(style_loc).render(
             app_desc=const.DESC, title=title, images_list=images_list
@@ -292,8 +314,9 @@ class Report(object):
         team = serial if serial else random.randint(10000, 99999)
         html = total / title / f"{title}_{team}.html"
 
-        async with aiofiles.open(html, "w", encoding=const.CHARSET) as range_file:
-            await range_file.write(html_temp)
+        write_task = asyncio.create_task(
+            Report.write_html_file(html, html_temp)
+        )
 
         cost_list = [cost["stage"]["cost"] for cost in images_list]
         try:
@@ -307,11 +330,16 @@ class Report(object):
         }
         logger.debug("Recovery: " + json.dumps(single, ensure_ascii=False))
 
+        await write_task
+
         return single
 
     @staticmethod
     async def ask_create_total_report(
-            file_name: str, group: bool, style_loc: str, total_loc: str
+            file_name: str,
+            group: bool,
+            style_loc: str,
+            total_loc: str
     ) -> typing.Union[typing.Any, str]:
         """
         汇总多个单项分析报告，生成最终总报告 HTML。
@@ -448,9 +476,7 @@ class Report(object):
         except Exception as e:
             raise FramixError(e)
 
-        merged_list = await format_merged(
-            [c for c in create_result if c]
-        )
+        merged_list = await format_merged([c for c in create_result if c])
 
         for i in merged_list:
             i["merge_list"] = list(zip(i.pop("href"), i.pop("avg"), i.pop("cost_list")))
@@ -472,14 +498,81 @@ class Report(object):
         )
         html = os.path.join(file_name, f"{const.R_TOTAL_NAME}_{salt()}.html")
 
-        async with aiofiles.open(html, "w", encoding=const.CHARSET) as f:
-            await f.write(html_temp)
+        await Report.write_html_file(html, html_temp)
 
         return html
 
     @staticmethod
+    async def ask_line(
+            extra_path: str,
+            proto_path: str,
+            template_file: str,
+            rp_timestamp: str
+    ) -> typing.Union[typing.Any, str]:
+        """
+        生成包含帧图列表的 HTML 报告页面，用于比对额外帧结构内容。
+
+        Parameters
+        ----------
+        extra_path : str
+            包含额外帧图像文件的目录路径，文件命名应含帧索引前缀。
+
+        proto_path : str
+            输出报告的路径或目录；
+            若为目录，将根据时间戳自动命名 HTML 报告文件。
+
+        template_file : str
+            Jinja2 模板文件路径，作为 HTML 渲染基础。
+
+        rp_timestamp : str
+            报告命名用的时间戳，用于构造最终文件名。
+
+        Returns
+        -------
+        Union[Any, str]
+            返回 HTML 文件的输出路径；
+            若发生异常或特殊逻辑处理，也可能返回任意类型结果。
+
+        Notes
+        -----
+        - 帧图像文件名应以帧编号为前缀（如 `12(xxx).jpg`）；
+        - 将按编号对帧排序，并以 JSON 格式传入模板变量；
+        - 最终通过 `Report.write_html_file()` 异步写入 HTML 文件。
+        """
+        frame_list = []
+        for image in os.listdir(extra_path):
+            image_src = os.path.join(os.path.basename(extra_path), image)
+            image_idx = image.split("(")[0]
+
+            image_source = {
+                "src": image_src, "frames_id": int(image_idx)
+            }
+            frame_list.append(image_source)
+
+        frame_list.sort(key=lambda x: x["frames_id"])
+
+        html_template = Template(template_file).render(
+            app_desc=const.DESC,
+            resp={"extra_list": frame_list}
+        )
+
+        if os.path.isdir(proto_path):
+            report_path = os.path.join(proto_path, f"{rp_timestamp}_line.html")
+        else:
+            report_path = proto_path
+
+        await Report.write_html_file(report_path, html_template)
+
+        return report_path
+
+    @staticmethod
     async def ask_draw(
-            scores: dict, struct_result: "ClassifierResult", proto_path: str, template_file: str, boost: bool,
+            scores: dict,
+            struct_result: "ClassifierResult",
+            proto_path: str,
+            template_file: str,
+            boost: bool,
+            rp_timestamp: str
     ) -> typing.Union[typing.Any, str]:
         """
         绘制阶段图像摘要报告，生成 HTML 格式的图像展示页面。
@@ -502,6 +595,9 @@ class Report(object):
 
         boost : bool
             是否启用图像增强绘制模式，启用后会将稳定阶段中间帧以 base64 嵌入，其他阶段使用已保存图像路径。
+
+        rp_timestamp : str
+            报告命名用的时间戳，用于构造最终文件名。
 
         Returns
         -------
@@ -613,7 +709,6 @@ class Report(object):
                 thumbnail_list.append({title: image_list})
 
         cost_dict = struct_result.calc_changing_cost()
-        timestamp = toolbox.get_timestamp_str()
 
         extra_dict["视频路径"] = struct_result.video_path
         extra_dict["总计帧数"] = str(struct_result.get_length())
@@ -624,18 +719,17 @@ class Report(object):
             extras=extra_dict,
             background_color=const.BACKGROUND_COLOR,
             cost_dict=cost_dict,
-            timestamp=timestamp,
+            timestamp=rp_timestamp,
             app_desc=const.DESC,
             version_code=const.VERSION
         )
 
         if os.path.isdir(proto_path):
-            report_path = os.path.join(proto_path, f"{timestamp}.html")
+            report_path = os.path.join(proto_path, f"{rp_timestamp}_atom.html")
         else:
             report_path = proto_path
 
-        async with aiofiles.open(report_path, "w", encoding=const.CHARSET) as f:
-            await f.write(html_template)
+        await Report.write_html_file(report_path, html_template)
 
         return report_path
 

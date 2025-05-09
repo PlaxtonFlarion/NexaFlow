@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ app_desc }} - Main - Extra</title>
+    <style>
+        .loader-wrapper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+            background-color: rgba(255, 255, 255, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .loader {
+            border: 30px solid #f3f3f3;
+            border-top: 30px solid #3498db;
+            border-radius: 50%;
+            width: 200px;
+            height: 200px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .extra-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            border: 1px solid #ccc;
+            padding: 16px;
+            margin: 16px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+        .extra-container:hover {
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+        }
+        .extra-image-div {
+            width: 100%;
+            height: 100%;
+            flex-basis: calc(100% / 6 - 20px);
+            margin: 10px;
+            text-align: center;
+        }
+        .extra-image {
+            width: 90%;
+            object-fit: contain;
+        }
+        .extra-image:hover {
+            cursor: zoom-in;
+            box-shadow: 0 0 10px 5px rgb(0 0 0 / 30%);
+            transform: scale(1.03);
+            transition: all 0.3s ease;
+        }
+        .extra-image:active {
+            transform: scale(0.98);
+        }
+        p {
+            margin: 15px 0 0 0;
+            font-size: 20px;
+            font-weight: bold;
+            color: #0d96a7;
+        }
+
+        .zoomed-in {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+            cursor: zoom-in;
+            object-fit: contain;
+        }
+        .zoomed-in:hover {
+            cursor: crosshair;
+            box-shadow: 0px 0px 100px rgba(255,192,203,0.5);
+            transition: box-shadow 0.5s ease;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 9998;
+            background-color: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+        }
+    </style>
+</head>
+<body>
+
+<!--加载状态-->
+<div class="loader-wrapper">
+    <div class="loader"></div>
+</div>
+
+<!--主图-->
+<div class="extra" style="display: block;">
+    <div class="extra-container">
+        {% for extra in resp.extra_list %}
+        <div class="extra-image-div">
+            <img src="{{ extra.src }}" class="extra-image" alt="extraImage">
+            <p>{{ extra.frames_id }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+    // 点击图片
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('extra-image')) {
+            // 创建覆盖层
+            const overlay = document.createElement('div');
+            overlay.classList.add('overlay');
+
+            // 创建放大的图片
+            const zoomedImage = document.createElement('img');
+            zoomedImage.src = e.target.src;
+            zoomedImage.classList.add('zoomed-in');
+            zoomedImage.style.zIndex = "9999";  // 确保z-index高于overlay
+
+            // 加载完成后判断宽高比例
+            zoomedImage.onload = function () {
+                if (zoomedImage.naturalHeight > zoomedImage.naturalWidth) {
+                    zoomedImage.style.height = "80%";
+                } else {
+                    zoomedImage.style.width = "50%";
+                }
+            };
+
+            // 点击放大图片或覆盖层移除它们
+            zoomedImage.addEventListener('click', function() {
+                document.body.removeChild(zoomedImage);
+                document.body.removeChild(overlay);
+            });
+
+            overlay.addEventListener('click', function() {
+                document.body.removeChild(zoomedImage);
+                document.body.removeChild(overlay);
+            });
+
+            // 将覆盖层和放大的图片添加到页面
+            document.body.appendChild(overlay);
+            document.body.appendChild(zoomedImage);
+        }
+    });
+
+    // 监听load事件来隐藏加载动画
+    window.addEventListener('load', () => {
+        const loaderWrapper = document.querySelector('.loader-wrapper');
+        if (loaderWrapper) {
+            setTimeout(() => {
+                loaderWrapper.style.opacity = "0";
+                loaderWrapper.style.transition = "opacity 0.3s ease";
+                setTimeout(() => {
+                    loaderWrapper.style.display = "none";
+                }, 500);
+            }, 1000);
+        }
+    });
+</script>
+
+</body>
+</html>
