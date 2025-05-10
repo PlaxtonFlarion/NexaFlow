@@ -951,7 +951,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         )
         self.console.print(panel)
 
-    def show_file(self, file_path: "Path") -> None:
+    def show_files(self, file_path: "Path") -> None:
         """
         显示树状图。
         """

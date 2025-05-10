@@ -19,6 +19,8 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
 
 import os
 import re
+import sys
+import shutil
 import typing
 import aiofiles
 from loguru import logger
@@ -28,6 +30,7 @@ from rich.console import Console
 from rich.logging import (
     LogRecord, RichHandler
 )
+from engine.terminal import Terminal
 from nexacore.design import Design
 from nexaflow import const
 
@@ -176,7 +179,34 @@ class Craft(object):
     """
 
     @staticmethod
-    async def revise_path(path: typing.Union[str, "os.PathLike"]) -> str:
+    async def editor(file_path: str) -> typing.Coroutine | None:
+        """
+        调用系统默认文本编辑器以异步方式打开指定配置文件。
+
+        Parameters
+        ----------
+        file_path : str
+            要打开的配置文件路径，支持绝对路径或相对路径。
+
+        Notes
+        -----
+        - 在 Windows 平台：
+            - 优先尝试调用 `notepad++`；
+            - 若未安装，则退回使用系统默认的 `Notepad`。
+        - 在 macOS 平台：
+            - 调用系统内建的 `TextEdit`（以阻塞模式 `-W` 打开）。
+        - 编辑器调用过程为异步命令执行，不会阻塞主线程；
+          适用于配置快速预览或编辑器集成场景。
+        """
+        if sys.platform == "win32":
+            first = ["notepad++"] if shutil.which("notepad++") else ["Notepad"]
+        else:
+            first = ["open", "-W", "-a", "TextEdit"]
+
+        await Terminal.cmd_line(first + [file_path])
+
+    @staticmethod
+    async def revise_path(path: typing.Union[str, "os.PathLike"]) -> typing.Coroutine | str:
         """
         清理路径字符串中的控制字符与特殊不可见符号。
 
@@ -196,7 +226,7 @@ class Craft(object):
         return re.sub("[\x00-\x1f\x7f-\x9f\u2000-\u20ff\u202a-\u202e]", "", path)
 
     @staticmethod
-    async def achieve(template: typing.Union[str, "os.PathLike"]) -> str:
+    async def achieve(template: typing.Union[str, "os.PathLike"]) -> typing.Coroutine | str:
         """
         异步读取指定模板文件的内容。
 

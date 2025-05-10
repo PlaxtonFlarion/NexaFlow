@@ -21,6 +21,7 @@ import os
 import copy
 import json
 import typing
+from pathlib import Path
 from loguru import logger
 from rich.table import Table
 from nexacore.parser import Parser
@@ -513,22 +514,22 @@ class Option(object):
 
     @total_place.setter
     def total_place(self, value: typing.Any):
-        if type(value) is str and os.path.isdir(value):
+        if value and type(value) is str and Path(value).is_dir():
             self.options["total_place"] = value
 
     @model_place.setter
     def model_place(self, value: typing.Any):
-        if type(value) is str and os.path.isdir(value):
+        if value and type(value) is str and Path(value).is_dir():
             self.options["model_place"] = value
 
     @faint_model.setter
     def faint_model(self, value: typing.Any):
-        if type(value) is str and value:
+        if value and type(value) is str and Path(self.model_place, value).exists():
             self.options["faint_model"] = value
 
     @color_model.setter
     def color_model(self, value: typing.Any):
-        if type(value) is str and value:
+        if value and type(value) is str and Path(self.model_place, value).exists():
             self.options["color_model"] = value
 
     def load_option(self, option_file: typing.Any) -> None:

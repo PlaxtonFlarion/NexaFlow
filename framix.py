@@ -843,7 +843,7 @@ class Missions(object):
                 self.design.show_panel(resp, Wind.KEEPER)
             else:
                 self.design.show_panel(f"成功生成汇总报告 {(state := Path(resp)).name}", Wind.REPORTER)
-                self.design.show_file(state)
+                self.design.show_files(state)
 
     # """时空纽带分析系统"""
     async def combine_view(self, merge: list) -> None:
@@ -2215,11 +2215,7 @@ class Missions(object):
                         elif select == "deploy":
                             Design.info(f"{const.WRN}请完全退出编辑器再继续操作")
                             deploy.dump_deploy(self.initial_deploy)
-                            if sys.platform == "win32":
-                                first = ["notepad++"] if shutil.which("notepad++") else ["Notepad"]
-                            else:
-                                first = ["open", "-W", "-a", "TextEdit"]
-                            await Terminal.cmd_line(first + [self.initial_deploy])
+                            await Craft.editor(self.initial_deploy)
                             deploy.load_deploy(self.initial_deploy)
                             deploy.view_deploy()
                             await self.design.neural_sync_loading()
@@ -3435,7 +3431,30 @@ async def main() -> typing.Coroutine | None:
         parameters = list(dict.fromkeys(parameters))
         await function(parameters, _option, _deploy)
 
+    async def _previewing(
+        dump_func: "typing.Callable", load_func: "typing.Callable", file_path: str, view_data: dict
+    ) -> typing.Coroutine | None:
+        """
+        执行配置预览流程，导出 → 编辑 → 重新加载 → 可视化打印。
+        """
+        await asyncio.to_thread(dump_func, file_path)
+        await Craft.editor(file_path)
+        await asyncio.to_thread(load_func, file_path)
+
+        Design.console.print()
+        await asyncio.to_thread(Design.console.print_json, data=view_data)
+        Design.console.print()
+
     # Notes: Start from here
+    if (_talks := _lines.talks) or _lines.rings:
+        if _talks:
+            current = _deploy.dump_deploy, _deploy.load_deploy, _initial_deploy, _deploy.deploys
+        else:
+            current = _option.dump_option, _option.load_option, _initial_option, _option.options
+
+        await _previewing(*current)
+        return await Design.engine_starburst(_level)  # 结尾动画
+
     await random.choice(
         [Design.engine_topology_wave, Design.stellar_glyph_binding]
     )(_level)  # 启动仪式
