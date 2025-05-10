@@ -502,8 +502,8 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                 if keys in Args.discriminate else f"[bold {tc['compatible']}]参数兼容"
 
             table = Table(
-                title=f"[bold {tc['title_main']}]{const.DESC} | {const.ALIAS} "
-                      f"CLI [bold {tc['title_keys']}]<{keys}>[/] <{know}>",
+                title=f"[bold][bold {tc['title_main']}]{const.DESC} | {const.ALIAS} "
+                      f"CLI [bold {tc['title_keys']}]{keys}[/] | {know}[/]",
                 header_style=f"bold {tc['header']}", **table_style
             )
             table.add_column("命令", justify="left", no_wrap=True, width=7)
@@ -2351,4 +2351,5 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
 
 if __name__ == '__main__':
+    Design.help_document()
     pass
