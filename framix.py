@@ -144,8 +144,8 @@ class Missions(object):
         self.level = level  # 日志级别
         self.power = power  # 最大进程
 
-        self.design = Design(self.level)
-        self.animation = AsyncAnimationManager()
+        self.design: typing.Optional["Design"] = Design(self.level)
+        self.animation: "AsyncAnimationManager" = AsyncAnimationManager()
 
         self.flick, self.carry, self.fully, self.speed, self.basic, self.keras, *_ = args
         *_, self.alone, self.whist, self.alter, self.alike, self.shine, self.group = args
