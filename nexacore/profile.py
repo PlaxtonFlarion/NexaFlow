@@ -126,7 +126,7 @@ class Deploy(object):
     def __setstate__(self, state):
         self.deploys = state
 
-# Getter ###############################################################################################################
+    # Notes: ======================== Getter ========================
 
     @property
     def shape(self):
@@ -160,7 +160,7 @@ class Deploy(object):
     def frate(self):
         return self.deploys["FST"]["frate"]
 
-# Getter ###############################################################################################################
+    # Notes: ======================== Getter ========================
 
     @property
     def boost(self):
@@ -210,7 +210,7 @@ class Deploy(object):
     def omits(self):
         return self.deploys["ALS"]["omits"]
 
-# Setter ###############################################################################################################
+    # Notes: ======================== Setter ========================
 
     @shape.setter
     def shape(self, value: typing.Any):
@@ -256,7 +256,7 @@ class Deploy(object):
             value, min_v=30, max_v=60, decimal=0
         )
 
-# Setter ###############################################################################################################
+    # Notes: ======================== Setter ========================
 
     @boost.setter
     def boost(self, value: typing.Any):
@@ -321,6 +321,8 @@ class Deploy(object):
     @omits.setter
     def omits(self, value: typing.Any):
         self.deploys["ALS"]["omits"] = Parser.parse_hooks(value)
+
+    # Notes: ======================== Method ========================
 
     def dump_deploy(self, deploy_file: typing.Any) -> None:
         """
@@ -499,6 +501,8 @@ class Option(object):
     def __setstate__(self, state):
         self.options = state
 
+    # Notes: ======================== Getter ========================
+
     @property
     def total_place(self):
         return self.options["total_place"]
@@ -514,6 +518,8 @@ class Option(object):
     @property
     def color_model(self):
         return self.options["color_model"]
+
+    # Notes: ======================== Setter ========================
 
     @total_place.setter
     def total_place(self, value: typing.Any):
@@ -534,6 +540,8 @@ class Option(object):
     def color_model(self, value: typing.Any):
         if value and type(value) is str and Path(self.model_place, value).exists():
             self.options["color_model"] = value
+
+    # Notes: ======================== Method ========================
 
     def load_option(self, option_file: typing.Any) -> None:
         """
