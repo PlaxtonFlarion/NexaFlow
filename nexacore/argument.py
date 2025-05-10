@@ -293,7 +293,7 @@ class Args(object):
         },
         "--grind": {
             "args": {"nargs": "?", "const": None, "type": str},
-            "view": ["一次", "=INT"],
+            "view": ["一次", "=POSITIVE INT"],
             "help": "边缘觉醒",
             "func": """- 基于边缘增强或锐化算法（如拉普拉斯或高通滤波），提高图像边缘与纹理的清晰度。
                 - 适用于修复模糊图像、强化结构轮廓，或在特定分析任务中凸显细节信息。""",
