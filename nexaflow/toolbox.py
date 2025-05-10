@@ -751,10 +751,13 @@ def match_template_with_object(
     ----------
     template : np.ndarray
         用作匹配参考的模板图像。
+
     target : np.ndarray
         待匹配的目标图像。
+
     engine_template_cv_method_name : str, optional
         使用的 OpenCV 模板匹配方法名（如 "cv2.TM_CCOEFF_NORMED"），默认为此值。
+
     **kwargs :
         传递给 FindIt 引擎的其他参数，如匹配阈值、搜索范围等。
 
