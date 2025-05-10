@@ -126,7 +126,7 @@ class Deploy(object):
     def __setstate__(self, state):
         self.deploys = state
 
-    # Notes: ======================== Getter ========================
+    # Notes: ======================== FST Getter ========================
 
     @property
     def shape(self):
@@ -160,7 +160,7 @@ class Deploy(object):
     def frate(self):
         return self.deploys["FST"]["frate"]
 
-    # Notes: ======================== Getter ========================
+    # Notes: ======================== ALS Getter ========================
 
     @property
     def boost(self):
@@ -210,7 +210,7 @@ class Deploy(object):
     def omits(self):
         return self.deploys["ALS"]["omits"]
 
-    # Notes: ======================== Setter ========================
+    # Notes: ======================== FST Setter ========================
 
     @shape.setter
     def shape(self, value: typing.Any):
@@ -256,7 +256,7 @@ class Deploy(object):
             value, min_v=30, max_v=60, decimal=0
         )
 
-    # Notes: ======================== Setter ========================
+    # Notes: ======================== ALS Setter ========================
 
     @boost.setter
     def boost(self, value: typing.Any):
