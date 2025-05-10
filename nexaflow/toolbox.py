@@ -849,8 +849,10 @@ def show_progress(
     ----------
     items : typing.Optional[typing.Union[typing.Sized, typing.Iterable]]
         可选参数，如果提供，则将其包装为 tqdm 进度条。
+
     total : typing.Optional[int]
         可选参数，若未传入 items，则必须提供总进度值。
+
     color : typing.Optional[int]
         指定进度条的前景色（tqdm 标签与条形的 ANSI 颜色值），默认为 245。
 
