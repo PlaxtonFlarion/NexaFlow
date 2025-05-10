@@ -267,8 +267,8 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
         <div class="masonry">
             {% for image in res.image_list %}
             <div class="view">
-                <p class="name">{{ image.frames_id }}</p>
-                <img src="{{ image.src }}" data-id="{{ image.frames_id }}" alt="Image {{ image.frames_id }}">
+                <p class="name">{{ image.frame_id }}</p>
+                <img src="{{ image.src }}" data-id="{{ image.frame_id }}" alt="Image {{ image.frame_id }}">
             </div>
             {% endfor %}
         </div>

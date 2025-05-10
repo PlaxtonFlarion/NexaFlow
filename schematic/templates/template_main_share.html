@@ -804,13 +804,13 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
         {% for res in images_list %}
         <div class="image-container" data-query="{{ res.query }}" data-start="{{ res.stage.start }}" data-end="{{ res.stage.end }}">
             {% for image in res.image_list %}
-            <div class="image-box {{ 'selected' if (image.frames_id| int) == res.stage.start or (image.frames_id| int) == res.stage.end else '' }}">
-                <img src="{{ image.src }}" class="img-fluid" alt="Image" data-frame="{{ image.frames_id }}" data-timestamp="{{ image.timestamp }}">
+            <div class="image-box {{ 'selected' if (image.frame_id| int) == res.stage.start or (image.frame_id| int) == res.stage.end else '' }}">
+                <img src="{{ image.src }}" class="img-fluid" alt="Image" data-frame="{{ image.frame_id }}" data-timestamp="{{ image.timestamp }}">
                 <div class="mark-button-div">
-                    <button class="mark-button {{ 'marked' if (image.frames_id| int) == res.stage.start or (image.frames_id| int) == res.stage.end else '' }}">标记</button>
+                    <button class="mark-button {{ 'marked' if (image.frame_id| int) == res.stage.start or (image.frame_id| int) == res.stage.end else '' }}">标记</button>
                 </div>
-                <div class="info" data-id="{{ image.frames_id }}" data-ts="{{ image.timestamp }}">
-                    <span>{{ image.frames_id }} - {{ image.timestamp }}</span>
+                <div class="info" data-id="{{ image.frame_id }}" data-ts="{{ image.timestamp }}">
+                    <span>{{ image.frame_id }} - {{ image.timestamp }}</span>
                 </div>
             </div>
             {% endfor %}

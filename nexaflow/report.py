@@ -264,7 +264,7 @@ class Report(object):
                     image_idx = image.split("(")[0]
 
                 image_source = {
-                    "src": image_src, "frames_id": int(image_idx)
+                    "src": image_src, "frame_id": int(image_idx)
                 }
 
                 if fit_time := re.search(r"(?<=_)\d+\.\d+(?=\.)", image):
@@ -272,7 +272,7 @@ class Report(object):
 
                 frame_list.append(image_source)
 
-            frame_list.sort(key=lambda x: x["frames_id"])
+            frame_list.sort(key=lambda x: x["frame_id"])
             return frame_list
 
         async def transform(inform_part: dict) -> dict[str, typing.Any]:
@@ -545,11 +545,11 @@ class Report(object):
             image_idx = image.split("(")[0]
 
             image_source = {
-                "src": image_src, "frames_id": int(image_idx)
+                "src": image_src, "frame_id": int(image_idx)
             }
             frame_list.append(image_source)
 
-        frame_list.sort(key=lambda x: x["frames_id"])
+        frame_list.sort(key=lambda x: x["frame_id"])
 
         html_template = Template(template_file).render(
             app_desc=const.DESC,
