@@ -2351,5 +2351,4 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
 
 if __name__ == '__main__':
-    Design.help_document()
     pass
