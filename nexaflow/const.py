@@ -48,7 +48,8 @@ SUC = f"[bold #FFFFFF on #32CD32]"
 WRN = f"[bold #000000 on #FFFF00]"
 ERR = f"[bold #FFFFFF on #FF6347]"
 
-DEFAULT_SCALE = 0.5
+DF_SCALE = 0.5
+DF_FRATE = 60
 
 SHAPE = None
 SCALE = None
@@ -57,7 +58,7 @@ CLOSE = None
 LIMIT = None
 GAUSS = None
 GRIND = None
-FRATE = 60
+FRATE = None
 
 BOOST = False
 COLOR = False

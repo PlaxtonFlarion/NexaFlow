@@ -369,6 +369,8 @@ class Missions(object):
               for video_temp, *_ in task_list)
         )
 
+        deploy.frate = deploy.frate or const.DF_FRATE
+
         for (rlt, avg, dur, org, pnt), (video_temp, *_) in zip(content_list, task_list):
             vd_start, vd_close, vd_limit = pnt["start"], pnt["close"], pnt["limit"]
             logger.debug(f"视频尺寸: {list(org)}")
@@ -381,7 +383,7 @@ class Missions(object):
 
         *_, durations, originals, indicates = zip(*content_list)
 
-        # Video Balance
+        # """均衡节奏"""
         eliminate = []
         if self.alike and len(task_list) > 1:
             logger.debug(tip := f"平衡时间: [{(standard := min(durations)):.6f}] [{Parser.parse_times(standard)}]")
@@ -446,11 +448,13 @@ class Missions(object):
         3. 记录每个过滤任务的处理日志。
         4. 返回处理后的视频结果列表。
         """
-        filters = [f"fps={deploy.frate}"]
+        filters = [f"fps={deploy.frate or const.DF_FRATE}"]
         if self.speed:
             filters += [] if deploy.color else [f"format=gray"]
 
+        # """朦胧幻界"""
         filters = filters + [f"gblur=sigma={gauss}"] if (gauss := deploy.gauss) else filters
+        # """边缘觉醒"""
         filters = filters + [f"unsharp=luma_amount={grind}"] if (grind := deploy.grind) else filters
 
         video_filter_list = await asyncio.gather(
@@ -641,8 +645,9 @@ class Missions(object):
 
         video_target_list = [
             (flt, os.path.join(
-                os.path.dirname(video_temp), f"vision_fps{deploy.frate}_{random.randint(100, 999)}.mp4")
-             ) for flt, (video_temp, *_) in zip(video_filter_list, task_list)
+                os.path.dirname(video_temp),
+                f"vision_fps{deploy.frate or const.DF_FRATE}_{random.randint(100, 999)}.mp4"
+            )) for flt, (video_temp, *_) in zip(video_filter_list, task_list)
         ]
 
         await self.animation.start(self.design.frame_grid_initializer)
@@ -1093,7 +1098,8 @@ class Missions(object):
 
         video_target_list = [
             (flt, os.path.join(
-                report.query_path, f"tmp_fps{deploy.frate}_{random.randint(10000, 99999)}.mp4")
+                report.query_path,
+                f"tmp_fps{deploy.frate or const.DF_FRATE}_{random.randint(10000, 99999)}.mp4")
              ) for flt, (video_temp, *_) in zip(video_filter_list, task_list)
         ]
 
@@ -1330,6 +1336,7 @@ class Missions(object):
 
                 image_w, image_h = image_shape[:2]
                 w, h = max(image_w, 10), max(image_h, 10)
+                logger.debug(f"model_w={w} model_h={h}")
 
                 src_model_name = f"Gray" if ready_aisle == 1 else f"Hued"
                 # new_model_name = f"Keras_{name}_W{w}_H{h}_{random.randint(10000, 99999)}.h5"
@@ -1338,7 +1345,7 @@ class Missions(object):
                 report.title = f"Create_Model_{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}"
 
                 task_list.append(
-                    [ready_color, image_shape, ready_aisle, cf_src, report.query_path, new_model_name]
+                    [ready_color, (w, h), ready_aisle, cf_src, report.query_path, new_model_name]
                 )
 
             else:
@@ -1516,7 +1523,7 @@ class Missions(object):
                 if deploy.scale:
                     image_scale = max_scale if deploy.shape else max(min_scale, min(max_scale, deploy.scale))
                 else:
-                    image_scale = max_scale if deploy.shape else const.DEFAULT_SCALE
+                    image_scale = max_scale if deploy.shape else const.DF_SCALE
 
                 new_w, new_h = int(twist_w * image_scale), int(twist_h * image_scale)
                 logger.debug(
@@ -1995,8 +2002,12 @@ class Missions(object):
             return exec_pairs_list
 
         async def call_commands(
-                bean: typing.Any, live_devices: dict,
-                exec_func: str, exec_vals: list, exec_args: list, exec_kwds: dict
+                bean: typing.Any,
+                live_devices: dict,
+                exec_func: str,
+                exec_vals: list,
+                exec_args: list,
+                exec_kwds: dict
         ) -> typing.Any:
             """
             执行指定对象的指令函数（异步或同步），并捕获运行结果与异常。
@@ -2422,7 +2433,7 @@ class Missions(object):
         ctrl_ = f"静默守护模式" if self.whist else f"{('独立' if self.alone else '全局')}控制模式"
 
         record = Record(
-            tp_ver, alone=self.alone, whist=self.whist, frate=deploy.frate
+            tp_ver, alone=self.alone, whist=self.whist, frate=deploy.frate or const.DF_FRATE
         )
         player = Player()
 
@@ -2636,7 +2647,7 @@ class Clipix(object):
             w, h = w - 1 if w % 2 != 0 else w, h - 1 if h % 2 != 0 else h
             video_filter_list = filters + [f"scale={w}:{h}"]
         else:
-            deploy.scale = deploy.scale or const.DEFAULT_SCALE
+            deploy.scale = deploy.scale or const.DF_SCALE
             video_filter_list = filters + [f"scale=iw*{deploy.scale}:ih*{deploy.scale}"]
 
         return video_filter_list
@@ -2833,7 +2844,7 @@ class Alynex(object):
             w, h, ratio = await Switch.ask_magic_frame(src_size, self.deploy.shape)
             shape, scale = (w, h), None
         else:
-            shape, scale = None, self.deploy.scale or const.DEFAULT_SCALE
+            shape, scale = None, self.deploy.scale or const.DF_SCALE
 
         logger.debug(f"调整视频帧: Shape={shape} Scale={scale}")
 

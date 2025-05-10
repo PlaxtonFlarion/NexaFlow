@@ -214,14 +214,14 @@ class Deploy(object):
 
     @shape.setter
     def shape(self, value: typing.Any):
-        if effective := Parser.parse_shape(value):
-            self.deploys["FST"]["shape"] = effective
+        self.deploys["FST"]["shape"] = Parser.parse_shape(value)
 
     @scale.setter
     def scale(self, value: typing.Any):
         # Note 取值范围 0.1 ～ 1.0
-        if effective := Parser.parse_waves(value, min_v=0.1, max_v=1.0, decimal=1):
-            self.deploys["FST"]["scale"] = effective
+        self.deploys["FST"]["scale"] = Parser.parse_waves(
+            value, min_v=0.1, max_v=1.0, decimal=1
+        )
 
     @start.setter
     def start(self, value: typing.Any):
@@ -238,20 +238,23 @@ class Deploy(object):
     @gauss.setter
     def gauss(self, value: typing.Any):
         # Note 取值范围 0.0 ～ 2.0
-        if effective := Parser.parse_waves(value, min_v=0.0, max_v=2.0, decimal=1):
-            self.deploys["FST"]["gauss"] = effective
+        self.deploys["FST"]["gauss"] = Parser.parse_waves(
+            value, min_v=0.0, max_v=2.0, decimal=1
+        )
 
     @grind.setter
     def grind(self, value: typing.Any):
         # Note 取值范围 0.0 ～ 2.0
-        if effective := Parser.parse_waves(value, min_v=0.0, max_v=2.0, decimal=1):
-            self.deploys["FST"]["grind"] = effective
+        self.deploys["FST"]["grind"] = Parser.parse_waves(
+            value, min_v=0.0, max_v=2.0, decimal=1
+        )
 
     @frate.setter
     def frate(self, value: typing.Any):
         # Note 取值范围 30 ～ 60
-        if effective := Parser.parse_waves(value, min_v=30, max_v=60, decimal=0):
-            self.deploys["FST"]["frate"] = effective
+        self.deploys["FST"]["frate"] = Parser.parse_waves(
+            value, min_v=30, max_v=60, decimal=0
+        )
 
 # Setter ###############################################################################################################
 
