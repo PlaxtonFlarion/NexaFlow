@@ -201,7 +201,7 @@ class Design(object):
         """)
 
     @staticmethod
-    def closure() -> str:
+    def closure() -> None:
         """
         返回格式化的退出提示文本。
         """

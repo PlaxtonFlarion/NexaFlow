@@ -103,7 +103,7 @@ class Active(object):
         def __init__(self, console: "Console"):
             super().__init__(
                 console=console, rich_tracebacks=True, show_path=False,
-                show_time=False, markup=False, highlighter=False
+                show_time=False, markup=False
             )
 
         def emit(self, record: "LogRecord") -> None:
