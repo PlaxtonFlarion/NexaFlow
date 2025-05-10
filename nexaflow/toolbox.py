@@ -88,10 +88,6 @@ def video_jump(video_cap: "cv2.VideoCapture", frame_id: int) -> None:
     frame_id : int
         目标帧的编号（从 1 开始计数）。
 
-    Returns
-    -------
-    None
-
     Notes
     -----
     - 跳转时实际设置帧为 `frame_id - 2`，然后执行一次 `.read()`，这是为了避开部分播放器的预缓冲机制，确保定位准确。
