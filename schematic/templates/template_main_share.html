@@ -105,12 +105,27 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
             background-image: linear-gradient(45deg, #8BAAAA 0%, #AE8B9C 100%);
             pointer-events: none;
         }
-        .time-difference:hover {
-            padding: 5px 5px;
-            border: 1px solid #e1b100;
-            background-color: #e1b100;
-            transition: background-color 0.3s;
+
+        /* 结果显示 */
+        .time-difference {
+            position: relative;
+            width: 120px;
+            padding: 5px 20px;
+            border-radius: 10px;
+            border: 1px solid #7dd87d;
+            background: linear-gradient(135deg, #c6f6d5 0%, #81e6d9 100%);
+            color: #1a202c;
+            outline: none;
+            overflow: hidden;
+            font-weight: bold;
+            transition: all 0.3s ease;
         }
+        .time-difference:hover {
+            background: linear-gradient(135deg, #fddb92 0%, #d1fdff 100%);
+            color: #2a2a2a;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+        }
+
         .time-difference:active {
             transform: scale(0.95);
         }
@@ -118,19 +133,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
             background-color: #2a2626;  /* 增加对比 */
             transition: background-color 0.3s; /* 平滑过渡效果 */
         }
-        .time-difference {
-            position: relative;
-            width: 120px;
-            padding: 5px 20px;
-            border-radius: 10px;
-            border: 1px solid #d2e100;
-            background-color: #d2e100;
-            color: #2a2626;
-            cursor: pointer;
-            outline: none;
-            overflow: hidden;
-            font-weight: bold;
-        }
+
         .time-difference::before, .time-difference::after {
             content: "";
             position: absolute;
@@ -571,7 +574,7 @@ This file is licensed under the Framix(画帧秀) License. See the LICENSE.md fi
 
         /* 灯箱 - 主图 */
         #lightbox-img {
-            max-width: 75%;
+            max-width: 80%;
             height: 60%;
             margin: 10px;
             object-fit: contain;
