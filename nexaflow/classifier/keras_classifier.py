@@ -118,6 +118,7 @@ class KerasStruct(BaseModelClassifier):
         ----------
         model_path : str
             模型所在的目录路径，必须为有效的 TF SavedModel 文件夹。
+
         overwrite : bool, optional
             是否覆盖现有模型（当前未使用，仅保留参数占位）。
 
@@ -236,11 +237,13 @@ class KerasStruct(BaseModelClassifier):
         ----------
         data_path : str
             数据集根目录路径。该路径下应包含多个子目录，每个子目录对应一个类别，内部包含该类的图像文件。
+
         *args :
             包含以下位置参数（按顺序）：
                 - model_color (str): 图像颜色模式，常用值为 'grayscale' 或 'rgb'。
                 - follow_tf_size (tuple): 模型期望输入的图像尺寸 (height, width)。
                 - model_aisle (int): 图像通道数，如 1 表示灰度图，3 表示彩色图。
+
         **kwargs :
             其他可选关键字参数（未使用）。
 
@@ -331,7 +334,7 @@ class KerasStruct(BaseModelClassifier):
 
         logger.debug("Model train finished")
 
-    def build(self, model_color: str, model_shape: tuple, model_aisle: int, *args) -> typing.Optional[str]:
+    def build(self, model_color: str, model_shape: tuple, model_aisle: int, *args) -> Exception | str:
         """
         构建并保存训练完成的 Keras 模型。
 
@@ -342,10 +345,13 @@ class KerasStruct(BaseModelClassifier):
         ----------
         model_color : str
             图像颜色模式，如 "grayscale" 或 "rgb"。影响训练数据的通道数。
+
         model_shape : tuple
             图像尺寸信息，格式为 (width, height)，将用于调整输入图像的目标大小。
+
         model_aisle : int
             图像通道数，通常为 1（灰度）或 3（彩色）。
+
         *args :
             依次包含以下三个位置参数：
                 - src_model_path (str): 训练数据所在的目录路径。
@@ -384,7 +390,7 @@ class KerasStruct(BaseModelClassifier):
                 src_model_path, model_color, follow_tf_size, model_aisle
             )
         except AssertionError as e:
-            return logger.error(e)
+            return e
 
         final_model: str = os.path.join(new_model_path, new_model_name).format()
         os.makedirs(new_model_path, exist_ok=True)
@@ -405,6 +411,7 @@ class KerasStruct(BaseModelClassifier):
         ----------
         pic_path : str
             图像文件的路径，应为本地可读取的图片。
+
         *args, **kwargs :
             可选参数，将传递给钩子处理函数 `_apply_hook`。
 

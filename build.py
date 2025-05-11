@@ -36,9 +36,10 @@ from engine.terminal import Terminal
 from nexacore.design import Design
 from nexaflow import const
 
+nuitka_version = "2.7"  # 编译器版本
+
 try:
     import nuitka
-    nuitka_version = "2.7"
 except ImportError:
     raise FramixError(f"Use Nuitka {nuitka_version} for stable builds")
 

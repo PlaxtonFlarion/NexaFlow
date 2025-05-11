@@ -1370,7 +1370,7 @@ class Missions(object):
                 looper.run_in_executor(None, alynex.ks.build, *compile_data)
                 for compile_data in task_list
             ]
-            futures = await asyncio.gather(*task)
+            futures = await asyncio.gather(*task, return_exceptions=True)
 
         else:
             await random.choice(
@@ -1385,7 +1385,7 @@ class Missions(object):
                     looper.run_in_executor(exe, func, *compile_data)
                     for compile_data in task_list
                 ]
-                futures = await asyncio.gather(*task)
+                futures = await asyncio.gather(*task, return_exceptions=True)
             self.level = this_level
 
         await self.design.model_manifest()
