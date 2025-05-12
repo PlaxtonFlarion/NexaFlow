@@ -1399,7 +1399,7 @@ class Missions(object):
         return Design.console.print()
 
     # """线迹创造者"""
-    async def painting(self, option: "Option", deploy: "Deploy") -> list[typing.Any] | None:
+    async def painting(self, option: "Option", deploy: "Deploy") -> None:
         """
         使用设备截图进行绘制，并在图像上添加网格辅助信息。
 
@@ -1617,10 +1617,11 @@ class Missions(object):
                 report = Report(option.total_place)
                 report.title = f"Hooks_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
 
-                return await asyncio.gather(
+                await asyncio.gather(
                     *(persistence(device, resize_img)
                       for device, resize_img in zip(device_list, resized_result))
                 )
+                break
 
             elif action.strip().upper() == "N":
                 break
@@ -1628,7 +1629,7 @@ class Missions(object):
             else:
                 self.design.show_panel(f"没有该选项,请重新输入\n", Wind.KEEPER)
 
-        Design.console.print()
+        return Design.console.print()
 
     # """循环节拍器 | 脚本驱动者 | 全域执行者"""
     async def analysis(self, option: "Option", deploy: "Deploy", tp_ver: typing.Any) -> None:
