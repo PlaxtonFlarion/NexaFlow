@@ -1175,7 +1175,7 @@ class Missions(object):
               for (_, target) in video_target_list)
         )
 
-        Design.console.print()
+        return Design.console.print()
 
     # """模型编译大师"""
     async def build_model(self, video_data_list: list, option: "Option", deploy: "Deploy") -> None:
@@ -1366,8 +1366,8 @@ class Missions(object):
         # Notes: Analyzer
         if len(task_list) == 1:
             task = [
-                looper.run_in_executor(None, alynex.ks.build, c, s, a, *compile_data)
-                for c, s, a, compile_data in task_list
+                looper.run_in_executor(None, alynex.ks.build, c, s, a, *cmp_data)
+                for c, s, a, *cmp_data in task_list
             ]
             futures = await asyncio.gather(*task, return_exceptions=True)
 
@@ -1381,8 +1381,8 @@ class Missions(object):
             func = partial(alynex.ks.build)
             with ProcessPoolExecutor(self.power, None, Active.active, ("ERROR",)) as exe:
                 task = [
-                    looper.run_in_executor(exe, func, c, s, a, *compile_data)
-                    for c, s, a, compile_data in task_list
+                    looper.run_in_executor(exe, func, c, s, a, *cmp_data)
+                    for c, s, a, *cmp_data in task_list
                 ]
                 futures = await asyncio.gather(*task, return_exceptions=True)
             self.level = this_level
@@ -1396,7 +1396,7 @@ class Missions(object):
             else:
                 self.design.show_panel(f"Model saved successfully: {Path(future).name}", Wind.DESIGNER)
 
-        Design.console.print()
+        return Design.console.print()
 
     # """线迹创造者"""
     async def painting(self, option: "Option", deploy: "Deploy") -> list[typing.Any] | None:
