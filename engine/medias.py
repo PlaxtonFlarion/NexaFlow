@@ -78,7 +78,7 @@ class Record(object):
     - 所有录制状态通过事件进行管理与清理。
     """
 
-    record_events: dict[dict, typing.Any] = {}
+    record_events: dict[str, dict[str, typing.Union[typing.Any, "asyncio.Event"]]] = {}
     melody_events: "asyncio.Event" = asyncio.Event()
 
     def __init__(self, version: str, **kwargs):
@@ -132,7 +132,7 @@ class Record(object):
 
         # Notes: Start from here
         bridle: "asyncio.Event" = self.record_events[device.sn]["stop"] if self.alone else self.melody_events
-        events: dict[str, "asyncio.Event"] = self.record_events[device.sn]
+        events: dict[str, typing.Union[typing.Any, "asyncio.Event"]] = self.record_events[device.sn]
 
         video_flag = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
 
@@ -234,7 +234,7 @@ class Record(object):
                 logger.debug(e)
                 await asyncio.to_thread(child.kill)
 
-        async def win_stop_child(pid: str) -> None:
+        async def win_stop_child(pid: str | int) -> None:
             """
             在 Windows 平台，使用 PowerShell 命令终止指定 PID 的进程。
 
@@ -251,7 +251,7 @@ class Record(object):
             off = await Terminal.cmd_line([pwsh, "-Command", "Stop-Process", "-Id", pid, "-Force"])
             logger.debug(f"{desc} PID={pid} OFF={off}")
 
-        async def mac_stop_child(pid: str) -> None:
+        async def mac_stop_child(pid: str | int) -> None:
             """
             在 macOS 平台，使用 shell 命令终止指定父 PID 的所有子进程。
 
@@ -270,7 +270,7 @@ class Record(object):
 
         # Notes: Start from here
         desc = f"{device.tag} {device.sn} PPID={(ppid := transports.pid)}"
-        events: dict[str, asyncio.Event] = self.record_events[device.sn]
+        events: dict[str, typing.Union[typing.Any, "asyncio.Event"]] = self.record_events[device.sn]
 
         if self.station == "win32":
             if pwsh := shutil.which("pwsh") or shutil.which("powershell"):

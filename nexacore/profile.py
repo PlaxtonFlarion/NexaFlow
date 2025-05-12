@@ -438,29 +438,18 @@ class Deploy(object):
                 table.add_row(*info)
             Design.console.print(table)
 
-        if crops_list := self.crops:
-            table = Table(
-                title=f"[bold #5FAFFF]{const.DESC} | {const.ALIAS} Paint Crop Hook",
-                header_style="bold #AFAFD7", **table_style
-            )
-            table.add_column("编号", justify="left", width=4)
-            table.add_column("区域", justify="left", width=68)
+        for hook_name, hook_list in [("Paint Crop Hook", self.crops), ("Paint Omit Hook", self.omits)]:
+            if hook_list:
+                table = Table(
+                    title=f"[bold #5FAFFF]{const.DESC} | {const.ALIAS} {hook_name}",
+                    header_style="bold #AFAFD7", **table_style
+                )
+                table.add_column("编号", justify="left", width=4)
+                table.add_column("区域", justify="left", width=68)
 
-            for index, hook in enumerate(crops_list, start=1):
-                table.add_row(f"[bold #B2B2B2]{index:02}", f"[bold #87AFFF]{hook}")
-            Design.console.print(table)
-
-        if omits_list := self.omits:
-            table = Table(
-                title=f"[bold #5FAFFF]{const.DESC} | {const.ALIAS} Paint Omit Hook",
-                header_style="bold #AFAFD7", **table_style
-            )
-            table.add_column("编号", justify="left", width=4)
-            table.add_column("区域", justify="left", width=68)
-
-            for index, hook in enumerate(omits_list, start=1):
-                table.add_row(f"[bold #B2B2B2]{index:02}", f"[bold #87AFFF]{hook}")
-            Design.console.print(table)
+                for index, hook in enumerate(hook_list, start=1):
+                    table.add_row(f"[bold #B2B2B2]{index:02}", f"[bold #87AFFF]{hook}")
+                Design.console.print(table)
 
 
 class Option(object):

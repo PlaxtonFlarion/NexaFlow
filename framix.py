@@ -542,10 +542,7 @@ class Missions(object):
                     self.design.show_panel(message, Wind.KEEPER)
                     break
 
-        async def render_speed(
-                todo_list: list[list[typing.Union[str, "asyncio.subprocess.Process", None]]]
-        ) -> tuple:
-
+        async def render_speed(todo_list: list[typing.Any]) -> tuple:
             start, end, cost, scores, struct = 0, 0, 0, None, None
             *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo_list
 
@@ -687,6 +684,8 @@ class Missions(object):
         await monitor_task
         logger.debug(f"系统负载检测通过: {monitor.usages}")
 
+        futures: list[typing.Any] = []
+
         if len(task_list) == 1:
             task = [
                 alynex.ask_analyzer(target, frame_path, extra_path, src_size)
@@ -716,11 +715,7 @@ class Missions(object):
             *(Craft.achieve(tmp) for tmp in (self.atom_total_temp, self.line_total_temp))
         )
 
-        async def render_keras(
-                future: "Review",
-                todo_list: list[list[typing.Union[str, "asyncio.subprocess.Process", None]]]
-        ) -> tuple:
-
+        async def render_keras(future: "Review", todo_list: list[typing.Any]) -> tuple:
             start, end, cost, scores, struct = future.material
             *_, total_path, title, query_path, query, frame_path, extra_path, proto_path = todo_list
 
@@ -835,7 +830,7 @@ class Missions(object):
 
         await self.animation.start(self.design.render_horizontal_pulse)
 
-        resp_state = await asyncio.gather(
+        resp_state: list[typing.Any | Exception] = await asyncio.gather(
             *(Report.ask_create_total_report(
                 m, self.group, share_form, total_form) for m in merge), return_exceptions=True
         )
@@ -1138,6 +1133,8 @@ class Missions(object):
         await monitor_task
         logger.debug(f"系统负载检测通过: {monitor.usages}")
 
+        futures: list[typing.Any | Exception] = []
+
         # Notes: Analyzer
         if len(task_list) == 1:
             task = [
@@ -1145,7 +1142,7 @@ class Missions(object):
                 for (_, target), src_size, (_, _, _, _, query_path, *_)
                 in zip(video_target_list, originals, task_list)
             ]
-            futures = await asyncio.gather(*task)
+            futures = await asyncio.gather(*task, return_exceptions=True)
 
         else:
             await random.choice(
@@ -1161,7 +1158,7 @@ class Missions(object):
                     for (_, target), src_size, (_, _, _, _, query_path, *_)
                     in zip(video_target_list, originals, task_list)
                 ]
-                futures = await asyncio.gather(*task)
+                futures = await asyncio.gather(*task, return_exceptions=True)
             self.level = this_level
 
         await self.design.channel_animation()
@@ -1364,11 +1361,13 @@ class Missions(object):
         await monitor_task
         logger.debug(f"系统负载检测通过: {monitor.usages}")
 
+        futures: list[typing.Any | Exception] = []
+
         # Notes: Analyzer
         if len(task_list) == 1:
             task = [
-                looper.run_in_executor(None, alynex.ks.build, *compile_data)
-                for compile_data in task_list
+                looper.run_in_executor(None, alynex.ks.build, c, s, a, *compile_data)
+                for c, s, a, compile_data in task_list
             ]
             futures = await asyncio.gather(*task, return_exceptions=True)
 
@@ -1382,8 +1381,8 @@ class Missions(object):
             func = partial(alynex.ks.build)
             with ProcessPoolExecutor(self.power, None, Active.active, ("ERROR",)) as exe:
                 task = [
-                    looper.run_in_executor(exe, func, *compile_data)
-                    for compile_data in task_list
+                    looper.run_in_executor(exe, func, c, s, a, *compile_data)
+                    for c, s, a, compile_data in task_list
                 ]
                 futures = await asyncio.gather(*task, return_exceptions=True)
             self.level = this_level
@@ -1400,7 +1399,7 @@ class Missions(object):
         Design.console.print()
 
     # """线迹创造者"""
-    async def painting(self, option: "Option", deploy: "Deploy") -> None:
+    async def painting(self, option: "Option", deploy: "Deploy") -> list[typing.Any] | None:
         """
         使用设备截图进行绘制，并在图像上添加网格辅助信息。
 
@@ -1613,7 +1612,8 @@ class Missions(object):
                 report.title = f"Hooks_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
 
                 return await asyncio.gather(
-                    *(persistence(device, resize_img) for device, resize_img in zip(device_list, resized_result))
+                    *(persistence(device, resize_img)
+                      for device, resize_img in zip(device_list, resized_result))
                 )
 
             elif action.strip().upper() == "N":
@@ -1651,7 +1651,7 @@ class Missions(object):
 
         async def distributions(
                 device_list: list["Device"]
-        ) -> typing.AsyncGenerator[tuple["Device", tuple[int, int, int, int]], None]:
+        ) -> typing.AsyncGenerator[tuple["Device", tuple], None]:
             """
             设备布局与位置分配。
 

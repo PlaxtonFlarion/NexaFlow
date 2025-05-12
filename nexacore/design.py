@@ -855,7 +855,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         # 渐变色（用于打字）
         gradient_colors = random.choice(
-            [toolbox.generate_gradient_colors(*c, len(text)) for c in [
+            [toolbox.generate_gradient_colors(bc, fc, len(text)) for bc, fc in [
                 ("#228B22", "#B2FFD7"), ("#003366", "#87CEFA"), ("#4B0082", "#EE82EE"),
                 ("#8B4513", "#FFD700"), ("#5F9EA0", "#E0FFFF")]
              ]
@@ -1592,7 +1592,6 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                 ]
                 padding = " " * (particles - i + offset)
                 yield f"{padding}(" + " ".join(dots) + ")"
-                # frames.append(frame)
 
             for point in ["[bold #FFFF99]▣", "[bold #9AFF9A]▣", "[bold #00F5FF]▣"]:
                 yield " " * (particles + offset) + point
@@ -1606,13 +1605,13 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                 padding = " " * (particles - i)
                 yield f"{padding}<<< " + " ".join(dots) + " >>>"
 
-        async def flash_logo() -> typing.AsyncGenerator[str, None]:
+        async def flash_logo() -> typing.AsyncGenerator["Text", None]:
             # 打字效果
             for i in range(1, len(view_char) + 1):
                 typed = view_char[:i]
                 yield Text.from_markup(
-                    f"[bold {random.choice(gradient)}]{spacing}{typed}[/]"  # 居中打字
-                )
+                    f"[bold {random.choice(gradient)}]{spacing}{typed}[/]"
+                )  # 居中打字
                 await asyncio.sleep(0.06)
 
             await asyncio.sleep(0.2)
@@ -1621,7 +1620,9 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             for _ in range(5):
                 yield Text.from_markup("")  # 清空
                 await asyncio.sleep(0.12)
-                yield Text.from_markup(f"[bold {random.choice(gradient)}]{spacing}{view_char}[/]")
+                yield Text.from_markup(
+                    f"[bold {random.choice(gradient)}]{spacing}{view_char}[/]"
+                )
                 await asyncio.sleep(0.12)
 
         with Live(console=self.console, refresh_per_second=30) as live:
@@ -2131,7 +2132,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         max_step = (width - padding * 2) // 2 + padding
         final_symbol = f"{{{{ ⊕ {const.DESC} Engine ⊕ }}}}"
 
-        async def flash_logo() -> typing.AsyncGenerator[str, None]:
+        async def flash_logo() -> typing.AsyncGenerator["Text", None]:
             # 打字效果：从左到右逐字符打印
             for i in range(1, len(final_symbol) + 1):
                 partial = final_symbol[:i]
@@ -2227,7 +2228,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                 )
             )
 
-        async def bloom() -> typing.AsyncGenerator[str, None]:
+        async def bloom() -> typing.AsyncGenerator["Text", None]:
             max_radius = max(center_r, center_c)
 
             # 爆破绽放

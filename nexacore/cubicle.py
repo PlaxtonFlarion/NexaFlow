@@ -17,7 +17,9 @@
 # Copyright (c) 2024  Framix(画帧秀)
 # このファイルは Framix(画帧秀) ライセンスの下でライセンスされています。詳細は LICENSE.md ファイルを参照してください。
 
+import typing
 import aiosqlite
+from pathlib import Path
 from nexaflow import const
 
 
@@ -38,14 +40,15 @@ class DB(object):
     - 所有操作默认在 `const.DB_TABLE_NAME` 表中进行。
     """
 
-    def __init__(self, db: str):
+    def __init__(self, db: typing.Union[str, "Path"]):
         """
-        初始化数据库路径。
+        初始化类实例，并设置数据库路径。
 
         Parameters
         ----------
-        db : str
-            SQLite 数据库文件路径。
+        db : Union[str, Path]
+            数据库文件的路径，可以是字符串形式的路径，或 `pathlib.Path` 对象。
+            此路径通常用于后续数据库连接或读写操作。
         """
         self.db = db
 
