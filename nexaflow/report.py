@@ -162,13 +162,13 @@ class Report(object):
             self.range_list.append(inform)
 
     @staticmethod
-    async def write_html_file(html: str, html_template: str) -> None:
+    async def write_html_file(html: typing.Union[str, "Path"], html_template: str) -> None:
         """
         将渲染后的 HTML 模板异步写入指定路径文件中。
 
         Parameters
         ----------
-        html : str
+        html : Union[str, Path]
             输出 HTML 文件的路径，若文件已存在将被覆盖。
 
         html_template : str

@@ -261,7 +261,7 @@ class Design(object):
         """)
 
     @staticmethod
-    def specially_logo() -> None:
+    def startup_logo() -> None:
         """
         打印程序启动时的 ASCII 风格 Logo，并以随机柔和色渲染输出。
         """

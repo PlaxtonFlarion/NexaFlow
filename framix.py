@@ -61,7 +61,6 @@ import aiofiles
 # ====[ from: 内置模块 ]====
 from pathlib import Path
 from functools import partial
-from multiprocessing import freeze_support
 from concurrent.futures import ProcessPoolExecutor
 
 # ====[ from: 第三方库 ]====
@@ -85,15 +84,17 @@ from engine.terminal import Terminal
 from engine.tinker import (
     Craft, Search, Active, Review, FramixError
 )
-from nexacore.cubicle import DB
 from nexacore.argument import Wind
+from nexacore.authorize import verify_license
+from nexacore.cubicle import DB
 from nexacore.design import Design
 from nexacore.parser import Parser
 from nexacore.profile import (
     Deploy, Option
 )
-from nexaflow import const
-from nexaflow import toolbox
+from nexaflow import (
+    const, toolbox
+)
 from nexaflow.video import (
     VideoObject, VideoFrame
 )
@@ -1669,7 +1670,7 @@ class Missions(object):
 
             Yields
             ------
-            tuple[Device, tuple[int, int, int]]
+            tuple[Device, tuple]
                 逐个返回设备对象及其分配好的显示位置：(窗口x坐标, 窗口y坐标, 缩放后最大边长)。
 
             Notes
@@ -3474,11 +3475,16 @@ async def main() -> typing.Coroutine | None:
         await _previewing(*current)
         return await Design.engine_starburst(_level)  # 结尾动画
 
+    # 应用授权
+    verify_license(Path(_src_opera_place) / const.LIC_FILE)
+
+    # 启动仪式
     await random.choice(
         [Design.engine_topology_wave, Design.stellar_glyph_binding]
-    )(_level)  # 启动仪式
+    )(_level)
 
-    await _authorized()  # 应用授权
+    # 三方应用授权
+    await _authorized()
 
     if _video_list := _lines.video:
         await _arithmetic(_missions.video_file_task, _video_list)
@@ -3512,27 +3518,29 @@ async def main() -> typing.Coroutine | None:
 
 
 if __name__ == '__main__':
-    """
-    **应用程序入口点，根据命令行参数初始化并运行主进程**
-
-    ***********************
-    *                     *
-    *  Welcome to Framix  *
-    *                     *
-    ***********************
-    """
+    #   _____                    _
+    #  |  ___| __ __ _ _ __ ___ (_)_  __
+    #  | |_ | '__/ _` | '_ ` _ \| \ \/ /
+    #  |  _|| | | (_| | | | | | | |>  <
+    #  |_|  |_|  \__,_|_| |_| |_|_/_/\_\
+    #
 
     try:
-        # 如果没有提供命令行参数，则显示应用程序标志和帮助文档，并退出程序
-        if len(system_parameter_list := sys.argv) == 1:
-            Design.minor_logo()
+        # 启动
+        Design.startup_logo()
+
+        # 如果没有提供命令行参数，则显示帮助文档，并退出程序
+        if len(_system_parameter_list := sys.argv) == 1:
             Design.help_document()
             Design.done()
             sys.exit(Design.closure())
 
-        Design.specially_logo()
+        # 解析命令行参数，此代码块必须在 `__main__` 块下调用
+        _parser = Parser()
+        _lines = _parser.parse_cmd
 
-        _wires = system_parameter_list[1:]  # 获取命令行参数（去掉第一个参数，即脚本名称）
+        # 获取命令行参数（去掉第一个参数，即脚本名称）
+        _wires = _system_parameter_list[1:]
 
         # 获取当前操作系统平台和应用名称
         _platform = sys.platform.strip().lower()
@@ -3565,17 +3573,17 @@ if __name__ == '__main__':
         _view_total_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_view_total.html")
 
         # 检查每个模板文件是否存在，如果缺失则显示错误信息并退出程序
-        for _tmp in (
-                _temps := [
-                    _atom_total_temp, _main_share_temp, _main_total_temp, _view_share_temp, _view_total_temp
-                ]
-        ):
+        for _tmp in (_temps := [
+            _atom_total_temp, _line_total_temp, _main_share_temp,
+            _main_total_temp, _view_share_temp, _view_total_temp
+        ]):
             if os.path.isfile(_tmp) and os.path.basename(_tmp).endswith(".html"):
                 continue
             _tmp_name = os.path.basename(_tmp)
             raise FramixError(f"{const.DESC} missing files {_tmp_name}")
 
-        _turbo = os.path.join(_fx_work, const.F_SCHEMATIC, "supports").format()  # 设置工具源路径
+        # 设置工具源路径
+        _turbo = os.path.join(_fx_work, const.F_SCHEMATIC, "supports").format()
 
         # 根据平台设置工具路径
         if _platform == "win32":
@@ -3600,87 +3608,91 @@ if __name__ == '__main__':
             if not shutil.which((_tls_name := os.path.basename(_tls))):
                 raise FramixError(f"{const.DESC} missing files {_tls_name}")
 
-        # 设置初始路径
+        # 初始文件夹路径
         if not os.path.exists(
                 _initial_source := os.path.join(_fx_feasible, const.F_STRUCTURE).format()
         ):
             os.makedirs(_initial_source, exist_ok=True)
 
-        # 设置模型路径
+        # 配置文件夹路径
+        if not os.path.exists(
+                _src_opera_place := os.path.join(_initial_source, const.F_SRC_OPERA_PLACE).format()
+        ):
+            os.makedirs(_src_opera_place, exist_ok=True)
+
+        # 模型文件夹路径
         if not os.path.exists(
                 _src_model_place := os.path.join(_initial_source, const.F_SRC_MODEL_PLACE).format()
         ):
             os.makedirs(_src_model_place, exist_ok=True)
 
-        # 设置报告路径
+        # 报告文件夹路径
         if not os.path.exists(
                 _src_total_place := os.path.join(_initial_source, const.F_SRC_TOTAL_PLACE).format()
         ):
             os.makedirs(_src_total_place, exist_ok=True)
 
-        # Notes: 在 Windows 平台上启动多进程时确保冻结的可执行文件可以正确运行。
-        freeze_support()
-
-        # Notes: 此代码块必须在 `__main__` 块下调用，否则可能会导致多进程模块无法正确加载。
-        _parser = Parser()
-        _lines = _parser.parse_cmd
-
         # 激活日志记录功能，设置日志级别
         Active.active(_level := "DEBUG" if _lines.debug else "INFO")
 
-        # 输出调试信息
+        logger.debug(f"{'=' * 15} 系统调试 {'=' * 15}")
         logger.debug(f"操作系统: {_platform}")
+        logger.debug(f"核心数量: {(_power := os.cpu_count())}")
         logger.debug(f"应用名称: {_software}")
         logger.debug(f"系统路径: {_sys_symbol}")
         logger.debug(f"环境变量: {_env_symbol}")
-        logger.debug(f"工具路径: {_turbo}")
+        logger.debug(f"日志等级: {_level}")
+        logger.debug(f"工具目录: {_turbo}")
         logger.debug(f"命令参数: {_wires}")
-        logger.debug(f"日志等级: {_level}\n")
+        logger.debug(f"{'=' * 15} 系统调试 {'=' * 15}\n")
 
-        logger.debug(f"* 环境 * {'=' * 30}")
+        logger.debug(f"{'=' * 15} 环境变量 {'=' * 15}")
         for _env in os.environ["PATH"].split(_env_symbol):
-            logger.debug(f"{_env}")
-        logger.debug(f"* 环境 * {'=' * 30}\n")
+            logger.debug(f"ENV: {_env}")
+        logger.debug(f"{'=' * 15} 环境变量 {'=' * 15}\n")
 
-        logger.debug(f"* 工具 * {'=' * 30}")
+        logger.debug(f"{'=' * 15} 工具路径 {'=' * 15}")
         for _tls in _tools:
-            logger.debug(f"{os.path.basename(_tls):7}: {_tls}")
-        logger.debug(f"* 工具 * {'=' * 30}\n")
+            logger.debug(f"TLS: {_tls}")
+        logger.debug(f"{'=' * 15} 工具路径 {'=' * 15}\n")
 
-        logger.debug(f"* 模版 * {'=' * 30}")
+        logger.debug(f"{'=' * 15} 报告模版 {'=' * 15}")
         for _tmp in _temps:
-            logger.debug(f"Html-Template: {_tmp}")
-        logger.debug(f"* 模版 * {'=' * 30}\n")
+            logger.debug(f"TMP: {_tmp}")
+        logger.debug(f"{'=' * 15} 报告模版 {'=' * 15}\n")
 
-        # 设置初始配置文件路径
+        logger.debug(f"{'=' * 15} 初始路径 {'=' * 15}")
         _initial_option = os.path.join(_initial_source, const.F_SRC_OPERA_PLACE, const.F_OPTION)
         _initial_deploy = os.path.join(_initial_source, const.F_SRC_OPERA_PLACE, const.F_DEPLOY)
         _initial_script = os.path.join(_initial_source, const.F_SRC_OPERA_PLACE, const.F_SCRIPT)
         logger.debug(f"配置文件路径: {_initial_option}")
         logger.debug(f"部署文件路径: {_initial_deploy}")
         logger.debug(f"脚本文件路径: {_initial_script}")
+        logger.debug(f"{'=' * 15} 初始路径 {'=' * 15}\n")
 
-        # 加载初始配置
+        logger.debug(f"{'=' * 15} 配置文件 {'=' * 15}")
         _option = Option(_initial_option)
         _option.total_place = _option.total_place or _src_total_place
         _option.model_place = _option.model_place or _src_model_place
         _option.faint_model = _option.faint_model or const.FAINT_MODEL
         _option.color_model = _option.color_model or const.COLOR_MODEL
+
         for _attr_key, _attribute_value in _option.options.items():
             logger.debug(f"{_option.__class__.__name__} Current Key {_attr_key}")
-            # Notes: 如果命令行中包含配置参数，无论是否存在配置文件，都将覆盖配置文件，以命令行参数为第一优先级。
+            # 如果命令行中包含配置参数，无论是否存在配置文件，都将覆盖配置文件，以命令行参数为第一优先级
             if any(_line.lower().startswith(f"--{(_attr_adapt := _attr_key.split('_')[0])}") for _line in _wires):
                 setattr(_option, _attr_key, getattr(_lines, _attr_adapt))
                 logger.debug(f"  Set <{_attr_key}> {_attribute_value} -> {getattr(_option, _attr_key)}")
 
         logger.debug(f"报告文件路径: {_option.total_place}")
         logger.debug(f"模型文件路径: {_option.model_place}")
+        logger.debug(f"灰度模型名称: {_option.faint_model}")
+        logger.debug(f"彩色模型名称: {_option.color_model}")
+        logger.debug(f"{'=' * 15} 配置文件 {'=' * 15}\n")
 
-        # 获取处理器核心数
-        logger.debug(f"处理器核心数: {(_power := os.cpu_count())}")
-
-        # 从命令行参数覆盖部署配置
+        logger.debug(f"{'=' * 15} 部署文件 {'=' * 15}")
         _deploy = Deploy(_initial_deploy)
+
         for _attr_key, _attribute_value in _deploy.deploys.items():
             logger.debug(f"{_deploy.__class__.__name__} Current Key {_attr_key}")
             for _attr, _attribute in _attribute_value.items():
@@ -3689,24 +3701,12 @@ if __name__ == '__main__':
                     setattr(_deploy, _attr, getattr(_lines, _attr))
                     logger.debug(f"  {_attr_key} Set <{_attr}> {_attribute} -> {getattr(_deploy, _attr)}")
 
-        """
-        **将命令行参数解析结果转换为基本数据类型**
-
-        注意:
-            将命令行参数解析器解析得到的结果存储在基本数据类型的变量中。
-            这样做的目的是避免在多进程环境中向子进程传递不可序列化的对象。
-            因为这些对象在传递过程中可能会导致 `pickle.PicklingError` 错误。
-        """
-        _flick, _carry, _fully = _lines.flick, _lines.carry, _lines.fully
-        _speed, _basic, _keras = _lines.speed, _lines.basic, _lines.keras
-        _alone, _whist, _alter = _lines.alone, _lines.whist, _lines.alter
-        _alike, _shine = _lines.alike, _lines.shine
-        _group = _lines.group
+        logger.debug(f"{'=' * 15} 部署文件 {'=' * 15}\n")
 
         # 打包位置参数
         _positions = (
-            _flick, _carry, _fully, _speed, _basic, _keras,
-            _alone, _whist, _alter, _alike, _shine, _group
+            _lines.flick, _lines.carry, _lines.fully, _lines.speed, _lines.basic, _lines.keras,
+            _lines.alone, _lines.whist, _lines.alter, _lines.alike, _lines.shine, _lines.group
         )
 
         # 打包关键字参数
@@ -3725,13 +3725,12 @@ if __name__ == '__main__':
             "fpb": _fpb
         }
 
-        # Notes: 初始化主要任务对象
+        # 初始化主要任务对象
         _missions = Missions(_wires, _level, _power, *_positions, **_keywords)
 
-        # Notes: 设置 Ctrl + C 信号处理方式
+        # 设置 Ctrl + C 信号处理方式
         signal.signal(signal.SIGINT, signal_processor)
 
-        # Notes: Start from here
         asyncio.run(main())
 
     except KeyboardInterrupt:
@@ -3742,7 +3741,7 @@ if __name__ == '__main__':
         Design.fail()
         sys.exit(1)
     except FramixError as _error:
-        Design.console.print(_error)
+        Design.info(f"{const.ERR}{_error}")
         Design.fail()
         sys.exit(1)
     else:

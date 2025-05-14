@@ -92,8 +92,6 @@ class Device(_Phone):
         """
         await asyncio.sleep(delay)
 
-# platform-tools #######################################################################################################
-
     async def device_online(self, *_, **__) -> None:
         """
         等待设备上线。
@@ -249,8 +247,6 @@ class Device(_Phone):
             "shell", "wm", "density"
         ]
         return resp if (resp := await Terminal.cmd_line(cmd)) else None
-
-# uiautomator2 #########################################################################################################
 
     async def automator_activation(self, *_, **__) -> None:
         """
