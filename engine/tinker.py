@@ -371,16 +371,7 @@ class Review(object):
     ----------
     material : Union[Any, tuple]
         存储的任意形式的元信息数据，通常为 (start, end, cost, ...) 的结构。
-
-    Methods
-    -------
-    __str__()
-        返回格式化的任务回顾信息字符串（包含 start、end、cost）。
-
-    __repr__()
-        等同于 __str__，用于控制台或调试环境的对象展示。
     """
-
     __material: tuple = tuple()
 
     def __init__(self, *args, **__):
