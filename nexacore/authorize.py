@@ -13,7 +13,6 @@ from cryptography.hazmat.primitives import (
 from cryptography.hazmat.primitives.asymmetric import padding
 from engine.tinker import FramixError
 from nexacore.design import Design
-from nexaflow import const
 
 PUBLIC_KEY = b'''
 -----BEGIN PUBLIC KEY-----
@@ -60,7 +59,7 @@ def __network_time() -> typing.Optional["datetime"]:
         "time.apple.com",  # macOS授时服务器
         "time.asia.apple.com",  # macOS授时服务器
         "time1.cloud.tencent.com",  # 腾讯云授时服务器
-        "time1.baidu.com",  # 百度授时服务器
+        "edu.ntp.org.cn",  # 中国 NTP 快速授时服务
         "time.google.com",  # Google授时服务器
         "ntp.nict.jp"  # 日本信息通信研究机构授时服务器
     ]
@@ -82,7 +81,7 @@ def __network_time() -> typing.Optional["datetime"]:
                     t -= ntp_epoch
                     return datetime.fromtimestamp(t, timezone.utc)
         except Exception as e:
-            Design.console.print(f"[bold #FF8787]{e}[/]")
+            Design.Doc.wrn(e)
             continue
 
     return None
@@ -116,10 +115,7 @@ def verify_license(lic_path: typing.Union[str, "Path"]) -> typing.Any:
         - 若授权格式错误、验签失败、文件读取异常；
         - 或当前时间已超过授权有效期。
     """
-    Design.console.print(
-        f"[bold #87D7FF][{const.DESC}::Authorize][/]"
-        f"[bold #FFAF5F]Online check authorization ...[/]"
-    )
+    Design.Doc.log(f"[bold #FFAF5F]Online check authorization ...")
 
     try:
         # 加载公钥
@@ -145,10 +141,7 @@ def verify_license(lic_path: typing.Union[str, "Path"]) -> typing.Any:
     if now > expire:
         raise FramixError(f"⚠️ 授权已过期 -> {exp}")
 
-    Design.console.print(
-        f"[bold #87D7FF][{const.DESC}::Authorize][/]"
-        f"[bold #87FF87]Authorization verification passed. Valid until {exp}\n"
-    )
+    Design.Doc.log(f"[bold #87FF87]Authorization verification passed. Valid until {exp}\n")
     return auth_info
 
 

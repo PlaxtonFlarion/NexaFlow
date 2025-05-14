@@ -2196,7 +2196,7 @@ class Missions(object):
                             if match := re.search(r"(?<=header\s).*", select):
                                 if hd := match.group().strip():
                                     src_hd, a, b = f"{input_title_}_{time.strftime('%Y%m%d_%H%M%S')}", 10000, 99999
-                                    Design.info(f"{const.SUC}New title set successfully")
+                                    Design.Doc.suc(f"New title set successfully")
                                     report.title = f"{src_hd}_{hd}" if hd else f"{src_hd}_{random.randint(a, b)}"
                                     continue
                             raise FramixError(f"命名方式应为 header .*")
@@ -2232,7 +2232,7 @@ class Missions(object):
                             raise FramixError(f"当前处于 影像捕手 模式，请使用 digest 指令进行分析并生成报告")
 
                         elif select == "deploy":
-                            Design.info(f"{const.WRN}请完全退出编辑器再继续操作")
+                            Design.Doc.wrn(f"请完全退出编辑器再继续操作")
                             deploy.dump_deploy(self.initial_deploy)
                             await Craft.editor(self.initial_deploy)
                             deploy.load_deploy(self.initial_deploy)
@@ -2244,14 +2244,14 @@ class Missions(object):
                             timer_value = int(select)
                             if timer_value > upper_bound or timer_value < lower_bound:
                                 bound_tips = f"{lower_bound} <= Time <= {upper_bound}"
-                                Design.info(f"{const.WRN}{bound_tips}")
+                                Design.Doc.wrn(bound_tips)
                             amount = max(lower_bound, min(upper_bound, timer_value))
 
                         else:
                             raise FramixError(f"未知命令 {select}")
 
                 except FramixError as e:
-                    Design.info(f"{const.WRN}{e}")
+                    Design.Doc.wrn(e)
                     Design.simulation_progress("Try again")
                     Design.tips_document()
 
@@ -3741,7 +3741,7 @@ if __name__ == '__main__':
         Design.fail()
         sys.exit(1)
     except FramixError as _error:
-        Design.info(f"{const.ERR}{_error}")
+        Design.Doc.err(_error)
         Design.fail()
         sys.exit(1)
     else:

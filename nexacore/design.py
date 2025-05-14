@@ -64,12 +64,67 @@ class Design(object):
     def __init__(self, design_level: str = "INFO"):
         self.design_level = design_level.upper()
 
-    @staticmethod
-    def info(text: typing.Any) -> None:
+    class Doc(object):
         """
-        输出常规日志信息，使用 bold 样式强调。
+        Doc 类用于统一控制台日志输出格式，封装标准化的日志样式与内容前缀。
+
+        Attributes
+        ----------
+        __head : str
+            日志前缀字符串，包含项目描述（`const.DESC`）和样式定义。
+
+        __tail : str
+            日志后缀字符串，用于关闭样式标签。
         """
-        Design.console.print(f"[bold]{const.DESC}: {text}[/]")
+        __head, __tail = f"[bold #EEEEEE]{const.DESC} :: ", f"[/]"
+
+        @classmethod
+        def log(cls, text: typing.Any) -> None:
+            """
+            输出普通日志消息。
+
+            Parameters
+            ----------
+            text : Any
+                要输出的日志内容，可以为任意对象，最终将被格式化为字符串。
+            """
+            Design.console.print(f"{cls.__head}{text}{cls.__tail}")
+
+        @classmethod
+        def suc(cls, text: typing.Any) -> None:
+            """
+            输出成功日志消息，带绿色或指定样式的成功提示前缀。
+
+            Parameters
+            ----------
+            text : Any
+                要输出的日志内容，通常用于表示成功信息。
+            """
+            Design.console.print(f"{cls.__head}{const.SUC}{text}{cls.__tail}")
+
+        @classmethod
+        def wrn(cls, text: typing.Any) -> None:
+            """
+            输出警告日志消息，带黄色或指定样式的警告前缀。
+
+            Parameters
+            ----------
+            text : Any
+                要输出的日志内容，通常用于提示潜在问题或风险。
+            """
+            Design.console.print(f"{cls.__head}{const.WRN}{text}{cls.__tail}")
+
+        @classmethod
+        def err(cls, text: typing.Any) -> None:
+            """
+            输出错误日志消息，带红色或指定样式的错误提示前缀。
+
+            Parameters
+            ----------
+            text : Any
+                要输出的日志内容，通常用于表示异常或错误信息。
+            """
+            Design.console.print(f"{cls.__head}{const.ERR}{text}{cls.__tail}")
 
     @staticmethod
     def show_tree(file_path: str, *args: str) -> None:

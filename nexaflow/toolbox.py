@@ -809,8 +809,10 @@ def match_template_with_path(
     ----------
     template : str
         模板图像的文件路径。
+
     target : np.ndarray
         目标图像，作为模板匹配的搜索对象。
+
     **kwargs :
         传递给匹配引擎的其他关键字参数。
 
@@ -911,10 +913,7 @@ def show_progress(
         raise ValueError("Either 'items' or 'total' must be provided to show_progress.")
 
 
-def draw_line(
-        image_path: str,
-        save_path: typing.Optional[str] = None
-) -> None:
+def draw_line(image_path: str, save_path: typing.Optional[str] = None) -> None:
     """
     在图像上绘制参考线并保存。
 
@@ -922,12 +921,9 @@ def draw_line(
     ----------
     image_path : str
         输入图像的路径。
+
     save_path : typing.Optional[str], optional
         图像绘制完成后的保存路径，若未提供，则覆盖原图。
-
-    Returns
-    -------
-    None
 
     Notes
     -----

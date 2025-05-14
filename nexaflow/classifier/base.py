@@ -284,7 +284,7 @@ class ClassifierResult(object):
     def contain(self, stage_name: str) -> bool:
         return stage_name in self.get_stage_set()
 
-    def first(self, stage_name: str) -> "SingleClassifierResult":
+    def first(self, stage_name: str) -> typing.Optional["SingleClassifierResult"]:
         """
         获取指定阶段的第一个分类结果帧。
 
@@ -313,9 +313,10 @@ class ClassifierResult(object):
             if each.stage == stage_name:
                 # logger.debug(f"first frame of {stage_name}: {each}")
                 return each
-        logger.warning(f"no stage named {stage_name} found")
 
-    def last(self, stage_name: str) -> "SingleClassifierResult":
+        return logger.warning(f"no stage named {stage_name} found")
+
+    def last(self, stage_name: str) -> typing.Optional["SingleClassifierResult"]:
         """
         获取指定阶段的最后一个分类结果帧。
 
@@ -344,7 +345,8 @@ class ClassifierResult(object):
             if each.stage == stage_name:
                 # logger.debug(f"last frame of {stage_name}: {each}")
                 return each
-        logger.warning(f"no stage named {stage_name} found")
+
+        return logger.warning(f"no stage named {stage_name} found")
 
     def get_stage_range(self) -> list[list["SingleClassifierResult"]]:
         """
@@ -487,10 +489,6 @@ class ClassifierResult(object):
         target_stage : str
             要设置的目标阶段标签，如 "stable"、"unstable" 或 "ignore"。
 
-        Returns
-        -------
-        None
-
         Notes
         -----
         - 索引区间为左闭右开 `[start, end)`；
@@ -515,10 +513,6 @@ class ClassifierResult(object):
         end : int
             结束帧索引（不包含）。
 
-        Returns
-        -------
-        None
-
         Notes
         -----
         - 用于快速标记帧为“unstable”状态；
@@ -540,10 +534,6 @@ class ClassifierResult(object):
 
         end : int
             结束帧索引（不包含）。
-
-        Returns
-        -------
-        None
 
         Notes
         -----
@@ -656,15 +646,46 @@ class ClassifierResult(object):
         return cost_dict
 
     def dumps(self) -> str:
+        """
+        将当前对象序列化为 JSON 字符串，支持自定义类型处理。
 
-        def _handler(obj: object):
+        Returns
+        -------
+        str
+            JSON 格式的字符串表示，适合保存或展示。
+
+        Notes
+        -----
+        - 使用 `json.dumps` 实现；
+        - 若对象属性包含 `np.ndarray` 类型，将统一替换为占位字符串 `<np.ndarray object>`；
+        - 其他自定义对象将通过其 `__dict__` 字典展开；
+        - 输出为按键排序的 JSON 字符串。
+        """
+
+        def _handler(obj: object) -> str | dict[str, typing.Any]:
             if isinstance(obj, np.ndarray):
                 return "<np.ndarray object>"
             return obj.__dict__
 
         return json.dumps(self, sort_keys=True, default=_handler)
 
-    def dump(self, json_path: str, **kwargs):
+    def dump(self, json_path: str, **kwargs) -> None:
+        """
+        将当前对象序列化并写入指定路径的 JSON 文件中。
+
+        Parameters
+        ----------
+        json_path : str
+            要写入的目标 JSON 文件路径，若文件已存在则断言失败。
+
+        **kwargs : dict
+            传递给 `open()` 的额外参数，如 `encoding` 等。
+
+        Raises
+        ------
+        AssertionError
+            如果目标文件已存在，将中止写入过程。
+        """
         logger.debug(f"dump result to {json_path}")
         assert not os.path.isfile(json_path), f"{json_path} already existed"
         with open(json_path, "w+", **kwargs) as f:
@@ -672,6 +693,24 @@ class ClassifierResult(object):
 
     @classmethod
     def load(cls, from_file: str) -> "ClassifierResult":
+        """
+        从 JSON 文件中加载分类结果，重建 ClassifierResult 实例。
+
+        Parameters
+        ----------
+        from_file : str
+            JSON 文件路径，内容必须包含 `LABEL_DATA` 字段。
+
+        Returns
+        -------
+        ClassifierResult
+            解析后的分类结果对象，包含多个 `SingleClassifierResult` 实例。
+
+        Raises
+        ------
+        AssertionError
+            如果指定路径文件不存在。
+        """
         assert os.path.isfile(from_file), f"file {from_file} not existed"
 
         with open(from_file, encoding=const.CHARSET) as f:
@@ -680,7 +719,20 @@ class ClassifierResult(object):
         data = content[cls.LABEL_DATA]
         return ClassifierResult([SingleClassifierResult(**each) for each in data])
 
-    def diff(self, another: "ClassifierResult") -> DiffResult:
+    def diff(self, another: "ClassifierResult") -> "DiffResult":
+        """
+        与另一个分类结果对象进行差异比较，生成对比结果。
+
+        Parameters
+        ----------
+        another : ClassifierResult
+            另一个待比较的分类结果对象。
+
+        Returns
+        -------
+        DiffResult
+            表示差异分析结果的对象，包含结构比对信息。
+        """
         return DiffResult(self, another)
 
     def is_order_correct(self, should_be: list[str]) -> bool:
@@ -827,7 +879,7 @@ class BaseClassifier(object):
         # logger.debug(f"compress rate: {self.compress_rate}")
         # logger.debug(f"target size: {self.target_size}")
 
-        self._data: dict[str, typing.Union[list[pathlib.Path]]] = dict()
+        self._data: dict[str, typing.Union[list[pathlib.Path], list[int]]] = dict()
 
         self._hook_list: list["BaseHook"] = list()
         # compress_hook = FrameSizeHook(
@@ -847,10 +899,6 @@ class BaseClassifier(object):
         ----------
         new_hook : BaseHook
             一个继承自 BaseHook 的钩子对象，用于执行图像的预处理操作，如尺寸调整、灰度转换等。
-
-        Returns
-        -------
-        None
 
         Notes
         -----
@@ -882,21 +930,10 @@ class BaseClassifier(object):
         **kwargs :
             可选的其他关键字参数，传递给对应的加载方法。
 
-        Returns
-        -------
-        None
-
         Raises
         ------
         TypeError
             如果参数 `data` 既不是字符串也不是列表类型，则抛出异常。
-
-        Workflow
-        --------
-        1. 判断 data 类型；
-        2. 如果为 str，则调用 `load_from_dir`；
-        3. 如果为 list，则调用 `load_from_list`；
-        4. 否则抛出 TypeError。
         """
         if isinstance(data, str):
             return self.load_from_dir(data, *args, **kwargs)
@@ -915,20 +952,12 @@ class BaseClassifier(object):
         ----------
         data : list[VideoCutRange]
             一个包含若干阶段（如稳定/不稳定等）帧区间的列表，每项为 VideoCutRange 实例。
+
         frame_count : int, optional
             每个阶段需采样的帧数量。如果为 None，则使用默认行为（如返回全部或固定比例）。
+
         *_, **__ :
             保留参数，不参与逻辑，可用于兼容扩展。
-
-        Returns
-        -------
-        None
-
-        Workflow
-        --------
-        1. 遍历 `data` 中的每个阶段区间；
-        2. 使用 `.pick()` 方法提取指定数量的帧；
-        3. 将结果存入 `_data` 属性中，以阶段索引（字符串形式）为 key。
         """
         for stage_name, stage_data in enumerate(data):
             target_frame_list = stage_data.pick(frame_count)
@@ -952,17 +981,6 @@ class BaseClassifier(object):
 
         *_, **__ :
             保留参数，不参与当前逻辑，仅用于兼容接口。
-
-        Returns
-        -------
-        None
-
-        Workflow
-        --------
-        1. 遍历 `dir_path` 下的所有子目录；
-        2. 忽略非目录项（如根目录下的图像文件）；
-        3. 收集每个子目录下的所有图像路径，保存到 `_data` 中；
-           以子目录名作为阶段名称（key），图像路径列表作为值（value）。
         """
         p = pathlib.Path(dir_path)
         stage_dir_list = p.iterdir()
@@ -1023,6 +1041,7 @@ class BaseClassifier(object):
         ----------
         data : list[pathlib.Path]
             图像文件路径组成的列表。
+
         *_, **__ :
             保留参数，用于兼容其他上下文调用。
 
@@ -1139,7 +1158,6 @@ class BaseClassifier(object):
         5. 若在范围内，根据 boost 模式执行分类；
         6. 构建结果对象并返回。
         """
-
         # logger.debug(f"classify with {self.__class__.__name__}")
         step = step or 1
         boost_mode = boost_mode or True
