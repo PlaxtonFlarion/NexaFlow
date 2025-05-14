@@ -38,8 +38,8 @@ InfoAfterFile=schematic\resources\documents\info-after.txt
 ;PrivilegesRequired=lowest
 OutputDir=.
 OutputBaseFilename={#MyAppName}-windows-v{#MyAppVersion}
-UninstallDisplayIcon={app}\{#MyEngineName}\schematic\resources\icons\framix_delete_2.ico
-SetupIconFile=schematic\resources\icons\framix_setup_2.ico
+UninstallDisplayIcon={app}\{#MyEngineName}\schematic\resources\icons\framix_delete_1.ico
+SetupIconFile=schematic\resources\icons\framix_setup_1.ico
 WizardImageFile=schematic\resources\images\windows\framix_192dpi_328_628.bmp
 Compression=lzma
 SolidCompression=yes
@@ -132,9 +132,9 @@ Root: HKA; Subkey: "Software\Classes\Applications\{#MyAppExeName}\SupportedTypes
 
 
 [Icons]
-;Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\{#MyEngineName}\schematic\resources\icons\framix_icn_2.ico"
+;Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\{#MyEngineName}\schematic\resources\icons\framix_icn_1.ico"
 ;Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-;Name: "{autoprograms}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"; IconFilename: "{app}\{#MyEngineName}\schematic\resources\icons\framix_delete_2.ico"
+;Name: "{autoprograms}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"; IconFilename: "{app}\{#MyEngineName}\schematic\resources\icons\framix_delete_1.ico"
 
 
 [UninstallRun]
