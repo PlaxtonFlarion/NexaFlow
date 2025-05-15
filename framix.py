@@ -378,7 +378,7 @@ class Missions(object):
             logger.debug(f"实际帧率: [{rlt}] 平均帧率: [{avg}] 转换帧率: [{deploy.frate}]")
             logger.debug(f"视频时长: [{dur:.6f}] [{Parser.parse_times(dur)}]")
             logger.debug(f"视频剪辑: start=[{vd_start}] close=[{vd_close}] limit=[{vd_limit}]")
-            self.design.content_pose(
+            await self.design.content_pose(
                 rlt, avg, f"{dur:.6f}", org, vd_start, vd_close, vd_limit, video_temp, deploy.frate
             )
 
@@ -3109,7 +3109,7 @@ class Alynex(object):
             # 组织并展示格式化输出
             begin_fr, final_fr = f"{begin_id} - {begin_ts:.5f}", f"{final_id} - {final_ts:.5f}"
             logger.debug(f"开始帧:[{begin_fr}] 结束帧:[{final_fr}] 总耗时:[{(stage_cs := f'{time_cost:.5f}')}]")
-            self.design.assort_frame(begin_fr, final_fr, stage_cs)
+            await self.design.assort_frame(begin_fr, final_fr, stage_cs)
 
             # 返回关键帧 ID 和持续时间
             return begin_frame.frame_id, final_frame.frame_id, time_cost

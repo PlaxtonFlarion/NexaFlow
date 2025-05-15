@@ -877,7 +877,7 @@ def show_progress(
     3. 根据是否提供 items 或 total 创建 tqdm 对象。
     4. 若两者均未提供，则抛出 ValueError。
     """
-    desc, color_begin, color_final = f"{const.DESC} :", f"\033[1m\033[38;5;{color}m", "\033[0m"
+    desc, color_begin, color_final = const.ADAPT_HEAD, f"\033[1m\033[38;5;{color}m", "\033[0m"
     bar_format = f"{color_begin}{{l_bar}}%{{bar}}%|{{n_fmt:5}}/{{total_fmt:5}}{color_final}"
 
     # 确定进度条宽度的终端尺寸

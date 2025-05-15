@@ -20,6 +20,7 @@
 import os
 import re
 import sys
+import random
 import shutil
 import typing
 import aiofiles
@@ -92,12 +93,24 @@ class Active(object):
         console : Console
             rich 提供的 Console 实例，用于渲染日志文本与样式。
         """
+        debug_color = [
+            "#00CED1",  # 深青色 - 冷静理性
+            "#7FFFD4",  # 冰蓝绿 - 轻盈科技
+            "#66CDAA",  # 中度绿松石 - 适合背景级别
+            "#20B2AA",  # 浅海蓝 - 稳定中间调
+            "#5F9EA0",  # 军蓝灰 - 稳重调试色
+            "#87CEEB",  # 天蓝 - 清晰非干扰性
+            "#4682B4",  # 钢蓝 - 稍微暗一点用于子模块
+            "#98FB98",  # 浅绿色 - 绿色无压调试层
+            "#B0C4DE",  # 灰蓝色 - 安静辅助信息
+            "#AAAAAA",  # 中灰 - 用于淡化无关 debug 流
+        ]
         level_style = {
-            "DEBUG": "bold #00BFFF",  # 亮蓝（冰蓝）
-            "INFO": "bold #00FF7F",  # 清新绿
-            "WARNING": "bold #FFD700",  # 金黄（警告）
-            "ERROR": "bold #FF4500",  # 橘红（明显错误）
-            "CRITICAL": "bold #FF1493",  # 鲜玫红（致命警告）
+            "DEBUG": f"bold {random.choice(debug_color)}",
+            "INFO": "bold #00FF7F",
+            "WARNING": "bold #FFD700",
+            "ERROR": "bold #FF4500",
+            "CRITICAL": "bold #FF1493",
         }
 
         def __init__(self, console: "Console"):
@@ -111,8 +124,9 @@ class Active(object):
             重载日志处理器的输出逻辑，将格式化后的记录打印到指定控制台。
             """
             self.console.print(
-                Text(self.format(record), style=self.level_style.get(record.levelname, "")),
-                markup=False, highlight=False
+                const.PRINT_HEAD, Text(self.format(record), style=self.level_style.get(
+                    record.levelname, "bold #ADD8E6"
+                ))
             )
 
     @staticmethod

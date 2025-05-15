@@ -67,16 +67,7 @@ class Design(object):
     class Doc(object):
         """
         Doc 类用于统一控制台日志输出格式，封装标准化的日志样式与内容前缀。
-
-        Attributes
-        ----------
-        __head : str
-            日志前缀字符串，包含项目描述（`const.DESC`）和样式定义。
-
-        __tail : str
-            日志后缀字符串，用于关闭样式标签。
         """
-        __head, __tail = f"[bold #EEEEEE]{const.DESC} :: ", f"[/]"
 
         @classmethod
         def log(cls, text: typing.Any) -> None:
@@ -88,7 +79,7 @@ class Design(object):
             text : Any
                 要输出的日志内容，可以为任意对象，最终将被格式化为字符串。
             """
-            Design.console.print(f"{cls.__head}{text}{cls.__tail}")
+            Design.console.print(const.PRINT_HEAD, f"[bold]{text}")
 
         @classmethod
         def suc(cls, text: typing.Any) -> None:
@@ -100,7 +91,7 @@ class Design(object):
             text : Any
                 要输出的日志内容，通常用于表示成功信息。
             """
-            Design.console.print(f"{cls.__head}{const.SUC}{text}{cls.__tail}")
+            Design.console.print(const.PRINT_HEAD, f"{const.SUC}{text}")
 
         @classmethod
         def wrn(cls, text: typing.Any) -> None:
@@ -112,7 +103,7 @@ class Design(object):
             text : Any
                 要输出的日志内容，通常用于提示潜在问题或风险。
             """
-            Design.console.print(f"{cls.__head}{const.WRN}{text}{cls.__tail}")
+            Design.console.print(const.PRINT_HEAD, f"{const.WRN}{text}")
 
         @classmethod
         def err(cls, text: typing.Any) -> None:
@@ -124,7 +115,7 @@ class Design(object):
             text : Any
                 要输出的日志内容，通常用于表示异常或错误信息。
             """
-            Design.console.print(f"{cls.__head}{const.ERR}{text}{cls.__tail}")
+            Design.console.print(const.PRINT_HEAD, f"{const.ERR}{text}")
 
     @staticmethod
     def show_tree(file_path: str, *args: str) -> None:
@@ -612,61 +603,61 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         Design.console.print("\n", table, "\n")
 
     @staticmethod
-    async def show_quantum_intro() -> None:
-        """
-        星域构形动画。
-        """
-        frames = [
-            f"""\
-
-    [#808080]        ░░░░░░░░░░
-            ░░░░        ░░░░
-         ░░░░    [#00FFFF]●[/]    ░░░░
-            ░░░░        ░░░░
-                ░░░░░░░░░░[/]
-            """,
-            f"""\
-
-    [#999999]        ████▓▓████
-          ▓▓██            ██▓▓
-      ██▓▓    [#00FFDD]◉[/]     ▓▓██
-          ▓▓██            ██▓▓
-              ████████████[/]
-            """,
-            f"""\
-
-    [#AAAAAA]        ▓▓▓▓▓▓▓▓▓▓
-          ████    [#00FFB7]◎[/]    ████
-        ██▓▓            ▓▓██
-          ████        ████
-              ▓▓▓▓▓▓▓▓▓▓[/]
-            """,
-            f"""\
-
-[bold #00FFC0]╔═════════════════════════════╗
-║                             ║
-║       [bold #FFD700]{const.DESC} Compiler[/]       ║
-║                             ║
-╚═════════════════════════════╝
-            """
-        ]
-
-        with Live(console=Design.console, refresh_per_second=30, transient=True) as live:
-            for _ in range(10):  # 播放次数
-                for frame in frames[:-1]:
-                    live.update(Text.from_markup(frame))
-                    await asyncio.sleep(0.2)
-
-        # 渲染最终面板
-        final_panel = Panel.fit(
-            frames[-1], border_style="bold #7FFFD4"
+    async def aurora_cipher_pulse() -> None:
+        Design.console.print(
+            f"\n[bold #00F5FF]▶ {const.DESC} initializing compiler resonance grid ...\n"
         )
+        center_r, center_c, padding = (rows := 3) // 2, (cols := 21) // 2, 4
+        symbols = ["░", "▒", "▓", "⊚", "◈", "◌", "◎", "◇", "▪"]
 
-        Design.console.print(final_panel)
-        Design.console.print(f"\n{const.DECLARE}")
-        await asyncio.sleep(1)
+        # 多套主题色
+        pulse_color_themes = [
+            ["#00FFFF", "#00E6E6", "#66FFE0", "#FFD700", "#FF69B4", "#7CFC00"],  # neon pulse
+            ["#39FF14", "#00FFAA", "#87F9A7", "#33FFDD", "#FFFF33", "#FF00FF"],  # electric blossom
+            ["#8A2BE2", "#BA55D3", "#FF6EC7", "#FF85A2", "#FF1493", "#9370DB"],  # mystic magenta
+            ["#B0E0E6", "#AFEEEE", "#ADD8E6", "#87CEEB", "#B0C4DE", "#D8BFD8"],  # frozen code
+            ["#FFD700", "#FFA500", "#FF8C00", "#FF4500", "#DC143C", "#FF1493"],  # solar flare
+            ["#7FFFD4", "#00CED1", "#20B2AA", "#40E0D0", "#66CDAA", "#5F9EA0"],  # aqua circuit
+        ]
+        pulse_colors = random.choice(pulse_color_themes)
 
-        Design.simulation_progress("Compiler Ready")
+        def render_layer(radius: int, fade: bool = False) -> "Text":
+            grid = [["[dim #222222]·[/]" for _ in range(cols)] for _ in range(rows)]
+            for r in range(rows):
+                for c in range(cols):
+                    dist = abs(r - center_r) + abs(c - center_c)
+                    if dist == radius:
+                        color = random.choice(pulse_colors)
+                        char = random.choice(symbols)
+                        grid[r][c] = f"[bold {color}]{char}[/]"
+                    elif not fade and dist < radius:
+                        grid[r][c] = f"[dim #333333]{random.choice(symbols)}[/]"
+
+            if fade:
+                grid[center_r][center_c] = f"[bold #39FF14]▣[/]"
+            return Text.from_markup("\n".join(" " * padding + " ".join(row) for row in grid))
+
+        with Live(console=Design.console, refresh_per_second=30) as live:
+            for _ in range(3):
+                for i in range(center_r + center_c + 1):
+                    live.update(render_layer(i))
+                    await asyncio.sleep(0.05)
+                for j in reversed(range(center_r + center_c + 1)):
+                    live.update(render_layer(j, fade=True))
+                    await asyncio.sleep(0.05)
+
+            # 中心爆点闪三次
+            for _ in range(3):
+                final = [[" " for _ in range(cols)] for _ in range(rows)]
+                final[center_r][center_c] = f"[bold {random.choice(pulse_colors)}]✦[/]"
+                live.update(Text.from_markup(
+                    "\n".join(" " * padding + " ".join(row) for row in final)
+                ))
+                await asyncio.sleep(0.2)
+
+        Design.console.print(
+            f"\n[bold #7CFC00]>>> {const.DESC} core aligned. Compilation vector is now stable. <<<\n"
+        )
 
     @staticmethod
     async def engine_topology_wave(level: str) -> None:
@@ -2332,7 +2323,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             f"\n[bold #7CFC00]>>> {const.DESC} pixel glyph matrix stabilized. <<<\n"
         )
 
-    def content_pose(self, rlt, avg, dur, org, vd_start, vd_close, vd_limit, video_temp, frate) -> None:
+    async def content_pose(self, rlt, avg, dur, org, vd_start, vd_close, vd_limit, video_temp, frate) -> None:
         """
         根据日志等级展示当前视频处理过程中的关键帧率与时长信息。
         """
@@ -2378,7 +2369,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         self.console.print(table_info)
         self.console.print(table_clip)
 
-    def assort_frame(self, begin_fr, final_fr, stage_cs) -> None:
+    async def assort_frame(self, begin_fr, final_fr, stage_cs) -> None:
         """
         根据日志等级输出帧片段处理的起止帧号及耗时统计。
         """

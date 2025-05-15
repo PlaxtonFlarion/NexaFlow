@@ -461,7 +461,7 @@ class Manage(object):
                 return list(self.device_dict.values())
 
             for index, device in enumerate(self.device_dict.values()):
-                Design.console.print(f"[bold][bold #FFFACD]Connect:[/] [{index + 1:02}] {device}[/]")
+                Design.Doc.log(f"[bold #FFFACD]Connect:[/] [{index + 1:02}] {device}")
 
             if (action := Prompt.ask(
                     "[bold #FFEC8B]请输入序列号选择一台设备[/]", console=Design.console, default="00")) == "00":
@@ -470,7 +470,7 @@ class Manage(object):
             try:
                 choose_device = self.device_dict[action]
             except KeyError as e:
-                Design.console.print(f"{const.ERR}序列号不存在 -> {e}[/]\n")
+                Design.Doc.err(f"序列号不存在 -> {e}\n")
                 await asyncio.sleep(1)
                 continue
 
@@ -479,11 +479,9 @@ class Manage(object):
 
     async def display_device(self, ctrl: str) -> None:
         mode = "单设备模式" if len(self.device_dict) == 1 else "多设备模式"
-        Design.console.print(
-            f"[bold]<Link> <{mode}> **<*{ctrl}*>**[/]"
-        )
+        Design.Doc.log(f"<Link> <{mode}> **<*{ctrl}*>**")
         for device in self.device_dict.values():
-            Design.console.print(f"[bold #00FFAF]Connect:[/] [bold]{device}[/]")
+            Design.Doc.log(f"[bold #00FFAF]Connect:[/] {device}")
 
     @staticmethod
     async def display_select(device_list: list["Device"]) -> None:
@@ -492,7 +490,7 @@ class Manage(object):
         }
 
         if len(select_dict) == 0:
-            return Design.console.print(f"{const.WRN}没有多屏幕的设备[/]\n")
+            return Design.Doc.wrn(f"没有多屏幕的设备 ...\n")
 
         table = Table(
             title=f"[bold #FF851B]{const.ITEM} {const.DESC} Select Command Line",
@@ -522,7 +520,7 @@ class Manage(object):
         action = Prompt.ask("[bold #FFEC8B]Select Display[/]", console=Design.console, choices=choices)
         sn, display_id = re.split(r";", action, re.S)
         select_dict[sn].id, screen = int(display_id), select_dict[sn].display[int(display_id)]
-        Design.console.print(f"{const.SUC}{sn} -> ID=[{display_id}] DISPLAY={list(screen)}")
+        Design.Doc.suc(f"{sn} -> ID=[{display_id}] DISPLAY={list(screen)}")
 
 
 if __name__ == '__main__':

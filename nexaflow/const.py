@@ -102,9 +102,13 @@ LIC_FILE = f"{NAME}_signature.lic"
 NOTE_LEVEL = f"DEBUG"
 SHOW_LEVEL = f"INFO"
 
-WHILE_FORMAT = f"{{time:YYYY-MM-DD HH:mm:ss.SSS}} | <level>{{level: <8}}</level> | {{name}}:{{function}}:{{line}} - <level>{{message}}</level>"
-PRINT_FORMAT = f"{DESC} | <level>{{level: <8}}</level> | <level>{{message}}</level>"
-WRITE_FORMAT = f"<green>{{time:YYYY-MM-DD HH:mm:ss.SSS}}</green> | <level>{{level: <8}}</level> | <level>{{message}}</level>"
+PRINT_HEAD = f"[bold #EEEEEE]{DESC} ::[/]"
+OTHER_HEAD = f"{DESC} ::"
+ADAPT_HEAD = f"{DESC} :"
+
+PRINT_FORMAT = f"<level>{{level: <8}}</level> | <level>{{message}}</level>"
+WRITE_FORMAT = f"{OTHER_HEAD} <green>{{time:YYYY-MM-DD HH:mm:ss.SSS}}</green> | <level>{{level: <8}}</level> | <level>{{message}}</level>"
+WHILE_FORMAT = f"{OTHER_HEAD} <green>{{time:YYYY-MM-DD HH:mm:ss.SSS}}</green> | <level>{{level: <8}}</level> | {{name}}:{{function}}:{{line}} - <level>{{message}}</level>"
 
 
 if __name__ == '__main__':
