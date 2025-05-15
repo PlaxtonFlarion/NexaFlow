@@ -1,0 +1,53 @@
+name: Sync Release to SoftwareCenter
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up variables
+        id: vars
+        run: |
+          echo "REPO_NAME=${GITHUB_REPOSITORY#*/}" >> $GITHUB_OUTPUT
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ secrets.SOFTWARECENTER_TOKEN }}
+        run: |
+          mkdir -p release_assets
+          gh release download "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" --dir release_assets
+
+      - name: Clone SoftwareCenter
+        env:
+          GH_TOKEN: ${{ secrets.SOFTWARECENTER_TOKEN }}
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "action@github.com"
+          git clone https://$GH_TOKEN@github.com/AceKeppel/SoftwareCenter.git software-center
+      
+      - name: Clean previous files
+        run: |
+          for dir in Framix Memrix; do
+            rm -rf "$dir"/*
+          done
+    
+      - name: Copy files
+        run: |
+          mkdir -p software-center/${{ steps.vars.outputs.REPO_NAME }}
+          cp README.md software-center/${{ steps.vars.outputs.REPO_NAME }}/
+          cp release_assets/* software-center/${{ steps.vars.outputs.REPO_NAME }}/
+
+      - name: Push to SoftwareCenter
+        run: |
+          cd software-center
+          git add .
+          git commit -m "Sync ${{ steps.vars.outputs.REPO_NAME }} release $GITHUB_REF_NAME"
+          git push
