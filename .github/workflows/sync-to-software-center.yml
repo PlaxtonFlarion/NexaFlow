@@ -33,11 +33,9 @@ jobs:
           git config --global user.email "action@github.com"
           git clone https://$GH_TOKEN@github.com/AceKeppel/SoftwareCenter.git software-center
       
-      - name: Clean previous files
+      - name: Clean current software directory
         run: |
-          for dir in Framix Memrix; do
-            rm -rf "$dir"/*
-          done
+          rm -rf "${{ github.event.repository.name }}"/*
     
       - name: Copy files
         run: |
