@@ -1,0 +1,62 @@
+name: Sync Release to SoftwareCenter
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up variables
+        id: vars
+        run: |
+          echo "REPO_NAME=Framix" >> $GITHUB_OUTPUT        
+          echo "TARGET_DIR=SoftwareCenter/Framix" >> $GITHUB_ENV
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ secrets.PRIVATE_TOKEN }}
+        run: |
+          mkdir -p release_assets
+          gh release download "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" --dir release_assets
+
+      - name: Clone SoftwareCenter
+        env:
+          GH_TOKEN: ${{ secrets.PRIVATE_TOKEN }}
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "action@github.com"
+          git clone https://x-access-token:${GH_TOKEN}@github.com/PlaxtonFlarion/SoftwareCenter.git SoftwareCenter
+
+      - name: Generate individual SHA256 files
+        run: |
+          cd release_assets
+          for file in *.dmg *.exe; do
+            if [ -f "$file" ]; then
+              sha256sum "$file" > "$file.sha256"
+            fi
+          done
+          cd ..
+
+      - name: Copy files
+        run: |
+          mkdir -p $TARGET_DIR
+          cp README.md $TARGET_DIR/ || true
+          cp LICENSE.md $TARGET_DIR/ || true
+          cp release_assets/* $TARGET_DIR/ || true
+
+      - name: Push to SoftwareCenter
+        run: |
+          cd SoftwareCenter
+          git add .
+          git commit -m "Sync Framix release $GITHUB_REF_NAME"
+          git push
