@@ -25,13 +25,12 @@ ALIAS            = r"画帧秀"
 VERSION          = r"1.0.0"
 YEAR             = r"2024"
 LICENSE          = r"Proprietary License"
-URL              = r"https://github.com/PlaxtonFlarion/NexaFlow"
+URL              = r"https://github.com/PlaxtonFlarion/SoftwareCenter"
 AUTHOR           = r"AceKeppel"
 EMAIL            = r"AceKeppel@outlook.com"
 
 PUBLISHER        = f"{DESC} Technologies Inc."
 COPYRIGHT        = f"Copyright (C) {YEAR} {DESC}. All rights reserved."
-WIN_FILE_VERSION = r"1.0.0.0"
 
 DECLARE = f"""\
 [bold][bold #00D7AF]>>> {DESC} :: {ALIAS} <<<[/]

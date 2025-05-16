@@ -269,9 +269,6 @@ async def packaging() -> tuple[
             f"--mode=standalone",
             f"--product-name={const.DESC}",
             f"--product-version={const.VERSION}",
-            f"--file-version={const.WIN_FILE_VERSION}",
-            f"--company-name={const.PUBLISHER}",
-            f"--copyright={const.COPYRIGHT}",
             f"--windows-icon-from-ico=schematic/resources/icons/framix_icn_1.ico",
         ]
 
@@ -300,6 +297,11 @@ async def packaging() -> tuple[
 
     else:
         raise FramixError(f"Unsupported platforms {ops}")
+
+    compile_cmd += [
+        f"--company-name={const.PUBLISHER}",
+        f"--copyright={const.COPYRIGHT}"
+    ]
 
     compile_cmd += [
         f"--nofollow-import-to=keras,tensorflow,tensorboard,uiautomator2",
