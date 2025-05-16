@@ -1,4 +1,4 @@
-# 🚀 Framix｜画帧秀
+# 🚀 Framix :: 画帧秀
 
 ![LOGO](https://raw.githubusercontent.com/PlaxtonFlarion/SoftwareCenter/main/assets/FramixSource/app_readme.png)
 
