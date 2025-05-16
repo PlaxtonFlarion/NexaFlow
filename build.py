@@ -267,6 +267,11 @@ async def packaging() -> tuple[
 
         compile_cmd += [
             f"--mode=standalone",
+            f"--product-name={const.DESC}",
+            f"--product-version={const.VERSION}",
+            f"--file-version={const.WIN_FILE_VERSION}",
+            f"--company-name={const.PUBLISHER}",
+            f"--copyright={const.COPYRIGHT}",
             f"--windows-icon-from-ico=schematic/resources/icons/framix_icn_1.ico",
         ]
 

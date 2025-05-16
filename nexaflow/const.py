@@ -28,6 +28,10 @@ URL = r"https://github.com/PlaxtonFlarion/NexaFlow"
 AUTHOR = r"AceKeppel"
 EMAIL = r"AceKeppel@outlook.com"
 
+WIN_FILE_VERSION = r"1.0.0.0"
+PUBLISHER = f"{DESC} Technologies Inc."
+COPYRIGHT = f"Copyright (C) {YEAR} {DESC}. All rights reserved."
+
 DECLARE = f"""\
 [bold][bold #00D7AF]>>> {DESC} :: {ALIAS} <<<[/]
 [bold #FF8787]Copyright (C)[/] {YEAR} {DESC}. All rights reserved.
