@@ -32,11 +32,7 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "action@github.com"
           git clone https://$GH_TOKEN@github.com/AceKeppel/SoftwareCenter.git software-center
-      
-      - name: Clean current software directory
-        run: |
-          rm -rf "${{ github.event.repository.name }}"/*
-    
+          
       - name: Copy files
         run: |
           mkdir -p software-center/${{ steps.vars.outputs.REPO_NAME }}
