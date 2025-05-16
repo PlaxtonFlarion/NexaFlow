@@ -1,36 +1,23 @@
-﻿恭喜！ Framix(画帧秀) 已成功安装到您的计算机上。
-Congratulations! Framix(画帧秀) has been successfully installed on your computer.
+﻿恭喜！Framix :: 画帧秀 已成功安装。
+Congratulations! Framix has been successfully installed.
 
-在开始之前，您需要了解以下几点：
-Before you get started, here are a few things to know:
+在开始之前，请注意以下事项：
+Before you get started, please read the following:
 
-1. 如何启动：您可以从桌面快捷方式或开始菜单启动 Framix(画帧秀)。
-1. How to Start: You can launch Framix(画帧秀) from the desktop shortcut or from the Start menu.
+1. 启动方式：请在命令行中执行 `framix` 命令以启动程序。
+   Launch: Open a terminal and run the `framix` command to start the program.
 
-2. 用户指南：我们建议阅读安装目录中或在线 [https://github.com/PlaxtonFlarion/NexaFlow] 上提供的用户指南，以熟悉 Framix(画帧秀) 的特性和功能。
-2. User Guide: We recommend going through the user guide available in the installation directory or online at [https://github.com/PlaxtonFlarion/NexaFlow] to get familiar with the features and functionalities of Framix(画帧秀).
+2. 推荐终端：为获得最佳显示效果，建议使用支持富文本的终端，如 Windows Terminal 或 iTerm2。
+   Recommended Terminal: For optimal visual experience, use a rich-text terminal such as Windows Terminal or iTerm2.
 
-3. 更新：定期检查软件更新，以确保您拥有最新的功能和安全增强功能。
-3. Updates: Regularly check for software updates to ensure you have the latest features and security enhancements.
+3. 用户指南：请访问 [https://github.com/PlaxtonFlarion/SoftwareCenter] 获取使用文档与更新说明。
+   User Guide: Visit [https://github.com/PlaxtonFlarion/SoftwareCenter] for manuals and update notes.
 
-4. 支持：如果您遇到任何问题或有疑问，我们的支持团队随时准备提供帮助。请通过 [AceKeppel@outlook.com] 联系我们。
-4. Support: If you encounter any issues or have questions, our support team is ready to help. Contact us at [AceKeppel@outlook.com].
+4. 软件更新：如获得新版本，请在卸载旧版本后重新安装。
+   Updates: To update, uninstall the old version and install the new release.
 
-5. 反馈：我们重视您的反馈。请通过 [AceKeppel@outlook.com] 分享您的经验和建议，以帮助我们改进。
-5. Feedback: We value your feedback. Please share your experience and suggestions to help us improve at [AceKeppel@outlook.com].
+5. 用户支持：若需帮助，请通过您的授权渠道联系支持人员。
+   Support: For assistance, contact support through your licensed access channel.
 
-感谢您安装 Framix(画帧秀)。我们很高兴您的加入，并期待为您提供非凡的体验。
-Thank you for installing Framix(画帧秀). We are excited to have you on board and look forward to providing an exceptional experience.
-
-
-
-
-
-
-
-
-
-
-
-
-
+感谢您的安装，祝使用愉快！
+Thank you for installing. Enjoy your experience!

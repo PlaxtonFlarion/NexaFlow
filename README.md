@@ -1,6 +1,6 @@
 # 🚀 Framix｜画帧秀
 
-![LOGO](schematic/resources/images/illustration/Readme.png)
+![LOGO](https://raw.githubusercontent.com/PlaxtonFlarion/SoftwareCenter/main/assets/FramixSource/app_readme.png)
 
 ---
 
@@ -2338,7 +2338,7 @@ framix --shape 200,200 --build <文件夹路径> --build <文件夹路径> --bui
 
 ## Framix｜画帧秀 编译 / Compile
 
-![LOGO](schematic/resources/images/illustration/Compile.png)
+![LOGO](https://raw.githubusercontent.com/PlaxtonFlarion/SoftwareCenter/main/assets/FramixSource/app_compile.png)
 
 ---
 
@@ -2468,9 +2468,10 @@ framix --shape 200,200 --build <文件夹路径> --build <文件夹路径> --bui
 
 ---
 
-## 📜 开源协议
+## 📜 软件许可
 ### ⭐️ 我们遵循所有内置工具的开源许可和版权政策，并在应用中包含了原始许可证文本。
-- **Framix** 采用 **[MIT](LICENSE.md)** 许可，与世界共享创新成果。
+- **Framix** 为专有软件（Proprietary Software），采用时间限制授权方式，禁止未经授权的复制、修改或传播。
+- 若您希望申请授权，请联系 **[AceKeppel@outlook.com]**
 
 ---
 

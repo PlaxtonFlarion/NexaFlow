@@ -1,26 +1,26 @@
-﻿欢迎安装 Framix(画帧秀)！
-Welcome to the installation of Framix(画帧秀)!
+﻿欢迎使用 Framix :: 画帧秀 安装向导
+Welcome to the installation of Framix (Framix Engine)
 
-在继续安装之前，请阅读以下重要注意事项：
-Before proceeding with the installation, please read the following important notes:
+在继续之前，请阅读以下重要事项：
+Before proceeding, please read the following important notes:
 
-1. 系统要求：确保您的计算机满足 Framix(画帧秀) 的最低系统要求。
-1. System Requirements: Ensure that your computer meets the minimum system requirements for Framix(画帧秀).
+1. 系统要求：请确认您的计算机符合最低运行需求。
+   System Requirements: Ensure your computer meets the minimum requirements.
 
-2. 关闭其他应用程序：为了顺利安装过程，请在开始安装之前关闭所有其他正在运行的应用程序。
-2. Close Other Applications: For a smooth installation process, please close all other running applications before starting the installation.
+2. 安装建议：建议关闭其他运行中的程序以避免干扰。
+   Installation Tip: Close other running applications to avoid interference.
 
-3. 安装时间：安装过程可能需要几分钟，具体取决于您系统的功能。
-3. Installation Time: The installation process may take several minutes, depending on your system's capabilities.
+3. 数据备份：为了安全起见，请备份重要数据。
+   Data Backup: For safety, back up important data beforehand.
 
-4. 数据备份：虽然不常见，但安装过程有时会导致数据丢失。我们建议在继续之前备份重要数据。
-4. Data Backup: Although it's not common, installation processes can sometimes lead to data loss. We recommend backing up important data before proceeding.
+4. 安装时间：过程可能需要几分钟，请耐心等待。
+   Installation Time: May take a few minutes to complete.
 
-5. 互联网连接：如果安装需要下载其他组件，请确保您有稳定的互联网连接。
-5. Internet Connection: Make sure you have a stable internet connection if the installation requires downloading additional components.
+5. 网络连接：某些功能可能在安装时需要联网支持。
+   Network Connection: Some features may require internet access during setup.
 
-单击“下一步”即表示您同意 Framix(画帧秀) 的条款和条件。
-By clicking 'Next', you agree to the terms and conditions of Framix(画帧秀).
+点击“下一步”即表示您同意本软件的使用条款与授权协议。
+By clicking "Next", you agree to the terms and license agreement of this software.
 
-感谢您选择 Framix(画帧秀)！我们希望您喜欢使用我们的产品。
-Thank you for choosing Framix(画帧秀)! We hope you enjoy using our product.
+感谢您的使用，祝体验愉快。
+Thank you, and enjoy your experience.

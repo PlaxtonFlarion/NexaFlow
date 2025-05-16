@@ -19,20 +19,20 @@
 
 ITEM = r"NexaFlow"
 NAME = r"framix"
+DESC = r"Framix"
 YEAR = r"2024"
+ALIAS = r"画帧秀"
 VERSION = r"1.0.0"
+LICENSE = r"Proprietary License"
 URL = r"https://github.com/PlaxtonFlarion/NexaFlow"
 AUTHOR = r"AceKeppel"
 EMAIL = r"AceKeppel@outlook.com"
-DESC = r"Framix"
-ALIAS = r"画帧秀"
-LICENSE = r"MIT"
 
 DECLARE = f"""\
-[bold]^* {DESC} | {ALIAS} *^
-(C) {YEAR} {DESC}. All rights reserved.
-Version [bold #FFD75F]{VERSION}[/] - Licensed under the [bold #D7AFFF]{LICENSE}[/] License.
------------------------------------------------
+[bold][bold #00D7AF]>>> {DESC} :: {ALIAS} <<<[/]
+[bold #FF8787]Copyright (C)[/] {YEAR} {DESC}. All rights reserved.
+Version [bold #FFD75F]{VERSION}[/] :: Licensed software. Authorization required.
+{'-' * 59}
 """
 
 CHARSET = r"UTF-8"
