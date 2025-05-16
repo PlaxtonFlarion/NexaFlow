@@ -37,6 +37,7 @@ jobs:
         run: |
           mkdir -p software-center/${{ steps.vars.outputs.REPO_NAME }}
           cp README.md software-center/${{ steps.vars.outputs.REPO_NAME }}/
+          cp LICENSE.md software-center/${{ steps.vars.outputs.REPO_NAME }}/
           cp release_assets/* software-center/${{ steps.vars.outputs.REPO_NAME }}/
 
       - name: Push to SoftwareCenter
