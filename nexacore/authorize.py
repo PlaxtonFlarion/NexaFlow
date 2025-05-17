@@ -101,9 +101,9 @@ def receive_license(code: str, lic_path: "Path") -> typing.Optional["Path"]:
             Design.Doc.log(f"[bold #87FF87]License validated successfully. System activated..\n")
 
     except urllib.request.HTTPError as e:
-        raise FramixError(f"❌ 授权失败 [{e.code}] -> {e.read().decode()}")
+        raise FramixError(f"❌ [{e.code}] -> {e.read().decode()}")
     except Exception as e:
-        raise FramixError(f"❌ 网络错误 {e}")
+        raise FramixError(f"❌ {e}")
 
 
 def verify_license(lic_path: typing.Union[str, "Path"]) -> typing.Any:
