@@ -98,7 +98,7 @@ def receive_license(code: str, lic_path: "Path") -> typing.Optional["Path"]:
         with urllib.request.urlopen(req, timeout=10) as resp:
             lic = json.loads(resp.read().decode())
             lic_path.write_text(json.dumps(lic, indent=2), encoding=const.CHARSET)
-            Design.Doc.log(f"[bold #87FF87]License validated successfully. System activated..\n")
+            Design.Doc.log(f"[bold #87FF87]License validated successfully. System activated.\n")
 
     except urllib.request.HTTPError as e:
         raise FramixError(f"❌ [{e.code}] -> {e.read().decode()}")
