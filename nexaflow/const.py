@@ -4,18 +4,9 @@
 #  | |__| (_) | | | \__ \ |_
 #   \____\___/|_| |_|___/\__|
 #
-
-# ==== Notes: 版权申明 ====
-# 版权所有 (c) 2024  Framix(画帧秀)
-# 此文件受 Framix(画帧秀) 许可证的保护。您可以在 LICENSE.md 文件中查看详细的许可条款。
-
 # ==== Notes: License ====
-# Copyright (c) 2024  Framix(画帧秀)
-# This file is licensed under the Framix(画帧秀) License. See the LICENSE.md file for more details.
-
-# ==== Notes: ライセンス ====
-# Copyright (c) 2024  Framix(画帧秀)
-# このファイルは Framix(画帧秀) ライセンスの下でライセンスされています。詳細は LICENSE.md ファイルを参照してください。
+# Copyright (c) 2024  Framix :: 画帧秀
+# This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md file for more details.
 
 # ======== 【基础信息配置 | Core Metadata】========
 ITEM             = r"NexaFlow"
@@ -121,6 +112,25 @@ ADAPT_HEAD   = f"{DESC} :"
 PRINT_FORMAT = f"<level>{{level: <8}}</level> | <level>{{message}}</level>"
 WRITE_FORMAT = f"{OTHER_HEAD} <green>{{time:YYYY-MM-DD HH:mm:ss.SSS}}</green> | <level>{{level: <8}}</level> | <level>{{message}}</level>"
 WHILE_FORMAT = f"{OTHER_HEAD} <green>{{time:YYYY-MM-DD HH:mm:ss.SSS}}</green> | <level>{{level: <8}}</level> | {{name}}:{{function}}:{{line}} - <level>{{message}}</level>"
+
+# ======== 【应用授权 | Authorization】========
+ACTIVATION_URL = f"https://license-server-s68o.onrender.com/sign/{NAME}"
+PUBLIC_KEY_NAME  = f"{NAME}_public_key.pem"
+PRIVATE_KEY_NAME = f"{NAME}_private_key.pem"
+KEY_DIR          = r"keys"
+LIC_DIR          = r"licenses"
+
+PUBLIC_KEY: bytes = b'''
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwfWNE3uQEqRYYn/oBSIw
+JlB6zcCJ/BpwItzrzlMLD1Q0nc7xtmraOzUPVQBe7xFXmI/I+C8lrlr3nSzu+Bpa
+HZHzpsdg2MOqCb1IDvpSdhlXOoK8Xdnt0nNDqqgdLZjbQwA43D+ggEdlA/WK85ZO
+mH8OPeQ9dWweEHDJN9xXx6LaNtEd3xtojNz+YSRdMONEYD0e7EiYXsWtKPRXf5Yl
+TOjxCPl0IPgG3syUdy+fZjU2NGD631cN1l1H9Pjeuv2M4gAHgWbO+NjaZFPV7uXJ
+KRcsac7eZ1ShnFZtFeuBTJjhQcDr0PhmqrgDPzd0VG2kA/LdGtfdCvO/cKaepBXo
+fwIDAQAB
+-----END PUBLIC KEY-----
+'''
 
 
 if __name__ == '__main__':

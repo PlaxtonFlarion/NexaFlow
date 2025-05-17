@@ -12,28 +12,9 @@
 #                                                         #
 ###########################################################
 
-# ==== Notes: 版权申明 ====
-# 版权所有 (c) 2024  Framix(画帧秀)
-# 此文件受 Framix(画帧秀) 许可证的保护。您可以在 LICENSE.md 文件中查看详细的许可条款。
-
 # ==== Notes: License ====
-# Copyright (c) 2024  Framix(画帧秀)
-# This file is licensed under the Framix(画帧秀) License. See the LICENSE.md file for more details.
-
-# ==== Notes: ライセンス ====
-# Copyright (c) 2024  Framix(画帧秀)
-# このファイルは Framix(画帧秀) ライセンスの下でライセンスされています。詳細は LICENSE.md ファイルを参照してください。
-
-"""
-版权所有 (c) 2024  Framix(画帧秀)
-此文件受 Framix(画帧秀) 许可证的保护。您可以在 LICENSE.md 文件中查看详细的许可条款。
-
-Copyright (c) 2024  Framix(画帧秀)
-This file is licensed under the Framix(画帧秀) License. See the LICENSE.md file for more details.
-
-Copyright (c) 2024  Framix(画帧秀)
-このファイルは Framix(画帧秀) ライセンスの下でライセンスされています。詳細は LICENSE.md ファイルを参照してください。
-"""
+# Copyright (c) 2024  Framix :: 画帧秀
+# This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md file for more details.
 
 __all__ = ["Clipix", "Alynex"]
 
@@ -85,13 +66,13 @@ from engine.tinker import (
     Craft, Search, Active, Review, FramixError
 )
 from nexacore.argument import Wind
-from nexacore.authorize import verify_license
 from nexacore.cubicle import DB
 from nexacore.design import Design
 from nexacore.parser import Parser
 from nexacore.profile import (
     Deploy, Option
 )
+from nexacore import authorize
 from nexaflow import (
     const, toolbox
 )
@@ -3475,8 +3456,14 @@ async def main() -> typing.Coroutine | None:
         await _previewing(*current)
         return await Design.engine_starburst(_level)  # 结尾动画
 
-    # 应用授权
-    verify_license(Path(_src_opera_place) / const.LIC_FILE)
+    _lic_path = Path(_src_opera_place) / const.LIC_FILE
+
+    # 应用激活
+    if _apply_code := _lines.apply:
+        return authorize.receive_license(_apply_code, _lic_path)
+
+    # 授权校验
+    authorize.verify_license(_lic_path)
 
     # 启动仪式
     await random.choice(

@@ -5,18 +5,9 @@
 #  /_/   \_\_|  \__, |\__,_|_| |_| |_|\___|_| |_|\__|
 #               |___/
 #
-
-# ==== Notes: 版权申明 ====
-# 版权所有 (c) 2024  Framix(画帧秀)
-# 此文件受 Framix(画帧秀) 许可证的保护。您可以在 LICENSE.md 文件中查看详细的许可条款。
-
 # ==== Notes: License ====
-# Copyright (c) 2024  Framix(画帧秀)
-# This file is licensed under the Framix(画帧秀) License. See the LICENSE.md file for more details.
-
-# ==== Notes: ライセンス ====
-# Copyright (c) 2024  Framix(画帧秀)
-# このファイルは Framix(画帧秀) ライセンスの下でライセンスされています。詳細は LICENSE.md ファイルを参照してください。
+# Copyright (c) 2024  Framix :: 画帧秀
+# This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md file for more details.
 
 
 class Args(object):
@@ -118,6 +109,15 @@ class Args(object):
             "func": """- 预设运行所需的关键配置参数，包括报告路径、模型路径、彩色与灰度模型名称等。
                 - 用于在主流程执行前注入标准化运行环境，确保任务执行上下文一致且可复现。
                 - 与其他功能配合使用时，可作为基础参数注入器，完成运行逻辑与资源配置的解耦。"""
+        },
+        "--apply": {
+            "args": {"type": str},
+            "view": ["一次", " ACTIVATION CODE"],
+            "help": "序列通行证",
+            "func": """- 使用激活码向远程授权中心发起请求，获取签名后的授权数据。
+                - 授权数据将绑定当前设备指纹，并以 LIC 文件形式存储在本地。
+                - 一旦激活成功，系统将进入已授权状态，具备完全运行权限。
+                - 适用于首次部署、跨环境迁移、临时激活等场景。"""
         }
     }
 
