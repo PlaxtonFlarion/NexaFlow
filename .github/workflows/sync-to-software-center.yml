@@ -1,4 +1,4 @@
-name: Sync Public Repo
+name: Sync
 
 on:
   release:
