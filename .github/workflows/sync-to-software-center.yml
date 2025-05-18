@@ -1,25 +1,24 @@
-name: Sync Release to SoftwareCenter
+name: Sync SHA256 to Public Repo
 
 on:
   release:
     types: [published]
 
 jobs:
-  sync:
+  sync_sha256:
     runs-on: ubuntu-latest
 
     permissions:
       contents: write
 
     steps:
-      - name: Checkout code
+      - name: Checkout current repo
         uses: actions/checkout@v4
 
-      - name: Set up variables
-        id: vars
+      - name: Set variables
         run: |
-          echo "REPO_NAME=Framix" >> $GITHUB_OUTPUT        
           echo "TARGET_DIR=SoftwareCenter/Framix" >> $GITHUB_ENV
+          echo "REPO_NAME=Framix" >> $GITHUB_ENV
 
       - name: Download release assets
         env:
@@ -29,7 +28,17 @@ jobs:
           gh release download "$GITHUB_REF_NAME" \
             --repo "$GITHUB_REPOSITORY" --dir release_assets
 
-      - name: Clone SoftwareCenter
+      - name: Generate SHA256 files
+        run: |
+          cd release_assets
+          for file in *.dmg *.exe *.zip *.7z *.pkg; do
+            if [ -f "$file" ]; then
+              sha256sum "$file" > "$file.sha256"
+            fi
+          done
+          cd ..
+
+      - name: Clone public SoftwareCenter repo
         env:
           GH_TOKEN: ${{ secrets.PRIVATE_TOKEN }}
         run: |
@@ -37,26 +46,16 @@ jobs:
           git config --global user.email "action@github.com"
           git clone https://x-access-token:${GH_TOKEN}@github.com/PlaxtonFlarion/SoftwareCenter.git SoftwareCenter
 
-      - name: Generate individual SHA256 files
-        run: |
-          cd release_assets
-          for file in *.dmg *.exe; do
-            if [ -f "$file" ]; then
-              sha256sum "$file" > "$file.sha256"
-            fi
-          done
-          cd ..
-
-      - name: Copy files
+      - name: Copy non-binary files to public repo
         run: |
           mkdir -p $TARGET_DIR
           cp README.md $TARGET_DIR/ || true
           cp LICENSE.md $TARGET_DIR/ || true
-          cp release_assets/* $TARGET_DIR/ || true
+          cp release_assets/*.sha256 $TARGET_DIR/ || true
 
       - name: Push to SoftwareCenter
         run: |
           cd SoftwareCenter
           git add .
-          git commit -m "Sync Framix release $GITHUB_REF_NAME"
+          git commit -m "Sync SHA256 from $GITHUB_REF_NAME"
           git push
