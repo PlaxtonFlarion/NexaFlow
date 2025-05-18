@@ -15,6 +15,8 @@ import socket
 import struct
 import typing
 import hashlib
+import platform
+import subprocess
 import urllib.request
 from pathlib import Path
 from datetime import (
@@ -31,10 +33,26 @@ from nexaflow import const
 
 def machine_id() -> str:
     """
-    获取当前设备唯一识别码（基于 MAC 地址 + 哈希），推荐长度12位。
+    获取当前设备唯一识别码。
     """
+    if (ops := platform.system()) == "Windows":
+        cmd = ["wmic", "csproduct", "get", "UUID"]
+        output = subprocess.check_output(cmd).decode().split("\n")
+        return output[1].strip()
+
+    elif ops == "Darwin":
+        cmd = ["ioreg", "-rd1", "-c", "IOPlatformExpertDevice"]
+        output = subprocess.check_output(cmd).decode()
+        for line in output.split("\n"):
+            if "IOPlatformUUID" in line:
+                return line.split('"')[-2].strip()
+
+    elif ops == "Linux":
+        with open("/etc/machine-id", "r") as f:
+            return f.read().strip()
+
     machine = uuid.getnode()
-    return hashlib.sha256(str(machine).encode()).hexdigest()[:12]
+    return hashlib.sha256(str(machine).encode()).hexdigest()[:16]
 
 
 def network_time() -> typing.Optional["datetime"]:
@@ -96,7 +114,7 @@ def receive_license(code: str, lic_path: "Path") -> typing.Optional["Path"]:
         f"[bold #FFAF5F]Transmitting glyph to central authority ..."
     )
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=30) as resp:
             lic_file = json.loads(resp.read().decode())
             lic_path.write_text(json.dumps(lic_file, indent=2), encoding=const.CHARSET)
             Design.Doc.log(
