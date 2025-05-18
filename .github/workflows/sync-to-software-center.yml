@@ -38,6 +38,14 @@ jobs:
           done
           cd ..
 
+      - name: Commit SHA256 to private repo
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "action@github.com"
+          git add release_assets/*.sha256
+          git commit -m "Add SHA256 checksums for $GITHUB_REF_NAME" || echo "No changes"
+          git push
+
       - name: Clone public SoftwareCenter repo
         env:
           GH_TOKEN: ${{ secrets.PRIVATE_TOKEN }}
