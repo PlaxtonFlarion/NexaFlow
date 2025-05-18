@@ -1,4 +1,4 @@
-name: Sync SHA256 to Public Repo
+name: Sync Public Repo
 
 on:
   release:
