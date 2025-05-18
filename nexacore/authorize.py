@@ -92,27 +92,22 @@ def receive_license(code: str, lic_path: "Path") -> typing.Optional["Path"]:
         method="POST"
     )
 
-    last_error = None
+    Design.Doc.log(
+        f"[bold #FFAF5F]Transmitting glyph to central authority ..."
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            lic_file = json.loads(resp.read().decode())
+            lic_path.write_text(json.dumps(lic_file, indent=2), encoding=const.CHARSET)
+            Design.Doc.log(
+                f"[bold #87FF87]Validation succeeded. activation seal embedded.\n"
+            )
+            return lic_path
 
-    for attempt in range(1, 6):
-        Design.Doc.log(
-            f"[bold #FFAF5F]Attempt[{attempt:02}] transmitting glyph to central authority ..."
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                lic_file = json.loads(resp.read().decode())
-                lic_path.write_text(json.dumps(lic_file, indent=2), encoding=const.CHARSET)
-                Design.Doc.log(
-                    f"[bold #87FF87]Attempt[{attempt:02}] validation succeeded. activation seal embedded.\n"
-                )
-                return lic_path
-
-        except urllib.request.HTTPError as e:
-            last_error = FramixError(f"❌ [{e.code}] -> {e.read().decode()}")
-        except Exception as e:
-            last_error = FramixError(f"❌ {e}")
-
-    raise last_error
+    except urllib.request.HTTPError as e:
+        raise FramixError(f"❌ [{e.code}] -> {e.read().decode()}")
+    except Exception as e:
+        raise FramixError(f"❌ {e}")
 
 
 def verify_license(lic_path: typing.Union[str, "Path"]) -> typing.Any:
@@ -141,7 +136,7 @@ def verify_license(lic_path: typing.Union[str, "Path"]) -> typing.Any:
         castle = auth_info["castle"]
 
     except Exception as e:
-        raise FramixError(f"❌ 通行证无效，需要重新授权 -> {e}")
+        raise FramixError(f"❌ 通行证无效 -> {e}")
 
     if castle != machine_id():
         raise FramixError(f"❌ 当前设备与通行证不匹配 ...")
