@@ -33,9 +33,13 @@ jobs:
           cp README.md $TARGET_DIR/ || true
           cp LICENSE.md $TARGET_DIR/ || true
 
-      - name: Push to SoftwareCenter
+      - name: Push to SoftwareCenter (only if changed)
         run: |
           cd SoftwareCenter
           git add .
-          git commit -m "Sync README/LICENSE for $REPO_NAME"
-          git push
+          if git diff --cached --quiet; then
+            echo "No changes to commit. Skipping push."
+          else
+            git commit -m "Sync README/LICENSE for $REPO_NAME"
+      git push
+    fi
