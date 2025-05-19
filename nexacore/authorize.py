@@ -79,53 +79,16 @@ def network_time() -> typing.Optional["datetime"]:
     return None
 
 
-def receive_license(code: str, lic_path: "Path", *_, **kwargs) -> typing.Optional["Path"]:
-    """
-    使用激活码从远程授权服务器获取授权文件，并保存至本地路径。
-    """
-    payload = json.dumps(
-        {"code": code.strip(), "castle": machine_id(), **kwargs}
-    ).encode(const.CHARSET)
-
-    req = urllib.request.Request(
-        url=const.ACTIVATION_URL,
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST"
-    )
-
-    Design.Doc.log(
-        f"[bold #FFAF5F]Transmitting glyph to central authority ..."
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            lic_file = json.loads(resp.read().decode())
-            lic_path.write_text(json.dumps(lic_file, indent=2), encoding=const.CHARSET)
-            Design.Doc.log(
-                f"[bold #87FF87]Validation succeeded. activation seal embedded.\n"
-            )
-            return lic_path
-
-    except urllib.request.HTTPError as e:
-        raise FramixError(f"❌ [{e.code}] -> {e.read().decode()}")
-    except Exception as e:
-        raise FramixError(f"❌ {e}")
-
-
-def verify_license(lic_path: typing.Union[str, "Path"]) -> typing.Any:
+def verify_signature(lic_file: "Path") -> tuple:
     """
     验证授权文件的合法性与有效性。
     """
-    Design.Doc.log(
-        f"[bold #FFAF5F]Initiating license checkpoint ..."
-    )
-
     try:
         # 加载公钥
         pubkey = serialization.load_pem_public_key(const.PUBLIC_KEY)
 
         # 加载授权文件
-        lic = json.loads(Path(lic_path).read_text())
+        lic = json.loads(lic_file.read_text())
         data = base64.b64decode(lic["data"])
         signature = base64.b64decode(lic["signature"])
 
@@ -134,12 +97,28 @@ def verify_license(lic_path: typing.Union[str, "Path"]) -> typing.Any:
 
         # 解析授权信息
         auth_info = json.loads(data)
+
         expire = datetime.strptime(
-            (exp := auth_info["expire"]), "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            (exp := auth_info["expire"]), "%Y-%m-%d"
+        ).replace(tzinfo=timezone.utc)
+
         code, license_id = auth_info["code"], auth_info["license_id"]
 
     except Exception as e:
         raise FramixError(f"❌ 通行证无效 -> {e}")
+
+    return auth_info, expire, exp, code, license_id
+
+
+def verify_license(lic_file: "Path") -> typing.Any:
+    """
+    验证本地授权文件是否合法、未过期，并视情况进行更新续签。
+    """
+    Design.Doc.log(
+        f"[bold #FFAF5F]Initiating license checkpoint ..."
+    )
+
+    auth_info, expire, exp, code, license_id = verify_signature(lic_file)
 
     if not (now_time := network_time()):
         raise FramixError(f"❌ 无法连接服务器 ...")
@@ -153,11 +132,46 @@ def verify_license(lic_path: typing.Union[str, "Path"]) -> typing.Any:
     issued = auth_info["issued"]
     delta_seconds = (now_time - datetime.fromisoformat(issued)).total_seconds()
     if delta_seconds > 86400:
-        receive_license(
-            code, lic_path, **{"license_id": license_id}
-        )
+        receive_license(code, lic_file)
 
     return auth_info
+
+
+def receive_license(code: str, lic_file: "Path") -> typing.Optional["Path"]:
+    """
+    使用激活码从远程授权服务器获取授权文件，并保存至本地路径。
+    """
+    payload = {"code": code.strip(), "castle": machine_id()}
+
+    if lic_file.exists():
+        *_, license_id = verify_signature(lic_file)
+        payload["license_id"] = license_id
+
+    data = json.dumps(payload).encode(const.CHARSET)
+
+    req = urllib.request.Request(
+        url=const.ACTIVATION_URL,
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method="POST"
+    )
+
+    Design.Doc.log(
+        f"[bold #FFAF5F]Transmitting glyph to central authority ..."
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            lic_data = json.loads(resp.read().decode())
+            lic_file.write_text(json.dumps(lic_data, indent=2), encoding=const.CHARSET)
+            Design.Doc.log(
+                f"[bold #87FF87]Validation succeeded. activation seal embedded.\n"
+            )
+            return lic_file
+
+    except urllib.request.HTTPError as e:
+        raise FramixError(f"❌ [{e.code}] -> {e.read().decode()}")
+    except Exception as e:
+        raise FramixError(f"❌ {e}")
 
 
 if __name__ == '__main__':

@@ -3456,14 +3456,14 @@ async def main() -> typing.Coroutine | None:
         await _previewing(*current)
         return await Design.engine_starburst(_level)  # 结尾动画
 
-    _lic_path = Path(_src_opera_place) / const.LIC_FILE
+    _lic_file = Path(_src_opera_place) / const.LIC_FILE
 
     # 应用激活
     if _apply_code := _lines.apply:
-        return authorize.receive_license(_apply_code, _lic_path)
+        return authorize.receive_license(_apply_code, _lic_file)
 
     # 授权校验
-    authorize.verify_license(_lic_path)
+    authorize.verify_license(_lic_file)
 
     # 启动仪式
     await random.choice(
