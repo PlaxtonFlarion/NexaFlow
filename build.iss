@@ -38,7 +38,7 @@ InfoBeforeFile=schematic\resources\documents\info-before.txt
 InfoAfterFile=schematic\resources\documents\info-after.txt
 ; Uncomment the following line to run in non administrative install mode (install for current user only.)
 ;PrivilegesRequired=lowest
-OutputDir=.
+OutputDir={#SourcePath}\dist
 OutputBaseFilename={#MyAppName}-windows-setup-v{#MyAppVersion}
 UninstallDisplayIcon={app}\{#MyEngineName}\schematic\resources\icons\framix_delete_1.ico
 SetupIconFile=schematic\resources\icons\framix_setup_1.ico

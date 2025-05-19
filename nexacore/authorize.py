@@ -15,8 +15,6 @@ import socket
 import struct
 import typing
 import hashlib
-import platform
-import subprocess
 import urllib.request
 from pathlib import Path
 from datetime import (
@@ -33,26 +31,10 @@ from nexaflow import const
 
 def machine_id() -> str:
     """
-    获取当前设备唯一识别码。
+    获取当前设备的 MAC 地址并生成其哈希摘要，用作唯一设备标识。
     """
-    if (ops := platform.system()) == "Windows":
-        cmd = ["wmic", "csproduct", "get", "UUID"]
-        output = subprocess.check_output(cmd).decode().split("\n")
-        return output[1].strip()
-
-    elif ops == "Darwin":
-        cmd = ["ioreg", "-rd1", "-c", "IOPlatformExpertDevice"]
-        output = subprocess.check_output(cmd).decode()
-        for line in output.split("\n"):
-            if "IOPlatformUUID" in line:
-                return line.split('"')[-2].strip()
-
-    elif ops == "Linux":
-        with open("/etc/machine-id", "r") as f:
-            return f.read().strip()
-
-    machine = uuid.getnode()
-    return hashlib.sha256(str(machine).encode()).hexdigest()[:16]
+    physical_address = uuid.getnode()
+    return hashlib.sha256(str(physical_address).encode()).hexdigest()[:16]
 
 
 def network_time() -> typing.Optional["datetime"]:
@@ -97,11 +79,13 @@ def network_time() -> typing.Optional["datetime"]:
     return None
 
 
-def receive_license(code: str, lic_path: "Path") -> typing.Optional["Path"]:
+def receive_license(code: str, lic_path: "Path", *_, **kwargs) -> typing.Optional["Path"]:
     """
     使用激活码从远程授权服务器获取授权文件，并保存至本地路径。
     """
-    payload = json.dumps({"code": code.strip(), "castle": machine_id()}).encode(const.CHARSET)
+    payload = json.dumps(
+        {"code": code.strip(), "castle": machine_id(), **kwargs}
+    ).encode(const.CHARSET)
 
     req = urllib.request.Request(
         url=const.ACTIVATION_URL,
@@ -150,19 +134,17 @@ def verify_license(lic_path: typing.Union[str, "Path"]) -> typing.Any:
 
         # 解析授权信息
         auth_info = json.loads(data)
-        expire = datetime.strptime((exp := auth_info["expire"]), "%Y-%m-%d").replace(tzinfo=timezone.utc)
-        castle = auth_info["castle"]
+        expire = datetime.strptime(
+            (exp := auth_info["expire"]), "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        code, license_id = auth_info["code"], auth_info["license_id"]
 
     except Exception as e:
         raise FramixError(f"❌ 通行证无效 -> {e}")
 
-    if castle != machine_id():
-        raise FramixError(f"❌ 当前设备与通行证不匹配 ...")
-
     if not (now_time := network_time()):
         raise FramixError(f"❌ 无法连接服务器 ...")
     if now_time > expire:
-        raise FramixError(f"⚠️ 通行证已过期，需要重新授权 -> {exp}")
+        raise FramixError(f"⚠️ 通行证过期 -> {exp}")
 
     Design.Doc.log(
         f"[bold #87FF87]License verified. Access granted until [bold #5FD7FF]{exp}.\n"
@@ -171,7 +153,9 @@ def verify_license(lic_path: typing.Union[str, "Path"]) -> typing.Any:
     issued = auth_info["issued"]
     delta_seconds = (now_time - datetime.fromisoformat(issued)).total_seconds()
     if delta_seconds > 86400:
-        receive_license(auth_info["code"], lic_path)
+        receive_license(
+            code, lic_path, **{"license_id": license_id}
+        )
 
     return auth_info
 
