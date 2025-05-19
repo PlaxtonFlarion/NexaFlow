@@ -41,5 +41,5 @@ jobs:
             echo "No changes to commit. Skipping push."
           else
             git commit -m "Sync README/LICENSE for $REPO_NAME"
-      git push
-    fi
+            git push
+          fi
