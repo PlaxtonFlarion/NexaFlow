@@ -42,6 +42,10 @@ if [ ! -f "$BGP" ]; then
   exit 1
 fi
 
+# === 删除 applications 目录下所有 .dist / .build 结尾的目录 ===
+echo "🧹 清理 $SRC 下的 .dist / .build 目录..."
+find "$SRC" -type d \( -name "*.dist" -o -name "*.build" \) -exec rm -rf {} +
+
 # === 删除旧的 dist 目录（包括所有文件）===
 rm -rf "$ROOT/dist"
 
