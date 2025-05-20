@@ -15,6 +15,7 @@ import socket
 import struct
 import typing
 import hashlib
+import platform
 import urllib.request
 from pathlib import Path
 from datetime import (
@@ -29,12 +30,18 @@ from nexacore.design import Design
 from nexaflow import const
 
 
-def machine_id() -> str:
+def fingerprint() -> str:
     """
-    获取当前设备的 MAC 地址并生成其哈希摘要，用作唯一设备标识。
+    生成当前设备的唯一指纹（用于授权绑定），采用多项系统属性拼接后哈希。
     """
-    physical_address = uuid.getnode()
-    return hashlib.sha256(str(physical_address).encode()).hexdigest()[:16]
+    parts = [
+        platform.system(),
+        platform.machine(),
+        str(uuid.getnode()),
+        platform.processor() or "-",
+    ]
+    raw = "::".join(parts).encode(const.CHARSET)
+    return hashlib.sha256(raw).hexdigest()
 
 
 def network_time() -> typing.Optional["datetime"]:
@@ -141,7 +148,7 @@ def receive_license(code: str, lic_file: "Path") -> typing.Optional["Path"]:
     """
     使用激活码从远程授权服务器获取授权文件，并保存至本地路径。
     """
-    payload = {"code": code.strip(), "castle": machine_id()}
+    payload = {"code": code.strip(), "castle": fingerprint()}
 
     if lic_file.exists():
         *_, license_id = verify_signature(lic_file)
