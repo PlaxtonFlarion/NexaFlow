@@ -20,6 +20,7 @@ import secrets
 import hashlib
 import platform
 from pathlib import Path
+from copy import deepcopy
 from datetime import (
     datetime, timezone
 )
@@ -31,6 +32,31 @@ from engine.terminal import Terminal
 from engine.tinker import FramixError
 from nexacore.design import Design
 from nexaflow import const
+
+
+def mask_fields(data: dict, keys: list[str], mask_char: str = "*", keep: int = 4) -> dict:
+    """
+    对字典中指定字段进行脱敏处理，支持点路径嵌套字段。
+    """
+    mask_value: callable = lambda x: x[:keep] + mask_char * max(0, len(x) - keep)
+
+    def deep_set(obj: typing.Union[dict, list], path: list[str]) -> None:
+        if not path:
+            return None
+
+        key = path[0]
+        if isinstance(obj, dict) and key in obj:
+            if len(path) == 1:
+                val = obj[key]
+                if isinstance(val, str):
+                    obj[key] = mask_value(val)
+            else:
+                deep_set(obj[key], path[1:])
+
+    masked = deepcopy(data)
+    for key_path in keys:
+        deep_set(masked, key_path.split("."))
+    return masked
 
 
 def fingerprint() -> str:
@@ -144,9 +170,10 @@ async def verify_license(lic_file: "Path") -> typing.Any:
     )
 
     issued, interval = auth_info["issued"], auth_info["interval"]
+
     delta_seconds = (now_time - datetime.fromisoformat(issued)).total_seconds()
     if delta_seconds > interval:
-        await receive_license(code, lic_file)
+        return await receive_license(code, lic_file)
 
     return auth_info
 
@@ -155,10 +182,16 @@ async def hide_lic_file(lic_file: "Path") -> typing.Optional[typing.Any]:
     """
     将授权文件（.lic）在本地系统中隐藏，防止用户误删或篡改。
     """
-    if (ops := platform.system()) == "Windows":
-        return await Terminal.cmd_line(["attrib", "+h", str(lic_file)])
-    elif ops == "Darwin":
-        return await Terminal.cmd_line(["chflags", "hidden", str(lic_file)])
+    if not lic_file.exists():
+        return None
+
+    try:
+        if (ops := platform.system()) == "Windows":
+            return await Terminal.cmd_line(["attrib", "+h", str(lic_file)])
+        elif ops == "Darwin":
+            return await Terminal.cmd_line(["chflags", "hidden", str(lic_file)])
+    except (FileNotFoundError, PermissionError, OSError):
+        pass
 
     return None
 
@@ -205,12 +238,20 @@ async def receive_license(code: str, lic_file: "Path") -> typing.Optional["Path"
     async with httpx.AsyncClient(headers=const.BASIC_HEADERS, timeout=30) as client:
         bs_lic_data = await send(client, "GET", const.BOOTSTRAP_URL, params=params)
         auth_info = verify_signature(bs_lic_data)
-        Design.console.print_json(data=auth_info)
+        Design.console.print_json(
+            data=mask_fields(
+                auth_info, keys=["url"], keep=5
+            )
+        )
         activation_url = auth_info["url"]
 
         ac_lic_data = await send(client, "POST", activation_url, json=payload)
         auth_info = verify_signature(ac_lic_data)
-        Design.console.print_json(data=auth_info)
+        Design.console.print_json(
+            data=mask_fields(
+                auth_info, keys=["code", "castle", "license_id"], keep=10
+            )
+        )
         lic_file.write_text(json.dumps(ac_lic_data, indent=2), encoding=const.CHARSET)
 
         await hide_lic_file(lic_file)
