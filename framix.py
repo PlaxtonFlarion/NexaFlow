@@ -3401,7 +3401,7 @@ async def main() -> typing.Coroutine | None:
         """
         if shutil.which(third_party_app := "scrcpy"):
             return await Terminal.cmd_line([third_party_app, "--version"])
-        raise FramixError("Install first https://github.com/Genymobile/scrcpy")
+        raise FramixError(f"{const.DESC} requires {third_party_app}. install it first.")
 
     async def _authorized() -> typing.Coroutine | None:
         """
