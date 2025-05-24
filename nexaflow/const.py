@@ -37,6 +37,8 @@ REPORT_FILE_NAME     = r"report.html"
 BACKGROUND_COLOR     = r"#FFFAF4"
 
 F_SCHEMATIC          = r"schematic"
+F_SUPPORTS           = r"supports"
+F_TEMPLATES          = r"templates"
 F_STRUCTURE          = r"Structure"
 F_SRC_OPERA_PLACE    = f"{DESC}_Mix"
 F_SRC_MODEL_PLACE    = f"{DESC}_Model"

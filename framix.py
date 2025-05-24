@@ -3551,13 +3551,15 @@ if __name__ == '__main__':
         else:
             raise FramixError(f"{const.DESC} compatible with {const.NAME} command")
 
+        # 设置模板文件源路径
+        _src_templates = os.path.join(_fx_work, const.F_SCHEMATIC, const.F_TEMPLATES).format()
         # 设置模板文件路径
-        _atom_total_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_atom_total.html")
-        _line_total_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_line_total.html")
-        _main_share_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_main_share.html")
-        _main_total_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_main_total.html")
-        _view_share_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_view_share.html")
-        _view_total_temp = os.path.join(_fx_work, const.F_SCHEMATIC, "templates", "template_view_total.html")
+        _atom_total_temp = os.path.join(_src_templates, "template_atom_total.html")
+        _line_total_temp = os.path.join(_src_templates, "template_line_total.html")
+        _main_share_temp = os.path.join(_src_templates, "template_main_share.html")
+        _main_total_temp = os.path.join(_src_templates, "template_main_total.html")
+        _view_share_temp = os.path.join(_src_templates, "template_view_share.html")
+        _view_total_temp = os.path.join(_src_templates, "template_view_total.html")
 
         # 检查每个模板文件是否存在，如果缺失则显示错误信息并退出程序
         for _tmp in (_temps := [
@@ -3570,7 +3572,7 @@ if __name__ == '__main__':
             raise FramixError(f"{const.DESC} missing files {_tmp_name}")
 
         # 设置工具源路径
-        _turbo = os.path.join(_fx_work, const.F_SCHEMATIC, "supports").format()
+        _turbo = os.path.join(_fx_work, const.F_SCHEMATIC, const.F_SUPPORTS).format()
 
         # 根据平台设置工具路径
         if _platform == "win32":
