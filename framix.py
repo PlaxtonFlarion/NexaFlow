@@ -3460,10 +3460,10 @@ async def main() -> typing.Coroutine | None:
 
     # 应用激活
     if _apply_code := _lines.apply:
-        return authorize.receive_license(_apply_code, _lic_file)
+        return await authorize.receive_license(_apply_code, _lic_file)
 
     # 授权校验
-    authorize.verify_license(_lic_file)
+    await authorize.verify_license(json.loads(_lic_file.read_text()))
 
     # 启动仪式
     await random.choice(

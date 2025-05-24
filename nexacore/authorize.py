@@ -8,15 +8,17 @@
 # Copyright (c) 2024  Framix :: 画帧秀
 # This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md file for more details.
 
+import time
 import json
 import uuid
+import httpx
 import base64
 import socket
 import struct
 import typing
+import secrets
 import hashlib
 import platform
-import urllib.request
 from pathlib import Path
 from datetime import (
     datetime, timezone
@@ -25,6 +27,7 @@ from cryptography.hazmat.primitives import (
     hashes, serialization
 )
 from cryptography.hazmat.primitives.asymmetric import padding
+from engine.terminal import Terminal
 from engine.tinker import FramixError
 from nexacore.design import Design
 from nexaflow import const
@@ -86,7 +89,7 @@ def network_time() -> typing.Optional["datetime"]:
     return None
 
 
-def verify_signature(lic_file: "Path") -> tuple:
+def verify_signature(lic: dict) -> dict:
     """
     验证授权文件的合法性与有效性。
     """
@@ -94,30 +97,21 @@ def verify_signature(lic_file: "Path") -> tuple:
         # 加载公钥
         pubkey = serialization.load_pem_public_key(const.PUBLIC_KEY)
 
-        # 加载授权文件
-        lic = json.loads(lic_file.read_text())
         data = base64.b64decode(lic["data"])
         signature = base64.b64decode(lic["signature"])
 
         # 验签
         pubkey.verify(signature, data, padding.PKCS1v15(), hashes.SHA256())
-
         # 解析授权信息
         auth_info = json.loads(data)
-
-        expire = datetime.strptime(
-            (exp := auth_info["expire"]), "%Y-%m-%d"
-        ).replace(tzinfo=timezone.utc)
-
-        code, license_id = auth_info["code"], auth_info["license_id"]
 
     except Exception as e:
         raise FramixError(f"❌ 通行证无效 -> {e}")
 
-    return auth_info, expire, exp, code, license_id
+    return auth_info
 
 
-def verify_license(lic_file: "Path") -> typing.Any:
+async def verify_license(lic_file: "Path") -> typing.Any:
     """
     验证本地授权文件是否合法、未过期，并视情况进行更新续签。
     """
@@ -125,7 +119,13 @@ def verify_license(lic_file: "Path") -> typing.Any:
         f"[bold #FFAF5F]Initiating license checkpoint ..."
     )
 
-    auth_info, expire, exp, code, license_id = verify_signature(lic_file)
+    auth_info = verify_signature(json.loads(lic_file.read_text()))
+
+    expire = datetime.strptime(
+        (exp := auth_info["expire"]), "%Y-%m-%d"
+    ).replace(tzinfo=timezone.utc)
+
+    code, license_id = auth_info["code"], auth_info["license_id"]
 
     if not (now_time := network_time()):
         raise FramixError(f"❌ 无法连接服务器 ...")
@@ -139,46 +139,79 @@ def verify_license(lic_file: "Path") -> typing.Any:
     issued = auth_info["issued"]
     delta_seconds = (now_time - datetime.fromisoformat(issued)).total_seconds()
     if delta_seconds > 86400:
-        receive_license(code, lic_file)
+        await receive_license(code, lic_file)
 
     return auth_info
 
 
-def receive_license(code: str, lic_file: "Path") -> typing.Optional["Path"]:
+async def hide_lic_file(lic_file: "Path") -> typing.Optional[typing.Any]:
+    """
+    将授权文件（.lic）在本地系统中隐藏，防止用户误删或篡改。
+    """
+    if (ops := platform.system()) == "Windows":
+        return await Terminal.cmd_line(["attrib", "+h", str(lic_file)])
+    elif ops == "Darwin":
+        return await Terminal.cmd_line(["chflags", "hidden", str(lic_file)])
+
+    return None
+
+
+async def send(
+        client: "httpx.AsyncClient", method: str, url: str, *args, **kwargs
+) -> typing.Any:
+    """
+    通过 httpx.AsyncClient 发送异步 HTTP 请求，并统一处理异常。
+    """
+    try:
+        response = await client.request(method, url, *args, **kwargs)
+        response.raise_for_status()
+        return response.json()
+
+    except httpx.HTTPStatusError as e:
+        raise FramixError(f"❌ {e.response.status_code} -> {e.response.text}")
+    except Exception as e:
+        raise FramixError(f"❌ {e}")
+
+
+async def receive_license(code: str, lic_file: "Path") -> typing.Optional["Path"]:
     """
     使用激活码从远程授权服务器获取授权文件，并保存至本地路径。
     """
-    payload = {"code": code.strip(), "castle": fingerprint()}
+    params = {
+        "a": const.DESC,
+        "t": int(time.time()),
+        "n": secrets.token_hex(8)
+    }
+    payload = {
+        "code": code.strip(),
+        "castle": fingerprint(),
+    } | params
 
     if lic_file.exists():
-        *_, license_id = verify_signature(lic_file)
-        payload["license_id"] = license_id
-
-    data = json.dumps(payload).encode(const.CHARSET)
-
-    req = urllib.request.Request(
-        url=const.ACTIVATION_URL,
-        data=data,
-        headers={"Content-Type": "application/json"},
-        method="POST"
-    )
+        auth_info = verify_signature(json.loads(lic_file.read_text()))
+        payload["license_id"] = auth_info["license_id"]
 
     Design.Doc.log(
         f"[bold #FFAF5F]Transmitting glyph to central authority ..."
     )
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            lic_data = json.loads(resp.read().decode())
-            lic_file.write_text(json.dumps(lic_data, indent=2), encoding=const.CHARSET)
-            Design.Doc.log(
-                f"[bold #87FF87]Validation succeeded. activation seal embedded.\n"
-            )
-            return lic_file
 
-    except urllib.request.HTTPError as e:
-        raise FramixError(f"❌ [{e.code}] -> {e.read().decode()}")
-    except Exception as e:
-        raise FramixError(f"❌ {e}")
+    async with httpx.AsyncClient(headers=const.BASIC_HEADERS, timeout=30) as client:
+        bs_lic_data = await send(client, "GET", const.BOOTSTRAP_URL, params=params)
+        auth_info = verify_signature(bs_lic_data)
+        Design.console.print_json(data=auth_info)
+        activation_url = auth_info["url"]
+
+        ac_lic_data = await send(client, "POST", activation_url, json=payload)
+        auth_info = verify_signature(ac_lic_data)
+        Design.console.print_json(data=auth_info)
+        lic_file.write_text(json.dumps(ac_lic_data, indent=2), encoding=const.CHARSET)
+
+        await hide_lic_file(lic_file)
+
+        Design.Doc.log(
+            f"[bold #87FF87]Validation succeeded. activation seal embedded.\n"
+        )
+        return lic_file
 
 
 if __name__ == '__main__':
