@@ -3463,7 +3463,7 @@ async def main() -> typing.Coroutine | None:
         return await authorize.receive_license(_apply_code, _lic_file)
 
     # 授权校验
-    await authorize.verify_license(json.loads(_lic_file.read_text()))
+    await authorize.verify_license(_lic_file)
 
     # 启动仪式
     await random.choice(
