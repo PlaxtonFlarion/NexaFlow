@@ -119,6 +119,9 @@ async def verify_license(lic_file: "Path") -> typing.Any:
         f"[bold #FFAF5F]Initiating license checkpoint ..."
     )
 
+    if not lic_file.exists():
+        raise FramixError(f"❌ 需要申请通行证 ...")
+
     auth_info = verify_signature(json.loads(lic_file.read_text()))
 
     expire = datetime.strptime(
@@ -136,9 +139,9 @@ async def verify_license(lic_file: "Path") -> typing.Any:
         f"[bold #87FF87]License verified. Access granted until [bold #5FD7FF]{exp}.\n"
     )
 
-    issued = auth_info["issued"]
+    issued, interval = auth_info["issued"], auth_info["interval"]
     delta_seconds = (now_time - datetime.fromisoformat(issued)).total_seconds()
-    if delta_seconds > 86400:
+    if delta_seconds > interval:
         await receive_license(code, lic_file)
 
     return auth_info
