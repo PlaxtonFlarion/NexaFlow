@@ -158,8 +158,6 @@ async def verify_license(lic_file: "Path") -> typing.Any:
         (exp := auth_info["expire"]), "%Y-%m-%d"
     ).replace(tzinfo=timezone.utc)
 
-    code, license_id = auth_info["code"], auth_info["license_id"]
-
     if not (now_time := network_time()):
         raise FramixError(f"❌ 无法连接服务器 ...")
     if now_time > expire:
@@ -169,7 +167,7 @@ async def verify_license(lic_file: "Path") -> typing.Any:
         f"[bold #87FF87]License verified. Access granted until [bold #5FD7FF]{exp}.\n"
     )
 
-    issued, interval = auth_info["issued"], auth_info["interval"]
+    code, issued, interval = auth_info["code"], auth_info["issued"], auth_info["interval"]
 
     delta_seconds = (now_time - datetime.fromisoformat(issued)).total_seconds()
     if delta_seconds > interval:
