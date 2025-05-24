@@ -89,13 +89,17 @@ def network_time() -> typing.Optional["datetime"]:
     return None
 
 
-def verify_signature(lic: dict) -> dict:
+def verify_signature(lic_input: typing.Union["Path", dict]) -> dict:
     """
     验证授权文件的合法性与有效性。
     """
     try:
         # 加载公钥
         pubkey = serialization.load_pem_public_key(const.PUBLIC_KEY)
+
+        lic = json.loads(
+            lic_input.read_text()
+        ) if isinstance(lic_input, Path) else lic_input
 
         data = base64.b64decode(lic["data"])
         signature = base64.b64decode(lic["signature"])
@@ -122,7 +126,7 @@ async def verify_license(lic_file: "Path") -> typing.Any:
     if not lic_file.exists():
         raise FramixError(f"❌ 需要申请通行证 ...")
 
-    auth_info = verify_signature(json.loads(lic_file.read_text()))
+    auth_info = verify_signature(lic_file)
 
     expire = datetime.strptime(
         (exp := auth_info["expire"]), "%Y-%m-%d"
@@ -191,7 +195,7 @@ async def receive_license(code: str, lic_file: "Path") -> typing.Optional["Path"
     } | params
 
     if lic_file.exists():
-        auth_info = verify_signature(json.loads(lic_file.read_text()))
+        auth_info = verify_signature(lic_file)
         payload["license_id"] = auth_info["license_id"]
 
     Design.Doc.log(
