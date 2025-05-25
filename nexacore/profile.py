@@ -523,6 +523,24 @@ class Option(object):
 
     # Notes: ======================== Method ========================
 
+    def dump_option(self, option_file: typing.Any) -> None:
+        """
+        将当前选项配置以 JSON 格式写入指定文件路径。
+
+        Parameters
+        ----------
+        option_file : typing.Any
+            保存配置的目标文件路径。
+
+        Notes
+        -----
+        - 若目录不存在则自动创建；
+        - 文件采用 UTF-8 编码格式，结构清晰（含缩进）；
+        - 此操作将覆盖原有文件内容，用于持久化保存当前参数配置。
+        """
+        os.makedirs(os.path.dirname(option_file), exist_ok=True)
+        dump_parameters(option_file, self.options)
+
     def load_option(self, option_file: typing.Any) -> None:
         """
         从指定路径加载配置参数，并更新当前选项状态。
@@ -550,24 +568,6 @@ class Option(object):
             self.dump_option(option_file)
         except Exception as e:
             logger.debug(f"未知错误 {e}")
-
-    def dump_option(self, option_file: typing.Any) -> None:
-        """
-        将当前选项配置以 JSON 格式写入指定文件路径。
-
-        Parameters
-        ----------
-        option_file : typing.Any
-            保存配置的目标文件路径。
-
-        Notes
-        -----
-        - 若目录不存在则自动创建；
-        - 文件采用 UTF-8 编码格式，结构清晰（含缩进）；
-        - 此操作将覆盖原有文件内容，用于持久化保存当前参数配置。
-        """
-        os.makedirs(os.path.dirname(option_file), exist_ok=True)
-        dump_parameters(option_file, self.options)
 
 
 class Script(object):
