@@ -62,40 +62,28 @@ tensorboard-data-server        ==0.7.2      # TensorBoard 数据服务
 # Notes: Windows 独有依赖
 # --------------------------------------------------------------
 win32_setctime                 ==1.2.0      ; sys_platform == "win32"
-# 修改文件创建时间，仅适用于 Windows 平台
 
 
 # --------------------------------------------------------------
 # Notes: macOS 独有依赖
 # --------------------------------------------------------------
 pyobjc-core                    ==11.0       ; sys_platform == "darwin"
-# macOS 下调用原生 Cocoa 框架的桥接核心模块
-
 pyobjc-framework-Cocoa         ==11.0       ; sys_platform == "darwin"
-# macOS 原生 GUI 框架支持（窗口、菜单、通知等功能）
 
 
 # --------------------------------------------------------------
 # Notes: TensorFlow 平台优化版本 Windows
 # --------------------------------------------------------------
 tensorflow-intel               ==2.14.0     ; sys_platform == "win32"
-# 官方发布的 TensorFlow Windows 版本（带 Intel 优化）
-
 tensorflow-io-gcs-filesystem   ==0.31.0     ; sys_platform == "win32"
-# TensorFlow 对 Google Cloud Storage 的支持（Windows 推荐版本）
 
 
 # --------------------------------------------------------------
 # Notes: TensorFlow 平台优化版本 macOS
 # --------------------------------------------------------------
 tensorflow-macos               ==2.14.0     ; sys_platform == "darwin"
-# Apple 官方 macOS 版 TensorFlow（适配 Metal & M 系芯片）
-
 tensorflow-metal               ==1.1.0      ; sys_platform == "darwin"
-# TensorFlow GPU 加速插件，基于 Apple Metal 框架（仅 M1/M2）
-
 tensorflow-io-gcs-filesystem   ==0.37.1     ; sys_platform == "darwin"
-# TensorFlow 云端存储支持，macOS 优化版本
 
 
 # --------------------------------------------------------------
