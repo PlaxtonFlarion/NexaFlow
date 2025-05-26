@@ -87,27 +87,7 @@ from nexaflow.hook import (
 from nexaflow.classifier.base import ClassifierResult
 from nexaflow.classifier.keras_classifier import KerasStruct
 
-_T = typing.TypeVar("_T")  # 定义类型变量
-
-
-# """Signal Processor"""
-def signal_processor(*_, **__) -> None:
-    """
-    程序信号处理函数，用于响应中断（如 Ctrl+C）时的清理与退出操作。
-
-    该函数通常注册为信号处理器，用于在用户主动中止程序执行时，
-    优雅地清理状态、打印退出提示，并安全终止进程。
-
-    Parameters
-    ----------
-    *_ : Any
-        占位参数，兼容 signal.signal 回调的签名要求。
-
-    **__ : Any
-        占位参数，兼容 signal.signal 回调的签名要求。
-    """
-    Design.force_end()
-    sys.exit(130)
+_T = typing.TypeVar("_T")
 
 
 class Missions(object):
@@ -657,7 +637,7 @@ class Missions(object):
         await asyncio.gather(*eliminate, return_exceptions=True)
 
         if alynex.ks.model:
-            deploy.view_deploy()
+            await deploy.view_fabric()
             await self.design.neural_sync_loading()
 
         monitor = SourceMonitor()
@@ -2214,10 +2194,10 @@ class Missions(object):
 
                         elif select == "deploy":
                             Design.Doc.wrn(f"请完全退出编辑器再继续操作")
-                            deploy.dump_deploy(self.initial_deploy)
+                            await deploy.dump_fabric()
                             await Craft.editor(self.initial_deploy)
-                            deploy.load_deploy(self.initial_deploy)
-                            deploy.view_deploy()
+                            await deploy.load_fabric()
+                            await deploy.view_fabric()
                             await self.design.neural_sync_loading()
                             continue
 
@@ -3390,12 +3370,33 @@ class Alynex(object):
         ) if struct else Review(*(await analytics_basic()))
 
 
+# """Signal Processor"""
+def signal_processor(*_, **__) -> None:
+    """
+    程序信号处理函数，用于响应中断（如 Ctrl+C）时的清理与退出操作。
+
+    该函数通常注册为信号处理器，用于在用户主动中止程序执行时，
+    优雅地清理状态、打印退出提示，并安全终止进程。
+
+    Parameters
+    ----------
+    *_ : Any
+        占位参数，兼容 signal.signal 回调的签名要求。
+
+    **__ : Any
+        占位参数，兼容 signal.signal 回调的签名要求。
+    """
+    Design.force_end()
+    sys.exit(130)
+
+
+# """Main"""
 async def main() -> typing.Coroutine | None:
     """
     命令分发调度器，根据命令行参数执行对应任务模块。
     """
 
-    async def _scheduling() -> typing.Coroutine | typing.Any:
+    async def scheduling() -> typing.Coroutine | typing.Any:
         """
         检查 scrcpy 是否已安装，如果未安装则显示安装提示并退出程序。
         """
@@ -3403,16 +3404,18 @@ async def main() -> typing.Coroutine | None:
             return await Terminal.cmd_line([third_party_app, "--version"])
         raise FramixError(f"{const.DESC} requires {third_party_app}. install it first.")
 
-    async def _authorized() -> typing.Coroutine | None:
+    async def authorized() -> typing.Coroutine | None:
         """
         检查目录下的所有文件是否具备执行权限，如果文件没有执行权限，则自动添加 +x 权限。
         """
-        if _platform != "darwin":
+        if platform != "darwin":
             return None
 
-        if not (ensure := [
-            kit for kit in [_adb, _fmp, _fpb] if not (Path(kit).stat().st_mode & stat.S_IXUSR)
-        ]):
+        ensure = [
+            kit for kit in [adb, fmp, fpb] if not (Path(kit).stat().st_mode & stat.S_IXUSR)
+        ]
+
+        if not ensure:
             return None
 
         for auth in ensure:
@@ -3423,85 +3426,290 @@ async def main() -> typing.Coroutine | None:
         ):
             logger.debug(f"Authorize: {resp}")
 
-    async def _arithmetic(function: "typing.Callable", parameters: list[str]) -> typing.Coroutine | None:
+    async def arithmetic(
+        function: "typing.Callable", parameters: list[str]
+    ) -> typing.Coroutine | None:
         """
         执行通用异步任务函数，并预处理参数路径。
         """
         parameters = [(await Craft.revise_path(param)) for param in parameters]
         parameters = list(dict.fromkeys(parameters))
-        await function(parameters, _option, _deploy)
+        await function(parameters, option, deploy)
 
     # """对话协调器 | 回环注入器"""
-    async def _previewing(
-        dump_func: "typing.Callable", load_func: "typing.Callable", file_path: str, view_data: dict
+    async def previewing(
+        series: typing.Union["Deploy", "Option"], file_path: str, view: dict
     ) -> typing.Coroutine | None:
         """
         执行配置预览流程，导出 → 编辑 → 重新加载 → 可视化打印。
         """
-        await asyncio.to_thread(dump_func, file_path)
+        if not Path(file_path).exists():
+            await series.dump_fabric()
+
         await Craft.editor(file_path)
-        await asyncio.to_thread(load_func, file_path)
+        await series.load_fabric()
 
         Design.console.print()
-        await asyncio.to_thread(Design.console.print_json, data=view_data)
+        Design.console.print_json(data=view)
         Design.console.print()
+
+    async def option_init() -> typing.Coroutine | None:
+        """
+        初始化分析配置，根据命令行参数动态覆盖配置文件中的字段。
+        """
+        logger.debug(f"{'=' * 15} 配置文件 {'=' * 15}")
+
+        option.total_place = option.total_place or src_total_place
+        option.model_place = option.model_place or src_model_place
+        option.faint_model = option.faint_model or const.FAINT_MODEL
+        option.color_model = option.color_model or const.COLOR_MODEL
+
+        for attr_key, attribute_value in option.options.items():
+            logger.debug(f"{option.__class__.__name__} Current Key {attr_key}")
+            # Notes: 如果命令行中包含配置参数，无论是否存在配置文件，都将覆盖配置文件，以命令行参数为第一优先级
+            if any(line.lower().startswith(f"--{(attr_adapt := attr_key.split('_')[0])}") for line in wires):
+                setattr(option, attr_key, getattr(lines, attr_adapt))
+                logger.debug(f"  Set <{attr_key}> {attribute_value} -> {getattr(option, attr_key)}")
+
+        logger.debug(f"报告文件路径: {option.total_place}")
+        logger.debug(f"模型文件路径: {option.model_place}")
+        logger.debug(f"灰度模型名称: {option.faint_model}")
+        logger.debug(f"彩色模型名称: {option.color_model}")
+        logger.debug(f"{'=' * 15} 配置文件 {'=' * 15}\n")
+
+    async def deploy_init() -> typing.Coroutine | None:
+        """
+        初始化部署配置，根据命令行参数动态覆盖部署文件中的属性值。
+        """
+        logger.debug(f"{'=' * 15} 部署文件 {'=' * 15}")
+
+        for attr_key, attribute_value in deploy.deploys.items():
+            logger.debug(f"{deploy.__class__.__name__} Current Key {attr_key}")
+            for attr, attribute in attribute_value.items():
+                # Notes: 如果命令行中包含部署参数，无论是否存在部署文件，都将覆盖部署文件，以命令行参数为第一优先级
+                if any(line.lower().startswith(f"--{attr}") for line in wires):
+                    setattr(deploy, attr, getattr(lines, attr))
+                    logger.debug(f"  {attr_key} Set <{attr}> {attribute} -> {getattr(deploy, attr)}")
+
+        logger.debug(f"{'=' * 15} 部署文件 {'=' * 15}\n")
 
     # Notes: Start from here
-    if (_talks := _lines.talks) or _lines.rings:
-        if _talks:
-            current = _deploy.dump_deploy, _deploy.load_deploy, _initial_deploy, _deploy.deploys
+    Design.startup_logo()
+
+    # 如果没有提供命令行参数，则显示帮助文档，并退出程序
+    if len(system_parameter_list := sys.argv) == 1:
+        Design.help_document()
+        Design.done()
+        sys.exit(Design.closure())
+
+    # 解析命令行参数
+    parser = Parser()
+    lines = parser.parse_cmd
+
+    # 获取命令行参数（去掉第一个参数，即脚本名称）
+    wires = system_parameter_list[1:]
+
+    # 获取当前操作系统平台和应用名称
+    platform = sys.platform.strip().lower()
+    software = os.path.basename(os.path.abspath(sys.argv[0])).strip().lower()
+    sys_symbol = os.sep
+    env_symbol = os.path.pathsep
+
+    # 根据应用名称确定工作目录和配置目录
+    if software == f"{const.NAME}.exe":
+        fx_work = os.path.dirname(os.path.abspath(sys.argv[0]))
+        fx_feasible = os.path.dirname(fx_work)
+    elif software == f"{const.NAME}":
+        fx_work = os.path.dirname(sys.executable)
+        fx_feasible = os.path.dirname(fx_work)
+    elif software == f"{const.NAME}.py":
+        fx_work = os.path.dirname(os.path.abspath(__file__))
+        fx_feasible = fx_work
+    else:
+        raise FramixError(f"{const.DESC} compatible with {const.NAME} command")
+
+    # 设置模板文件源路径
+    src_templates = os.path.join(fx_work, const.F_SCHEMATIC, const.F_TEMPLATES).format()
+    # 设置模板文件路径
+    atom_total_temp = os.path.join(src_templates, "template_atom_total.html")
+    line_total_temp = os.path.join(src_templates, "template_line_total.html")
+    main_share_temp = os.path.join(src_templates, "template_main_share.html")
+    main_total_temp = os.path.join(src_templates, "template_main_total.html")
+    view_share_temp = os.path.join(src_templates, "template_view_share.html")
+    view_total_temp = os.path.join(src_templates, "template_view_total.html")
+
+    # 检查每个模板文件是否存在，如果缺失则显示错误信息并退出程序
+    for tmp in (temps := [
+        atom_total_temp, line_total_temp, main_share_temp,
+        main_total_temp, view_share_temp, view_total_temp
+    ]):
+        if os.path.isfile(tmp) and os.path.basename(tmp).endswith(".html"):
+            continue
+        tmp_name = os.path.basename(tmp)
+        raise FramixError(f"{const.DESC} missing files {tmp_name}")
+
+    # 设置工具源路径
+    turbo = os.path.join(fx_work, const.F_SCHEMATIC, const.F_SUPPORTS).format()
+
+    # 根据平台设置工具路径
+    if platform == "win32":
+        supports = os.path.join(turbo, "Windows").format()
+        adb, fmp, fpb = "adb.exe", "ffmpeg.exe", "ffprobe.exe"
+    elif platform == "darwin":
+        supports = os.path.join(turbo, "MacOS").format()
+        adb, fmp, fpb = "adb", "ffmpeg", "ffprobe"
+    else:
+        raise FramixError(f"{const.DESC} is not supported on this platform: {platform}.")
+
+    adb = os.path.join(supports, "platform-tools", adb)
+    fmp = os.path.join(supports, "ffmpeg", "bin", fmp)
+    fpb = os.path.join(supports, "ffmpeg", "bin", fpb)
+
+    # 将工具路径添加到系统 PATH 环境变量中
+    for tls in (tools := [adb, fmp, fpb]):
+        os.environ["PATH"] = os.path.dirname(tls) + env_symbol + os.environ.get("PATH", "")
+
+    # 检查每个工具是否存在，如果缺失则显示错误信息并退出程序
+    for tls in tools:
+        if not shutil.which((tls_name := os.path.basename(tls))):
+            raise FramixError(f"{const.DESC} missing files {tls_name}")
+
+    # 初始文件夹路径
+    if not os.path.exists(
+        initial_source := os.path.join(fx_feasible, const.F_STRUCTURE).format()
+    ):
+        os.makedirs(initial_source, exist_ok=True)
+
+    # 配置文件夹路径
+    if not os.path.exists(
+        src_opera_place := os.path.join(initial_source, const.F_SRC_OPERA_PLACE).format()
+    ):
+        os.makedirs(src_opera_place, exist_ok=True)
+
+    # 模型文件夹路径
+    if not os.path.exists(
+        src_model_place := os.path.join(initial_source, const.F_SRC_MODEL_PLACE).format()
+    ):
+        os.makedirs(src_model_place, exist_ok=True)
+
+    # 报告文件夹路径
+    if not os.path.exists(
+        src_total_place := os.path.join(initial_source, const.F_SRC_TOTAL_PLACE).format()
+    ):
+        os.makedirs(src_total_place, exist_ok=True)
+
+    Active.active(level := "DEBUG" if lines.debug else "INFO")
+
+    initial_option = os.path.join(initial_source, const.F_SRC_OPERA_PLACE, const.F_OPTION)
+    initial_deploy = os.path.join(initial_source, const.F_SRC_OPERA_PLACE, const.F_DEPLOY)
+    initial_script = os.path.join(initial_source, const.F_SRC_OPERA_PLACE, const.F_SCRIPT)
+
+    option, deploy = Option(initial_option), Deploy(initial_deploy)
+
+    if (talks := lines.talks) or lines.rings:
+        if talks:
+            current = deploy, initial_deploy, deploy.deploys
         else:
-            current = _option.dump_option, _option.load_option, _initial_option, _option.options
+            current = option, initial_option, option.options
 
-        await _previewing(*current)
-        return await Design.engine_starburst(_level)  # 结尾动画
+        await previewing(*current)
+        return await Design.engine_starburst(level)  # 结尾动画
 
-    _lic_file = Path(_src_opera_place) / const.LIC_FILE
+    lic_file = Path(src_opera_place) / const.LIC_FILE
 
     # 应用激活
-    if _apply_code := _lines.apply:
-        return await authorize.receive_license(_apply_code, _lic_file)
+    if apply_code := lines.apply:
+        return await authorize.receive_license(apply_code, lic_file)
 
     # 授权校验
-    await authorize.verify_license(_lic_file)
+    await authorize.verify_license(lic_file)
 
     # 启动仪式
-    await random.choice(
-        [Design.engine_topology_wave, Design.stellar_glyph_binding]
-    )(_level)
+    await random.choice([Design.engine_topology_wave, Design.stellar_glyph_binding])(level)
 
     # 三方应用授权
-    await _authorized()
+    await authorized()
 
-    if _video_list := _lines.video:
-        await _arithmetic(_missions.video_file_task, _video_list)
+    logger.debug(f"{'=' * 15} 系统调试 {'=' * 15}")
+    logger.debug(f"操作系统: {platform}")
+    logger.debug(f"核心数量: {(power := os.cpu_count())}")
+    logger.debug(f"应用名称: {software}")
+    logger.debug(f"系统路径: {sys_symbol}")
+    logger.debug(f"环境变量: {env_symbol}")
+    logger.debug(f"日志等级: {level}")
+    logger.debug(f"工具目录: {turbo}")
+    logger.debug(f"命令参数: {wires}")
+    logger.debug(f"{'=' * 15} 系统调试 {'=' * 15}\n")
 
-    elif _stack_list := _lines.stack:
-        await _arithmetic(_missions.video_data_task, _stack_list)
+    logger.debug(f"{'=' * 15} 环境变量 {'=' * 15}")
+    for env in os.environ["PATH"].split(env_symbol):
+        logger.debug(f"ENV: {env}")
+    logger.debug(f"{'=' * 15} 环境变量 {'=' * 15}\n")
 
-    elif _train_list := _lines.train:
-        await _arithmetic(_missions.train_model, _train_list)
+    logger.debug(f"{'=' * 15} 工具路径 {'=' * 15}")
+    for tls in tools:
+        logger.debug(f"TLS: {tls}")
+    logger.debug(f"{'=' * 15} 工具路径 {'=' * 15}\n")
 
-    elif _build_list := _lines.build:
-        await _arithmetic(_missions.build_model, _build_list)
+    logger.debug(f"{'=' * 15} 报告模版 {'=' * 15}")
+    for tmp in temps:
+        logger.debug(f"TMP: {tmp}")
+    logger.debug(f"{'=' * 15} 报告模版 {'=' * 15}\n")
 
-    elif _lines.flick or _lines.carry or _lines.fully:
-        tp_ver = await _scheduling()
-        await _missions.analysis(_option, _deploy, tp_ver)
+    logger.debug(f"{'=' * 15} 初始路径 {'=' * 15}")
+    logger.debug(f"配置文件路径: {initial_option}")
+    logger.debug(f"部署文件路径: {initial_deploy}")
+    logger.debug(f"脚本文件路径: {initial_script}")
+    logger.debug(f"{'=' * 15} 初始路径 {'=' * 15}\n")
 
-    elif _lines.paint:
-        await _missions.painting(_option, _deploy)
+    await asyncio.gather(*(fabric.load_fabric() for fabric in (option, deploy)))
+    await asyncio.gather(option_init(), deploy_init())
 
-    elif _lines.union:
-        await _missions.combine_view(_lines.union)
+    signal.signal(signal.SIGINT, signal_processor)
 
-    elif _lines.merge:
-        await _missions.combine_main(_lines.merge)
+    positions = (
+        lines.flick, lines.carry, lines.fully, lines.speed, lines.basic, lines.keras,
+        lines.alone, lines.whist, lines.alter, lines.alike, lines.shine, lines.group
+    )
+    keywords = {
+        "atom_total_temp": atom_total_temp, "line_total_temp": line_total_temp,
+        "main_share_temp": main_share_temp, "main_total_temp": main_total_temp,
+        "view_share_temp": view_share_temp, "view_total_temp": view_total_temp,
+        "initial_option": initial_option, "initial_deploy": initial_deploy,
+        "initial_script": initial_script,
+        "adb": adb, "fmp": fmp, "fpb": fpb
+    }
+    missions = Missions(wires, level, power, *positions, **keywords)
+
+    if video_list := lines.video:
+        await arithmetic(missions.video_file_task, video_list)
+
+    elif stack_list := lines.stack:
+        await arithmetic(missions.video_data_task, stack_list)
+
+    elif train_list := lines.train:
+        await arithmetic(missions.train_model, train_list)
+
+    elif build_list := lines.build:
+        await arithmetic(missions.build_model, build_list)
+
+    elif lines.flick or lines.carry or lines.fully:
+        tp_ver = await scheduling()
+        await missions.analysis(option, deploy, tp_ver)
+
+    elif lines.paint:
+        await missions.painting(option, deploy)
+
+    elif lines.union:
+        await missions.combine_view(lines.union)
+
+    elif lines.merge:
+        await missions.combine_main(lines.merge)
 
     else:
         Design.help_document()
 
-    await Design.engine_starburst(_level)  # 结尾动画
+    await Design.engine_starburst(level)  # 结尾动画
 
 
 if __name__ == '__main__':
@@ -3513,215 +3721,9 @@ if __name__ == '__main__':
     #
 
     try:
-        # 启动
-        Design.startup_logo()
-
-        # 如果没有提供命令行参数，则显示帮助文档，并退出程序
-        if len(_system_parameter_list := sys.argv) == 1:
-            Design.help_document()
-            Design.done()
-            sys.exit(Design.closure())
-
-        # 解析命令行参数，此代码块必须在 `__main__` 块下调用
-        _parser = Parser()
-        _lines = _parser.parse_cmd
-
-        # 获取命令行参数（去掉第一个参数，即脚本名称）
-        _wires = _system_parameter_list[1:]
-
-        # 获取当前操作系统平台和应用名称
-        _platform = sys.platform.strip().lower()
-        _software = os.path.basename(os.path.abspath(sys.argv[0])).strip().lower()
-        _sys_symbol = os.sep
-        _env_symbol = os.path.pathsep
-
-        # 根据应用名称确定工作目录和配置目录
-        if _software == f"{const.NAME}.exe":
-            # Windows
-            _fx_work = os.path.dirname(os.path.abspath(sys.argv[0]))
-            _fx_feasible = os.path.dirname(_fx_work)
-        elif _software == f"{const.NAME}":
-            # MacOS
-            _fx_work = os.path.dirname(sys.executable)
-            _fx_feasible = os.path.dirname(_fx_work)
-        elif _software == f"{const.NAME}.py":
-            # IDE
-            _fx_work = os.path.dirname(os.path.abspath(__file__))
-            _fx_feasible = _fx_work
-        else:
-            raise FramixError(f"{const.DESC} compatible with {const.NAME} command")
-
-        # 设置模板文件源路径
-        _src_templates = os.path.join(_fx_work, const.F_SCHEMATIC, const.F_TEMPLATES).format()
-        # 设置模板文件路径
-        _atom_total_temp = os.path.join(_src_templates, "template_atom_total.html")
-        _line_total_temp = os.path.join(_src_templates, "template_line_total.html")
-        _main_share_temp = os.path.join(_src_templates, "template_main_share.html")
-        _main_total_temp = os.path.join(_src_templates, "template_main_total.html")
-        _view_share_temp = os.path.join(_src_templates, "template_view_share.html")
-        _view_total_temp = os.path.join(_src_templates, "template_view_total.html")
-
-        # 检查每个模板文件是否存在，如果缺失则显示错误信息并退出程序
-        for _tmp in (_temps := [
-            _atom_total_temp, _line_total_temp, _main_share_temp,
-            _main_total_temp, _view_share_temp, _view_total_temp
-        ]):
-            if os.path.isfile(_tmp) and os.path.basename(_tmp).endswith(".html"):
-                continue
-            _tmp_name = os.path.basename(_tmp)
-            raise FramixError(f"{const.DESC} missing files {_tmp_name}")
-
-        # 设置工具源路径
-        _turbo = os.path.join(_fx_work, const.F_SCHEMATIC, const.F_SUPPORTS).format()
-
-        # 根据平台设置工具路径
-        if _platform == "win32":
-            # Windows
-            _supports = os.path.join(_turbo, "Windows").format()
-            _adb, _fmp, _fpb = "adb.exe", "ffmpeg.exe", "ffprobe.exe"
-        else:
-            # MacOS
-            _supports = os.path.join(_turbo, "MacOS").format()
-            _adb, _fmp, _fpb = "adb", "ffmpeg", "ffprobe"
-
-        _adb = os.path.join(_supports, "platform-tools", _adb)
-        _fmp = os.path.join(_supports, "ffmpeg", "bin", _fmp)
-        _fpb = os.path.join(_supports, "ffmpeg", "bin", _fpb)
-
-        # 将工具路径添加到系统 PATH 环境变量中
-        for _tls in (_tools := [_adb, _fmp, _fpb]):
-            os.environ["PATH"] = os.path.dirname(_tls) + _env_symbol + os.environ.get("PATH", "")
-
-        # 检查每个工具是否存在，如果缺失则显示错误信息并退出程序
-        for _tls in _tools:
-            if not shutil.which((_tls_name := os.path.basename(_tls))):
-                raise FramixError(f"{const.DESC} missing files {_tls_name}")
-
-        # 初始文件夹路径
-        if not os.path.exists(
-                _initial_source := os.path.join(_fx_feasible, const.F_STRUCTURE).format()
-        ):
-            os.makedirs(_initial_source, exist_ok=True)
-
-        # 配置文件夹路径
-        if not os.path.exists(
-                _src_opera_place := os.path.join(_initial_source, const.F_SRC_OPERA_PLACE).format()
-        ):
-            os.makedirs(_src_opera_place, exist_ok=True)
-
-        # 模型文件夹路径
-        if not os.path.exists(
-                _src_model_place := os.path.join(_initial_source, const.F_SRC_MODEL_PLACE).format()
-        ):
-            os.makedirs(_src_model_place, exist_ok=True)
-
-        # 报告文件夹路径
-        if not os.path.exists(
-                _src_total_place := os.path.join(_initial_source, const.F_SRC_TOTAL_PLACE).format()
-        ):
-            os.makedirs(_src_total_place, exist_ok=True)
-
-        # 激活日志记录功能，设置日志级别
-        Active.active(_level := "DEBUG" if _lines.debug else "INFO")
-
-        logger.debug(f"{'=' * 15} 系统调试 {'=' * 15}")
-        logger.debug(f"操作系统: {_platform}")
-        logger.debug(f"核心数量: {(_power := os.cpu_count())}")
-        logger.debug(f"应用名称: {_software}")
-        logger.debug(f"系统路径: {_sys_symbol}")
-        logger.debug(f"环境变量: {_env_symbol}")
-        logger.debug(f"日志等级: {_level}")
-        logger.debug(f"工具目录: {_turbo}")
-        logger.debug(f"命令参数: {_wires}")
-        logger.debug(f"{'=' * 15} 系统调试 {'=' * 15}\n")
-
-        logger.debug(f"{'=' * 15} 环境变量 {'=' * 15}")
-        for _env in os.environ["PATH"].split(_env_symbol):
-            logger.debug(f"ENV: {_env}")
-        logger.debug(f"{'=' * 15} 环境变量 {'=' * 15}\n")
-
-        logger.debug(f"{'=' * 15} 工具路径 {'=' * 15}")
-        for _tls in _tools:
-            logger.debug(f"TLS: {_tls}")
-        logger.debug(f"{'=' * 15} 工具路径 {'=' * 15}\n")
-
-        logger.debug(f"{'=' * 15} 报告模版 {'=' * 15}")
-        for _tmp in _temps:
-            logger.debug(f"TMP: {_tmp}")
-        logger.debug(f"{'=' * 15} 报告模版 {'=' * 15}\n")
-
-        logger.debug(f"{'=' * 15} 初始路径 {'=' * 15}")
-        _initial_option = os.path.join(_initial_source, const.F_SRC_OPERA_PLACE, const.F_OPTION)
-        _initial_deploy = os.path.join(_initial_source, const.F_SRC_OPERA_PLACE, const.F_DEPLOY)
-        _initial_script = os.path.join(_initial_source, const.F_SRC_OPERA_PLACE, const.F_SCRIPT)
-        logger.debug(f"配置文件路径: {_initial_option}")
-        logger.debug(f"部署文件路径: {_initial_deploy}")
-        logger.debug(f"脚本文件路径: {_initial_script}")
-        logger.debug(f"{'=' * 15} 初始路径 {'=' * 15}\n")
-
-        logger.debug(f"{'=' * 15} 配置文件 {'=' * 15}")
-        _option = Option(_initial_option)
-        _option.total_place = _option.total_place or _src_total_place
-        _option.model_place = _option.model_place or _src_model_place
-        _option.faint_model = _option.faint_model or const.FAINT_MODEL
-        _option.color_model = _option.color_model or const.COLOR_MODEL
-
-        for _attr_key, _attribute_value in _option.options.items():
-            logger.debug(f"{_option.__class__.__name__} Current Key {_attr_key}")
-            # 如果命令行中包含配置参数，无论是否存在配置文件，都将覆盖配置文件，以命令行参数为第一优先级
-            if any(_line.lower().startswith(f"--{(_attr_adapt := _attr_key.split('_')[0])}") for _line in _wires):
-                setattr(_option, _attr_key, getattr(_lines, _attr_adapt))
-                logger.debug(f"  Set <{_attr_key}> {_attribute_value} -> {getattr(_option, _attr_key)}")
-
-        logger.debug(f"报告文件路径: {_option.total_place}")
-        logger.debug(f"模型文件路径: {_option.model_place}")
-        logger.debug(f"灰度模型名称: {_option.faint_model}")
-        logger.debug(f"彩色模型名称: {_option.color_model}")
-        logger.debug(f"{'=' * 15} 配置文件 {'=' * 15}\n")
-
-        logger.debug(f"{'=' * 15} 部署文件 {'=' * 15}")
-        _deploy = Deploy(_initial_deploy)
-
-        for _attr_key, _attribute_value in _deploy.deploys.items():
-            logger.debug(f"{_deploy.__class__.__name__} Current Key {_attr_key}")
-            for _attr, _attribute in _attribute_value.items():
-                # 如果命令行中包含部署参数，无论是否存在部署文件，都将覆盖部署文件，以命令行参数为第一优先级
-                if any(_line.lower().startswith(f"--{_attr}") for _line in _wires):
-                    setattr(_deploy, _attr, getattr(_lines, _attr))
-                    logger.debug(f"  {_attr_key} Set <{_attr}> {_attribute} -> {getattr(_deploy, _attr)}")
-
-        logger.debug(f"{'=' * 15} 部署文件 {'=' * 15}\n")
-
-        # 打包位置参数
-        _positions = (
-            _lines.flick, _lines.carry, _lines.fully, _lines.speed, _lines.basic, _lines.keras,
-            _lines.alone, _lines.whist, _lines.alter, _lines.alike, _lines.shine, _lines.group
-        )
-
-        # 打包关键字参数
-        _keywords = {
-            "atom_total_temp": _atom_total_temp,
-            "line_total_temp": _line_total_temp,
-            "main_share_temp": _main_share_temp,
-            "main_total_temp": _main_total_temp,
-            "view_share_temp": _view_share_temp,
-            "view_total_temp": _view_total_temp,
-            "initial_option": _initial_option,
-            "initial_deploy": _initial_deploy,
-            "initial_script": _initial_script,
-            "adb": _adb,
-            "fmp": _fmp,
-            "fpb": _fpb
-        }
-
-        # 初始化主要任务对象
-        _missions = Missions(_wires, _level, _power, *_positions, **_keywords)
-
-        # 设置 Ctrl + C 信号处理方式
-        signal.signal(signal.SIGINT, signal_processor)
-
-        asyncio.run(main())
-
+        main_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(main_loop)
+        main_loop.run_until_complete(main())
     except KeyboardInterrupt:
         Design.exit()
         sys.exit(Design.closure())

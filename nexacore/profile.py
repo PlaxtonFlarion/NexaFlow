@@ -12,6 +12,7 @@ import os
 import copy
 import json
 import typing
+import aiofiles
 from pathlib import Path
 from loguru import logger
 from rich.table import Table
@@ -21,7 +22,7 @@ from nexacore.argument import Args
 from nexaflow import const
 
 
-def dump_parameters(src: typing.Any, dst: dict) -> None:
+async def dump_parameters(src: typing.Any, dst: dict) -> None:
     """
     将配置参数以 JSON 格式写入指定路径的文件。
 
@@ -32,18 +33,14 @@ def dump_parameters(src: typing.Any, dst: dict) -> None:
 
     dst : dict
         待写入的配置数据字典。
-
-    Notes
-    -----
-    - 使用 UTF-8 编码（或由 `const.CHARSET` 指定）进行文件写入；
-    - 使用缩进和格式控制以确保 JSON 可读性（indent=4, ensure_ascii=False）；
-    - 本函数适用于保存部署参数、应用配置、模型元数据等场景。
     """
-    with open(src, "w", encoding=const.CHARSET) as file:
-        json.dump(dst, file, indent=4, separators=(",", ":"), ensure_ascii=False)
+    async with aiofiles.open(src, "w", encoding=const.CHARSET) as file:
+        await file.write(
+            json.dumps(dst, indent=4, separators=(",", ":"), ensure_ascii=False)
+        )
 
 
-def load_parameters(src: typing.Any) -> typing.Any:
+async def load_parameters(src: typing.Any) -> typing.Any:
     """
     从指定路径读取 JSON 文件内容并解析为 Python 字典对象。
 
@@ -56,15 +53,9 @@ def load_parameters(src: typing.Any) -> typing.Any:
     -------
     typing.Any
         返回解析后的配置对象（通常为 `dict` 类型）。
-
-    Notes
-    -----
-    - 使用 UTF-8 编码（或由 `const.CHARSET` 指定）读取 JSON 文件；
-    - 若文件内容不符合 JSON 语法，将抛出 `json.decoder.JSONDecodeError`；
-    - 可用于恢复用户参数配置、加载模型元信息、初始化系统设置等。
     """
-    with open(src, "r", encoding=const.CHARSET) as file:
-        return json.load(file)
+    async with aiofiles.open(src, "r", encoding=const.CHARSET) as file:
+        return json.loads(await file.read())
 
 
 class Deploy(object):
@@ -109,7 +100,7 @@ class Deploy(object):
     }
 
     def __init__(self, deploy_file: str):
-        self.load_deploy(deploy_file)
+        self.deploy_file = deploy_file
 
     def __getstate__(self):
         return self.deploys
@@ -315,94 +306,38 @@ class Deploy(object):
 
     # Notes: ======================== Method ========================
 
-    def dump_deploy(self, deploy_file: typing.Any) -> None:
+    async def dump_fabric(self) -> None:
         """
         将当前部署参数写入 JSON 文件中，作为配置持久化存储。
-
-        Parameters
-        ----------
-        deploy_file : Any
-            输出文件路径，可以是字符串路径或类文件对象。
-            最终将把 deploy 配置以 JSON 格式保存至该路径。
-
-        Notes
-        -----
-        - 在写入前，会对 `deploys` 数据结构做深拷贝，防止原始配置被污染；
-        - 如果 `crops` 或 `omits` 为空，则会填充默认的 `const.HOOKS`；
-        - 会自动创建目标路径所需的目录结构；
-        - 最终通过 `dump_parameters()` 将部署数据写入文件。
-
-        Workflow
-        --------
-        1. 对当前 `deploys` 结构进行深拷贝；
-        2. 检查并修复 `crops` 和 `omits` 字段；
-        3. 创建部署文件所在目录（如不存在）；
-        4. 调用 `dump_parameters()` 保存为 JSON 文件。
         """
         deep_copy_deploys = copy.deepcopy(self.deploys)
         for attr in ["crops", "omits"]:
             if len(deep_copy_deploys["ALS"][attr]) == 0:
                 deep_copy_deploys["ALS"][attr] = const.HOOKS
 
-        os.makedirs(os.path.dirname(deploy_file), exist_ok=True)
-        dump_parameters(deploy_file, deep_copy_deploys)
+        os.makedirs(os.path.dirname(self.deploy_file), exist_ok=True)
+        await dump_parameters(self.deploy_file, deep_copy_deploys)
 
-    def load_deploy(self, deploy_file: typing.Any) -> None:
+    async def load_fabric(self) -> None:
         """
         加载部署配置文件并初始化参数值。
-
-        Parameters
-        ----------
-        deploy_file : Any
-            指定的部署文件路径，可以是字符串路径或类文件对象，包含部署参数的 JSON 配置。
-
-        Notes
-        -----
-        - 方法首先尝试从指定文件中加载部署参数；
-        - 如果文件不存在或内容无效（如格式错误），将自动使用默认值并创建新文件；
-        - 所有参数会通过 `setattr()` 动态绑定到对象属性；
-        - 会为每个参数输出加载日志，便于调试与回溯；
-        - 如果发生不可预知异常，也会被捕获并打印警告日志。
-
-        Workflow
-        --------
-        1. 调用 `load_parameters()` 加载 JSON 参数；
-        2. 遍历默认 deploys 结构并更新每项配置；
-        3. 若解析失败或文件缺失，则调用 `dump_deploy()` 写入默认值；
-        4. 日志模块记录每个参数的加载结果。
         """
         try:
-            parameters = load_parameters(deploy_file)
+            parameters = await load_parameters(self.deploy_file)
             for key, value in self.deploys.items():
                 for k, v in value.items():
                     setattr(self, k, parameters.get(key, {}).get(k, v))
                     logger.debug(f"Load <{k}> = {v} -> {getattr(self, k)}")
         except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
             logger.debug(f"使用默认参数: {e}")
-            logger.debug(f"生成部署文件: {deploy_file}")
-            self.dump_deploy(deploy_file)
+            logger.debug(f"生成部署文件: {self.deploy_file}")
+            await self.dump_fabric()
         except Exception as e:
             logger.debug(f"未知错误 {e}")
 
-    def view_deploy(self) -> None:
+    async def view_fabric(self) -> None:
         """
         以表格形式在控制台展示当前部署参数的详细信息。
-
-        Notes
-        -----
-        - 本方法适用于交互式 CLI 场景，可直观查看当前所有配置项；
-        - 使用 `rich.Table` 美化显示输出，包含分组标题、表头、每项参数的名称、值、范围、作用等；
-        - 包括两大配置分组：
-            - FST：帧级参数（如缩放、滤波器、起止时间等）；
-            - ALS：分析参数（如步长、滑动窗口、裁剪钩子等）；
-        - 若存在裁剪/忽略钩子 (`crops`、`omits`)，将额外绘制专属区域表格展示其索引与配置内容。
-
-        Workflow
-        --------
-        1. 合并参数分组元信息（`Args.GROUP_FIRST` 和 `Args.GROUP_EXTRA`）；
-        2. 遍历 `FST` 与 `ALS` 配置组，分别构建并打印参数表格；
-        3. 若存在 `crops` 或 `omits` 钩子配置，则创建并显示对应的裁剪钩子表格；
-        4. 所有输出均通过 `Design.console.print()` 渲染输出至 CLI。
         """
         deploys_group = {**Args.GROUP_FIRST, **Args.GROUP_EXTRA}
 
@@ -458,11 +393,6 @@ class Option(object):
         - "model_place"：模型目录；
         - "faint_model"：灰度检测模型名称；
         - "color_model"：彩色检测模型名称。
-
-    Notes
-    -----
-    - 所有配置项在初始化时通过 `load_option()` 方法自动加载；
-    - 若配置文件不存在或格式错误，将自动创建默认配置文件。
     """
 
     options = {
@@ -473,7 +403,7 @@ class Option(object):
     }
 
     def __init__(self, option_file: typing.Any):
-        self.load_option(option_file)
+        self.option_file = option_file
 
     def __getstate__(self):
         return self.options
@@ -523,49 +453,26 @@ class Option(object):
 
     # Notes: ======================== Method ========================
 
-    def dump_option(self, option_file: typing.Any) -> None:
+    async def dump_fabric(self) -> None:
         """
         将当前选项配置以 JSON 格式写入指定文件路径。
-
-        Parameters
-        ----------
-        option_file : typing.Any
-            保存配置的目标文件路径。
-
-        Notes
-        -----
-        - 若目录不存在则自动创建；
-        - 文件采用 UTF-8 编码格式，结构清晰（含缩进）；
-        - 此操作将覆盖原有文件内容，用于持久化保存当前参数配置。
         """
-        os.makedirs(os.path.dirname(option_file), exist_ok=True)
-        dump_parameters(option_file, self.options)
+        os.makedirs(os.path.dirname(self.option_file), exist_ok=True)
+        await dump_parameters(self.option_file, self.options)
 
-    def load_option(self, option_file: typing.Any) -> None:
+    async def load_fabric(self) -> None:
         """
         从指定路径加载配置参数，并更新当前选项状态。
-
-        Parameters
-        ----------
-        option_file : typing.Any
-            配置文件路径，支持字符串或路径对象。
-
-        Notes
-        -----
-        - 配置文件应为合法的 JSON 格式；
-        - 若文件不存在或格式不合法，将创建并写入默认配置；
-        - 支持对字段进行类型检查和目录存在性验证；
-        - 成功加载后会通过日志记录每一项配置的变更。
         """
         try:
-            parameters = load_parameters(option_file)
+            parameters = await load_parameters(self.option_file)
             for k, v in self.options.items():
                 setattr(self, k, parameters.get(k, v))
                 logger.debug(f"Load <{k}> = {v} -> {getattr(self, k)}")
         except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
             logger.debug(f"使用默认参数: {e}")
-            logger.debug(f"生成配置文件: {option_file}")
-            self.dump_option(option_file)
+            logger.debug(f"生成配置文件: {self.option_file}")
+            await self.dump_fabric()
         except Exception as e:
             logger.debug(f"未知错误 {e}")
 
@@ -578,49 +485,37 @@ class Script(object):
     适用于初始配置生成、脚本编辑器集成或测试流程的标准化输入准备。
     """
 
-    @staticmethod
-    def dump_script(script_file: typing.Any) -> None:
+    scripts = {
+        "command": [
+            {
+                "ID-X": {
+                    "parser": {"FST": {"frate": 60}, "ALS": {"boost": True}},
+                    "header": ["script"],
+                    "change": [],
+                    "looper": 1,
+                    "prefix": [
+                        {"cmds": [], "vals": []}, {"cmds": [], "vals": []}
+                    ],
+                    "action": [
+                        {"cmds": [], "vals": []}, {"cmds": [], "vals": []}
+                    ],
+                    "suffix": [
+                        {"cmds": [], "vals": []}, {"cmds": [], "vals": []}
+                    ]
+                }
+            }
+        ]
+    }
+
+    def __init__(self, script_file: typing.Any):
+        self.script_file = script_file
+
+    async def dump_fabric(self) -> None:
         """
         生成默认脚本结构并写入指定文件路径，用于初始化脚本模板。
-
-        Parameters
-        ----------
-        script_file : Any
-            脚本文件的保存路径，可以是字符串路径或 Path-like 对象。
-            如果路径的上级目录不存在，将自动创建。
-
-        Notes
-        -----
-        - 输出的脚本结构包含 ID-X 节点、解析参数（parser）、循环次数（looper）、
-          前缀 / 主体 / 后缀动作等字段；
-        - 所有动作字段默认包含空的命令（cmds）和参数值（vals）；
-        - 文件写入通过 `dump_parameters` 函数实现，格式通常为 JSON 或 YAML；
-        - 若 `script_file` 路径中的目录不存在，将自动递归创建。
         """
-        scripts = {
-            "command": [
-                {
-                    "ID-X": {
-                        "parser": {"FST": {"frate": 60}, "ALS": {"boost": True}},
-                        "header": ["script"],
-                        "change": [],
-                        "looper": 1,
-                        "prefix": [
-                            {"cmds": [], "vals": []}, {"cmds": [], "vals": []}
-                        ],
-                        "action": [
-                            {"cmds": [], "vals": []}, {"cmds": [], "vals": []}
-                        ],
-                        "suffix": [
-                            {"cmds": [], "vals": []}, {"cmds": [], "vals": []}
-                        ]
-                    }
-                }
-            ]
-        }
-
-        os.makedirs(os.path.dirname(script_file), exist_ok=True)
-        dump_parameters(script_file, scripts)
+        os.makedirs(os.path.dirname(self.script_file), exist_ok=True)
+        await dump_parameters(self.script_file, self.scripts)
 
 
 if __name__ == '__main__':
