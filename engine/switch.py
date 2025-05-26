@@ -35,8 +35,10 @@ class Switch(object):
         ----------
         ffmpeg : str
             ffmpeg 执行路径。
+
         src : str
             输入音频文件路径。
+
         dst : str
             输出音频文件路径。
 

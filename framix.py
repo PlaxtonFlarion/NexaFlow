@@ -124,8 +124,8 @@ class Missions(object):
         self.initial_script: str = kwargs["initial_script"]
 
         self.adb: str = kwargs["adb"]
-        self.fmp: str = kwargs["fmp"]
-        self.fpb: str = kwargs["fpb"]
+        self.ffmpeg: str = kwargs["ffmpeg"]
+        self.ffprobe: str = kwargs["ffprobe"]
 
     @property
     def design(self) -> typing.Optional["Design"]:
@@ -868,7 +868,7 @@ class Missions(object):
             logger.debug(tip := f"没有有效任务")
             return self.design.show_panel(tip, Wind.KEEPER)
 
-        clipix = Clipix(self.fmp, self.fpb)
+        clipix = Clipix(self.ffmpeg, self.ffprobe)
         report = Report(option.total_place)
         report.title = f"{const.DESC}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
 
@@ -952,7 +952,7 @@ class Missions(object):
 
         # Notes: Start from here
         search = Search()
-        clipix = Clipix(self.fmp, self.fpb)
+        clipix = Clipix(self.ffmpeg, self.ffprobe)
 
         # Notes: Profession
         async for entries in load_entries():
@@ -1035,7 +1035,7 @@ class Missions(object):
 
         looper = asyncio.get_running_loop()
 
-        clipix = Clipix(self.fmp, self.fpb)
+        clipix = Clipix(self.ffmpeg, self.ffprobe)
         report = Report(option.total_place)
 
         # Notes: Profession
@@ -2386,7 +2386,7 @@ class Missions(object):
         manage_ = Manage(self.adb)
 
         if any((self.speed, self.basic, self.keras)):
-            clipix = Clipix(self.fmp, self.fpb)
+            clipix = Clipix(self.ffmpeg, self.ffprobe)
 
             matrix = option.model_place if self.keras else None
             alynex = Alynex(matrix, option, deploy, self.design)
@@ -2418,16 +2418,16 @@ class Clipix(object):
 
     Attributes
     ----------
-    fmp : str
+    ffmpeg : str
         FFmpeg 的可执行文件路径，用于处理视频转码与剪辑等操作。
 
-    fpb : str
+    ffprobe : str
         FFprobe 的可执行文件路径，用于提取视频的元数据信息（如帧率、时长、分辨率等）。
     """
 
-    def __init__(self, fmp: str, fpb: str):
-        self.fmp = fmp  # 表示 ffmpeg 的路径
-        self.fpb = fpb  # 表示 ffprobe 的路径
+    def __init__(self, ffmpeg: str, ffprobe: str):
+        self.ffmpeg = ffmpeg  # 表示 ffmpeg 的路径
+        self.ffprobe = ffprobe  # 表示 ffprobe 的路径
 
     async def vision_content(
             self,
@@ -2487,7 +2487,7 @@ class Clipix(object):
         4. 格式化时间点为字符串表示，并打包成 vision_point 字典。
         5. 返回分析结果。
         """
-        video_streams = await Switch.ask_video_stream(self.fpb, video_temp)
+        video_streams = await Switch.ask_video_stream(self.ffprobe, video_temp)
 
         rlt = video_streams.get("rlt_frame_rate", "0/0")
         avg = video_streams.get("avg_frame_rate", "0/0")
@@ -2564,7 +2564,7 @@ class Clipix(object):
         video_blc = f"{os.path.basename(src)} [{duration:.6f}] {target} -> {os.path.basename(video_dst)}"
 
         await Switch.ask_video_tailor(
-            self.fmp, src, video_dst, start=str(start_delta), limit=str(limit_delta)
+            self.ffmpeg, src, video_dst, start=str(start_delta), limit=str(limit_delta)
         )
 
         return video_dst, video_blc
@@ -2665,7 +2665,7 @@ class Clipix(object):
         2. 异步调用目标处理函数，传入 ffmpeg 路径和过滤器；
         3. 返回其执行结果。
         """
-        return await function(self.fmp, video_filter, src, dst, **kwargs)
+        return await function(self.ffmpeg, video_filter, src, dst, **kwargs)
 
 
 class Alynex(object):
@@ -3412,7 +3412,7 @@ async def main() -> typing.Coroutine | None:
             return None
 
         ensure = [
-            kit for kit in [adb, fmp, fpb] if not (Path(kit).stat().st_mode & stat.S_IXUSR)
+            kit for kit in [adb, ffmpeg, ffprobe] if not (Path(kit).stat().st_mode & stat.S_IXUSR)
         ]
 
         if not ensure:
@@ -3554,19 +3554,19 @@ async def main() -> typing.Coroutine | None:
     # 根据平台设置工具路径
     if platform == "win32":
         supports = os.path.join(turbo, "Windows").format()
-        adb, fmp, fpb = "adb.exe", "ffmpeg.exe", "ffprobe.exe"
+        adb, ffmpeg, ffprobe = "adb.exe", "ffmpeg.exe", "ffprobe.exe"
     elif platform == "darwin":
         supports = os.path.join(turbo, "MacOS").format()
-        adb, fmp, fpb = "adb", "ffmpeg", "ffprobe"
+        adb, ffmpeg, ffprobe = "adb", "ffmpeg", "ffprobe"
     else:
         raise FramixError(f"{const.DESC} is not supported on this platform: {platform}.")
 
     adb = os.path.join(supports, "platform-tools", adb)
-    fmp = os.path.join(supports, "ffmpeg", "bin", fmp)
-    fpb = os.path.join(supports, "ffmpeg", "bin", fpb)
+    ffmpeg = os.path.join(supports, "ffmpeg", "bin", ffmpeg)
+    ffprobe = os.path.join(supports, "ffmpeg", "bin", ffprobe)
 
     # 将工具路径添加到系统 PATH 环境变量中
-    for tls in (tools := [adb, fmp, fpb]):
+    for tls in (tools := [adb, ffmpeg, ffprobe]):
         os.environ["PATH"] = os.path.dirname(tls) + env_symbol + os.environ.get("PATH", "")
 
     # 检查每个工具是否存在，如果缺失则显示错误信息并退出程序
@@ -3677,7 +3677,7 @@ async def main() -> typing.Coroutine | None:
         "view_share_temp": view_share_temp, "view_total_temp": view_total_temp,
         "initial_option": initial_option, "initial_deploy": initial_deploy,
         "initial_script": initial_script,
-        "adb": adb, "fmp": fmp, "fpb": fpb
+        "adb": adb, "ffmpeg": ffmpeg, "ffprobe": ffprobe
     }
     missions = Missions(wires, level, power, *positions, **keywords)
 

@@ -480,16 +480,13 @@ class Option(object):
 class Script(object):
     """
     Script 类用于管理自动化流程中的脚本文件初始化与结构生成。
-
-    此类目前提供静态方法 `dump_script`，用于快速创建符合脚本规范的默认模板，
-    适用于初始配置生成、脚本编辑器集成或测试流程的标准化输入准备。
     """
 
     scripts = {
         "command": [
             {
                 "ID-X": {
-                    "parser": {"FST": {"frate": 60}, "ALS": {"boost": True}},
+                    "parser": {"FST": {"scale": 0.3}, "ALS": {"boost": True}},
                     "header": ["script"],
                     "change": [],
                     "looper": 1,
