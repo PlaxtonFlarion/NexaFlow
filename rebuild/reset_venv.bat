@@ -3,7 +3,6 @@ chcp 65001 >nul
 setlocal enabledelayedexpansion
 
 :: ========== 配置区 ==========
-:: 获取项目根目录（rebuild/ 上一级）
 for %%I in ("%~dp0..") do set "PROJECT_DIR=%%~fI"
 set "VENV_DIR=%PROJECT_DIR%\venv"
 set "REQ_FILE=%PROJECT_DIR%\requirements.txt"
@@ -12,24 +11,23 @@ set "PYTHON=python"
 
 echo 项目路径：%PROJECT_DIR%
 echo 虚拟环境目录：%VENV_DIR%
+echo.
 
-:: 用户确认
-set /p CONFIRM=确认要删除并重建 venv 吗？(y/N):
-if /i not "%CONFIRM%"=="y" (
-    echo 操作已取消。
-    exit /b 0
-)
-
-:: 删除旧虚拟环境
-if exist "%VENV_DIR%" (
-    echo 正在删除虚拟环境...
-    rmdir /s /q "%VENV_DIR%"
-    echo 虚拟环境已删除。
+:: 用户确认是否删除 venv
+set /p CONFIRM=是否删除并重建 venv？(y/N):
+if /i "%CONFIRM%"=="y" (
+    if exist "%VENV_DIR%" (
+        echo 正在删除虚拟环境...
+        rmdir /s /q "%VENV_DIR%"
+        echo 虚拟环境已删除。
+    ) else (
+        echo 无虚拟环境，跳过删除。
+    )
 ) else (
-    echo 无虚拟环境，跳过删除。
+    echo 保留虚拟环境，跳过删除。
 )
 
-:: 删除 __pycache__ 缓存
+:: 清理 __pycache__ 缓存
 echo 正在清理 __pycache__ 缓存...
 for /r "%PROJECT_DIR%" %%d in (.) do (
     if /i "%%~nxd"=="__pycache__" (
@@ -38,20 +36,20 @@ for /r "%PROJECT_DIR%" %%d in (.) do (
 )
 echo 缓存清理完成。
 
-:: 创建新的虚拟环境
-echo 正在创建新的虚拟环境...
-%PYTHON% -m venv "%VENV_DIR%"
+:: 如虚拟环境不存在则创建
+if not exist "%VENV_DIR%" (
+    echo 正在创建新的虚拟环境...
+    %PYTHON% -m venv "%VENV_DIR%"
+) else (
+    echo 虚拟环境已存在，跳过创建。
+)
 
-:: 使用 venv 的 Python 安装依赖（无需激活）
+:: 使用 venv 的 Python
 set "VENV_PY=%VENV_DIR%\Scripts\python.exe"
 
 :: 升级 pip
 echo 升级 pip...
 "%VENV_PY%" -m pip install --upgrade pip
-
-:: 升级 setuptools 和 wheel
-echo 升级 setuptools 和 wheel...
-"%VENV_PY%" -m pip install --upgrade setuptools wheel
 
 :: 安装 requirements.txt
 if exist "%REQ_FILE%" (
@@ -61,6 +59,6 @@ if exist "%REQ_FILE%" (
     echo 未找到 requirements.txt，跳过依赖安装。
 )
 
-echo 虚拟环境重建完成。
+echo 虚拟环境处理完成。
 endlocal
 pause
