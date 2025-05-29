@@ -16,6 +16,7 @@ import typing
 import asyncio
 import colorsys
 from pathlib import Path
+from loguru import logger
 from rich.live import Live
 from rich.tree import Tree
 from rich.text import Text
@@ -648,6 +649,117 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         Design.console.print(
             f"\n[bold #7CFC00]>>> {const.DESC} core aligned. Compilation vector is now stable. <<<\n"
+        )
+
+    @staticmethod
+    async def countdown_energy_wave(level: str, duration: int = 0) -> None:
+        """
+        倒计时动画：碎片吸附 + 每秒能量圈干扰 + 中心脉冲 + 多主题渐变色 + 最终铺满。
+        """
+        if not duration:
+            return None
+
+        if level != const.SHOW_LEVEL:
+            logger.debug(f"延时: {duration}")
+            return await asyncio.sleep(duration)
+
+        duration = min(999999, max(duration, 0))
+
+        Design.console.print(
+            f"\n[bold #00F5FF]▶ {const.DESC} activating temporal lattice for countdown alignment ...\n"
+        )
+
+        center_r, center_c = (rows := 7) // 2, (cols := 21) // 2
+        total_frames = duration * (fps := 30)
+
+        # 多套主题
+        themes = [
+            {
+                "gradient": ["#00FFFF", "#33CCFF", "#3399FF", "#3366FF"],
+                "pulse": ["#FFD700", "#FF69B4", "#7CFC00", "#00FFFF"],
+                "ring": "#FFFFFF",
+                "symbols": ["░", "▒", "▓", "⊙", "•"]
+            },
+            {
+                "gradient": ["#FF99CC", "#FF66B2", "#FF3399", "#CC0066"],
+                "pulse": ["#FFCC00", "#FF9933", "#FF6666", "#FF3333"],
+                "ring": "#FFDDDD",
+                "symbols": ["*", "+", "¤", "×", "·"]
+            },
+            {
+                "gradient": ["#A3E4D7", "#76D7C4", "#48C9B0", "#1ABC9C"],
+                "pulse": ["#00E6A6", "#00CC88", "#00B377", "#009966"],
+                "ring": "#AAFADF",
+                "symbols": ["◇", "◈", "⊚", "◌", "◎"]
+            },
+            {
+                "gradient": ["#FFDEAD", "#F4A460", "#D2691E", "#8B4513"],
+                "pulse": ["#FFC300", "#FF5733", "#C70039", "#900C3F"],
+                "ring": "#FFD700",
+                "symbols": ["≡", "≈", "≒", "≜", "~"]
+            },
+            {
+                "gradient": ["#7FB3D5", "#5499C7", "#2980B9", "#2471A3"],
+                "pulse": ["#AED6F1", "#85C1E9", "#5DADE2", "#3498DB"],
+                "ring": "#AAB7B8",
+                "symbols": ["⊙", "⊛", "◉", "◎", "◌"]
+            }
+        ]
+
+        # 分层计算
+        layers = [[] for _ in range(center_r + center_c + 1)]
+        for r_ in range(rows):
+            for c_ in range(cols):
+                distance = abs(r_ - center_r) + abs(c_ - center_c)
+                layers[distance].append((r_, c_))
+        max_depth = len(layers) - 1
+
+        def render_frame(remaining: int, fill_mode: bool = False, fill_step: int = 0) -> "Text":
+            theme = themes[(frame_id // fps) % len(themes)]
+            gradient = theme["gradient"]
+            pulse_colors = theme["pulse"]
+            ring_color = theme["ring"]
+            symbol_set = theme["symbols"]
+
+            grid = [["[dim #222222]·[/]" for _ in range(cols)] for _ in range(rows)]
+
+            if fill_mode:
+                for d in range(fill_step + 1):
+                    color = random.choice(gradient)
+                    for r, c in layers[min(d, max_depth)]:
+                        grid[r][c] = f"[bold {color}]■[/]"
+            else:
+                depth = (frame_id // 2) % (max_depth + 1)
+                for d in range(depth + 1):
+                    color = gradient[min(d, len(gradient) - 1)]
+                    for r, c in layers[d]:
+                        grid[r][c] = f"[bold {color}]{random.choice(symbol_set)}[/]"
+
+                ring_frame = (frame_id % fps)
+                if ring_frame < len(layers):
+                    for r, c in layers[ring_frame]:
+                        grid[r][c] = f"[bold {ring_color}]◎[/]"
+
+                pulse_color = pulse_colors[(frame_id // 5) % len(pulse_colors)]
+                grid[center_r][center_c] = f"[bold {pulse_color}]✶[/]"
+
+            body = "\n".join(" " * 6 + " ".join(row) for row in grid)
+            footer = f"\n\n[bold #AAAAAA]⏳ {duration:06} Time Left: [bold #00FFAA]{remaining}[/] sec"
+            return Text.from_markup(body + footer)
+
+        with Live(console=Design.console, refresh_per_second=fps) as live:
+            for frame_id in range(total_frames):
+                live.update(render_frame(max(0, duration - frame_id // fps)))
+                await asyncio.sleep(1 / fps)
+
+            for s in range(max_depth + 1):
+                live.update(render_frame(0, True, s))
+                await asyncio.sleep(1 / fps)
+
+            await asyncio.sleep(0.6)
+
+        Design.console.print(
+            f"\n[bold #7CFC00]>>>✔ {const.DESC} countdown complete. System is synchronized and operational. <<<\n"
         )
 
     @staticmethod
