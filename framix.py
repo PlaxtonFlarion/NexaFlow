@@ -3681,7 +3681,7 @@ async def main() -> typing.Coroutine | None:
     }
     missions = Missions(wires, level, power, *positions, **keywords)
 
-    # 延时任务
+    # """凝滞核心"""
     await Design.countdown_energy_wave(level, lines.delay)
 
     if video_list := lines.video:
