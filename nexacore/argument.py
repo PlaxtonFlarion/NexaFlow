@@ -178,7 +178,7 @@ class Args(object):
 
     # 时序调控
     GROUP_TIMER = {
-        "--pause": {
+        "--delay": {
             "args": {"default": 0, "type": int},
             "view": ["一次", "=POSITIVE INT"],
             "help": "凝滞核心",

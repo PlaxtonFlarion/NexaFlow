@@ -110,7 +110,7 @@ class Missions(object):
         self.animation: "AsyncAnimationManager" = AsyncAnimationManager()
 
         self.flick, self.carry, self.fully, self.speed, self.basic, self.keras, *_ = args
-        *_, self.alone, self.whist, self.alter, self.pause, self.alike, self.shine, self.group = args
+        *_, self.alone, self.whist, self.alter, self.delay, self.alike, self.shine, self.group = args
 
         self.atom_total_temp: str = kwargs["atom_total_temp"]
         self.line_total_temp: str = kwargs["line_total_temp"]
@@ -3669,7 +3669,7 @@ async def main() -> typing.Coroutine | None:
 
     positions = (
         lines.flick, lines.carry, lines.fully, lines.speed, lines.basic, lines.keras,
-        lines.alone, lines.whist, lines.alter, lines.pause, lines.alike, lines.shine, lines.group
+        lines.alone, lines.whist, lines.alter, lines.delay, lines.alike, lines.shine, lines.group
     )
     keywords = {
         "atom_total_temp": atom_total_temp, "line_total_temp": line_total_temp,
@@ -3682,7 +3682,7 @@ async def main() -> typing.Coroutine | None:
     missions = Missions(wires, level, power, *positions, **keywords)
 
     # 延时任务
-    await Design.countdown_energy_wave(level, lines.pause)
+    await Design.countdown_energy_wave(level, lines.delay)
 
     if video_list := lines.video:
         await arithmetic(missions.video_file_task, video_list)
