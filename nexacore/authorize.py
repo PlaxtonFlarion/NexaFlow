@@ -8,7 +8,6 @@
 # Copyright (c) 2024  Framix :: 画帧秀
 # This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md file for more details.
 
-import time
 import json
 import uuid
 import httpx
@@ -16,7 +15,6 @@ import base64
 import socket
 import struct
 import typing
-import secrets
 import hashlib
 import platform
 from pathlib import Path
@@ -28,6 +26,7 @@ from cryptography.hazmat.primitives import (
     hashes, serialization
 )
 from cryptography.hazmat.primitives.asymmetric import padding
+from engine.channel import Channel
 from engine.terminal import Terminal
 from engine.tinker import FramixError
 from nexacore.design import Design
@@ -215,15 +214,10 @@ async def receive_license(code: str, lic_file: "Path") -> typing.Optional["Path"
     """
     使用激活码从远程授权服务器获取授权文件，并保存至本地路径。
     """
-    params = {
-        "a": const.DESC,
-        "t": int(time.time()),
-        "n": secrets.token_hex(8)
-    }
     payload = {
         "code": code.strip(),
         "castle": fingerprint(),
-    } | params
+    } | (params := Channel.make_params())
 
     if lic_file.exists():
         auth_info = verify_signature(lic_file)
