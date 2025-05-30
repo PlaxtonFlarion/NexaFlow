@@ -5,8 +5,8 @@
 #   \____|_| |_|\__,_|_| |_|_| |_|\___|_|
 #
 # ==== Notes: License ====
-# Copyright (c) 2024  Memrix :: 记忆星核
-# This file is licensed under the Memrix :: 记忆星核 License. See the LICENSE.md file for more details.
+# Copyright (c) 2024  Framix :: 画帧秀
+# This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md file for more details.
 
 import time
 import httpx
