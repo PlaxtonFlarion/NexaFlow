@@ -260,7 +260,7 @@ async def packaging() -> tuple[
             f"--mode=standalone",
             f"--product-name={const.DESC}",
             f"--product-version={const.VERSION}",
-            f"--windows-icon-from-ico=schematic/resources/icons/framix_icn_1.ico",
+            f"--windows-icon-from-ico=schematic/resources/icons/framix_windows_icn.ico",
         ]
 
         launch = launch / f"{const.NAME}.bat", target.parent
