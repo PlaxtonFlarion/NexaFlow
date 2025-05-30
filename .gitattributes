@@ -11,7 +11,7 @@
 *.html text eol=lf
 *.txt  text eol=lf
 
-# 图像与二进制文件：不换行，避免文件损坏
+# 图像与二进制文件
 *.png  binary
 *.jpg  binary
 *.gif  binary
