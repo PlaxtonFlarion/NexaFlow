@@ -16,7 +16,7 @@ jobs:
 
       - name: Set variables
         run: |
-          echo "TARGET_DIR=SoftwareCenter/assets/Framix" >> $GITHUB_ENV
+          echo "TARGET_DIR=SoftwareCenter/Assets/Framix" >> $GITHUB_ENV
           echo "REPO_NAME=Framix" >> $GITHUB_ENV
 
       - name: Clone public SoftwareCenter repo
