@@ -3530,6 +3530,8 @@ async def main() -> typing.Coroutine | None:
 
     # 设置模板文件源路径
     src_templates = os.path.join(fx_work, const.F_SCHEMATIC, const.F_TEMPLATES).format()
+    # 模板版本文件路径
+    _ = os.path.join(src_templates, const.X_TEMPLATE_VERSION).format()
     # 设置模板文件路径
     atom_total_temp = os.path.join(src_templates, "template_atom_total.html")
     line_total_temp = os.path.join(src_templates, "template_line_total.html")
