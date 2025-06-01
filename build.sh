@@ -70,8 +70,9 @@ echo "✅ DMG 已生成：$DST/$DMG"
 
 # === 生成 SHA256 校验文件 ===
 echo "🔐 正在生成 SHA256 校验..."
-shasum -a 256 "$DST/$DMG" > "$DST/$DMG.sha256"
-echo "✅ SHA256 已写入：$DST/$DMG.sha256"
+FILENAME=$(basename "$DMG")
+shasum -a 256 "$DST/$DMG" | sed "s|$DST/||" > "$DST/$FILENAME.sha256"
+echo "✅ SHA256 已写入：$DST/$FILENAME.sha256"
 
 # === 自动打开输出目录 ===
 #open "$DST"
