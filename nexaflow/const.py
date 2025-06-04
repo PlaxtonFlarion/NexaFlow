@@ -46,7 +46,7 @@ F_SRC_TOTAL_PLACE    = f"{DESC}_Report"
 F_OPTION             = f"{NAME}_option.json"
 F_DEPLOY             = f"{NAME}_deploy.json"
 F_SCRIPT             = f"{NAME}_script.json"
-LIC_FILE             = f".{NAME}_signature.lic"
+LIC_FILE             = f"{NAME}_signature.lic"
 
 DB_FILES_NAME        = f"{NAME}_data.db"
 DB_TABLE_NAME        = r"stocks"

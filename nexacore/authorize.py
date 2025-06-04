@@ -175,22 +175,19 @@ async def verify_license(lic_file: "Path") -> typing.Any:
     return auth_info
 
 
-async def hide_lic_file(lic_file: "Path") -> typing.Optional[typing.Any]:
+async def save_lic_file(lic_file: "Path", lic_data: typing.Any) -> typing.Optional[int]:
     """
-    将授权文件（.lic）在本地系统中隐藏，防止用户误删或篡改。
+    保存授权数据为 JSON 文件，必要时解除 Windows 文件隐藏/只读属性。
     """
-    if not lic_file.exists():
-        return None
-
     try:
-        if (ops := platform.system()) == "Windows":
-            return await Terminal.cmd_line(["attrib", "+h", str(lic_file)])
-        elif ops == "Darwin":
-            return await Terminal.cmd_line(["chflags", "hidden", str(lic_file)])
-    except (FileNotFoundError, PermissionError, OSError):
-        pass
+        if lic_file.exists() and platform.system() == "Windows":
+            await Terminal.cmd_line(["attrib", "-h", "-r", str(lic_file)])
 
-    return None
+        return lic_file.write_text(
+            json.dumps(lic_data, indent=2), encoding=const.CHARSET
+        )
+    except Exception as e:
+        raise FramixError(f"❌ {e}")
 
 
 async def send(
@@ -244,9 +241,8 @@ async def receive_license(code: str, lic_file: "Path") -> typing.Optional["Path"
                 auth_info, keys=["code", "castle", "license_id"], keep=10
             )
         )
-        lic_file.write_text(json.dumps(ac_lic_data, indent=2), encoding=const.CHARSET)
 
-        await hide_lic_file(lic_file)
+        await save_lic_file(lic_file, ac_lic_data)
 
         Design.Doc.log(
             f"[bold #87FF87]Validation succeeded. activation seal embedded.\n"
