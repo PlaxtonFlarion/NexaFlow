@@ -215,12 +215,24 @@ class Device(_Phone):
         return await Terminal.cmd_line(cmd)
 
     async def unlock_screen(self, *_, **__) -> typing.Any:
+        """
+        解锁 Android 设备屏幕。
+        """
         if "true" in self.screen_status():
             return None
 
         await self.key_event(26)
         await asyncio.sleep(1)
         await self.swipe(300, 1000, 300, 500)
+
+    async def unlock_screen_u2(self, *_, **__) -> typing.Any:
+        """
+        解锁 Android 设备屏幕。
+        """
+        if not self.facilities.screen_on:
+            await asyncio.to_thread(self.facilities.screen_on)
+
+        return await asyncio.to_thread(self.facilities.swipe_ext, "up", scale=0.8)
 
     async def automator_activation(self, *_, **__) -> None:
         """
