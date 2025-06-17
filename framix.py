@@ -1898,16 +1898,20 @@ class Missions(object):
                             **({"header": cmds["header"]} if cmds.get("header") else {}),
                             **({"change": cmds["change"]} if cmds.get("change") else {}),
                             **({"looper": cmds["looper"]} if cmds.get("looper") else {}),
+                            **({"origin": [c for c in cmds.get("origin", []) if c["cmds"]]} if any(
+                                c["cmds"] for c in cmds.get("origin", [])) else {}),
                             **({"prefix": [c for c in cmds.get("prefix", []) if c["cmds"]]} if any(
                                 c["cmds"] for c in cmds.get("prefix", [])) else {}),
                             **({"action": [c for c in cmds.get("action", []) if c["cmds"]]} if any(
                                 c["cmds"] for c in cmds.get("action", [])) else {}),
                             **({"suffix": [c for c in cmds.get("suffix", []) if c["cmds"]]} if any(
                                 c["cmds"] for c in cmds.get("suffix", [])) else {}),
+                            **({"finish": [c for c in cmds.get("finish", []) if c["cmds"]]} if any(
+                                c["cmds"] for c in cmds.get("finish", [])) else {}),
                         } for file_dict in file_list for file_key, cmds in file_dict.items()
                         if any(c["cmds"] for c in cmds.get("action", []))
                     }
-            except (FileNotFoundError, KeyError, json.JSONDecodeError) as e:
+            except (FileNotFoundError, KeyError, TypeError, ValueError, json.JSONDecodeError) as e:
                 raise FramixError(e)
 
             return exec_dict
@@ -2023,7 +2027,9 @@ class Missions(object):
 
                 resp = await function(*exec_vals, *exec_args, **exec_kwds)
                 logger.debug(tip := f"Returns: func={exec_func} resp={resp}")
-                return self.design.show_panel(tip, Wind.EXPLORER)
+                return self.design.show_panel(
+                    tip, Wind.KEEPER if isinstance(resp, Exception) else Wind.EXPLORER
+                )
 
             except asyncio.CancelledError:
                 live_devices.pop(sn)
@@ -2318,6 +2324,9 @@ class Missions(object):
                         logger.debug(tip := f"重置循环次数 {(looper := 1)} {e}")
                         self.design.show_panel(tip, Wind.EXPLORER)
 
+                    # 处理 script_value 中的 origin 参数
+                    if origin_list := script_value.get("origin", []):
+                        origin_list = await pack_commands(origin_list)
                     # 处理 script_value 中的 prefix 参数
                     if prefix_list := script_value.get("prefix", []):
                         prefix_list = await pack_commands(prefix_list)
@@ -2327,11 +2336,18 @@ class Missions(object):
                     # 处理 script_value 中的 suffix 参数
                     if suffix_list := script_value.get("suffix", []):
                         suffix_list = await pack_commands(suffix_list)
+                    # 处理 script_value 中的 finish 参数
+                    if finish_list := script_value.get("finish", []):
+                        finish_list = await pack_commands(finish_list)
 
                     # 遍历 header 并执行任务
                     for hd in header:
                         report.title = f"{input_title_}_{script_key}_{hd}"
                         extend_task_list = []
+
+                        # origin 前置任务
+                        if origin_list:
+                            await exec_commands(device_list, origin_list)
 
                         for _ in range(looper):
                             # prefix 前置任务
@@ -2371,6 +2387,10 @@ class Missions(object):
 
                             # 等待后置任务完成
                             await asyncio.gather(*suffix_task_list)
+
+                        # finish 后置任务
+                        if finish_list:
+                            await exec_commands(device_list, finish_list)
 
                         # 分析视频集合
                         if task_list := (extend_task_list if self.shine else []):

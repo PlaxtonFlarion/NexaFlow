@@ -611,18 +611,25 @@ framix --fully script.json
                 "header": ["script"],
                 "change": [],
                 "looper": 1,
+                "origin": {"cmds": ["unlock_screen"]},
                 "prefix": [
                     {"cmds": ["key_event"], "vals": [[3]]}, 
                     {"cmds": ["sleep"], "vals": [[1]]}
                 ],
                 "action": [
-                    {"cmds": ["automator"], "vals": [[{"text": "text"}, "click"]]}, 
+                    {
+                        "cmds": ["automator"], 
+                        "vals": [[{"text": "text"}, "long_click"]], 
+                        "args": [[400, 600]], 
+                        "kwds": [{"duration": 1}]
+                    }, 
                     {"cmds": ["sleep"], "vals": [[3]]}
                 ],
                 "suffix": [
                     {"cmds": ["force_stop"], "vals": [["package_name"]]}, 
                     {"cmds": ["sleep"], "vals": [[1]]}
-                ]
+                ],
+                "finish": {"cmds": ["key_event"], "vals": [[3]]}
             }
         }
     ]
@@ -638,16 +645,21 @@ framix --fully script.json
                 "header": ["script"],
                 "change": [],
                 "looper": 1,
+                "origin": {"cmds": ["unlock_screen"]},
                 "prefix": [
                     {"cmds": ["key_event", "sleep"], "vals": [[3], [1]]}
                 ],
                 "action": [
-                    {"cmds": ["automator"], "vals": [[{"text": "text"}, "click"]]}, 
+                    {
+                        "cmds": ["automator"], 
+                        "vals": [[{"text": "text"}, "click"]]
+                    }, 
                     {"cmds": ["sleep"], "vals": [[3]]}
                 ],
                 "suffix": [
                     {"cmds": ["force_stop", "sleep"], "vals": [["package_name"], [1]]} 
-                ]
+                ],
+                "finish": {"cmds": ["key_event"], "vals": [[3]]}
             }
         }
     ]

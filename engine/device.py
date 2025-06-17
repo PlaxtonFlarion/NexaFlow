@@ -81,163 +81,146 @@ class Device(_Phone):
         """
         异步等待指定的时间。
         """
-        await asyncio.sleep(delay)
+        return await asyncio.sleep(delay)
 
-    async def device_online(self, *_, **__) -> None:
+    async def device_online(self, *_, **__) -> typing.Any:
         """
         等待设备上线。
         """
-        await Terminal.cmd_line(self.__initial)
+        return await Terminal.cmd_line(self.__initial)
 
-    async def deep_link(self, url: str, service: str, *_, **__) -> None:
+    async def deep_link(self, url: str, service: str, *_, **__) -> typing.Any:
         """
         通过深度链接启动指定的应用服务。
         """
         pattern = r"(?<=input_text=).*?(?=\\$|\"$|\\\\$)"
         compose = f"{url}?{service}"
+
         initial = [f'"{self.__initial[0]}"'] + (self.__initial[1:])
         cmd = f"{' '.join(initial)} shell am start -W -a android.intent.action.VIEW -d \"{compose}\""
+
         if input_text := re.search(pattern, cmd):
             if (text := input_text.group()) != "''":
                 cmd = re.sub(pattern, "\'" + quote(text) + "\'", cmd)
-        return resp if (resp := await Terminal.cmd_line_shell(cmd)) else None
 
-    async def activity(self, *_, **__) -> typing.Optional[str]:
+        return await Terminal.cmd_line_shell(cmd)
+
+    async def activity(self, *_, **__) -> typing.Any:
         """
         获取当前设备活动的应用程序或窗口名称。
         """
-        cmd = self.__initial + [
-            "shell", "dumpsys", "window", "|", "findstr", "mCurrentFocus"
-        ]
-        if resp := await Terminal.cmd_line(cmd):
-            if match := re.search(r"(?<=Window\{).*?(?=})", resp):
-                return match.group().split()[-1]
+        cmd = self.__initial + ["shell", "dumpsys", "window", "|", "grep", "mCurrentFocus"]
+        response = await Terminal.cmd_line(cmd)
 
-    async def screen_status(self, *_, **__) -> typing.Optional[bool]:
+        return match.group().split()[-1] if (
+            match := re.search(r"(?<=Window\{).*?(?=})", response)
+        ) else None
+
+    async def screen_status(self, *_, **__) -> typing.Any:
         """
         检查设备屏幕是否处于打开状态。
         """
-        cmd = self.__initial + [
-            "shell", "dumpsys", "deviceidle", "|", "findstr", "mScreenOn"
-        ]
-        return bool(resp.split("=")[-1]) if (resp := await Terminal.cmd_line(cmd)) else None
+        cmd = self.__initial + ["shell", "dumpsys", "deviceidle", "|", "grep", "mScreenOn"]
+        return await Terminal.cmd_line(cmd)
 
-    async def tap(self, x: int, y: int, *_, **__) -> None:
+    async def tap(self, x: int, y: int, *_, **__) -> typing.Any:
         """
         模拟在设备屏幕上点击指定坐标位置。
         """
-        cmd = self.__initial + [
-            "shell", "input", "tap", f"{x}", f"{y}"
-        ]
-        await Terminal.cmd_line(cmd)
+        cmd = self.__initial + ["shell", "input", "tap", f"{x}", f"{y}"]
+        return await Terminal.cmd_line(cmd)
 
-    async def swipe(self, start_x: int, start_y: int, end_x: int, end_y: int, duration: int, *_, **__) -> None:
+    async def swipe(self, start_x: int, start_y: int, end_x: int, end_y: int, *_, **__) -> typing.Any:
         """
         模拟在设备屏幕上从一个位置滑动到另一个位置。
         """
-        cmd = self.__initial + [
-            "shell", "input", "touchscreen", "swipe", f"{start_x}", f"{start_y}", f"{end_x}", f"{end_y}", f"{duration}"
-        ]
-        await Terminal.cmd_line(cmd)
+        cmd = self.__initial + ["shell", "input", "swipe", f"{start_x}", f"{start_y}", f"{end_x}", f"{end_y}"]
+        return await Terminal.cmd_line(cmd)
 
-    async def key_event(self, key_code: int, *_, **__) -> None:
+    async def key_event(self, key_code: int, *_, **__) -> typing.Any:
         """
         模拟按下设备的硬件按键。
         """
-        cmd = self.__initial + [
-            "shell", "input", "keyevent", f"{key_code}"
-        ]
-        await Terminal.cmd_line(cmd)
+        cmd = self.__initial + ["shell", "input", "keyevent", f"{key_code}"]
+        return await Terminal.cmd_line(cmd)
 
-    async def force_stop(self, package: str, *_, **__) -> None:
+    async def force_stop(self, package: str, *_, **__) -> typing.Any:
         """
         强制停止指定包名的应用。
         """
-        cmd = self.__initial + [
-            "shell", "am", "force-stop", package
-        ]
-        await Terminal.cmd_line(cmd)
+        cmd = self.__initial + ["shell", "am", "force-stop", package]
+        return await Terminal.cmd_line(cmd)
 
-    async def notification(self, *_, **__) -> None:
+    async def notification(self, *_, **__) -> typing.Any:
         """
         打开设备的通知栏。
         """
-        cmd = self.__initial + [
-            "shell", "cmd", "statusbar", "expand-notifications"
-        ]
-        await Terminal.cmd_line(cmd)
+        cmd = self.__initial + ["shell", "cmd", "statusbar", "expand-notifications"]
+        return await Terminal.cmd_line(cmd)
 
-    async def install(self, apk_source: str, *_, **__) -> None:
+    async def install(self, src: str, *_, **__) -> typing.Any:
         """
         安装APK文件。
         """
-        cmd = self.__initial + [
-            "install", apk_source
-        ]
-        await Terminal.cmd_line(cmd)
+        cmd = self.__initial + ["install", src]
+        return await Terminal.cmd_line(cmd)
 
-    async def uninstall(self, package: str, *_, **__) -> None:
+    async def uninstall(self, package: str, *_, **__) -> typing.Any:
         """
         卸载指定的应用程序。
         """
-        cmd = self.__initial + [
-            "uninstall", package
-        ]
-        await Terminal.cmd_line(cmd)
+        cmd = self.__initial + ["uninstall", package]
+        return await Terminal.cmd_line(cmd)
 
-    async def screenshot(self, destination: str, *_, **__) -> None:
+    async def screenshot(self, dst: str, *_, **__) -> typing.Any:
         """
         截取设备屏幕并保存到指定路径。
         """
-        cmd = self.__initial + [
-            "shell", "screencap", "-p", destination
-        ]
-        await Terminal.cmd_line(cmd)
+        cmd = self.__initial + ["shell", "screencap", "-p", dst]
+        return await Terminal.cmd_line(cmd)
 
-    async def wifi(self, mode: str, *_, **__) -> None:
+    async def wifi(self, mode: str, *_, **__) -> typing.Any:
         """
         打开或关闭设备的 Wi-Fi。
         """
-        cmd = self.__initial + [
-            "shell", "svc", "wifi", mode
-        ]
-        await Terminal.cmd_line(cmd)
+        cmd = self.__initial + ["shell", "svc", "wifi", mode]
+        return await Terminal.cmd_line(cmd)
 
-    async def hot_spot(self, mode: str, status: str, *_, **__) -> None:
+    async def hot_spot(self, mode: str, status: str, *_, **__) -> typing.Any:
         """
         控制设备的Wi-Fi或热点开关状态。
         """
-        cmd = self.__initial + [
-            "shell", "svc", "wifi", mode, status
-        ]
-        await Terminal.cmd_line(cmd)
+        cmd = self.__initial + ["shell", "svc", "wifi", mode, status]
+        return await Terminal.cmd_line(cmd)
 
-    async def start_application(self, package: str, *_, **__) -> typing.Optional[str]:
+    async def start_app(self, package: str, *_, **__) -> typing.Any:
         """
         启动指定包名的应用。
         """
-        cmd = self.__initial + [
-            "shell", "am", "start", "-n", package
-        ]
-        return resp if (resp := await Terminal.cmd_line(cmd)) else None
+        cmd = self.__initial + ["shell", "am", "start", "-n", package]
+        return await Terminal.cmd_line(cmd)
 
-    async def screen_size(self, *_, **__) -> typing.Optional[str]:
+    async def screen_size(self, *_, **__) -> typing.Any:
         """
         获取设备屏幕的分辨率。
         """
-        cmd = self.__initial + [
-            "shell", "wm", "size"
-        ]
-        return resp if (resp := await Terminal.cmd_line(cmd)) else None
+        cmd = self.__initial + ["shell", "wm", "size"]
+        return await Terminal.cmd_line(cmd)
 
-    async def screen_density(self, *_, **__) -> typing.Optional[str]:
+    async def screen_density(self, *_, **__) -> typing.Any:
         """
         获取设备屏幕的像素密度。
         """
-        cmd = self.__initial + [
-            "shell", "wm", "density"
-        ]
-        return resp if (resp := await Terminal.cmd_line(cmd)) else None
+        cmd = self.__initial + ["shell", "wm", "density"]
+        return await Terminal.cmd_line(cmd)
+
+    async def unlock_screen(self, *_, **__) -> typing.Any:
+        if "true" in self.screen_status():
+            return None
+
+        await self.key_event(26)
+        await asyncio.sleep(1)
+        await self.swipe(300, 1000, 300, 500)
 
     async def automator_activation(self, *_, **__) -> None:
         """
@@ -247,23 +230,23 @@ class Device(_Phone):
 
     async def automator(
             self,
-            choice: typing.Optional[dict],
-            method: typing.Optional[str],
+            selector: typing.Optional[dict],
+            function: str,
             *args,
             **kwargs
     ) -> typing.Any:
         """
         自动化方法的异步调用函数。
         """
-        if (element := self.facilities(**choice) if choice else self.facilities).exists():
-            if callable(function := getattr(element, method)):
-                try:
-                    resp = await asyncio.to_thread(function, *args, **kwargs)
-                except Exception as e:
-                    return e
-                return resp
-            raise AttributeError(f"{method} Not callable ...")
-        raise AttributeError(f"{choice or element.serial} Not found ...")
+        try:
+            element = self.facilities(**selector) if selector else self.facilities
+
+            return await asyncio.to_thread(
+                current, *args, **kwargs
+            ) if callable(current := getattr(element, function)) else current
+
+        except Exception as e:
+            return e
 
 
 if __name__ == '__main__':
