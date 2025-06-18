@@ -118,6 +118,7 @@ WHILE_FORMAT = f"{OTHER_HEAD} <green>{{time:YYYY-MM-DD HH:mm:ss.SSS}}</green> | 
 # ======== 【应用授权 | Authorization】========
 BOOTSTRAP_URL      = f"https://appserver-u7hd.onrender.com/bootstrap"
 TEMPLATE_META_URL  = f"https://appserver-u7hd.onrender.com/template-meta"
+BUSINESS_CASE_URL  = f"https://appserver-u7hd.onrender.com/business-case"
 X_TEMPLATE_VERSION = f"x_template_version.json"
 
 BASIC_HEADERS = {

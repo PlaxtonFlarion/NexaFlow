@@ -26,6 +26,7 @@ import json
 import time
 import uuid
 import stat
+import httpx
 import signal
 import shutil
 import random
@@ -52,6 +53,9 @@ from PIL import (
 )
 
 # ====[ from: 本地模块 ]====
+from engine.channel import (
+    Channel, Messenger
+)
 from engine.device import Device
 from engine.switch import Switch
 from engine.manage import (
@@ -1870,51 +1874,72 @@ class Missions(object):
 
         async def load_fully(fully: str) -> dict:
             """
-            异步加载并解析完整的 JSON 命令文件，提取格式化后的执行指令集合。
+            加载并解析用例配置，支持从本地文件或远程接口读取。
+
+            若路径为本地文件，则解析 JSON 并提取 "command" 字段；
+            若路径为业务 case 名称，则向远程业务接口发起请求；
+            返回结构化后的命令配置字典，过滤无效段落（空 cmds）。
 
             Parameters
             ----------
             fully : str
-                JSON 脚本文件路径，用于批量加载多组命令数据。
+                本地 JSON 路径或业务用例名（由 `Craft.revise_path` 预处理）。
 
             Returns
             -------
             dict
-                执行指令的字典，每个 key 对应一组命令，每组命令包含 parser、header、action 等字段。
+                每个用例文件的命令配置字典，键为文件名或用例名，值为包含有效字段（如 parser、action 等）的子字典。
+                若未能提取到有效命令结构，返回空字典。
 
             Raises
             ------
             FramixError
-                - 当文件不存在、格式不符合要求，或无法解析为合法 JSON 时抛出。
+                如果文件不存在、格式错误、字段缺失或 JSON 解码失败等，抛出 FramixError 封装的底层异常。
+
+            Notes
+            -----
+            - 支持从远程业务接口 `const.BUSINESS_CASE_URL` 加载（通过 httpx）。
+            - 仅保留 `cmds` 非空的 action/prefix/origin/suffix/finish 段。
+            - 若文件或远程内容中 `command` 字段为空，返回空 dict。
             """
-            fully = await Craft.revise_path(fully)
-
             try:
-                async with aiofiles.open(fully, "r", encoding=const.CHARSET) as f:
-                    file_list = json.loads(await f.read())["command"]
-                    exec_dict = {
-                        file_key: {
-                            **({"parser": cmds["parser"]} if cmds.get("parser") else {}),
-                            **({"header": cmds["header"]} if cmds.get("header") else {}),
-                            **({"change": cmds["change"]} if cmds.get("change") else {}),
-                            **({"looper": cmds["looper"]} if cmds.get("looper") else {}),
-                            **({"origin": [c for c in cmds.get("origin", []) if c["cmds"]]} if any(
-                                c["cmds"] for c in cmds.get("origin", [])) else {}),
-                            **({"prefix": [c for c in cmds.get("prefix", []) if c["cmds"]]} if any(
-                                c["cmds"] for c in cmds.get("prefix", [])) else {}),
-                            **({"action": [c for c in cmds.get("action", []) if c["cmds"]]} if any(
-                                c["cmds"] for c in cmds.get("action", [])) else {}),
-                            **({"suffix": [c for c in cmds.get("suffix", []) if c["cmds"]]} if any(
-                                c["cmds"] for c in cmds.get("suffix", [])) else {}),
-                            **({"finish": [c for c in cmds.get("finish", []) if c["cmds"]]} if any(
-                                c["cmds"] for c in cmds.get("finish", [])) else {}),
-                        } for file_dict in file_list for file_key, cmds in file_dict.items()
-                        if any(c["cmds"] for c in cmds.get("action", []))
-                    }
-            except (FileNotFoundError, KeyError, TypeError, ValueError, json.JSONDecodeError) as e:
-                raise FramixError(e)
+                fully = await Craft.revise_path(fully)
 
-            return exec_dict
+                if Path(fully).is_file():
+                    async with aiofiles.open(fully, "r", encoding=const.CHARSET) as f:
+                        file_list = json.loads(await f.read())["command"]
+
+                else:
+                    params = Channel.make_params() | {"case": fully}
+                    async with Messenger() as messenger:
+                        resp = await messenger.poke("GET", const.BUSINESS_CASE_URL, params=params)
+                        resp.raise_for_status()
+                        file_list = resp.json()["command"]
+
+                return {
+                    file_key: {
+                        **({"parser": cmds["parser"]} if cmds.get("parser") else {}),
+                        **({"header": cmds["header"]} if cmds.get("header") else {}),
+                        **({"change": cmds["change"]} if cmds.get("change") else {}),
+                        **({"looper": cmds["looper"]} if cmds.get("looper") else {}),
+                        **({"origin": [c for c in cmds.get("origin", []) if c["cmds"]]} if any(
+                            c["cmds"] for c in cmds.get("origin", [])) else {}),
+                        **({"prefix": [c for c in cmds.get("prefix", []) if c["cmds"]]} if any(
+                            c["cmds"] for c in cmds.get("prefix", [])) else {}),
+                        **({"action": [c for c in cmds.get("action", []) if c["cmds"]]} if any(
+                            c["cmds"] for c in cmds.get("action", [])) else {}),
+                        **({"suffix": [c for c in cmds.get("suffix", []) if c["cmds"]]} if any(
+                            c["cmds"] for c in cmds.get("suffix", [])) else {}),
+                        **({"finish": [c for c in cmds.get("finish", []) if c["cmds"]]} if any(
+                            c["cmds"] for c in cmds.get("finish", [])) else {}),
+                    } for file_dict in file_list for file_key, cmds in file_dict.items()
+                    if any(c["cmds"] for c in cmds.get("action", []))
+                } if file_list else {}
+
+            except (FileNotFoundError, KeyError, TypeError, ValueError, json.JSONDecodeError) as e:
+                raise FramixError(f"❌ {e}")
+            except httpx.HTTPStatusError as e:
+                raise FramixError(f"❌ {e.response.status_code} {e.response.text}")
 
         async def pack_commands(resolve_list: list) -> list:
             """
@@ -2263,8 +2288,8 @@ class Missions(object):
                 *(load_carry(c) for c in self.carry) if self.carry else (load_fully(f) for f in self.fully)
             )
 
-            if not (script_storage := [script_data_ for script_data_ in load_script_data]):
-                raise FramixError(f"Script content is empty")
+            if not (script_storage := [data for data in load_script_data if data]):
+                raise FramixError(f"Script is empty {script_storage}")
 
             device_list = await manage_.operate_device()
 
