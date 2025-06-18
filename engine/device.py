@@ -22,7 +22,6 @@ class _Phone(object):
 
     用于封装 Android 设备的基本信息，例如序列号、品牌、系统版本、CPU 核心数、内存大小和显示分辨率等，常用于初始化与表示设备对象。
     """
-
     display: dict = {}
 
     def __init__(self, sn: str, *args):
@@ -83,6 +82,8 @@ class Device(_Phone):
         """
         return await asyncio.sleep(delay)
 
+    # Notes: ======================== ADB ========================
+
     async def device_online(self, *_, **__) -> typing.Any:
         """
         等待设备上线。
@@ -130,11 +131,15 @@ class Device(_Phone):
         cmd = self.__initial + ["shell", "input", "tap", f"{x}", f"{y}"]
         return await Terminal.cmd_line(cmd)
 
-    async def swipe(self, start_x: int, start_y: int, end_x: int, end_y: int, *_, **__) -> typing.Any:
+    async def swipe(
+        self, start_x: int, start_y: int, end_x: int, end_y: int, duration: int = 500, *_, **__
+    ) -> typing.Any:
         """
         模拟在设备屏幕上从一个位置滑动到另一个位置。
         """
-        cmd = self.__initial + ["shell", "input", "swipe", f"{start_x}", f"{start_y}", f"{end_x}", f"{end_y}"]
+        cmd = self.__initial + [
+            "shell", "input", "swipe", f"{start_x}", f"{start_y}", f"{end_x}", f"{end_y}", f"{duration}"
+        ]
         return await Terminal.cmd_line(cmd)
 
     async def key_event(self, key_code: int, *_, **__) -> typing.Any:
@@ -205,34 +210,80 @@ class Device(_Phone):
         获取设备屏幕的分辨率。
         """
         cmd = self.__initial + ["shell", "wm", "size"]
-        return await Terminal.cmd_line(cmd)
+        response = await Terminal.cmd_line(cmd)
+
+        return (int(match.group(1)), int(match.group(2))) if (
+            match := re.search(r"Physical size:\s(\d+)x(\d+)", response)
+        ) else None
 
     async def screen_density(self, *_, **__) -> typing.Any:
         """
         获取设备屏幕的像素密度。
         """
         cmd = self.__initial + ["shell", "wm", "density"]
+        response = await Terminal.cmd_line(cmd)
+
+        return int(match.group(1)) if (
+            match := re.search(r"Physical density:\s(\d+)", response)
+        ) else None
+
+    async def screen_orientation(self, *_, **__) -> typing.Any:
+        """
+        获取当前屏幕方向。
+        """
+        cmd = self.__initial + ["shell", "dumpsys", "display", "|", "grep", "mCurrentOrientation"]
+        response = await Terminal.cmd_line(cmd)
+
+        return int(match.group(1)) if (
+            match := re.search(r"mCurrentOrientation=(\d+)", response)
+        ) else 0
+
+    async def reboot(self, *_, **__) -> typing.Any:
+        """
+        重启设备。
+        """
+        cmd = self.__initial + ["reboot"]
+        await Terminal.cmd_line(cmd)
+        return await self.device_online()
+
+    async def input_text(self, text: str, *_, **__) -> typing.Any:
+        """
+        向设备输入指定文本。
+        """
+        cmd = self.__initial + ["shell", "input", "text", text]
+        return await Terminal.cmd_line(cmd)
+
+    async def push(self, local: str, remote: str, *_, **__) -> typing.Any:
+        """
+        将本地文件推送到设备。
+        """
+        cmd = self.__initial + ["push", local, remote]
+        return await Terminal.cmd_line(cmd)
+
+    async def pull(self, remote: str, local: str, *_, **__) -> typing.Any:
+        """
+        从设备拉取文件到本地。
+        """
+        cmd = self.__initial + ["pull", remote, local]
         return await Terminal.cmd_line(cmd)
 
     async def unlock_screen(self, *_, **__) -> typing.Any:
         """
         解锁 Android 设备屏幕。
         """
-        if "true" in self.screen_status():
+        if "true" in await self.screen_status():
             return None
+
+        w, h = await self.screen_size()
+
+        start_x = end_x = w // 2
+        start_y, end_y = int(h * 0.8), int(h * 0.2)
 
         await self.key_event(26)
         await asyncio.sleep(1)
-        await self.swipe(300, 1000, 300, 500)
+        await self.swipe(start_x, start_y, end_x, end_y)
 
-    async def unlock_screen_u2(self, *_, **__) -> typing.Any:
-        """
-        解锁 Android 设备屏幕。
-        """
-        if not self.facilities.screen_on:
-            await asyncio.to_thread(self.facilities.screen_on)
-
-        return await asyncio.to_thread(self.facilities.swipe_ext, "up", scale=0.8)
+    # Notes: ======================== Automator ========================
 
     async def automator_activation(self, *_, **__) -> None:
         """
@@ -240,12 +291,17 @@ class Device(_Phone):
         """
         self.facilities = await asyncio.to_thread(u2.connect, self.sn)
 
+    async def automator_unlock_screen(self, *_, **__) -> typing.Any:
+        """
+        解锁 Android 设备屏幕。
+        """
+        if not self.facilities.info.get("screenOn"):
+            await asyncio.to_thread(self.facilities.screen_on)
+
+        return await asyncio.to_thread(self.facilities.swipe_ext, direction="up", scale=0.8)
+
     async def automator(
-            self,
-            selector: typing.Optional[dict],
-            function: str,
-            *args,
-            **kwargs
+        self, selector: typing.Optional[dict], function: str, *args, **kwargs
     ) -> typing.Any:
         """
         自动化方法的异步调用函数。

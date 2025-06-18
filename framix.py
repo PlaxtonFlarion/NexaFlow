@@ -1936,6 +1936,8 @@ class Missions(object):
             - 此方法确保输入不为空字符串，并为缺失参数补全默认空值。
             - 所有输入会被校验并标准化为 list 或 dict。
             """
+            if not resolve_list:
+                return []
             exec_pairs_list = []
 
             for resolve in resolve_list:
@@ -2061,6 +2063,8 @@ class Missions(object):
             - 命令支持通配符 "*" 替换，通过传入 *args 实现参数动态注入。
             - 每一轮命令执行结束后清除任务，异常将记录到日志中但不中断主流程。
             """
+            if not exec_pairs_list:
+                return None
 
             # 替换列表中所有 `*` 为给定参数列表中的值，支持嵌入字符串中的 `*` 多次替换。
             replace_star: typing.Callable[[list], list] = lambda x, y=iter(args): [
@@ -2315,7 +2319,8 @@ class Missions(object):
                     # 处理 script_value_ 中的 change 参数
                     if change := script_value.get("change", []):
                         change = change if type(change) is list else (
-                            [change] if type(change) is str else [str(change)])
+                            [change] if type(change) is str else [str(change)]
+                        )
 
                     # 处理 script_value_ 中的 looper 参数
                     try:
@@ -2325,20 +2330,15 @@ class Missions(object):
                         self.design.show_panel(tip, Wind.EXPLORER)
 
                     # 处理 script_value 中的 origin 参数
-                    if origin_list := script_value.get("origin", []):
-                        origin_list = await pack_commands(origin_list)
+                    origin_list = await pack_commands(script_value.get("origin", []))
                     # 处理 script_value 中的 prefix 参数
-                    if prefix_list := script_value.get("prefix", []):
-                        prefix_list = await pack_commands(prefix_list)
+                    prefix_list = await pack_commands(script_value.get("prefix", []))
                     # 处理 script_value 中的 action 参数
-                    if action_list := script_value.get("action", []):
-                        action_list = await pack_commands(action_list)
+                    action_list = await pack_commands(script_value.get("action", []))
                     # 处理 script_value 中的 suffix 参数
-                    if suffix_list := script_value.get("suffix", []):
-                        suffix_list = await pack_commands(suffix_list)
+                    suffix_list = await pack_commands(script_value.get("suffix", []))
                     # 处理 script_value 中的 finish 参数
-                    if finish_list := script_value.get("finish", []):
-                        finish_list = await pack_commands(finish_list)
+                    finish_list = await pack_commands(script_value.get("finish", []))
 
                     # 遍历 header 并执行任务
                     for hd in header:
@@ -2346,21 +2346,18 @@ class Missions(object):
                         extend_task_list = []
 
                         # origin 前置任务
-                        if origin_list:
-                            await exec_commands(device_list, origin_list)
+                        await exec_commands(device_list, origin_list)
 
                         for _ in range(looper):
                             # prefix 前置任务
-                            if prefix_list:
-                                await exec_commands(device_list, prefix_list)
+                            await exec_commands(device_list, prefix_list)
 
                             # start record 开始录屏
                             _, task_list = await anything_film(device_list, report)
 
                             # action 主要任务
-                            if action_list:
-                                change_list = [hd + c for c in change] if change else [hd]
-                                await exec_commands(device_list, action_list, *change_list)
+                            change_list = [hd + c for c in change] if change else [hd]
+                            await exec_commands(device_list, action_list, *change_list)
 
                             # close record 结束录屏
                             await anything_over(device_list, task_list)
@@ -2389,8 +2386,7 @@ class Missions(object):
                             await asyncio.gather(*suffix_task_list)
 
                         # finish 后置任务
-                        if finish_list:
-                            await exec_commands(device_list, finish_list)
+                        await exec_commands(device_list, finish_list)
 
                         # 分析视频集合
                         if task_list := (extend_task_list if self.shine else []):

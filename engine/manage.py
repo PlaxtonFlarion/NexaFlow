@@ -21,6 +21,7 @@ from rich.prompt import Prompt
 from screeninfo import get_monitors
 from engine.device import Device
 from engine.terminal import Terminal
+from engine.tinker import FramixError
 from nexacore.design import Design
 from nexaflow import const
 
@@ -96,12 +97,6 @@ class SourceMonitor(object):
     -----
     - 自动根据CPU核心数和总内存调整合理的阈值，适配不同硬件环境。
     - 检测流程采用两阶段：快速预检+稳定性深度采样，确保准确可靠。
-
-    Workflow
-    --------
-    1. 快速采样初步检测系统负载状态；
-    2. 若初步检测不通过，则进行深度稳定性采样；
-    3. 在多轮采样后确认系统是否满足运行条件。
     """
     __message: dict[typing.Any, typing.Any] = {
         "msg": ["...", 0],
@@ -360,21 +355,37 @@ class Manage(object):
     该类负责通过 ADB 接口发现并管理 Android 设备，支持获取设备的硬件信息（如品牌、版本、CPU、内存、分辨率等），
     并提供用户选择和切换设备的交互方式。适用于多设备调试和控制场景，支持异步批量设备信息收集与展示。
     """
-
     device_dict: dict[str, "Device"] = {}
 
     def __init__(self, adb: str):
         self.adb = adb
 
     async def current_device(self) -> dict[str, "Device"]:
+        """
+        获取当前连接的所有 Android 设备，并收集其基本信息构建 Device 实例。
+
+        使用 adb 工具查询设备的 CPU 核心数、内存大小、品牌、系统版本及屏幕信息，
+        并打包为 Device 对象返回。
+
+        Returns
+        -------
+        dict[str, Device]
+            一个字典，键为设备序列号（serial），值为对应的 Device 实例。
+        """
 
         async def _device_cpu(sn: str) -> typing.Any:
+            """
+            获取设备的 CPU 核心数。
+            """
             cmd = [
                 self.adb, "-s", sn, "wait-for-device", "shell", "cat", "/proc/cpuinfo", "|", "grep", "processor"
             ]
             return len(re.findall(r"processor", cpu, re.S)) if (cpu := await Terminal.cmd_line(cmd)) else None
 
         async def _device_ram(sn: str) -> typing.Any:
+            """
+            获取设备总内存（单位：GB，向上取整）。
+            """
             cmd = [
                 self.adb, "-s", sn, "wait-for-device", "shell", "free"
             ]
@@ -386,18 +397,27 @@ class Manage(object):
             return None
 
         async def _device_tag(sn: str) -> typing.Any:
+            """
+            获取设备品牌信息。
+            """
             cmd = [
                 self.adb, "-s", sn, "wait-for-device", "shell", "getprop", "ro.product.brand"
             ]
             return tag if (tag := await Terminal.cmd_line(cmd)) else None
 
         async def _device_ver(sn: str) -> typing.Any:
+            """
+            获取 Android 系统版本。
+            """
             cmd = [
                 self.adb, "-s", sn, "wait-for-device", "shell", "getprop", "ro.build.version.release"
             ]
             return ver if (ver := await Terminal.cmd_line(cmd)) else None
 
         async def _device_display(sn: str) -> dict:
+            """
+            获取设备所有屏幕分辨率（多屏支持）。
+            """
             cmd = [
                 self.adb, "-s", sn, "wait-for-device", "shell", "dumpsys", "display", "|", "grep", "mViewports="
             ]
@@ -414,6 +434,9 @@ class Manage(object):
             return screen_dict
 
         async def _device_information(sn: str) -> "Device":
+            """
+            收集指定设备的所有关键信息，构建 Device 实例。
+            """
             information_list = await asyncio.gather(
                 _device_tag(sn), _device_ver(sn), _device_cpu(sn), _device_ram(sn), _device_display(sn)
             )
@@ -431,18 +454,52 @@ class Manage(object):
                 device_dict = {device.sn: device for device in device_instance_list}
         return device_dict
 
-    async def operate_device(self) -> typing.Optional[list["Device"]]:
-        while True:
-            if len(current_device_dict := await self.current_device()) == 0:
+    async def operate_device(self, retry: int = 30) -> typing.Optional[list["Device"]]:
+        """
+        等待设备连接，返回当前所有已连接设备列表。
+
+        持续轮询检测设备连接状态，最多尝试 `retry` 次。
+        如果在重试次数内未检测到任何设备，将抛出 FramixError 异常。
+
+        Parameters
+        ----------
+        retry : int, optional
+            最大重试次数（每次间隔一个事件循环），默认值为 30。
+
+        Returns
+        -------
+        list[Device]
+            当前已连接的设备对象列表。
+
+        Raises
+        ------
+        FramixError
+            若在指定重试次数后仍无设备连接，将抛出连接超时错误。
+        """
+        for i in range(retry):
+            if not (current_device_dict := await self.current_device()):
                 Design.simulation_progress(f"Wait for device to connect ...")
                 continue
 
             self.device_dict = current_device_dict
             return list(self.device_dict.values())
 
+        raise FramixError(f"❌ 设备连接超时")
+
     async def another_device(self) -> typing.Optional[list["Device"]]:
+        """
+        等待设备连接，并从多个设备中选择一台进行操作。
+
+        若只有一台设备连接，直接返回该设备；
+        若有多台设备，打印所有设备信息并通过序列号供用户选择。
+
+        Returns
+        -------
+        list[Device] or None
+            用户选择的设备列表（始终返回长度为 1 的列表）。
+        """
         while True:
-            if len(current_device_dict := await self.current_device()) == 0:
+            if not (current_device_dict := await self.current_device()):
                 Design.simulation_progress(f"Wait for device to connect ...")
                 continue
 
@@ -455,7 +512,8 @@ class Manage(object):
                 Design.Doc.log(f"[bold #FFFACD]Connect:[/] [{index + 1:02}] {device}")
 
             if (action := Prompt.ask(
-                    "[bold #FFEC8B]请输入序列号选择一台设备[/]", console=Design.console, default="00")) == "00":
+                "[bold #FFEC8B]请输入序列号选择一台设备[/]", console=Design.console, default="00"
+            )) == "00":
                 return list(self.device_dict.values())
 
             try:
@@ -469,6 +527,16 @@ class Manage(object):
             return list(self.device_dict.values())
 
     async def display_device(self, ctrl: str) -> None:
+        """
+        打印当前已连接设备的模式与列表信息。
+
+        参数 `ctrl` 表示触发该显示行为的控制名称（用于标识场景）。
+
+        Parameters
+        ----------
+        ctrl : str
+            控制场景名（如 "启动前检查"、"脚本切换"）。
+        """
         mode = "单设备模式" if len(self.device_dict) == 1 else "多设备模式"
         Design.Doc.log(f"<Link> <{mode}> **<*{ctrl}*>**")
         for device in self.device_dict.values():
@@ -476,11 +544,20 @@ class Manage(object):
 
     @staticmethod
     async def display_select(device_list: list["Device"]) -> None:
-        select_dict = {
-            device.sn: device for device in device_list if len(device.display) > 1
-        }
+        """
+        多屏设备屏幕选择器（命令行交互模式）。
 
-        if len(select_dict) == 0:
+        筛选出拥有多个显示屏的设备，以表格形式展示其序列号、屏幕 ID、分辨率和选择命令，
+        并通过命令行 Prompt 让用户选择目标屏幕。选择后更新对应 Device 实例的 id 字段。
+
+        Parameters
+        ----------
+        device_list : list[Device]
+            当前已连接并初始化的设备列表。
+        """
+        if not (select_dict := {
+            device.sn: device for device in device_list if len(device.display) > 1
+        }):
             return Design.Doc.wrn(f"没有多屏幕的设备 ...\n")
 
         table = Table(
