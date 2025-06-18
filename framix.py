@@ -2258,16 +2258,6 @@ class Missions(object):
             -------
             Coroutine or None
                 异步执行任务流程的协程对象，若执行被中断或无内容返回 None。
-
-            Notes
-            -----
-            - carry 表示指定任务子集；fully 表示完整的脚本任务集，二者互斥使用。
-            - 自动激活所有连接设备的自动化引擎（automator）。
-            - 每个任务组支持执行 parser 参数解析、header 命名、change 数据扩展、looper 循环次数。
-            - 分为 prefix（前置指令）、action（主要操作）、suffix（后置指令）三个阶段。
-            - 所有指令集会被自动解析为设备可执行命令并分发调度。
-            - 若开启 `--shine` 模式，所有任务将统一收集后集中分析；否则逐轮分析。
-            - 在执行所有脚本任务后，如设置了 speed/basic/keras 分析模式，会合并生成最终报告。
             """
             load_script_data = await asyncio.gather(
                 *(load_carry(c) for c in self.carry) if self.carry else (load_fully(f) for f in self.fully)
@@ -2295,6 +2285,7 @@ class Missions(object):
 
             for script_dict in script_storage:
                 report = Report(option.total_place)
+
                 for script_key, script_value in script_dict.items():
                     logger.debug(tip := f"Batch Exec: {script_key}")
                     self.design.show_panel(tip, Wind.EXPLORER)
