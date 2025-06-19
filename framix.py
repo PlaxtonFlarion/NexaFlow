@@ -3727,7 +3727,9 @@ async def main() -> typing.Coroutine | None:
         "initial_option": initial_option,
         "initial_deploy": initial_deploy,
         "initial_script": initial_script,
-        "adb": adb, "ffmpeg": ffmpeg, "ffprobe": ffprobe
+        "adb": adb,
+        "ffmpeg": ffmpeg,
+        "ffprobe": ffprobe
     }
     missions = Missions(wires, level, power, *positions, **keywords)
 
