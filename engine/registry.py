@@ -44,9 +44,9 @@ class Registry(object):
         dict
             模板名到版本信息的映射，若无文件则返回空字典。
         """
-        if self.version_file.exists():
-            return json.loads(self.version_file.read_text())
-        return {}
+        return json.loads(
+            self.version_file.read_text()
+        ) if self.version_file.exists() else {}
 
     async def __save_local_versions(self, version_map: dict) -> None:
         """
@@ -58,7 +58,7 @@ class Registry(object):
             要保存的模板版本映射。
         """
         self.version_file.parent.mkdir(parents=True, exist_ok=True)
-        self.version_file.write_text(json.dumps(version_map, indent=2))
+        self.version_file.write_text(json.dumps(version_map, indent=2), const.CHARSET)
 
     @staticmethod
     async def __fetch_remote_versions() -> dict:
@@ -73,7 +73,6 @@ class Registry(object):
         params = Channel.make_params()
         async with Messenger() as messenger:
             resp = await messenger.poke("GET", const.TEMPLATE_META_URL, params=params)
-            resp.raise_for_status()
             return resp.json()
 
     async def __download_template(self, url: str, template_name: str) -> None:
@@ -88,13 +87,12 @@ class Registry(object):
         template_name : str
             模板文件名称，用于本地保存。
         """
-        params = Channel.make_params()
+        params = Channel.make_params() | {"page": template_name}
         async with Messenger() as messenger:
-            resp = await messenger.poke("GET", url, params=params | {"page": template_name})
-            resp.raise_for_status()
+            resp = await messenger.poke("GET", url, params=params)
             template_path = self.template_dir / template_name
             template_path.parent.mkdir(parents=True, exist_ok=True)
-            template_path.write_text(resp.text)
+            template_path.write_text(resp.text, const.CHARSET)
 
     async def sync_templates(self) -> None:
         """

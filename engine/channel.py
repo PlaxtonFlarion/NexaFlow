@@ -104,9 +104,15 @@ class Messenger(object):
         FramixError
             请求失败或连接异常时抛出。
         """
-        assert self.client
+        assert self.client, f"Client instance is missing. Did you forget to initialize it?"
+
         try:
-            return await self.client.request(method, url, *args, **kwargs)
+            response = await self.client.request(method, url, *args, **kwargs)
+            response.raise_for_status()
+            return response
+
+        except httpx.HTTPStatusError as e:
+            raise FramixError(f"❌ {e.response.status_code} -> {e.response.text}")
         except httpx.HTTPError as e:
             raise FramixError(f"❌ {e}")
 

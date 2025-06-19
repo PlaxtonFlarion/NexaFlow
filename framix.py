@@ -26,7 +26,6 @@ import json
 import time
 import uuid
 import stat
-import httpx
 import signal
 import shutil
 import random
@@ -1913,7 +1912,6 @@ class Missions(object):
                     params = Channel.make_params() | {"case": fully}
                     async with Messenger() as messenger:
                         resp = await messenger.poke("GET", const.BUSINESS_CASE_URL, params=params)
-                        resp.raise_for_status()
                         file_list = resp.json()["command"]
 
                 return {
@@ -1937,9 +1935,7 @@ class Missions(object):
                 } if file_list else {}
 
             except (FileNotFoundError, KeyError, TypeError, ValueError, json.JSONDecodeError) as e:
-                raise FramixError(f"❌ {e}")
-            except httpx.HTTPStatusError as e:
-                raise FramixError(f"❌ {e.response.status_code} {e.response.text}")
+                raise FramixError(e)
 
         async def pack_commands(resolve_list: list) -> list:
             """

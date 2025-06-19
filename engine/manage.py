@@ -355,6 +355,7 @@ class Manage(object):
     该类负责通过 ADB 接口发现并管理 Android 设备，支持获取设备的硬件信息（如品牌、版本、CPU、内存、分辨率等），
     并提供用户选择和切换设备的交互方式。适用于多设备调试和控制场景，支持异步批量设备信息收集与展示。
     """
+
     device_dict: dict[str, "Device"] = {}
 
     def __init__(self, adb: str):

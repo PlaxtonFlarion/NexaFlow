@@ -22,6 +22,7 @@ class _Phone(object):
 
     用于封装 Android 设备的基本信息，例如序列号、品牌、系统版本、CPU 核心数、内存大小和显示分辨率等，常用于初始化与表示设备对象。
     """
+
     display: dict = {}
 
     def __init__(self, sn: str, *args):
@@ -51,6 +52,11 @@ class _Phone(object):
 
 
 class Device(_Phone):
+    """
+    Android 设备操作封装类，提供设备级数据采集与控制接口。
+
+    该类用于连接并操作指定序列号的 Android 设备，提供基于 ADB 与 uiautomator2 的高层封装。
+    """
 
     __facilities: typing.Optional[typing.Union["u2.Device", "u2.UiObject"]] = None
 
@@ -117,13 +123,6 @@ class Device(_Phone):
             match := re.search(r"(?<=Window\{).*?(?=})", response)
         ) else None
 
-    async def screen_status(self, *_, **__) -> typing.Any:
-        """
-        检查设备屏幕是否处于打开状态。
-        """
-        cmd = self.__initial + ["shell", "dumpsys", "deviceidle", "|", "grep", "mScreenOn"]
-        return await Terminal.cmd_line(cmd)
-
     async def tap(self, x: int, y: int, *_, **__) -> typing.Any:
         """
         模拟在设备屏幕上点击指定坐标位置。
@@ -149,13 +148,6 @@ class Device(_Phone):
         cmd = self.__initial + ["shell", "input", "keyevent", f"{key_code}"]
         return await Terminal.cmd_line(cmd)
 
-    async def force_stop(self, package: str, *_, **__) -> typing.Any:
-        """
-        强制停止指定包名的应用。
-        """
-        cmd = self.__initial + ["shell", "am", "force-stop", package]
-        return await Terminal.cmd_line(cmd)
-
     async def notification(self, *_, **__) -> typing.Any:
         """
         打开设备的通知栏。
@@ -177,13 +169,6 @@ class Device(_Phone):
         cmd = self.__initial + ["uninstall", package]
         return await Terminal.cmd_line(cmd)
 
-    async def screenshot(self, dst: str, *_, **__) -> typing.Any:
-        """
-        截取设备屏幕并保存到指定路径。
-        """
-        cmd = self.__initial + ["shell", "screencap", "-p", dst]
-        return await Terminal.cmd_line(cmd)
-
     async def wifi(self, mode: str, *_, **__) -> typing.Any:
         """
         打开或关闭设备的 Wi-Fi。
@@ -203,6 +188,27 @@ class Device(_Phone):
         启动指定包名的应用。
         """
         cmd = self.__initial + ["shell", "am", "start", "-n", package]
+        return await Terminal.cmd_line(cmd)
+
+    async def force_stop(self, package: str, *_, **__) -> typing.Any:
+        """
+        强制停止指定包名的应用。
+        """
+        cmd = self.__initial + ["shell", "am", "force-stop", package]
+        return await Terminal.cmd_line(cmd)
+
+    async def screenshot(self, dst: str, *_, **__) -> typing.Any:
+        """
+        截取设备屏幕并保存到指定路径。
+        """
+        cmd = self.__initial + ["shell", "screencap", "-p", dst]
+        return await Terminal.cmd_line(cmd)
+
+    async def screen_status(self, *_, **__) -> typing.Any:
+        """
+        检查设备屏幕是否处于打开状态。
+        """
+        cmd = self.__initial + ["shell", "dumpsys", "deviceidle", "|", "grep", "mScreenOn"]
         return await Terminal.cmd_line(cmd)
 
     async def screen_size(self, *_, **__) -> typing.Any:
