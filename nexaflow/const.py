@@ -47,6 +47,7 @@ F_OPTION             = f"{NAME}_option.json"
 F_DEPLOY             = f"{NAME}_deploy.json"
 F_SCRIPT             = f"{NAME}_script.json"
 LIC_FILE             = f"{NAME}_signature.lic"
+VOICES               = r"voices"
 
 DB_FILES_NAME        = f"{NAME}_data.db"
 DB_TABLE_NAME        = r"stocks"
@@ -119,6 +120,7 @@ WHILE_FORMAT = f"{OTHER_HEAD} <green>{{time:YYYY-MM-DD HH:mm:ss.SSS}}</green> | 
 BOOTSTRAP_URL      = f"https://appserver-u7hd.onrender.com/bootstrap"
 TEMPLATE_META_URL  = f"https://appserver-u7hd.onrender.com/template-meta"
 BUSINESS_CASE_URL  = f"https://appserver-u7hd.onrender.com/business-case"
+SPEECH_VOICE_URL   = f"https://appserver-u7hd.onrender.com/speech-voice"
 X_TEMPLATE_VERSION = f"x_template_version.json"
 
 BASIC_HEADERS = {

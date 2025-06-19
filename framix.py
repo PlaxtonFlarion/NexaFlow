@@ -121,7 +121,9 @@ class Missions(object):
         self.main_total_temp: str = kwargs["main_total_temp"]
         self.view_share_temp: str = kwargs["view_share_temp"]
         self.view_total_temp: str = kwargs["view_total_temp"]
-
+        self.src_opera_place: str = kwargs["src_opera_place"]
+        self.sec_model_place: str = kwargs["sec_model_place"]
+        self.src_total_place: str = kwargs["src_total_place"]
         self.initial_option: str = kwargs["initial_option"]
         self.initial_deploy: str = kwargs["initial_deploy"]
         self.initial_script: str = kwargs["initial_script"]
@@ -2139,6 +2141,19 @@ class Missions(object):
             for task in stop_tasks.values():
                 task.cancel()
 
+        async def synthesize(speak: str, audio: str) -> typing.Optional[str]:
+            if not (voices := Path(self.src_opera_place) / const.VOICES).exists():
+                voices.mkdir(parents=True, exist_ok=True)
+
+            audio_name = speak + audio
+            if (audio_file := voices / audio_name).is_file():
+                return str(audio_file)
+
+            payload = {"speak": speak} | Channel.make_params()
+            async with Messenger() as messenger:
+                resp = await messenger.poke("POST", const.SPEECH_VOICE_URL, json=payload)
+                audio_file.write_bytes(resp.content)
+
         async def flick_loop() -> typing.Coroutine | None:
             """
             启动交互式的录制与分析主循环，用于手动控制录制流程与配置参数。
@@ -2329,10 +2344,8 @@ class Missions(object):
                     ) is list else ([header] if type(header) is str else [time.strftime("%Y%m%d%H%M%S")])
 
                     # 处理 script_value_ 中的 change 参数
-                    if change := script_value.get("change", []):
-                        change = change if type(change) is list else (
-                            [change] if type(change) is str else [str(change)]
-                        )
+                    change = script_value.get("change", [])
+                    change = change if type(change) is list else ([change] if type(change) is str else [str(change)])
 
                     # 处理 script_value_ 中的 looper 参数
                     try:
@@ -3702,10 +3715,17 @@ async def main() -> typing.Coroutine | None:
         lines.alone, lines.whist, lines.alter, lines.delay, lines.alike, lines.shine, lines.group
     )
     keywords = {
-        "atom_total_temp": atom_total_temp, "line_total_temp": line_total_temp,
-        "main_share_temp": main_share_temp, "main_total_temp": main_total_temp,
-        "view_share_temp": view_share_temp, "view_total_temp": view_total_temp,
-        "initial_option": initial_option, "initial_deploy": initial_deploy,
+        "atom_total_temp": atom_total_temp,
+        "line_total_temp": line_total_temp,
+        "main_share_temp": main_share_temp,
+        "main_total_temp": main_total_temp,
+        "view_share_temp": view_share_temp,
+        "view_total_temp": view_total_temp,
+        "src_opera_place": src_opera_place,
+        "src_model_place": src_model_place,
+        "src_total_place": src_total_place,
+        "initial_option": initial_option,
+        "initial_deploy": initial_deploy,
         "initial_script": initial_script,
         "adb": adb, "ffmpeg": ffmpeg, "ffprobe": ffprobe
     }
