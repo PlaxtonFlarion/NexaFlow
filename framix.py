@@ -122,7 +122,7 @@ class Missions(object):
         self.view_share_temp: str = kwargs["view_share_temp"]
         self.view_total_temp: str = kwargs["view_total_temp"]
         self.src_opera_place: str = kwargs["src_opera_place"]
-        self.sec_model_place: str = kwargs["sec_model_place"]
+        self.src_model_place: str = kwargs["src_model_place"]
         self.src_total_place: str = kwargs["src_total_place"]
         self.initial_option: str = kwargs["initial_option"]
         self.initial_deploy: str = kwargs["initial_deploy"]
@@ -2062,7 +2062,8 @@ class Missions(object):
                 self.design.show_panel(tip, Wind.EXPLORER)
 
             except Exception as e:
-                return e
+                logger.debug(f"Mistake: func={exec_func} resp={e}")
+                self.design.show_panel(e, Wind.KEEPER)
 
         async def exec_commands(device_list: list["Device"], exec_pairs_list: list, *args) -> None:
             """
@@ -2141,18 +2142,41 @@ class Missions(object):
             for task in stop_tasks.values():
                 task.cancel()
 
-        async def synthesize(speak: str, audio: str) -> typing.Optional[str]:
+        async def formatting() -> typing.Optional[list]:
+            params = Channel.make_params()
+            try:
+                async with Messenger() as messenger:
+                    resp = await messenger.poke("GET", const.SPEECH_META_URL, params=params)
+                    return resp.json()["formats"]
+            except Exception as e:
+                return logger.debug(e)
+
+        async def synthesize(speak: str, waver: str, allowed_extra: list) -> str:
+            clean_speak = speak.strip()
+            clean_waver = waver.lower().strip(".")
+
+            if clean_waver not in allowed_extra:
+                return clean_speak + clean_waver
+
+            audio_name = str(Path(clean_speak).with_suffix(f".{clean_waver}"))
             if not (voices := Path(self.src_opera_place) / const.VOICES).exists():
                 voices.mkdir(parents=True, exist_ok=True)
 
-            audio_name = speak + audio
             if (audio_file := voices / audio_name).is_file():
+                logger.debug(f"Audio file: {audio_file}")
                 return str(audio_file)
 
-            payload = {"speak": speak} | Channel.make_params()
-            async with Messenger() as messenger:
-                resp = await messenger.poke("POST", const.SPEECH_VOICE_URL, json=payload)
-                audio_file.write_bytes(resp.content)
+            logger.debug(f"Synthesize: {clean_speak} {clean_waver}")
+            payload = {"speak": clean_speak, "waver": clean_waver} | Channel.make_params()
+
+            try:
+                async with Messenger() as messenger:
+                    resp = await messenger.poke("POST", const.SPEECH_VOICE_URL, json=payload)
+                    audio_file.write_bytes(resp.content)
+            except Exception as e:
+                logger.debug(e)
+
+            return str(audio_file)
 
         async def flick_loop() -> typing.Coroutine | None:
             """
@@ -2318,6 +2342,7 @@ class Missions(object):
             await self.design.batch_runner_task_grid()
 
             await manage_.display_device(ctrl_)
+            allowed_extra = await allowed_extra_task or [const.WAVERS]
 
             for script_dict in script_storage:
                 report = Report(option.total_place)
@@ -2367,6 +2392,10 @@ class Missions(object):
 
                     # 遍历 header 并执行任务
                     for hd in header:
+                        change_list = [
+                            await synthesize(hd, c, allowed_extra) for c in change
+                        ] if change else [hd]
+
                         report.title = f"{input_title_}_{script_key}_{hd}"
                         extend_task_list = []
 
@@ -2381,7 +2410,6 @@ class Missions(object):
                             _, task_list = await anything_film(device_list, report)
 
                             # action 主要任务
-                            change_list = [hd + c for c in change] if change else [hd]
                             await exec_commands(device_list, action_list, *change_list)
 
                             # close record 结束录屏
@@ -2446,6 +2474,8 @@ class Missions(object):
             tp_ver, alone=self.alone, whist=self.whist, frate=deploy.frate or const.DF_FRATE
         )
         player = Player()
+
+        allowed_extra_task = asyncio.create_task(formatting())
 
         return await flick_loop() if self.flick else await other_loop()
 

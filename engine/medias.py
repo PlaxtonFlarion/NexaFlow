@@ -415,7 +415,7 @@ class Player(object):
     melody_events: "asyncio.Event" = asyncio.Event()
 
     @staticmethod
-    async def audio_player(audio_file: str) -> None:
+    async def audio_player(audio_file: str, *_, **__) -> None:
         """
         异步播放音频文件。
 

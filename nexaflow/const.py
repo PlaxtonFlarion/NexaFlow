@@ -48,6 +48,7 @@ F_DEPLOY             = f"{NAME}_deploy.json"
 F_SCRIPT             = f"{NAME}_script.json"
 LIC_FILE             = f"{NAME}_signature.lic"
 VOICES               = r"voices"
+WAVERS               = r"mp3"
 
 DB_FILES_NAME        = f"{NAME}_data.db"
 DB_TABLE_NAME        = r"stocks"
@@ -120,6 +121,7 @@ WHILE_FORMAT = f"{OTHER_HEAD} <green>{{time:YYYY-MM-DD HH:mm:ss.SSS}}</green> | 
 BOOTSTRAP_URL      = f"https://appserver-u7hd.onrender.com/bootstrap"
 TEMPLATE_META_URL  = f"https://appserver-u7hd.onrender.com/template-meta"
 BUSINESS_CASE_URL  = f"https://appserver-u7hd.onrender.com/business-case"
+SPEECH_META_URL    = f"https://appserver-u7hd.onrender.com/speech-meta"
 SPEECH_VOICE_URL   = f"https://appserver-u7hd.onrender.com/speech-voice"
 X_TEMPLATE_VERSION = f"x_template_version.json"
 
@@ -127,7 +129,7 @@ BASIC_HEADERS = {
     "User-Agent": f"{DESC}@{VERSION}",
     "Content-Type": f"application/json",
     "X-App-ID": PUBLISHER,
-    "X-App-Token": f"eyJkYXRhIjogImV5SmhJam9pUm5KaGJXbDRJRlJsWTJodWIyeHZaMmxsY3lCSmJtTXVJaXdpZENJNklqa3pRemhCUlROQk5UZzFPU0lzSW00aU9pSkdRa1F4TUROQ056QTROak1pTENKc2FXTmxibk5sWDJsa0lqb2lNa014TlRNM1JURTBRa00xUVRORlF5SjkiLCAic2lnbmF0dXJlIjogImFYMnVod2hxc3JyeGhmdDYwcCtRemdGTElURnVSS01UYXNySmMwNHRGQzNqODlXZnJaUFIrNDlEeXluT3hqK3BZNmx6ZGNJZ0x3RFZDWVRSMTdhRDBNaUlqbE0rQytXYnRHc0pScllkMGNkSktqcHRxekZieEI3c1d0QnVnaGo2MFNLNk9qaW9rSlVJUWNIU2dSQW5vUERGMFQrOWNFa1J4TjRKR29WQjNmQjUxbVk1UWxXanBvUVlXOURGMk5UZXQ3T0pQQ3p3eGFmWEs3eUJVSTVhTkxuVzlWL00rbGE2S2RrMWRuNU4reGRqdnhJRGIvTFhtOHV1VG10cVFqUnVyODkvYTdMVjBHL21QRVgzcWJtOGtaNDN4M1pET2dZUFpGRkZmdGpBdG56ZlhxT3IwdjZqSi90enppZVFuY1lNZ1FWRll5K0RlQlFmWnVVM3Brb281dz09In0=",
+    "X-App-Token": f"eyJkYXRhIjogImV5SmhjSEFpT2lKR2NtRnRhWGdnVkdWamFHNXZiRzluYVdWeklFbHVZeTRpTENKMGFXMWxJam9pT1RNM1JqQkJSa1k1TkRjMklpd2libTl1WTJVaU9pSTBRVUkyTVRrM09UYzJORUlpTENKc2FXTmxibk5sWDJsa0lqb2lORVU1UVRZd016VTVNek13UmtVNFF5SjkiLCAic2lnbmF0dXJlIjogImZFbDk1VzFnUnNnYkFMUm1NNklPcy9yUUEwakRHcTVXYmFkN21UeGYxT0ZXRFNPbE1xK0EwcDk4OFhaTEswb3FoWkxXVnA3Tk82ZkhIQWdicGNWekFKU3d5cnBaMTRhaGhJL080aFVmdi9mNFd3ZklUUnBVU0F2YktDdDFQZUZLNVpvWFJlRlU0eC9hZG51REkzMVhPT2g3UXlsWGdueTFxakhaeWxFUjU0MmVKZUllK3dBemJRc1R1N0kzSFlJQy8rVENHWi9OVjkwTmdpaXZtaVMxZjcvOHFYdlhhZGZoRFNScmxRZmhzU01DN2hLMmxiMjBrbG5GQWNiSHpnNVY3L0VHZ2NidWg1STIwZ295aFlLSE42MitFbmZhUjVUbHkyWFZtMHZJcURabUVFRFhjUVkwWllaQWI2MnBERU9PTGJyRisxTnRVanVUQnhtWEJUeXhXQT09In0=",
     "X-App-Region": f"Global",
     "X-App-Version": f"v{VERSION}"
 }
