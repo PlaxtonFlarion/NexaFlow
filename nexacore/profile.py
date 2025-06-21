@@ -12,57 +12,21 @@ import os
 import copy
 import json
 import typing
-import aiofiles
 from pathlib import Path
 from loguru import logger
 from rich.table import Table
+from engine.tinker import FileAssist
 from nexacore.parser import Parser
 from nexacore.design import Design
 from nexacore.argument import Args
 from nexaflow import const
 
 
-async def dump_parameters(src: typing.Any, dst: dict) -> None:
-    """
-    将配置参数以 JSON 格式写入指定路径的文件。
-
-    Parameters
-    ----------
-    src : typing.Any
-        目标文件路径，可为字符串或路径对象，用于存储配置数据。
-
-    dst : dict
-        待写入的配置数据字典。
-    """
-    async with aiofiles.open(src, "w", encoding=const.CHARSET) as file:
-        await file.write(
-            json.dumps(dst, indent=4, separators=(",", ":"), ensure_ascii=False)
-        )
-
-
-async def load_parameters(src: typing.Any) -> typing.Any:
-    """
-    从指定路径读取 JSON 文件内容并解析为 Python 字典对象。
-
-    Parameters
-    ----------
-    src : typing.Any
-        JSON 文件路径，支持字符串或路径对象。
-
-    Returns
-    -------
-    typing.Any
-        返回解析后的配置对象（通常为 `dict` 类型）。
-    """
-    async with aiofiles.open(src, "r", encoding=const.CHARSET) as file:
-        return json.loads(await file.read())
-
-
 class Deploy(object):
     """
     参数部署与配置管理器类。
 
-    该类负责解析、加载、设置与展示 Framix 命令行工具中的参数配置。
+    该类负责解析、加载、设置与展示命令行工具中的参数配置。
     它支持两大参数组：FST（基础设置）与 ALS（分析设置），通过动态解析器
     `Parser` 实现参数合法性验证，并提供序列化与表格化展示功能。
 
@@ -316,14 +280,14 @@ class Deploy(object):
                 deep_copy_deploys["ALS"][attr] = const.HOOKS
 
         os.makedirs(os.path.dirname(self.deploy_file), exist_ok=True)
-        await dump_parameters(self.deploy_file, deep_copy_deploys)
+        await FileAssist.dump_parameters(self.deploy_file, deep_copy_deploys)
 
     async def load_fabric(self) -> None:
         """
         加载部署配置文件并初始化参数值。
         """
         try:
-            parameters = await load_parameters(self.deploy_file)
+            parameters = await FileAssist.load_parameters(self.deploy_file)
             for key, value in self.deploys.items():
                 for k, v in value.items():
                     setattr(self, k, parameters.get(key, {}).get(k, v))
@@ -458,14 +422,14 @@ class Option(object):
         将当前选项配置以 JSON 格式写入指定文件路径。
         """
         os.makedirs(os.path.dirname(self.option_file), exist_ok=True)
-        await dump_parameters(self.option_file, self.options)
+        await FileAssist.dump_parameters(self.option_file, self.options)
 
     async def load_fabric(self) -> None:
         """
         从指定路径加载配置参数，并更新当前选项状态。
         """
         try:
-            parameters = await load_parameters(self.option_file)
+            parameters = await FileAssist.load_parameters(self.option_file)
             for k, v in self.options.items():
                 setattr(self, k, parameters.get(k, v))
                 logger.debug(f"Load <{k}> = {v} -> {getattr(self, k)}")
@@ -512,7 +476,7 @@ class Script(object):
         生成默认脚本结构并写入指定文件路径，用于初始化脚本模板。
         """
         os.makedirs(os.path.dirname(self.script_file), exist_ok=True)
-        await dump_parameters(self.script_file, self.scripts)
+        await FileAssist.dump_parameters(self.script_file, self.scripts)
 
 
 if __name__ == '__main__':

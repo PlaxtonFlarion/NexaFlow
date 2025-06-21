@@ -11,6 +11,7 @@
 import os
 import re
 import sys
+import json
 import random
 import shutil
 import typing
@@ -62,6 +63,48 @@ class FramixError(_FramixBaseError):
         return f"<{const.DESC}Error> {self.msg}"
 
     __repr__ = __str__
+
+
+class FileAssist(object):
+    """
+    文件操作工具类，用于读取与写入 JSON 文件。
+    """
+
+    @staticmethod
+    async def load_parameters(src: typing.Any) -> typing.Any:
+        """
+        从指定路径读取 JSON 文件内容并解析为 Python 字典对象。
+
+        Parameters
+        ----------
+        src : typing.Any
+            JSON 文件路径，支持字符串或路径对象。
+
+        Returns
+        -------
+        typing.Any
+            返回解析后的配置对象（通常为 `dict` 类型）。
+        """
+        async with aiofiles.open(src, "r", encoding=const.CHARSET) as file:
+            return json.loads(await file.read())
+
+    @staticmethod
+    async def dump_parameters(src: typing.Any, dst: dict) -> None:
+        """
+        将配置参数以 JSON 格式写入指定路径的文件。
+
+        Parameters
+        ----------
+        src : typing.Any
+            目标文件路径，可为字符串或路径对象，用于存储配置数据。
+
+        dst : dict
+            待写入的配置数据字典。
+        """
+        async with aiofiles.open(src, "w", encoding=const.CHARSET) as file:
+            await file.write(
+                json.dumps(dst, indent=4, separators=(",", ":"), ensure_ascii=False)
+            )
 
 
 class Active(object):
@@ -184,7 +227,7 @@ class Craft(object):
     """
 
     @staticmethod
-    async def editor(file_path: str) -> typing.Coroutine | None:
+    async def editor(file_path: str) -> None:
         """
         调用系统默认文本编辑器以异步方式打开指定配置文件。
 
@@ -211,7 +254,7 @@ class Craft(object):
         await Terminal.cmd_line(first + [file_path])
 
     @staticmethod
-    async def revise_path(path: typing.Union[str, "os.PathLike"]) -> typing.Coroutine | str:
+    async def revise_path(path: typing.Union[str, "os.PathLike"]) -> str:
         """
         清理路径字符串中的控制字符与特殊不可见符号。
 
@@ -231,7 +274,7 @@ class Craft(object):
         return re.sub("[\x00-\x1f\x7f-\x9f\u2000-\u20ff\u202a-\u202e]", "", path)
 
     @staticmethod
-    async def achieve(template: typing.Union[str, "os.PathLike"]) -> typing.Coroutine | str:
+    async def achieve(template: typing.Union[str, "os.PathLike"]) -> str:
         """
         异步读取指定模板文件的内容。
 
