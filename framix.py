@@ -3477,6 +3477,7 @@ class Api(object):
         clean_waver = waver.lower().strip(".")
 
         if clean_waver not in allowed_extra:
+            logger.debug(f"Unsupported type -> {clean_waver}")
             return clean_speak + clean_waver
 
         audio_name = str(Path(clean_speak).with_suffix(f".{clean_waver}"))
@@ -3484,10 +3485,10 @@ class Api(object):
             voices.mkdir(parents=True, exist_ok=True)
 
         if (audio_file := voices / audio_name).is_file():
-            logger.debug(f"Audio file: {audio_file}")
+            logger.debug(f"Local audio file: {audio_file}")
             return str(audio_file)
 
-        logger.debug(f"Synthesize: {clean_speak} {clean_waver}")
+        logger.debug(f"Remote synthesize: {clean_speak} {clean_waver}")
         payload = {"speak": clean_speak, "waver": clean_waver} | Channel.make_params()
 
         try:
@@ -3885,6 +3886,11 @@ async def main() -> typing.Coroutine | None:
     await Design.engine_starburst(level)  # 结尾动画
 
 
+# """Test"""
+async def test() -> None:
+    pass
+
+
 if __name__ == '__main__':
     #   _____                    _
     #  |  ___| __ __ _ _ __ ___ (_)_  __
@@ -3892,6 +3898,8 @@ if __name__ == '__main__':
     #  |  _|| | | (_| | | | | | | |>  <
     #  |_|  |_|  \__,_|_| |_| |_|_/_/\_\
     #
+
+    # asyncio.run(test())
 
     try:
         main_loop = asyncio.new_event_loop()
