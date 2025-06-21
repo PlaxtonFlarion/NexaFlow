@@ -3473,14 +3473,34 @@ class Api(object):
         str
             本地语音文件的绝对路径，或拼接后的默认字符串（当 waver 不被允许时）。
         """
+        allowed_ext = {ext.lower().lstrip('.') for ext in allowed_extra}
+        logger.debug(f"Allowed ext -> {allowed_ext}")
+
+        # 清洗输入
         clean_speak = speak.strip()
-        clean_waver = waver.lower().strip(".")
+        clean_waver = waver.strip().lower().lstrip(".")
 
-        if clean_waver not in allowed_extra:
-            logger.debug(f"Unsupported type -> {clean_waver}")
-            return clean_speak + clean_waver
+        # 检查 speak 中是否包含扩展名
+        match = re.search(r"\.([a-zA-Z0-9]{1,6})$", clean_speak)
+        speak_ext = match.group(1).lower() if match else ""
+        speak_stem = re.sub(r"\.([a-zA-Z0-9]{1,6})$", "", clean_speak)
 
-        audio_name = str(Path(clean_speak).with_suffix(f".{clean_waver}"))
+        # 判断是否为音频请求
+        if clean_waver in allowed_ext:
+            final_speak = speak_stem
+            final_waver = clean_waver
+        elif speak_ext in allowed_ext:
+            final_speak = speak_stem
+            final_waver = speak_ext
+        else:
+            # 非音频请求，直接拼接返回
+            combination = f"{clean_speak}.{clean_waver}" if clean_waver else clean_speak
+            logger.debug(f"Non-audio request, combination -> {combination}")
+            return combination
+
+        # 构建文件名和本地缓存路径
+        audio_name = str(Path(final_speak).with_suffix(f".{final_waver}"))
+
         if not (voices := Path(src_opera_place) / const.VOICES).exists():
             voices.mkdir(parents=True, exist_ok=True)
 
@@ -3488,15 +3508,18 @@ class Api(object):
             logger.debug(f"Local audio file: {audio_file}")
             return str(audio_file)
 
-        logger.debug(f"Remote synthesize: {clean_speak} {clean_waver}")
-        payload = {"speak": clean_speak, "waver": clean_waver} | Channel.make_params()
+        # 构建 payload
+        payload = {"speak": final_speak, "waver": final_waver} | Channel.make_params()
+        logger.debug(f"Remote synthesize: {payload}")
 
         try:
             async with Messenger() as messenger:
                 resp = await messenger.poke("POST", const.SPEECH_VOICE_URL, json=payload)
-                logger.debug(f"download url: {(download_url := resp.json()['url'])}")
+                logger.debug(f"Download url: {(download_url := resp.json()['url'])}")
+
                 redis_or_r2_resp = await messenger.poke("GET", download_url)
                 audio_file.write_bytes(redis_or_r2_resp.content)
+
         except Exception as e:
             logger.debug(e)
 
