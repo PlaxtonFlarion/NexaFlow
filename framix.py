@@ -2143,6 +2143,22 @@ class Missions(object):
                 task.cancel()
 
         async def formatting() -> typing.Optional[list]:
+            """
+            获取支持的语音合成格式列表。
+
+            异步从远程服务获取格式信息，若发生异常则返回 None 并记录日志。
+
+            Returns
+            -------
+            list or None
+                成功时返回格式字符串列表，例如 ["mp3", "ogg", "webm"]；
+                若请求失败则返回 None。
+
+            Raises
+            ------
+            Exception
+                当远程请求或解析失败时捕获并记录日志，返回 None。
+            """
             params = Channel.make_params()
             try:
                 async with Messenger() as messenger:
@@ -2152,6 +2168,28 @@ class Missions(object):
                 return logger.debug(e)
 
         async def synthesize(speak: str, waver: str, allowed_extra: list) -> str:
+            """
+            合成语音音频文件。
+
+            根据指定文本与音频格式生成语音文件，若已存在本地缓存则直接返回路径；
+            否则通过远程接口获取下载链接并保存音频至本地。
+
+            Parameters
+            ----------
+            speak : str
+                要合成的语音内容。
+
+            waver : str
+                请求的音频格式后缀（如 'mp3'、'wav'）。
+
+            allowed_extra : list
+                支持的音频格式列表，仅这些格式会触发远程合成逻辑。
+
+            Returns
+            -------
+            str
+                本地语音文件的绝对路径，或拼接后的默认字符串（当 waver 不被允许时）。
+            """
             clean_speak = speak.strip()
             clean_waver = waver.lower().strip(".")
 
