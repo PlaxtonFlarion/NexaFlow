@@ -2172,7 +2172,9 @@ class Missions(object):
             try:
                 async with Messenger() as messenger:
                     resp = await messenger.poke("POST", const.SPEECH_VOICE_URL, json=payload)
-                    audio_file.write_bytes(resp.content)
+                    logger.debug(f"download url: {(download_url := resp.json()['url'])}")
+                    redis_or_r2_resp = await messenger.poke("GET", download_url)
+                    audio_file.write_bytes(redis_or_r2_resp.content)
             except Exception as e:
                 logger.debug(e)
 
