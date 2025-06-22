@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# ========= 开始确认 =========
+read -r -p "是否开始执行 venv 重建操作？(Y/n): " START
+if [[ ! "$START" =~ ^[Yy]$ ]]; then
+    echo "用户取消，已退出。"
+    exit 0
+fi
+echo "开始执行..."
+echo
+# ===========================
+
 # ========== 配置区 ==========
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 VENV_DIR="$PROJECT_DIR/venv"
@@ -46,8 +56,8 @@ $VENV_PY -m pip install --upgrade pip
 
 # 安装依赖
 if [ -f "$REQ_FILE" ]; then
-    echo "安装 requirements.txt（使用清华镜像）..."
-    $VENV_PY -m pip install -r "$REQ_FILE" -i https://pypi.tuna.tsinghua.edu.cn/simple
+    echo "安装 requirements.txt ..."
+    $VENV_PY -m pip install -r "$REQ_FILE"
 else
     echo "未找到 requirements.txt，跳过依赖安装。"
 fi

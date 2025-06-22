@@ -2,6 +2,16 @@
 chcp 65001 >nul
 setlocal enabledelayedexpansion
 
+:: ========= 确认开始 =========
+set /p START=是否开始执行 venv 重建操作？(Y/n):
+if /i not "%START%"=="y" (
+    echo 用户取消，已退出。
+    goto :eof
+)
+echo 开始执行...
+echo.
+:: ===========================
+
 :: ========== 配置区 ==========
 for %%I in ("%~dp0..") do set "PROJECT_DIR=%%~fI"
 set "VENV_DIR=%PROJECT_DIR%\venv"
@@ -53,8 +63,8 @@ echo 升级 pip...
 
 :: 安装 requirements.txt
 if exist "%REQ_FILE%" (
-    echo 正在安装 requirements.txt 依赖（清华镜像）...
-    "%VENV_PY%" -m pip install -r "%REQ_FILE%" -i https://pypi.tuna.tsinghua.edu.cn/simple
+    echo 正在安装 requirements.txt ...
+    "%VENV_PY%" -m pip install -r "%REQ_FILE%"
 ) else (
     echo 未找到 requirements.txt，跳过依赖安装。
 )
