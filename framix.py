@@ -3421,6 +3421,45 @@ class Api(object):
     """
 
     @staticmethod
+    async def ask_request_get(
+        url: str, key: typing.Optional[str] = None, *_, **kwargs
+    ) -> dict:
+        """
+        通用异步 GET 请求方法。
+
+        构造带参数的异步 GET 请求，自动附带默认参数并发送到指定 URL。支持从响应中提取指定字段，
+        用于统一的业务数据获取流程，如模板信息、配置元数据等。
+
+        Parameters
+        ----------
+        url : str
+            请求的目标接口地址。
+
+        key : str, optional
+            可选的响应字段键名，若提供则返回对应字段的内容，否则返回整个响应字典。
+
+        *_
+            保留参数，未使用。
+
+        **kwargs
+            追加到请求参数中的动态键值对，用于拼接请求 query 参数。
+
+        Returns
+        -------
+        dict
+            远程服务返回的 JSON 数据（或提取后的字段值）。
+
+        Raises
+        ------
+        FramixError
+            当请求失败、响应格式异常或字段不存在时，将在 `Messenger` 层抛出自定义异常。
+        """
+        params = Channel.make_params() | kwargs
+        async with Messenger() as messenger:
+            resp = await messenger.poke("GET", url, params=params)
+            return resp.json()[key] if key else resp.json()
+
+    @staticmethod
     async def formatting() -> typing.Optional[list]:
         """
         获取支持的语音合成格式列表。
@@ -3445,6 +3484,33 @@ class Api(object):
                 return resp.json()["formats"]
         except Exception as e:
             return logger.debug(e)
+
+    @staticmethod
+    async def profession(case: str) -> dict:
+        """
+        根据指定用例名从业务接口获取命令列表。
+
+        通过异步请求远程业务系统，加载指定 case 的命令配置数据。
+
+        Parameters
+        ----------
+        case : str
+            用例名称，用于作为参数查询业务命令配置。
+
+        Returns
+        -------
+        dict
+            返回包含命令配置的字典组成结构。
+
+        Raises
+        ------
+        FramixError
+            当网络请求失败或响应异常时，将在外层调用中处理。
+        """
+        params = Channel.make_params() | {"case": case}
+        async with Messenger() as messenger:
+            resp = await messenger.poke("GET", const.BUSINESS_CASE_URL, params=params)
+            return resp.json()
 
     @staticmethod
     async def synthesize(speak: str, waver: str, src_opera_place: str, allowed_extra: list) -> str:
@@ -3524,33 +3590,6 @@ class Api(object):
             logger.debug(e)
 
         return str(audio_file)
-
-    @staticmethod
-    async def profession(case: str) -> dict:
-        """
-        根据指定用例名从业务接口获取命令列表。
-
-        通过异步请求远程业务系统，加载指定 case 的命令配置数据。
-
-        Parameters
-        ----------
-        case : str
-            用例名称，用于作为参数查询业务命令配置。
-
-        Returns
-        -------
-        dict
-            返回包含命令配置的字典组成结构。
-
-        Raises
-        ------
-        FramixError
-            当网络请求失败或响应异常时，将在外层调用中处理。
-        """
-        params = Channel.make_params() | {"case": case}
-        async with Messenger() as messenger:
-            resp = await messenger.poke("GET", const.BUSINESS_CASE_URL, params=params)
-            return resp.json()
 
 
 # """Signal Processor"""
