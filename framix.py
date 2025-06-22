@@ -101,14 +101,17 @@ class Missions(object):
     内部集成 Design 对象作为标签与结构控制中枢，并管理多个临时路径与资源入口，支持大规模异步视频分析与处理。
     """
 
+    __remote: typing.Optional[dict] = None
     __design: typing.Optional["Design"] = None
+    __animation: typing.Optional["AsyncAnimationManager"] = None
 
     # """Initialization"""
-    def __init__(self, wires: list, level: str, power: int, *args, **kwargs):
+    def __init__(self, wires: list, level: str, power: int, remote: dict, *args, **kwargs):
         self.wires = wires  # 命令参数
         self.level = level  # 日志级别
         self.power = power  # 最大进程
 
+        self.remote: typing.Optional[dict] = remote
         self.design: typing.Optional["Design"] = Design(self.level)
         self.animation: "AsyncAnimationManager" = AsyncAnimationManager()
 
@@ -131,6 +134,30 @@ class Missions(object):
         self.adb: str = kwargs["adb"]
         self.ffmpeg: str = kwargs["ffmpeg"]
         self.ffprobe: str = kwargs["ffprobe"]
+
+    @property
+    def remote(self) -> typing.Optional[dict]:
+        """
+        获取远程信息字典。
+
+        Returns
+        -------
+        value : Optional[dict]
+            当前对象存储的远程参数或配置数据，通常用于服务端交互或状态同步。
+        """
+        return self.__remote
+
+    @remote.setter
+    def remote(self, value: typing.Optional[dict]) -> None:
+        """
+        设置远程信息字典。
+
+        Parameters
+        ----------
+        value : Optional[dict]
+            要设置的远程数据结构，通常包含网络响应、授权信息或后端标记。
+        """
+        self.__remote = value
 
     @property
     def design(self) -> typing.Optional["Design"]:
@@ -160,6 +187,30 @@ class Missions(object):
             要设置的 Design 实例，可为 None 表示清除或重置标注配置。
         """
         self.__design = value
+
+    @property
+    def animation(self) -> typing.Optional["AsyncAnimationManager"]:
+        """
+        获取动画控制器实例。
+
+        Returns
+        -------
+        AsyncAnimationManager or None
+            控制异步动画流程的实例，若未设置则返回 None。
+        """
+        return self.__animation
+
+    @animation.setter
+    def animation(self, value: typing.Optional["AsyncAnimationManager"]) -> None:
+        """
+        设置动画控制器实例。
+
+        Parameters
+        ----------
+        value : AsyncAnimationManager or None
+            提供异步控制的动画调度器，用于 UI 动效或测试反馈。
+        """
+        self.__animation = value
 
     # """Child Process"""
     def amazing(self, option: "Option", deploy: "Deploy", vision: str, *args) -> "_T":
@@ -3618,6 +3669,18 @@ async def main() -> typing.Coroutine | None:
     命令分发调度器，根据命令行参数执行对应任务模块。
     """
 
+    async def remote_config() -> typing.Optional[dict]:
+        """
+        获取远程配置中心的全局配置数据。
+        """
+        try:
+            config_data = await Api.ask_request_get(const.GLOBAL_CF_URL)
+            auth_info = authorize.verify_signature(config_data)
+        except Exception as e:
+            return logger.debug(e)
+
+        return auth_info.get("configuration", {})
+
     async def scheduling() -> typing.Coroutine | typing.Any:
         """
         检查 scrcpy 是否已安装，如果未安装则显示安装提示并退出程序。
@@ -3848,6 +3911,9 @@ async def main() -> typing.Coroutine | None:
     # 授权校验
     await authorize.verify_license(lic_file)
 
+    # 远程全局配置
+    global_config_task = asyncio.create_task(remote_config())
+
     # 启动仪式
     await random.choice([Design.engine_topology_wave, Design.stellar_glyph_binding])(level)
 
@@ -3912,7 +3978,9 @@ async def main() -> typing.Coroutine | None:
         "ffmpeg": ffmpeg,
         "ffprobe": ffprobe
     }
-    missions = Missions(wires, level, power, *positions, **keywords)
+    remote = await global_config_task or {}
+
+    missions = Missions(wires, level, power, remote, *positions, **keywords)
 
     # """凝滞核心"""
     await Design.countdown_energy_wave(level, lines.delay)
