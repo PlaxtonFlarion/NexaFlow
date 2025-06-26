@@ -144,6 +144,13 @@ class Args(object):
             "func": """- 基于深度学习模型对视频帧进行智能解构分析，融合帧级拆解与时序识别。
                 - 自动识别关键帧区间（起始与终止帧），适用于内容聚焦、事件检测与智能视频摘要等场景。
                 - 支持时间戳注入与特征感知，显著提升视频分析的自动化水平与语义理解能力。"""
+        },
+        "--infer": {
+            "args": {"action": "store_true"},
+            "view": ["一次", " "],
+            "help": "感知链接",
+            "func": """- 启用远程推理模式，连接云端 GPU 容器，将视频帧数据发送至在线模型进行推理计算。
+                - 该模式适用于需要更强算力或云端模型的场景。"""
         }
     }
 
@@ -502,7 +509,7 @@ class Args(object):
         "数据智绘": GROUP_ARRAY,
         "图帧先行": GROUP_FIRST,
         "智析引擎": GROUP_EXTRA,
-        "漏洞追踪": GROUP_DEBUG
+        "漏洞追踪": GROUP_DEBUG,
     }
 
 
@@ -517,6 +524,9 @@ class Wind(object):
 
     KERAS_TEXT = """|> * -> * -> * -> * -> * -> * -> * -> * -> * -> *
 |> * -> * -> * -> * -> * -> * -> * -> * -> * -> *"""
+
+    INFER_TEXT = """==>>==>>==>>==>>==>>==>>==>>==>>==>>==>>==>>==>>==>>==>>==>>
+<<==<<==<<==<<==<<==<<==<<==<<==<<==<<==<<==<<==<<==<<==<<=="""
 
     MOVIE_TEXT = """▌▒░▐▌▒░▐▌▒░▐▌▒░▐▌▒░▐▌▒░▐▌▒░▐▌▒░▐▌▒░▐▌▒░▐▌▒░▐▌▒░▐
 ▒▐▌░▐▌▒░▐▌▒░▐▌▒░▐▌▒░▐▌▒░▒▐▌░▐▌▒░▐▌▒░▐▌▒░▐▌▒░▐▌▒░"""
@@ -563,6 +573,20 @@ class Wind(object):
         }
     }
 
+    INFER = {
+        "文本": {
+            "style": "bold #00FF7F",
+            "justify": "center",
+        },
+        "边框": {
+            "title": "**<* 感知链接 *>**",
+            "title_align": "center",
+            "subtitle": None,
+            "subtitle_align": "center",
+            "border_style": "bold #00CED1",
+        }
+    }
+
     MOVIE = {
         "文本": {
             "style": "bold #FFFF00",
@@ -574,6 +598,20 @@ class Wind(object):
             "subtitle": None,
             "subtitle_align": "center",
             "border_style": "bold #87CEFA",
+        }
+    }
+
+    PREDICT = {
+        "文本": {
+            "style": "bold #A6E3E9",
+            "justify": "left",
+        },
+        "边框": {
+            "title": "**<* 感知链接 *>**",
+            "title_align": "center",
+            "subtitle": None,
+            "subtitle_align": "center",
+            "border_style": "bold #5EEAD4",
         }
     }
 

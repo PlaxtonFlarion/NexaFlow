@@ -26,6 +26,7 @@ import json
 import time
 import uuid
 import stat
+import httpx
 import signal
 import shutil
 import random
@@ -83,11 +84,14 @@ from nexaflow.video import (
     VideoObject, VideoFrame
 )
 from nexaflow.report import Report
+from nexaflow.cutter.cut_range import VideoCutRange
 from nexaflow.cutter.cutter import VideoCutter
 from nexaflow.hook import (
     FrameSizeHook, FrameSaveHook, PaintCropHook, PaintOmitHook
 )
-from nexaflow.classifier.base import ClassifierResult
+from nexaflow.classifier.base import (
+    ClassifierResult, SingleClassifierResult
+)
 from nexaflow.classifier.keras_classifier import KerasStruct
 
 _T = typing.TypeVar("_T")
@@ -101,22 +105,29 @@ class Missions(object):
     内部集成 Design 对象作为标签与结构控制中枢，并管理多个临时路径与资源入口，支持大规模异步视频分析与处理。
     """
 
-    __remote: typing.Optional[dict] = None
+    __remote: dict = {}
+    __online: dict = {}
+
     __design: typing.Optional["Design"] = None
     __animation: typing.Optional["AsyncAnimationManager"] = None
 
     # """Initialization"""
-    def __init__(self, wires: list, level: str, power: int, remote: dict, *args, **kwargs):
+    def __init__(
+        self, wires: list, level: str, power: int, remote: dict, online: dict, *args, **kwargs
+    ) -> None:
+
         self.wires = wires  # 命令参数
         self.level = level  # 日志级别
         self.power = power  # 最大进程
 
-        self.remote: typing.Optional[dict] = remote
+        self.remote: dict = remote or {}  # workflow: 远程全局配置
+        self.online: dict = online or {}  # workflow: 在线推理服务
+
         self.design: typing.Optional["Design"] = Design(self.level)
         self.animation: "AsyncAnimationManager" = AsyncAnimationManager()
 
         self.flick, self.carry, self.fully, self.speed, self.basic, self.keras, *_ = args
-        *_, self.alone, self.whist, self.alter, self.delay, self.alike, self.shine, self.group = args
+        *_, self.alone, self.whist, self.alter, self.delay, self.alike, self.shine, self.group, self.infer = args
 
         self.atom_total_temp: str = kwargs["atom_total_temp"]
         self.line_total_temp: str = kwargs["line_total_temp"]
@@ -136,26 +147,50 @@ class Missions(object):
         self.ffprobe: str = kwargs["ffprobe"]
 
     @property
-    def remote(self) -> typing.Optional[dict]:
+    def remote(self) -> dict:
         """
         获取远程信息字典。
 
         Returns
         -------
-        value : Optional[dict]
+        value : dict
             当前对象存储的远程参数或配置数据，通常用于服务端交互或状态同步。
         """
         return self.__remote
 
     @remote.setter
-    def remote(self, value: typing.Optional[dict]) -> None:
+    def remote(self, value: dict) -> None:
         """
         设置远程信息字典。
 
         Parameters
         ----------
-        value : Optional[dict]
+        value : dict
             要设置的远程数据结构，通常包含网络响应、授权信息或后端标记。
+        """
+        self.__remote = value
+
+    @property
+    def online(self) -> dict:
+        """
+        获取在线推理信息字典。
+
+        Returns
+        -------
+        value : dict
+            当前对象存储的在线推理参数或配置数据，通常用于服务端交互或状态同步。
+        """
+        return self.__remote
+
+    @online.setter
+    def online(self, value: dict) -> None:
+        """
+        设置在线推理信息字典。
+
+        Parameters
+        ----------
+        value : dict
+            要设置的在线推理数据结构，通常包含网络响应、授权信息或后端标记。
         """
         self.__remote = value
 
@@ -212,6 +247,26 @@ class Missions(object):
         """
         self.__animation = value
 
+    # """Online Predict License"""
+    @property
+    def infer_license(self) -> bool:
+        """
+        判断当前是否启用远程推理服务授权。
+
+        Returns
+        -------
+        bool
+            若远程推理服务可用且本地启用，则返回 True；否则返回 False。
+        """
+        available = self.online.get("available", False)
+        tip = self.online.get(
+            "message", "Predict service online" if available else "Predict service offline"
+        )
+        tip += f", Available={available}, Command={self.online.get('infer', False)}"
+        logger.debug(tip)
+        self.design.show_panel(tip, Wind.PREDICT)
+        return available and self.infer
+
     # """Child Process"""
     def amazing(self, option: "Option", deploy: "Deploy", vision: str, *args) -> "_T":
         """
@@ -247,14 +302,12 @@ class Missions(object):
         """
         loop = asyncio.new_event_loop()  # Note: 子进程内必须创建新的事件循环
 
-        matrix = option.model_place if self.keras else None
-
-        alynex = Alynex(matrix, option, deploy, Design(self.level))
-
-        try:
-            loop.run_until_complete(alynex.ask_model_load())
-        except FramixError:
-            pass
+        alynex = Alynex(option, deploy, Design(self.level), self.online)
+        if self.keras:
+            try:
+                loop.run_until_complete(alynex.ask_model_load())
+            except Exception as e:
+                _ = e
 
         loop_complete = loop.run_until_complete(
             alynex.ask_analyzer(vision, *args)
@@ -296,7 +349,7 @@ class Missions(object):
         """
         loop = asyncio.new_event_loop()  # Note: 子进程内必须创建新的事件循环
 
-        alynex = Alynex(None, option, deploy, Design(self.level))
+        alynex = Alynex(option, deploy, Design(self.level), self.online)
 
         loop_complete = loop.run_until_complete(
             alynex.ask_exercise(vision, *args)
@@ -593,13 +646,19 @@ class Missions(object):
             )
             logger.debug(f"DB: {render_result}")
 
-    async def als_basic_or_keras(
-            self, deploy: "Deploy", clipix: "Clipix", report: "Report", task_list: list[list], **kwargs
+    async def als_mixer(
+            self,
+            deploy: "Deploy",
+            clipix: "Clipix",
+            report: "Report",
+            task_list: list[list],
+            option: "Option",
+            alynex: "Alynex",
     ) -> None:
         """
-        异步执行视频的 Keras 模型分析或基础模式分析任务。
+        异步执行视频的模型分析或基础模式分析任务。
 
-        根据部署参数执行视频预处理与分析流程，可选择基于深度学习模型（Keras）或传统分析方式处理。
+        根据部署参数执行视频预处理与分析流程，可选择基于深度学习模型或传统分析方式处理。
         处理过程包括帧率调整、滤镜应用、尺寸标准化、拆帧及报告生成。
 
         Parameters
@@ -616,36 +675,18 @@ class Missions(object):
         task_list : list of list
             待分析的视频任务列表，每项包含视频路径及对应配置。
 
-        **kwargs : dict
-            额外配置项，包括：
-                option : Option
-                    全局运行参数，控制分析方式与行为。
-                alynex : Alynex
-                    分析工具实例，包含 Keras 模型状态与分析方法。
+        option : Option
+            全局运行参数，控制分析方式与行为。
 
-        Notes
-        -----
-        - 本方法需在异步环境下运行。
-        - 若 `alynex.ks.model` 存在，将优先使用深度模型执行视频分析。
-        - 所有中间视频文件将在处理结束后自动清除。
-        - 并发任务通过 `asyncio.gather` 实现，提升性能。
-
-        Workflow
-        --------
-        1. 提取 `option` 和 `alynex` 实例。
-        2. 执行 `als_track` 获取原始视频和指示信息。
-        3. 应用 `als_waves` 对视频进行帧率与滤镜预处理。
-        4. 使用 `clipix.pixels()` 拆解视频帧并标准化尺寸。
-        5. 清除中间缓存文件。
-        6. 根据模型状态执行 Keras 模型或基础分析流程。
-        7. 渲染图表并生成完整分析报告。
+        alynex : Alynex
+            分析工具实例，包含模型状态与分析方法。
         """
         looper = asyncio.get_running_loop()
 
-        option: "Option" = kwargs["option"]
-        alynex: "Alynex" = kwargs["alynex"]
-
-        if alynex.ks.model:
+        if self.infer_license:
+            logger.debug(f"**<* 感知链接 *>**")
+            self.design.show_panel(Wind.INFER_TEXT, Wind.INFER)
+        elif alynex.ks and alynex.ks.model:
             logger.debug(f"**<* 思维导航 *>**")
             self.design.show_panel(Wind.KERAS_TEXT, Wind.KERAS)
         else:
@@ -692,7 +733,7 @@ class Missions(object):
             )
         await asyncio.gather(*eliminate, return_exceptions=True)
 
-        if alynex.ks.model:
+        if (alynex.ks and alynex.ks.model) or self.infer_license:
             await deploy.view_fabric()
             await self.design.neural_sync_loading()
 
@@ -941,21 +982,16 @@ class Missions(object):
 
         # Notes: Analyzer
         if self.speed:
-            await self.als_speed(
-                deploy, clipix, report, task_list
-            )
+            await self.als_speed(deploy, clipix, report, task_list)
         else:
-            matrix = option.model_place if self.keras else None
-            alynex = Alynex(matrix, option, deploy, self.design)
-            try:
-                await alynex.ask_model_load()
-            except FramixError as e:
-                logger.debug(e)
-                self.design.show_panel(e, Wind.KEEPER)
-
-            await self.als_basic_or_keras(
-                deploy, clipix, report, task_list, option=option, alynex=alynex
-            )
+            alynex = Alynex(option, deploy, self.design, self.online)
+            if self.keras:
+                try:
+                    await alynex.ask_model_load()
+                except Exception as e:
+                    logger.debug(e)
+                    self.design.show_panel(e, Wind.KEEPER)
+            await self.als_mixer(deploy, clipix, report, task_list, option, alynex)
 
         # Notes: Create Report
         await self.combine(report)
@@ -1032,17 +1068,14 @@ class Missions(object):
                     if self.speed:
                         await self.als_speed(deploy, clipix, report, task_list)
                     else:
-                        matrix = option.model_place if self.keras else None
-                        alynex = Alynex(matrix, option, deploy, self.design)
-                        try:
-                            await alynex.ask_model_load()
-                        except FramixError as e:
-                            logger.debug(e)
-                            self.design.show_panel(e, Wind.KEEPER)
-
-                        await self.als_basic_or_keras(
-                            deploy, clipix, report, task_list, option=option, alynex=alynex
-                        )
+                        alynex = Alynex(option, deploy, self.design, self.online)
+                        if self.keras:
+                            try:
+                                await alynex.ask_model_load()
+                            except Exception as e:
+                                logger.debug(e)
+                                self.design.show_panel(e, Wind.KEEPER)
+                        await self.als_mixer(deploy, clipix, report, task_list, option, alynex)
 
                 # Notes: Create Report
                 await self.combine(report)
@@ -1143,7 +1176,7 @@ class Missions(object):
             )
         await asyncio.gather(*eliminate, return_exceptions=True)
 
-        alynex = Alynex(None, option, deploy, self.design)
+        alynex = Alynex(option, deploy, self.design, self.online)
 
         monitor = SourceMonitor()
         monitor_task = asyncio.create_task(monitor.monitor_stable())
@@ -1330,7 +1363,7 @@ class Missions(object):
 
         looper = asyncio.get_running_loop()
 
-        alynex = Alynex(None, option, deploy, self.design)
+        alynex = Alynex(option, deploy, self.design, self.online)
         report = Report(option.total_place)
 
         # Notes: Profession
@@ -1879,13 +1912,9 @@ class Missions(object):
 
             # Notes: Analyzer
             if self.speed:
-                await self.als_speed(
-                    deploy, clipix, report, task_list
-                )
-            elif self.basic or self.keras:
-                await self.als_basic_or_keras(
-                    deploy, clipix, report, task_list, option=option, alynex=alynex
-                )
+                await self.als_speed(deploy, clipix, report, task_list)
+            elif self.basic or self.keras or self.infer_license:
+                await self.als_mixer(deploy, clipix, report, task_list, option, alynex)
             else:
                 logger.debug(f"**<* 影像捕手 *>**")
                 self.design.show_panel(Wind.MOVIE_TEXT, Wind.MOVIE)
@@ -2245,7 +2274,7 @@ class Missions(object):
                             raise FramixError(f"命名方式应为 header .*")
 
                         elif select == "digest":
-                            if any((self.speed, self.basic, self.keras)):
+                            if any((self.speed, self.basic, self.keras, self.infer)):
                                 selected = next(
                                     (attr for attr in choices if getattr(self, attr, False)), None
                                 )
@@ -2270,7 +2299,7 @@ class Missions(object):
                             continue
 
                         elif select == "create":
-                            if any((self.speed, self.basic, self.keras)):
+                            if any((self.speed, self.basic, self.keras, self.infer)):
                                 return await self.combine(report)
                             raise FramixError(f"当前处于 影像捕手 模式，请使用 digest 指令进行分析并生成报告")
 
@@ -2469,18 +2498,17 @@ class Missions(object):
         # Notes: Start from here
         manage_ = Manage(self.adb)
 
-        if any((self.speed, self.basic, self.keras)):
+        if any((self.speed, self.basic, self.keras, self.infer)):
             clipix = Clipix(self.ffmpeg, self.ffprobe)
+            alynex = Alynex(option, deploy, self.design, self.online)
+            if self.keras:
+                try:
+                    await alynex.ask_model_load()
+                except Exception as err_:
+                    logger.debug(err_)
+                    self.design.show_panel(err_, Wind.KEEPER)
 
-            matrix = option.model_place if self.keras else None
-            alynex = Alynex(matrix, option, deploy, self.design)
-            try:
-                await alynex.ask_model_load()
-            except FramixError as err_:
-                logger.debug(err_)
-                self.design.show_panel(err_, Wind.KEEPER)
-
-        titles_ = {"speed": "Speed", "basic": "Basic", "keras": "Keras"}
+        titles_ = {"speed": "Speed", "basic": "Basic", "keras": "Keras", "infer": "Infer"}
         input_title_ = next((title_ for key_, title_ in titles_.items() if getattr(self, key_)), "Video")
 
         ctrl_ = f"静默守护模式" if self.whist else f"{('独立' if self.alone else '全局')}控制模式"
@@ -2762,9 +2790,6 @@ class Alynex(object):
 
     Attributes
     ----------
-    matrix : Optional[str]
-        模型文件路径，通常为 `.h5` 或 `.keras` 格式，用于 Keras 模型加载。
-
     option : Option
         程序运行选项，包含模型选择、运行模式、输出开关等控制参数。
 
@@ -2774,6 +2799,9 @@ class Alynex(object):
     design : Design
         标注设计对象，封装标签结构、类名映射、颜色标记等语义设计信息。
 
+    online : dict
+        在线推理服务信息字典。
+
     __ks : Optional[KerasStruct]
         内部模型结构缓存对象，封装加载后的模型与结构描述。
     """
@@ -2781,17 +2809,13 @@ class Alynex(object):
     __ks: typing.Optional["KerasStruct"] = KerasStruct()
 
     def __init__(
-            self,
-            matrix: typing.Optional[str],
-            option: "Option",
-            deploy: "Deploy",
-            design: "Design"
-    ):
+        self, option: "Option", deploy: "Deploy", design: "Design", online: dict
+    ) -> None:
 
-        self.matrix = matrix  # 模型文件路径
-        self.option = option  # 程序运行选项
-        self.deploy = deploy  # 部署配置对象
-        self.design = design  # 标注设计对象
+        self.option = option  # Workflow: 程序运行选项
+        self.deploy = deploy  # Workflow: 部署配置对象
+        self.design = design  # Workflow: 标注设计对象
+        self.online = online  # Workflow: 在线推理服务
 
     @property
     def ks(self) -> typing.Optional["KerasStruct"]:
@@ -2825,35 +2849,78 @@ class Alynex(object):
 
         self.__ks = value
 
+    @property
+    def is_locals_predict(self) -> bool:
+        """
+        判断是否启用了本地推理。
+
+        Returns
+        -------
+        bool
+            若本地推理模型已加载（`ks` 和 `ks.model` 均不为 None），则返回 True；
+            否则返回 False。
+        """
+        return (self.ks is not None) and (self.ks.model is not None)
+
+    @property
+    def is_online_predict(self) -> bool:
+        """
+        是否允许远程推理：
+            - 用户启用了 --infer（online['infer'] = True）
+            - 服务端授权了可用（online['available'] = True）
+            - 本地模型尚未加载
+        """
+        return (
+            self.online.get("infer", False) and
+            self.online.get("available", False) and
+            not (self.ks and self.ks.model)
+        )
+
     async def ask_model_load(self) -> None:
         """
-        异步加载模型到 KerasStruct 实例中。
+        加载本地 Keras 模型，根据部署参数选择彩色或灰度模型。
 
-        该方法用于在分析任务执行前加载指定路径下的 Keras 模型，并根据部署参数验证模型输入通道的正确性。
-        若加载失败或验证不通过，将抛出异常并清除模型状态。
-        模型状态通过 `self.ks.model` 保持。
+        此函数根据 `deploy.color` 参数，从指定的模型目录中选择对应模型，
+        并尝试加载 Keras 模型结构，校验输入通道维度是否符合预期要求。
+        若模型路径无效或加载失败，将抛出对应异常。
+
+        Raises
+        ------
+        ValueError
+            - 若模型目录不存在；
+            - 若指定模型子目录不存在；
+            - 若模型通道数与部署模式不匹配。
+
+        RuntimeError
+            - 若模型加载失败；
+            - 若无法获取模型输入通道信息。
         """
+        matrix = self.option.model_place
+        if not os.path.isdir(matrix):
+            raise ValueError(f"模型目录不存在: {matrix}")
+
+        final_model = os.path.join(
+            matrix, self.option.color_model if self.deploy.color else self.option.faint_model
+        )
+        if not os.path.isdir(final_model):
+            raise ValueError(f"模型路径无效: {final_model.format()}")
+
         try:
-            if mp := self.matrix:
-                assert os.path.isdir(self.option.model_place), f"The model must be a directory {mp}"
-                assert self.ks, f"Must be loaded first model"
+            self.ks = KerasStruct()
+            self.ks.load_model(final_model.format())
+        except Exception as e:
+            self.ks.model = self.ks = None
+            raise RuntimeError(f"模型加载失败: {e}")
 
-                assert os.path.isdir(
-                    final_model := os.path.join(
-                        mp,
-                        self.option.color_model if self.deploy.color else self.option.faint_model
-                    )
-                ), f"No configuration model file {final_model.format()}"
-                self.ks.load_model(final_model.format())
+        try:
+            channel = self.ks.model.input_shape[-1]
+        except Exception:
+            raise RuntimeError(f"无法获取模型输入通道维度 input_shape[-1]，请检查模型结构")
 
-                channel = self.ks.model.input_shape[-1]
-                if self.deploy.color:
-                    assert channel == 3, f"彩色模式需要匹配彩色模型 Model color channel={channel}"
-                else:
-                    assert channel == 1, f"灰度模式需要匹配灰度模型 Model color channel={channel}"
-        except (OSError, TypeError, ValueError, AssertionError, AttributeError) as e:
-            self.ks.model = None
-            raise FramixError(e)
+        if self.deploy.color and channel != 3:
+            raise ValueError(f"彩色模式需要 3 通道模型，但当前模型通道为 {channel}")
+        elif not self.deploy.color and channel != 1:
+            raise ValueError(f"灰度模式需要 1 通道模型，但当前模型通道为 {channel}")
 
     async def ask_video_load(self, vision: str, src_size: tuple) -> "VideoObject":
         """
@@ -2907,7 +2974,7 @@ class Alynex(object):
         )
 
         # 记录视频帧加载完成后的详细信息和耗时
-        logger.debug(f"{(task_name := '视频帧加载完成: ' f'{video.frame_details(video.frames_data)}')}")
+        logger.debug(f"{(task_name := '视频帧加载完成: ' f'{video.frame_detail()}')}")
         logger.debug(f"{(task_info := '视频帧加载耗时: ' f'{time.time() - start_time_:.2f} 秒')}")
         self.design.show_panel(f"{task_name}\n{task_info}", Wind.LOADER)
 
@@ -3334,15 +3401,18 @@ class Alynex(object):
                 toolbox.draw_line(os.path.join(extra_path, draw).format())
 
             try:
-                # 使用 keras 模型进行结构分类
-                struct_data = self.ks.classify(
-                    video=video, valid_range=stable, keep_data=True
-                )
-            except AssertionError as e:
-                logger.debug(e)
-                return self.design.show_panel(e, Wind.KEEPER)
+                if self.is_locals_predict:
+                    # 本地模型已加载 → keras 模式
+                    return self.ks.classify(video, stable, keep_data=True)
+                elif self.is_online_predict:
+                    # 启用远程推理（尚未加载本地模型）
+                    return await Api.online_predict(self.online, video, stable, keep_data=False)
+                else:
+                    return None
 
-            return struct_data
+            except Exception as e:
+                logger.error(e)
+                return self.design.show_panel(e, Wind.KEEPER)
 
         async def analytics_basic() -> tuple:
             """
@@ -3442,13 +3512,19 @@ class Alynex(object):
         # 加载视频帧对象 VideoObject，包含解码后所有帧
         video = await self.ask_video_load(target_vision, src_size)
 
-        # 如果存在模型，则执行 frame_flow（分类并裁剪视频）
-        struct = await frame_flow() if self.ks.model else None
+        # 如果正确加载模型或具备远程推理权限，则执行分类并裁剪视频
+        if self.is_locals_predict or self.is_online_predict:
+            struct = await frame_flow()
+        else:
+            struct = None
 
         # 获取帧数据，如果存在 struct，则使用其结构提取关键帧与非关键帧
         frames = await frame_hold()
 
-        # 根据是否有模型结构，选择执行 keras 模式或 basic 分析
+        # 等待 API 所有后台请求返回
+        await asyncio.gather(*Api.background, return_exceptions=True)
+
+        # 根据是否有模型结构，选择执行模式或分析
         return Review(
             *(await analytics_keras())
         ) if struct else Review(*(await analytics_basic()))
@@ -3470,6 +3546,8 @@ class Api(object):
     - 支持动态参数拼接、异常捕获、数据缓存与文件写入。
     - 可根据实际业务场景扩展其他静态方法，如上传日志、获取配置、拉取资源等。
     """
+
+    background: list = []
 
     @staticmethod
     async def ask_request_get(
@@ -3642,6 +3720,181 @@ class Api(object):
 
         return str(audio_file)
 
+    @staticmethod
+    async def remote_config() -> typing.Optional[dict]:
+        """
+        获取远程配置中心的全局配置数据。
+        """
+        try:
+            sign_data = await Api.ask_request_get(const.GLOBAL_CF_URL)
+            auth_info = authorize.verify_signature(sign_data)
+        except Exception as e:
+            return logger.debug(e)
+
+        return auth_info.get("configuration", {})
+
+    @staticmethod
+    async def proxy_predict() -> typing.Optional[dict]:
+        """
+        获取远程推理服务地址。
+        """
+        try:
+            sign_data = await Api.ask_request_get(const.PREDICT_URL)
+            auth_info = authorize.verify_signature(sign_data)
+        except Exception as e:
+            return logger.debug(e)
+
+        return auth_info
+
+    @staticmethod
+    async def online_predict(
+            online: dict,
+            video: "VideoObject",
+            valid_range: list["VideoCutRange"],
+            step: typing.Optional[int] = None,
+            keep_data: typing.Optional[bool] = None,
+            boost_mode: typing.Optional[bool] = None,
+    ) -> typing.Optional["ClassifierResult"]:
+        """
+        调用远程推理服务，对视频帧进行分类并返回结果。
+
+        该方法会将视频帧数据打包为 `.npz` 格式，通过 HTTP 请求上传至远程推理服务。
+        同时发送包含视频元信息与裁剪区间的数据，并以流式方式逐帧接收推理结果。
+
+        Parameters
+        ----------
+        online : dict
+            远程推理服务参数，包括接口地址、请求方法、鉴权 Token 等信息。
+            示例字段包括 `"method"`、`"url"`、`"auth_header"`、`"token"`、`"timeout"`。
+
+        video : VideoObject
+            视频对象，包含全部帧数据与元信息。
+
+        valid_range : list of VideoCutRange
+            有效帧区间列表，表示需要推理的帧段落及其相关图像指标（SSIM、PSNR、MSE 等）。
+
+        step : int, optional
+            帧处理步长，用于控制推理帧频（默认 None）。
+
+        keep_data : bool, optional
+            是否保留原始图像帧数据（默认 False），远程服务一般无需图像返回，可设置为 False。
+
+        boost_mode : bool, optional
+            是否启用增强模式，在推理时激活更高阶策略（例如多模型融合或优化路径）。
+
+        Returns
+        -------
+        ClassifierResult or None
+            推理完成的结构化结果，包含每帧的分类结果与时间戳；
+            若请求失败或发生异常，返回 None 并打印日志。
+
+        Raises
+        ------
+        RuntimeError
+            - 若远程服务响应非 200；
+            - 若响应中包含错误标记（"ERROR:"、"FATAL:"）；
+            - 若上传或流处理过程中出错。
+
+        Notes
+        -----
+        - 使用临时 `.npz` 文件压缩帧数据后上传，上传完成后自动清理文件；
+        - 响应结果按流式处理逐帧推理结果，避免等待完整处理；
+        - 异常处理采用日志记录并关闭进度条；
+        - 推理结果为 `ClassifierResult` 类型的结构体，适用于后续展示或报告生成。
+        """
+        method = online["method"]
+        url = online["url"]
+        headers = {online["auth_header"]: online["token"]}
+        timeout = online.get("timeout", 60)
+
+        final_result: list[dict] = []
+
+        frame_data_list = [
+            {"frame_id": frame.frame_id, "data": frame.data} for frame in video.frames_data
+        ]
+
+        metadata = {
+            "video_name": (video_name := f"{video.name}_{uuid.uuid4().hex[:8]}"),
+            "video_path": (video_path := os.path.basename(video.path)),
+            "frame_count": video.frame_count,
+            "frames_data": [
+                {
+                    "frame_id": frame.frame_id,
+                    "timestamp": frame.timestamp
+                } for frame in video.frames_data
+            ],
+            "valid_range": [
+                {
+                    "start": cut_range.start,
+                    "end": cut_range.end,
+                    "ssim": cut_range.ssim,
+                    "psnr": cut_range.psnr,
+                    "mse": cut_range.mse,
+                    "start_time": cut_range.start_time,
+                    "end_time": cut_range.end_time,
+                } for index, cut_range in enumerate(valid_range, start=1)
+            ],
+            "step": step,
+            "keep_data": keep_data,
+            "boost_mode": boost_mode
+        }
+
+        pbar = toolbox.show_progress(total=video.frame_count, color=120)
+
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".npz", delete=False) as tmp_file:
+                npz_path = tmp_file.name
+                npz_dict = {
+                    str(frame["frame_id"]): frame["data"] for frame in frame_data_list
+                }
+                numpy.savez_compressed(npz_path, **npz_dict)
+
+                async with aiofiles.open(npz_path, "rb") as npz_file:
+                    content = await npz_file.read()
+
+                data = {
+                    "frame_meta": json.dumps(metadata)
+                }
+                files = {
+                    "frame_file": (f"{video_name}.npz", content, "application/octet-stream")
+                }
+
+            classifier_mark, error_mark, fatal_mark = "SingleClassifierResult: ", "ERROR: ", "FATAL: "
+            async with httpx.AsyncClient(headers=headers, timeout=timeout) as client:
+                async with client.stream(method, url, data=data, files=files) as resp:
+                    if resp.status_code != 200:
+                        # 读取完整响应并抛出错误
+                        ample = await resp.aread()
+                        raise RuntimeError(f"❌ {resp.status_code} -> {ample.decode(const.CHARSET)}")
+
+                    # 逐行处理流式响应
+                    async for line in resp.aiter_lines():
+                        if line.startswith(classifier_mark):
+                            json_str = line.removeprefix(classifier_mark).strip()
+                            final_result.append(json.loads(json_str))
+                            pbar.update(1)
+                        elif line.startswith(error_mark):
+                            json_str = line.removeprefix(error_mark).strip()
+                            raise RuntimeError(json.loads(json_str).get("error"))
+                        elif line.startswith(fatal_mark):
+                            json_str = line.removeprefix(error_mark).strip()
+                            raise RuntimeError(json.loads(json_str).get("fatal"))
+
+            pbar.close()
+            return ClassifierResult([SingleClassifierResult(
+                r.get("video_path", video_path), r.get("frame_id", frame.frame_id),
+                r.get("timestamp", frame.timestamp), r["result"], frame.data
+            ) for r, frame in zip(final_result, video.frames_data)])
+
+        except Exception as e:
+            pbar.close()
+            return logger.error(e)
+
+        finally:
+            Api.background.append(
+                asyncio.create_task(asyncio.to_thread(os.remove, npz_path))
+            )
+
 
 # """Signal Processor"""
 def signal_processor(*_, **__) -> None:
@@ -3668,18 +3921,6 @@ async def main() -> typing.Coroutine | None:
     """
     命令分发调度器，根据命令行参数执行对应任务模块。
     """
-
-    async def remote_config() -> typing.Optional[dict]:
-        """
-        获取远程配置中心的全局配置数据。
-        """
-        try:
-            config_data = await Api.ask_request_get(const.GLOBAL_CF_URL)
-            auth_info = authorize.verify_signature(config_data)
-        except Exception as e:
-            return logger.debug(e)
-
-        return auth_info.get("configuration", {})
 
     async def scheduling() -> typing.Coroutine | typing.Any:
         """
@@ -3912,7 +4153,11 @@ async def main() -> typing.Coroutine | None:
     await authorize.verify_license(lic_file)
 
     # 远程全局配置
-    global_config_task = asyncio.create_task(remote_config())
+    global_config_task = asyncio.create_task(Api.remote_config())
+    # 在线推理服务
+    online_oracle_task = asyncio.create_task(
+        Api.proxy_predict()
+    ) if lines.infer else None
 
     # 启动仪式
     await random.choice([Design.engine_topology_wave, Design.stellar_glyph_binding])(level)
@@ -3959,7 +4204,7 @@ async def main() -> typing.Coroutine | None:
 
     positions = (
         lines.flick, lines.carry, lines.fully, lines.speed, lines.basic, lines.keras,
-        lines.alone, lines.whist, lines.alter, lines.delay, lines.alike, lines.shine, lines.group
+        lines.alone, lines.whist, lines.alter, lines.delay, lines.alike, lines.shine, lines.group, lines.infer
     )
     keywords = {
         "atom_total_temp": atom_total_temp,
@@ -3978,9 +4223,12 @@ async def main() -> typing.Coroutine | None:
         "ffmpeg": ffmpeg,
         "ffprobe": ffprobe
     }
-    remote = await global_config_task or {}
+    remote = await global_config_task
+    # 合并为最终 online 配置
+    result = await online_oracle_task if online_oracle_task else {}
+    online = {**(result if isinstance(result, dict) else {}), "infer": lines.infer}
 
-    missions = Missions(wires, level, power, remote, *positions, **keywords)
+    missions = Missions(wires, level, power, remote, online, *positions, **keywords)
 
     # """凝滞核心"""
     await Design.countdown_energy_wave(level, lines.delay)
