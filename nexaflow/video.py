@@ -212,15 +212,9 @@ class VideoObject(object):
         """
         self.frames_data = tuple()
 
-    @staticmethod
-    def frame_details(frame_data: tuple["VideoFrame"]) -> str:
+    def frame_detail(self) -> str:
         """
         获取帧数据的详细信息字符串。
-
-        Parameters
-        ----------
-        frame_data : tuple of VideoFrame
-            包含若干帧的元组。
 
         Returns
         -------
@@ -231,10 +225,10 @@ class VideoObject(object):
         -----
         - 返回的内容适用于打印输出或日志记录。
         """
-        frame = frame_data[0]
+        frame = self.frames_data[0]
 
         every_cost = frame.data.nbytes / (1024 ** 2)
-        total_cost = every_cost * len(frame_data)
+        total_cost = every_cost * len(self.frames_data)
         frame_size = frame.data.shape[::-1]
         frame_name = frame.__class__.__name__
         frame_info = f"[{every_cost:.2f} MB] [{total_cost:.2f} MB]"

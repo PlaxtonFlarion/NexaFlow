@@ -124,6 +124,7 @@ BUSINESS_CASE_URL  = f"https://api.appserverx.com/business-case"
 SPEECH_META_URL    = f"https://api.appserverx.com/speech-meta"
 SPEECH_VOICE_URL   = f"https://api.appserverx.com/speech-voice"
 GLOBAL_CF_URL      = f"https://api.appserverx.com/global-configuration"
+PREDICT_URL        = f"https://api.appserverx.com/proxy-predict"
 X_TEMPLATE_VERSION = f"x_template_version.json"
 
 BASIC_HEADERS = {
