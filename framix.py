@@ -3606,13 +3606,13 @@ class Api(object):
         Exception
             当远程请求或解析失败时捕获并记录日志，返回 None。
         """
-        params = Channel.make_params()
         try:
-            async with Messenger() as messenger:
-                resp = await messenger.poke("GET", const.SPEECH_META_URL, params=params)
-                return resp.json()["formats"]
+            sign_data = await Api.ask_request_get(const.SPEECH_META_URL)
+            auth_info = authorize.verify_signature(sign_data)
         except Exception as e:
             return logger.debug(e)
+
+        return auth_info.get("formats", [])
 
     @staticmethod
     async def profession(case: str) -> dict:
