@@ -151,7 +151,7 @@ class VideoObject(object):
 
         self.name: str = str(os.path.basename(path))
         self.path: str = str(path)
-        self.frames_data: typing.Optional[typing.Tuple["VideoFrame"]] = tuple()
+        self.frames_data: typing.Optional[tuple["VideoFrame"]] = tuple()
 
         if fps:
             video_path = os.path.join(tempfile.mkdtemp(), f"tmp_{fps}.mp4")
@@ -177,12 +177,6 @@ class VideoObject(object):
         ----------
         frame_data : tuple of VideoFrame
             已加载的视频帧对象列表。
-
-        Notes
-        -----
-        - 通过 `iter_frames(with_times=True)` 获取每帧的时间戳；
-        - 若帧对象中时间戳为空则补充；
-        - 使用 `toolbox.show_progress` 展示处理进度。
         """
         assert frame_data, "load_frames() first"
 
@@ -205,35 +199,29 @@ class VideoObject(object):
     def clean_frames(self) -> None:
         """
         清空帧数据缓存。
-
-        Notes
-        -----
-        - 将 `self.frames_data` 设为空元组，释放内存。
         """
         self.frames_data = tuple()
 
-    def frame_detail(self) -> str:
+    def frame_detail(self) -> tuple[str, tuple[int, ...]]:
         """
-        获取帧数据的详细信息字符串。
+        获取首帧信息和尺寸信息，用于日志展示或模型通道判断。
 
         Returns
         -------
-        str
-            帧类型、单帧内存占用、总内存占用和帧尺寸信息。
-
-        Notes
-        -----
-        - 返回的内容适用于打印输出或日志记录。
+        tuple[str, tuple[int, ...]]
+            - frame_view: 包含帧类名、内存消耗、尺寸等信息的字符串（用于展示）
+            - frame_size: 帧尺寸（宽, 高），用于通道推断等用途
         """
-        frame = self.frames_data[0]
+        frame = self.frames_data[0]  # 获取首帧对象
 
         every_cost = frame.data.nbytes / (1024 ** 2)
         total_cost = every_cost * len(self.frames_data)
         frame_size = frame.data.shape[::-1]
         frame_name = frame.__class__.__name__
         frame_info = f"[{every_cost:.2f} MB] [{total_cost:.2f} MB]"
+        frame_view = f"{frame_name} {frame_info} {frame_size}"
 
-        return f"{frame_name} {frame_info} {frame_size}"
+        return frame_view, frame_size
 
     def load_frames(
             self, scale: int | float = None, shape: tuple = None, color: bool = False
