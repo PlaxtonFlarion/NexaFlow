@@ -1375,6 +1375,87 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             f"\n[bold #7CFC00]>>> {const.DESC} Recording ends. Next round ready. <<<\n"
         )
 
+    async def creative_download(self, animation_event: "asyncio.Event", progress: dict, status: dict):
+        """
+        下载动画。
+        """
+        if self.design_level != const.SHOW_LEVEL:
+            return None
+
+        self.console.print(
+            f"\n[bold #00F5FF]▶ {const.DESC} initiating download sequence ...\n"
+        )
+        rows, cols, padding = 5, 21, 6
+        center_r, center_c, fps = rows // 2, cols // 2, 30
+        fill_chars = ["■", "□"]
+        trail_colors = ["#00BFFF", "#1E90FF", "#4E69E1"]
+        background_color = "#222222"
+        done_color, fail_color = "#00FF88", "#FF6F61"
+
+        layers = [[] for _ in range(center_r + center_c + 1)]
+        for row in range(rows):
+            for col in range(cols):
+                radius = abs(row - center_r) + abs(col - center_c)
+                layers[radius].append((row, col))
+        max_layer = len(layers) - 1
+
+        def render_footer() -> str:
+            percent_lines = []
+            for name, info in progress.items():
+                c_chunks, t_chunks = info["range"], info["total"]
+                if isinstance(c_chunks, str):
+                    percent, view = c_chunks, fail_color
+                else:
+                    percent, view = f"{int((c_chunks / t_chunks) * 100):02}%", done_color
+                percent_lines.append(f"[bold #EEEEEE]⬇ {name}: [bold {view}]{percent}[/]")
+            return "\n" + "\n".join(" " * padding + line for line in percent_lines)
+
+        def render_frame() -> "Text":
+            grid = [["[dim " + background_color + "]·[/]" for _ in range(cols)] for _ in range(rows)]
+            fill_depth = tick % (max_layer + 1)
+            for d in range(fill_depth + 1):
+                color = trail_colors[d % len(trail_colors)]
+                for r, c in layers[d]:
+                    grid[r][c] = f"[bold {color}]{random.choice(fill_chars)}[/]"
+            body = "\n".join(" " * padding + " ".join(i) for i in grid)
+            return Text.from_markup(body + "\n" + render_footer())
+
+        def render_filled(fill_step: int) -> "Text":
+            grid = [["[dim " + background_color + "]·[/]" for _ in range(cols)] for _ in range(rows)]
+            view = done_color if status.get("status") == "Success" else fail_color
+            for d in range(fill_step + 1):
+                for r, c in layers[min(d, max_layer)]:
+                    grid[r][c] = f"[bold {view}]■[/]"
+            body = "\n".join(" " * padding + " ".join(i) for i in grid)
+            return Text.from_markup(body + "\n" + render_footer())
+
+        live = Live(console=self.console, refresh_per_second=fps)
+        live.start()
+
+        try:
+            tick = 0
+            while not animation_event.is_set():
+                live.update(render_frame())
+                await asyncio.sleep(1 / fps)
+                tick += 1
+
+        except asyncio.CancelledError:
+            for step in range(max_layer + 1):
+                live.update(render_filled(step))
+                await asyncio.sleep(1 / fps)
+            await asyncio.sleep(0.5)
+
+        finally:
+            live.stop()
+            if status.get("status") == "Success":
+                tip = f"✔ {const.DESC} all downloads completed successfully."
+                tip_c = "#7CFC00"
+            else:
+                tip = f"✖ {const.DESC} oops! Something went wrong during download."
+                tip_c = fail_color
+
+            self.console.print(f"\n[bold {tip_c}]>>> {tip} <<<\n")
+
     async def frame_grid_initializer(self, animation_event: "asyncio.Event") -> None:
         """
         模拟帧网格构建过程，融合多套色彩主题以增强视觉层次。
@@ -1454,9 +1535,8 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             live.update(render_grid())
             await asyncio.sleep(0.5)
 
-            live.stop()
-
         finally:
+            live.stop()
             self.console.print(
                 f"\n[bold #7CFC00]>>> {const.DESC} frame grid online. Awaiting extraction. <<<\n"
             )
@@ -1509,9 +1589,10 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                 await asyncio.sleep(0.12)
 
         except asyncio.CancelledError:
-            live.stop()
+            pass
 
         finally:
+            live.stop()
             self.console.print(
                 f"\n[bold #7CFC00]>>> {const.DESC} HTML layout finalized. Styles applied successfully. <<<\n"
             )
@@ -1573,9 +1654,10 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
                 await asyncio.sleep(0.12)
 
         except asyncio.CancelledError:
-            live.stop()
+            pass
 
         finally:
+            live.stop()
             self.console.print(
                 "\n[bold #7CFC00]>>> HTML output successfully generated. <<<\n"
             )

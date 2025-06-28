@@ -118,14 +118,15 @@ WRITE_FORMAT = f"{OTHER_HEAD} <green>{{time:YYYY-MM-DD HH:mm:ss.SSS}}</green> | 
 WHILE_FORMAT = f"{OTHER_HEAD} <green>{{time:YYYY-MM-DD HH:mm:ss.SSS}}</green> | <level>{{level: <8}}</level> | {{name}}:{{function}}:{{line}} - <level>{{message}}</level>"
 
 # ======== 【应用授权 | Authorization】========
-BOOTSTRAP_URL      = f"https://api.appserverx.com/bootstrap"
-TEMPLATE_META_URL  = f"https://api.appserverx.com/template-meta"
-BUSINESS_CASE_URL  = f"https://api.appserverx.com/business-case"
-SPEECH_META_URL    = f"https://api.appserverx.com/speech-meta"
-SPEECH_VOICE_URL   = f"https://api.appserverx.com/speech-voice"
-GLOBAL_CF_URL      = f"https://api.appserverx.com/global-configuration"
-PREDICT_URL        = f"https://api.appserverx.com/proxy-predict"
-X_TEMPLATE_VERSION = f"x_template_version.json"
+BOOTSTRAP_URL      = r"https://api.appserverx.com/bootstrap"
+TEMPLATE_META_URL  = r"https://api.appserverx.com/template-meta"
+BUSINESS_CASE_URL  = r"https://api.appserverx.com/business-case"
+SPEECH_META_URL    = r"https://api.appserverx.com/speech-meta"
+SPEECH_VOICE_URL   = r"https://api.appserverx.com/speech-voice"
+GLOBAL_CF_URL      = r"https://api.appserverx.com/global-configuration"
+PREDICT_URL        = r"https://api.appserverx.com/proxy-predict"
+MODEL_META_URL     = r"https://api.appserverx.com/model-meta"
+X_TEMPLATE_VERSION = r"x_template_version.json"
 
 BASIC_HEADERS = {
     "User-Agent": f"{DESC}@{VERSION}",

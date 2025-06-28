@@ -273,28 +273,14 @@ class AsyncAnimationManager(object):
     管理异步动画任务的上下文工具类。
 
     该类用于封装动画生命周期的启动与终止逻辑，支持通过 `async with` 语句自动管理动画执行流程。
-
-    Parameters
-    ----------
-    function : Optional[Callable]
-        接收一个 asyncio.Event 的异步动画函数，必须为 async def。
-
-    Attributes
-    ----------
-    __task : Optional[asyncio.Task]
-        当前运行的动画任务对象。
-
-    __animation_event : Optional[asyncio.Event]
-        控制动画终止的事件信号，用于优雅中断动画。
-
-    __function : Optional[Callable]
-        初始化传入的动画函数。
     """
 
-    def __init__(self, function: typing.Optional["typing.Callable"] = None):
+    def __init__(self, function: typing.Optional["typing.Callable"] = None, *args, **kwargs):
         self.__task: typing.Optional["asyncio.Task"] = None
         self.__animation_event: typing.Optional["asyncio.Event"] = asyncio.Event()
         self.__function = function
+        self.__args = args
+        self.__kwargs = kwargs
 
     async def __aenter__(self):
         """
@@ -310,7 +296,7 @@ class AsyncAnimationManager(object):
         """
         await self.stop()
 
-    async def start(self, function: "typing.Callable") -> typing.Optional["typing.Coroutine"]:
+    async def start(self, function: "typing.Callable", *args, **kwargs) -> typing.Optional["typing.Coroutine"]:
         """
          启动指定动画函数任务，若已有动画在运行将优雅取消。
 
@@ -321,20 +307,19 @@ class AsyncAnimationManager(object):
          """
         await self.stop()  # 若已有动画在运行，先取消
 
+        method = function or self.__function
+        args = args or self.__args
+        kwargs = kwargs or self.__kwargs
+
         self.__animation_event.clear()
 
         self.__task = asyncio.create_task(
-            function(self.__animation_event)
+            method(self.__animation_event, *args, **kwargs)
         )
 
     async def stop(self) -> typing.Optional["typing.Coroutine"]:
         """
         停止当前动画任务（如存在），设置终止事件并取消任务对象。
-
-        Notes
-        -----
-        - 若无任务正在运行则跳过处理。
-        - 使用 asyncio.CancelledError 捕获取消异常。
         """
         if self.__task and not self.__task.done():
             self.__animation_event.set()
