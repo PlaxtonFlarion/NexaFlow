@@ -387,6 +387,44 @@ class Missions(object):
         await db.create(column_list := ["style", "total", "title", "nest"])
         await db.insert(column_list, [style, total, title, nest])
 
+    async def dependencies(self, folder: "Path") -> None:
+        """
+        下载并校验依赖项。
+
+        使用 R2 存储元信息动态获取元数据，并执行异步并发下载。
+        所有下载过程通过动画器实时更新进度和状态。
+
+        Parameters
+        ----------
+        folder : Path
+            模型目录根路径，支持传入单个 ZIP 文件或目标文件夹路径。
+        """
+        metadata = await Api.online_model_meta()
+        logger.debug(f"Download: {metadata}")
+
+        # 确定下载目录
+        target = folder.stem if folder.is_file() else folder
+        target.mkdir(parents=True, exist_ok=True)
+
+        # 初始化进度与状态
+        progress = {
+            v["filename"]: {"range": 0, "total": 100} for v in metadata.values()
+        }
+        status = {"status": "Normal"}
+
+        # 启动下载动画并执行下载任务
+        async with AsyncAnimationManager(self.design.creative_download, progress, status) as manager:
+            try:
+                await asyncio.gather(*(
+                    Api.join_range_download(
+                        progress, status, v["filename"], v["url"], str(target / v["filename"]), v["size"], v["hash"]
+                    ) for v in metadata.values()
+                ))
+            except Exception as e:
+                await manager.stop()
+                logger.debug(e)
+                self.design.show_panel(e, Wind.KEEPER)
+
     async def fst_track(
             self, deploy: "Deploy", clipix: "Clipix", task_list: list[list]
     ) -> tuple[list, list]:
@@ -3852,7 +3890,7 @@ class Api(object):
         method = online["method"]
         url = online["url"]
         headers = {online["auth_header"]: online["token"]}
-        timeout = online.get("timeout", 60)
+        timeout = online.get("timeout", 60.0)
 
         final_result: list[dict] = []
 
@@ -3942,6 +3980,199 @@ class Api(object):
             Api.background.append(
                 asyncio.create_task(asyncio.to_thread(os.remove, npz_path))
             )
+
+    @staticmethod
+    async def online_model_meta() -> typing.Optional[dict]:
+        try:
+            sign_data = await Api.ask_request_get(const.MODEL_META_URL)
+            auth_info = authorize.verify_signature(sign_data)
+        except Exception as e:
+            return logger.debug(e)
+
+        return auth_info.get("models", {})
+
+    @staticmethod
+    async def fetch_range(
+            sem: "asyncio.Semaphore",
+            client: "httpx.AsyncClient",
+            progress: dict,
+            filename: str,
+            url: str,
+            *args,
+            **kwargs
+    ) -> typing.Optional[tuple[int, bytes]]:
+        """
+        执行单个下载分块的请求，支持失败重试与进度更新。
+
+        使用 HTTP Range 请求下载文件的指定区间段，支持并发控制与最大重试机制，
+        并在成功后更新指定文件的下载进度。
+
+        Parameters
+        ----------
+        sem : asyncio.Semaphore
+            用于限制并发请求数量的信号量。
+
+        client : httpx.AsyncClient
+            已初始化的 HTTP 异步客户端，用于执行请求。
+
+        progress : dict
+            下载进度字典，结构如 {filename: {"range": int, "total": int}}，
+            会在下载成功后自动加 1。
+
+        filename : str
+            当前任务所属文件名，用于在 `progress` 中标识。
+
+        url : str
+            下载地址，需支持 Range 请求。
+
+        *args
+            预留参数，当前未使用。
+
+        **kwargs
+            包含以下关键字参数：
+            - index : int
+                当前分块索引，用于还原写入顺序。
+            - start : int
+                当前块的起始字节。
+            - close : int
+                当前块的结束字节。
+            - max_retries : int, optional
+                最大重试次数，默认为 3。
+
+        Returns
+        -------
+        tuple[int, bytes]
+            若下载成功，返回 `(index, content)`，用于写入对应位置。
+
+        Raises
+        ------
+        RuntimeError
+            若在最大重试次数内仍无法成功获取分块，将抛出异常。
+
+        Notes
+        -----
+        - 仅支持返回 206 状态码的分块响应。
+        - 每次失败后会进行指数退避等待再重试。
+        """
+        _ = args
+
+        index = kwargs.get("index")
+        start = kwargs.get("start")
+        close = kwargs.get("close")
+        max_retries = kwargs.get("max_retries", 3)
+
+        headers = {"Range": f"bytes={start}-{close}"}
+
+        for attempt in range(1, max_retries + 1):
+            try:
+                async with sem:
+                    resp = await client.request("GET", url, headers=headers, timeout=60.0)
+                    if resp.status_code == 206:
+                        progress[filename]["range"] += 1
+                        return index, resp.content
+                    raise RuntimeError(f"Status {resp.status_code}")
+            except Exception as e:
+                if attempt == max_retries:
+                    raise RuntimeError(f"Chunk {index} failed: {e}")
+                await asyncio.sleep(1.5 * attempt)
+
+    @staticmethod
+    async def join_range_download(
+        progress: dict,
+        status: dict,
+        filename: str,
+        url: str,
+        output: str,
+        total_size: int,
+        expected_sha256: str
+    ) -> None:
+        """
+        执行并发分块下载任务，并校验哈希与自动解压。
+
+        此方法用于从指定 URL 下载大文件，支持 Range 请求的并发下载，
+        实时更新下载进度，完成后进行 SHA256 校验与 ZIP 解压操作。
+
+        Parameters
+        ----------
+        progress : dict
+            用于记录下载进度的共享状态字典，结构如 {filename: {"range": int, "total": int}}。
+
+        status : dict
+            状态信息记录字典，例如 {"status": "Success"} 或 {"status": "Error"}。
+
+        filename : str
+            当前下载的文件名，用于标记进度状态。
+
+        url : str
+            下载链接地址，必须支持 HTTP Range 请求。
+
+        output : str
+            下载文件的临时保存路径（最终会被删除）。
+
+        total_size : int
+            文件总大小（字节数）。
+
+        expected_sha256 : str
+            下载完成后用于校验的 SHA256 哈希值。
+
+        Raises
+        ------
+        ValueError
+            若下载完成后的哈希校验失败，则抛出此异常。
+
+        Exception
+            下载过程或解压过程中出现任何异常均会被捕获并写入 `status` 字典。
+
+        Notes
+        -----
+        - 支持自动限流（Semaphore）控制并发数。
+        - 下载失败时会清理本地临时文件。
+        - 使用 `httpx.AsyncClient` 和 `aiofiles` 实现异步 IO。
+        """
+        chunk_size = 10 * 1024 * 1024
+        ranges: list[tuple[int, int]] = [
+            (i, min(i + chunk_size - 1, total_size - 1)) for i in range(0, total_size, chunk_size)
+        ]
+
+        chunks: list[typing.Union[None, bytes]] = [None] * len(ranges)
+        sem: "asyncio.Semaphore" = asyncio.Semaphore(4)
+
+        progress[filename]["total"] = len(ranges)
+
+        try:
+            async with httpx.AsyncClient() as client:
+                results = await asyncio.gather(
+                    *(Api.fetch_range(
+                        sem, client, progress, filename, url, index=index, start=start, close=close
+                    ) for index, (start, close) in enumerate(ranges))
+                )
+
+            for idx, chunk in results:
+                chunks[idx] = chunk
+
+            async with aiofiles.open(output, "wb") as f:
+                for chunk in chunks:
+                    await f.write(chunk)
+
+            actual_hash = await FileAssist.calculate_sha256(output)
+            logger.debug(f"校验哈希: {actual_hash}")
+            if actual_hash != expected_sha256:
+                raise ValueError(f"Hash 校验失败: {actual_hash}")
+
+            logger.debug(f"解压文件: {output}")
+            extract_file = await FileAssist.extract_zip(output)
+            logger.debug(f"下载成功: {extract_file}")
+            status["status"] = "Success"
+            progress[filename]["range"] = len(ranges)
+
+        except Exception as e:
+            status["status"] = "Error"
+            progress[filename]["range"] = "❌ 下载失败"
+            raise e
+
+        finally:
+            if Path(output).exists():
+                await asyncio.to_thread(os.remove, output)
 
 
 # """Signal Processor"""
