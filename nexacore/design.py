@@ -852,7 +852,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         chars = [char for char in const.DESC.upper()]
 
-        replace_star: callable = lambda x, y=iter(chars): [
+        replace_star: typing.Callable[[list], list] = lambda x, y=iter(chars): [
             "".join(next(y, "|") if c == "*" else c for c in z)
             if isinstance(z, str) else (next(y, "|") if z == "*" else z) for z in x
         ]
@@ -1137,7 +1137,9 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         root_color, folder_color, file_color = random.choice(list(color_schemes.values()))
 
-        choice_icon: callable = lambda x: file_icons["folder"] if (y := Path(x)).is_dir() else (
+        choice_icon: typing.Callable[
+            [str], str
+        ] = lambda x: file_icons["folder"] if (y := Path(x)).is_dir() else (
             file_icons[n] if (n := y.name.lower()) in file_icons else file_icons["default"]
         )
 
@@ -1301,11 +1303,15 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             ]
         ])
 
-        is_finished: callable = lambda x: any(x.get(key).is_set() for key in {
-            "stop", "fail", "done"
-        } if isinstance(x.get(key), asyncio.Event))
+        is_finished: typing.Callable[[dict], bool] = lambda x: any(
+            x.get(key).is_set() for key in {
+                "stop", "fail", "done"
+            } if isinstance(x.get(key), asyncio.Event)
+        )
 
-        unit: callable = lambda x, y: f"[bold {x}]{y}[/]"
+        unit: typing.Callable[
+            [typing.Any, typing.Any], typing.Any
+        ] = lambda x, y: f"[bold {x}]{y}[/]"
 
         max_sn_width = max(len(line) for line in list(record.record_events.keys()))
 
@@ -1491,7 +1497,7 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         try:
             while not animation_event.is_set():
-                num: callable = lambda x, y: random.randint(x, y)
+                num: typing.Callable[[int, int], int] = lambda x, y: random.randint(x, y)
                 tag_line = " ".join(random.choice(tags) for _ in range(num(4, 5)))
                 dom_line = " ".join(random.choice(lines_dom) for _ in range(num(6, 8)))
                 css_line = " ".join(random.choice(styles) for _ in range(num(16, 18)))
@@ -1588,7 +1594,9 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
         symbols = ["▓", "▒", "░", "□", "▣"]
         prefix = f"[bold #00FFCC][{const.DESC}::Flux]"
 
-        make_line: callable = lambda: " ".join(random.choice(symbols) for _ in range(12))
+        make_line: typing.Callable[
+            [], str
+        ] = lambda: " ".join(random.choice(symbols) for _ in range(12))
 
         with Live(console=self.console, refresh_per_second=30) as live:
             for _ in range(30):
@@ -1892,7 +1900,9 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
             "融合路径中 ...", "拓扑重建中 ...", "核心对齐中 ...", "神经接驳中 ...", "通道加载中 ...", "子图展开中 ..."
         ]
 
-        make_row: callable = lambda x: "".join(random.choice(x) for _ in range(36))
+        make_row: typing.Callable[
+            [list], str
+        ] = lambda x: "".join(random.choice(x) for _ in range(36))
 
         with Live(console=self.console, refresh_per_second=30) as live:
             for i in range(50):
@@ -2366,7 +2376,9 @@ _  __/   _  /   / /_/ /_  / / / / /  / __>  <
 
         center_r, center_c = height // 2, width // 2
         grid = [[" " for _ in range(width)] for _ in range(height)]
-        in_bounds: callable = lambda x, y: 0 <= x < height and 0 <= y < width
+        in_bounds: typing.Callable[
+            [int, int], bool
+        ] = lambda x, y: 0 <= x < height and 0 <= y < width
 
         def render() -> "Text":
             return Text.from_markup(

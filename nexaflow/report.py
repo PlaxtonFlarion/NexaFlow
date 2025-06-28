@@ -56,21 +56,6 @@ class Report(object):
         ----------
         total_path : str
             指定的根目录路径，用于存放分析报告的总目录。
-
-        Notes
-        -----
-        - 创建总报告目录路径（包含时间戳与进程号）与恢复目录；
-        - 初始化 query_path、video_path、frame_path、extra_path 等路径为空；
-        - 设置 `range_list` 和 `total_list` 用于存储分析数据；
-        - 设置日志输出路径至恢复目录中的日志文件，并使用 logger 记录后续分析事件；
-        - 所有生成路径均确保目录存在（os.makedirs + exist_ok=True）。
-
-        Workflow
-        --------
-        1. 生成带时间戳的唯一输出目录；
-        2. 初始化输出路径（视频、帧图、附加图）为空；
-        3. 创建恢复路径和日志记录文件；
-        4. 初始化报告内容缓存结构。
         """
         self.__title: str = ""
         self.__query: str = ""
@@ -164,14 +149,9 @@ class Report(object):
 
         html_template : str
             渲染后的 HTML 字符串内容。
-
-        Notes
-        -----
-        - 使用 aiofiles 实现异步文件写入；
-        - 写入时采用 UTF-8 或项目指定编码 `const.CHARSET`。
         """
-        async with aiofiles.open(html, "w", encoding=const.CHARSET) as range_file:
-            await range_file.write(html_template)
+        async with aiofiles.open(html, "w", encoding=const.CHARSET) as f:
+            await f.write(html_template)
 
     @staticmethod
     async def ask_create_report(
@@ -232,9 +212,6 @@ class Report(object):
         async def acquire(query: str, frame: typing.Optional[str]) -> typing.Optional[list[dict]]:
             """
             解析指定目录中的图像文件，提取帧 ID 与时间戳信息。
-
-            根据图像文件名提取帧编号与时间戳，构造统一格式的字典结构，
-            并按帧编号进行排序，用于报告中图像内容的展示。
             """
             if not frame:
                 return None
@@ -269,9 +246,6 @@ class Report(object):
         async def transform(inform_part: dict) -> dict[str, typing.Any]:
             """
             转换报告数据字典，整合图像与阶段信息。
-
-            解析 inform_part 中的 frame、extra、stage、proto 字段，
-            并通过 acquire 加载图像数据，构造统一结构以供模板渲染使用。
             """
             query = inform_part.get("query", "")
             stage = inform_part.get("stage", {})
@@ -362,25 +336,9 @@ class Report(object):
             - 当日志文件不存在或无法读取；
             - 当未能提取出任何有效数据或报告内容为空；
             - 当报告渲染过程中发生异常。
-
-        Notes
-        -----
-        - 此方法仅处理符合格式的 Recovery 日志；
-        - 会遍历日志中记录的所有分项任务，自动调用 `ask_create_report` 生成子报告；
-        - 合并结果最终会调用 Jinja2 模板生成汇总页面并写入至文件系统。
-
-        Workflow
-        --------
-        1. 读取 `file_name` 目录下日志文件中记录的任务；
-        2. 从日志中提取 Speeder / Restore 信息；
-        3. 若开启分组，按 `(total, title, query)` 对数据进行归类；
-        4. 针对每个分析项目，调用 `ask_create_report` 生成 HTML 报告；
-        5. 合并每个子报告的摘要信息，组织为总表结构；
-        6. 使用 Jinja2 渲染总报告模板；
-        7. 写入最终总报告文件至指定位置并返回路径。
         """
 
-        # Notes: 从日志文件中读取数据
+        # 从日志文件中读取数据
         # try:
         #     log_file = const.R_RECOVERY, const.R_LOG_FILE
         #     async with aiofiles.open(os.path.join(file_name, *log_file), "r", encoding=const.CHARSET) as f:
@@ -484,8 +442,10 @@ class Report(object):
             total_list=total_list
         )
 
-        salt: "typing.Callable" = lambda: "".join(
-            random.choices(string.ascii_uppercase + string.digits, k=5)
+        salt: typing.Callable[
+            [], str
+        ] = lambda: "".join(random.choices(
+            string.ascii_uppercase + string.digits, k=5)
         )
         html = os.path.join(file_name, f"{const.R_TOTAL_NAME}_{salt()}.html")
 
@@ -523,12 +483,6 @@ class Report(object):
         Union[Any, str]
             返回 HTML 文件的输出路径；
             若发生异常或特殊逻辑处理，也可能返回任意类型结果。
-
-        Notes
-        -----
-        - 帧图像文件名应以帧编号为前缀（如 `12(xxx).jpg`）；
-        - 将按编号对帧排序，并以 JSON 格式传入模板变量；
-        - 最终通过 `Report.write_html_file()` 异步写入 HTML 文件。
         """
         frame_list = []
         for image in os.listdir(extra_path):
@@ -602,22 +556,6 @@ class Report(object):
 
         FramixError
             若写入 HTML 报告文件失败或路径非法时抛出。
-
-        Notes
-        -----
-        - 在 `boost=True` 时，稳定阶段的中间帧将被嵌入为 base64 编码；
-        - 不稳定阶段或未知阶段以已保存图像的路径填充；
-        - 会自动统计每个阶段的时长及 ID 范围作为标题；
-        - HTML 中将包含图像列表、成本信息、时间戳、工具元信息等字段。
-
-        Workflow
-        --------
-        1. 从 `struct_result` 中获取所有阶段片段；
-        2. 遍历每个阶段片段并提取中间帧及全部帧图像；
-        3. 构建每个阶段的标题、帧区间、耗时等信息；
-        4. 使用 Jinja2 模板渲染 HTML 页面；
-        5. 将报告保存至 `proto_path` 指定路径；
-        6. 返回生成 HTML 报告文件路径。
         """
         label_stable = "稳定阶段"
         label_unstable = "不稳定阶段"
