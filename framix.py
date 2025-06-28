@@ -135,9 +135,11 @@ class Missions(object):
         self.main_total_temp: str = kwargs["main_total_temp"]
         self.view_share_temp: str = kwargs["view_share_temp"]
         self.view_total_temp: str = kwargs["view_total_temp"]
+
         self.src_opera_place: str = kwargs["src_opera_place"]
         self.src_model_place: str = kwargs["src_model_place"]
         self.src_total_place: str = kwargs["src_total_place"]
+
         self.initial_option: str = kwargs["initial_option"]
         self.initial_deploy: str = kwargs["initial_deploy"]
         self.initial_script: str = kwargs["initial_script"]
@@ -783,7 +785,10 @@ class Missions(object):
                 "title": title,
                 "query": query,
                 "stage": {"start": start, "end": end, "cost": f"{cost:.5f}"},
-                "frame": os.path.basename(frame_path)
+                "frame": os.path.basename(frame_path),
+                "extra": "",
+                "proto": "",
+                "style": ("keras" if self.keras else "infer") if struct else "basic"
             }
 
             if struct:
@@ -794,9 +799,6 @@ class Missions(object):
                 )
                 result["extra"] = os.path.basename(extras_inform)
                 result["proto"] = os.path.basename(stages_inform)
-                result["style"] = "keras"
-            else:
-                result["style"] = "basic"
 
             await report.load(result)
             logger.debug(f"Restore: {(nest := json.dumps(result, ensure_ascii=False))}")
@@ -1913,7 +1915,7 @@ class Missions(object):
             # Notes: Analyzer
             if self.speed:
                 await self.als_speed(deploy, clipix, report, task_list)
-            elif self.basic or self.keras or self.infer_license:
+            elif self.basic or self.keras or self.infer:
                 await self.als_mixer(deploy, clipix, report, task_list, option, alynex)
             else:
                 logger.debug(f"**<* 影像捕手 *>**")
@@ -2280,6 +2282,8 @@ class Missions(object):
                                 )
                                 raise FramixError(f"当前处于 {selected} 分析模式中，请使用 create 指令生成报告")
 
+                            online_status_task = asyncio.create_task(Api.proxy_predict())
+
                             choices += ["88"]
                             while mode := Prompt.ask(
                                     f"[bold #ADFF2F]Choose analysis mode [bold #FFA07A][{choices[-1]}]返回",
@@ -2292,6 +2296,11 @@ class Missions(object):
                                 choices.pop()
                                 for key in choices:
                                     setattr(self, key, key == mode)
+                                online_status = await online_status_task or {}
+                                self.online = {
+                                    **(online_status if isinstance(online_status, dict) else {}), "infer": self.infer
+                                }
+
                                 return await self.video_data_task(
                                     [Path(report.total_path).parent], option, deploy
                                 )
@@ -2809,7 +2818,7 @@ class Alynex(object):
     __ks: typing.Optional["KerasStruct"] = KerasStruct()
 
     def __init__(
-        self, option: "Option", deploy: "Deploy", design: "Design", online: dict
+            self, option: "Option", deploy: "Deploy", design: "Design", online: dict
     ) -> None:
 
         self.option = option  # Workflow: 程序运行选项
@@ -2876,12 +2885,35 @@ class Alynex(object):
             not (self.ks and self.ks.model)
         )
 
+    @staticmethod
+    def judge_channel(shape: tuple[int, ...]) -> typing.Optional[int]:
+        """
+        判断图像帧的通道数（channel），根据其 shape 推断格式。
+
+        支持灰度图、彩色图（HWC / CHW）等主流图像格式。
+        若无法从 shape 合理推断通道数，则返回 None。
+
+        Parameters
+        ----------
+        shape : tuple[int, ...]
+            图像数据的维度信息，如 (H, W)、(H, W, C)、(C, H, W)。
+
+        Returns
+        -------
+        Optional[int]
+            - 若能识别，则返回通道数（1、3、4）。
+            - 若无法识别，返回 None。
+        """
+        return shape[2] if len(shape) == 3 and shape[2] in (1, 3, 4) else \
+            shape[0] if len(shape) == 3 and shape[0] in (1, 3, 4) else \
+                1 if len(shape) == 2 else None
+
     async def ask_model_load(self) -> None:
         """
-        加载本地 Keras 模型，根据部署参数选择彩色或灰度模型。
+        加载本地模型，根据部署参数选择彩色或灰度模型。
 
         此函数根据 `deploy.color` 参数，从指定的模型目录中选择对应模型，
-        并尝试加载 Keras 模型结构，校验输入通道维度是否符合预期要求。
+        并尝试加载模型结构，校验输入通道维度是否符合预期要求。
         若模型路径无效或加载失败，将抛出对应异常。
 
         Raises
@@ -2974,7 +3006,7 @@ class Alynex(object):
         )
 
         # 记录视频帧加载完成后的详细信息和耗时
-        logger.debug(f"{(task_name := '视频帧加载完成: ' f'{video.frame_detail()}')}")
+        logger.debug(f"{(task_name := '视频帧加载完成: ' f'{video.frame_detail()[0]}')}")
         logger.debug(f"{(task_info := '视频帧加载耗时: ' f'{time.time() - start_time_:.2f} 秒')}")
         self.design.show_panel(f"{task_name}\n{task_info}", Wind.LOADER)
 
@@ -3411,7 +3443,7 @@ class Alynex(object):
                     return None
 
             except Exception as e:
-                logger.error(e)
+                logger.debug(e)
                 return self.design.show_panel(e, Wind.KEEPER)
 
         async def analytics_basic() -> tuple:
@@ -3511,10 +3543,25 @@ class Alynex(object):
 
         # 加载视频帧对象 VideoObject，包含解码后所有帧
         video = await self.ask_video_load(target_vision, src_size)
+        frame_shape = video.frame_detail()[-1]
 
         # 如果正确加载模型或具备远程推理权限，则执行分类并裁剪视频
-        if self.is_locals_predict or self.is_online_predict:
+        if self.is_locals_predict:
+            frame_channel = self.judge_channel(frame_shape)
+            model_channel = self.ks.model.input_shape[-1]
+
+            matched: typing.Callable[[], bool] = lambda: frame_channel == model_channel
+            if not matched():
+                logger.debug(
+                    tip_ := f"通道数不匹配 FCH={frame_channel} MCH={model_channel} 回退分析模式"
+                )
+                self.design.show_panel(tip_, Wind.KEEPER)
+
+            struct = await frame_flow() if matched() else None
+
+        elif self.is_online_predict:
             struct = await frame_flow()
+
         else:
             struct = None
 
@@ -3817,6 +3864,7 @@ class Api(object):
             "video_name": (video_name := f"{video.name}_{uuid.uuid4().hex[:8]}"),
             "video_path": (video_path := os.path.basename(video.path)),
             "frame_count": video.frame_count,
+            "frame_shape": video.frame_detail()[-1],
             "frames_data": [
                 {
                     "frame_id": frame.frame_id,
@@ -3853,7 +3901,7 @@ class Api(object):
                     content = await npz_file.read()
 
                 data = {
-                    "frame_meta": json.dumps(metadata)
+                    "frame_meta": json.dumps(metadata, ensure_ascii=False)
                 }
                 files = {
                     "frame_file": (f"{video_name}.npz", content, "application/octet-stream")
@@ -3877,7 +3925,7 @@ class Api(object):
                             json_str = line.removeprefix(error_mark).strip()
                             raise RuntimeError(json.loads(json_str).get("error"))
                         elif line.startswith(fatal_mark):
-                            json_str = line.removeprefix(error_mark).strip()
+                            json_str = line.removeprefix(fatal_mark).strip()
                             raise RuntimeError(json.loads(json_str).get("fatal"))
 
             pbar.close()
@@ -3917,7 +3965,7 @@ def signal_processor(*_, **__) -> None:
 
 
 # """Main"""
-async def main() -> typing.Coroutine | None:
+async def main() -> None:
     """
     命令分发调度器，根据命令行参数执行对应任务模块。
     """
