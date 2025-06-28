@@ -15,7 +15,11 @@ import json
 import random
 import shutil
 import typing
+import asyncio
+import hashlib
+import zipfile
 import aiofiles
+from pathlib import Path
 from loguru import logger
 from rich.text import Text
 from rich.tree import Tree
@@ -67,7 +71,7 @@ class FramixError(_FramixBaseError):
 
 class FileAssist(object):
     """
-    文件操作工具类，用于读取与写入 JSON 文件。
+    文件操作工具类。
     """
 
     @staticmethod
@@ -105,6 +109,58 @@ class FileAssist(object):
             await file.write(
                 json.dumps(dst, indent=4, separators=(",", ":"), ensure_ascii=False)
             )
+
+    @staticmethod
+    async def extract_zip(zip_path: str) -> str:
+        """
+        解压 ZIP 文件到其所在目录。
+
+        Parameters
+        ----------
+        zip_path : str
+            要解压的 ZIP 文件路径。
+
+        Returns
+        -------
+        str
+            解压后的目标目录路径。
+
+        Raises
+        ------
+        ValueError
+            如果提供的文件不是有效的 ZIP 文件。
+        """
+        if not zipfile.is_zipfile(zip_path):
+            raise ValueError(f"❌ 不是有效的 ZIP 文件: {zip_path}")
+
+        extract_to = Path(zip_path).parent.resolve()
+
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+            await asyncio.to_thread(zip_ref.extractall, extract_to)
+
+        return str(extract_to)
+
+    @staticmethod
+    async def calculate_sha256(path: str) -> str:
+        """
+        计算文件的 SHA256 哈希值。
+
+        Parameters
+        ----------
+        path : str
+            文件路径。
+
+        Returns
+        -------
+        str
+            计算得到的 SHA256 哈希字符串。
+        """
+        sha256 = hashlib.sha256()
+        async with aiofiles.open(path, "rb") as f:
+            while chunk := await f.read(8192):
+                sha256.update(chunk)
+
+        return sha256.hexdigest()
 
 
 class Active(object):
