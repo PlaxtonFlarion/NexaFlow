@@ -353,34 +353,7 @@ class Missions(object):
 
         return loop_complete
 
-    @staticmethod
-    async def enforce(db: "DB", style: str, total: str, title: str, nest: str) -> None:
-        """
-        异步插入分析数据到数据库，并确保表结构已创建。
-
-        此方法会根据提供的信息（分析方式、报告路径、标题、嵌套标识）将数据写入数据库，
-        在写入前自动检查并创建所需的表结构。
-
-        Parameters
-        ----------
-        db : DB
-            数据库连接对象，必须实现 `create` 和 `insert` 方法。
-
-        style : str
-            分析方式的标识，用于标注数据的来源或处理流程类型。
-
-        total : str
-            报告存储的根目录路径，用于记录结果输出位置。
-
-        title : str
-            数据集标题或报告名，通常用于标识当前分析任务。
-
-        nest : str
-            嵌套标识，用于记录子任务、子路径或层级结构。
-        """
-        await db.create(column_list := ["style", "total", "title", "nest"])
-        await db.insert(column_list, [style, total, title, nest])
-
+    # """Download dependency"""
     async def dependencies(self, folder: "Path") -> None:
         """
         下载并校验依赖项。
@@ -419,6 +392,34 @@ class Missions(object):
                 await manager.stop()
                 logger.debug(e)
                 self.design.show_panel(e, Wind.KEEPER)
+
+    @staticmethod
+    async def enforce(db: "DB", style: str, total: str, title: str, nest: str) -> None:
+        """
+        异步插入分析数据到数据库，并确保表结构已创建。
+
+        此方法会根据提供的信息（分析方式、报告路径、标题、嵌套标识）将数据写入数据库，
+        在写入前自动检查并创建所需的表结构。
+
+        Parameters
+        ----------
+        db : DB
+            数据库连接对象，必须实现 `create` 和 `insert` 方法。
+
+        style : str
+            分析方式的标识，用于标注数据的来源或处理流程类型。
+
+        total : str
+            报告存储的根目录路径，用于记录结果输出位置。
+
+        title : str
+            数据集标题或报告名，通常用于标识当前分析任务。
+
+        nest : str
+            嵌套标识，用于记录子任务、子路径或层级结构。
+        """
+        await db.create(column_list := ["style", "total", "title", "nest"])
+        await db.insert(column_list, [style, total, title, nest])
 
     async def fst_track(
             self, deploy: "Deploy", clipix: "Clipix", task_list: list[list]
