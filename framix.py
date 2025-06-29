@@ -1021,7 +1021,6 @@ class Missions(object):
         else:
             alynex = Alynex(option, deploy, self.design, self.online)
             if self.keras:
-                await self.dependencies(Path(self.src_opera_place).parent / "Tests")  # todo
                 try:
                     await alynex.ask_model_load()
                 except Exception as e:
