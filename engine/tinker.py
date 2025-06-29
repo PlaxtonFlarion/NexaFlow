@@ -111,6 +111,22 @@ class FileAssist(object):
             )
 
     @staticmethod
+    async def describe_text(src: typing.Any, dst: str) -> None:
+        """
+        将字符串内容异步写入指定文件路径。
+
+        Parameters
+        ----------
+        src : Any
+            文件路径对象或路径字符串，表示写入目标文件。
+
+        dst : str
+            要写入的字符串内容。
+        """
+        async with aiofiles.open(src, "w", encoding=const.CHARSET) as f:
+            await f.write(dst)
+
+    @staticmethod
     async def extract_zip(zip_path: str) -> str:
         """
         解压 ZIP 文件到其所在目录。

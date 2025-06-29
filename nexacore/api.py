@@ -136,16 +136,119 @@ class Api(object):
         -------
         dict
             返回包含命令配置的字典组成结构。
-
-        Raises
-        ------
-        FramixError
-            当网络请求失败或响应异常时，将在外层调用中处理。
         """
         params = Channel.make_params() | {"case": case}
         async with Messenger() as messenger:
             resp = await messenger.poke("GET", const.BUSINESS_CASE_URL, params=params)
             return resp.json()
+
+    @staticmethod
+    async def fetch_template_versions() -> dict:
+        """
+        从远程服务器拉取模板版本元信息。
+
+        Returns
+        -------
+        dict
+            远程模板名与版本号及其下载链接的映射。
+
+        Raises
+        ------
+        Exception
+            若远程请求失败或返回异常，将抛出由 Messenger 封装的异常。
+        """
+        params = Channel.make_params()
+        async with Messenger() as messenger:
+            resp = await messenger.poke("GET", const.TEMPLATE_META_URL, params=params)
+            return resp.json()
+
+    @staticmethod
+    async def fetch_template_file(url: str, template_name: str) -> str:
+        """
+        异步获取远程模板文件内容。
+
+        本方法通过指定的 URL 与模板名称组合构建请求参数，
+        并使用 Messenger 客户端发起 GET 请求，获取模板内容。
+
+        Parameters
+        ----------
+        url : str
+            远程请求的基础地址（如模板服务接口地址）。
+
+        template_name : str
+            模板文件名称，用于作为查询参数 "page" 的值。
+
+        Returns
+        -------
+        str
+            请求返回的模板文件内容字符串。
+
+        Raises
+        ------
+        Exception
+            若远程请求失败或返回异常，将抛出由 Messenger 封装的异常。
+        """
+        params = Channel.make_params() | {"page": template_name}
+        async with Messenger() as messenger:
+            resp = await messenger.poke("GET", url, params=params)
+            return resp.text
+
+    @staticmethod
+    async def sync_templates(template_dir: "Path") -> None:
+        """
+        异步同步远程模板文件至本地目录。
+
+        此方法会对比本地与远程的模板版本号，仅下载更新过的模板文件。
+        同步完成后，会更新本地的版本信息文件（通常为 versions.json）。
+
+        Parameters
+        ----------
+        template_dir : Path
+            模板文件的本地保存目录，所有模板及其版本信息将写入此目录。
+
+        Raises
+        ------
+        Exception
+            当远程接口不可达、文件写入失败或解析错误等情况发生时，可能抛出异常。
+        """
+        template_dir.mkdir(parents=True, exist_ok=True)
+        versions_file = template_dir / const.X_TEMPLATE_VERSION
+
+        remote_versions = await Api.fetch_template_versions()
+
+        try:
+            locals_versions = json.loads(versions_file.read_text()) if versions_file.exists() else {}
+        except (FileNotFoundError, json.JSONDecodeError):
+            locals_versions = {}
+
+        updated_local_version = locals_versions.copy()
+
+        # 计算需要更新的模板
+        if locals_versions:
+            download_map = {
+                name: info for name, info in remote_versions.items()
+                if info["version"] > locals_versions.get(name, {}).get("version", "")
+            }
+        else:
+            download_map = remote_versions
+
+        # 更新本地版本记录
+        for k, v in download_map.items():
+            updated_local_version[k] = {"version": v["version"]}
+
+        # 并发拉取模板内容
+        download_list = await asyncio.gather(
+            *(Api.fetch_template_file(v["url"], k) for k, v in download_map.items())
+        )
+
+        # 并发写入模板文件
+        await asyncio.gather(
+            *(FileAssist.describe_text(template_dir / k, content)
+              for content, (k, _) in zip(download_list, download_map.items()))
+        )
+
+        # 写入版本信息文件
+        await FileAssist.dump_parameters(versions_file, updated_local_version)
 
     @staticmethod
     async def synthesize(speak: str, waver: str, src_opera_place: str, allowed_extra: list) -> str:
@@ -499,13 +602,13 @@ class Api(object):
 
     @staticmethod
     async def join_range_download(
-        progress: dict,
-        status: dict,
-        filename: str,
-        url: str,
-        output: str,
-        total_size: int,
-        expected_sha256: str
+            progress: dict,
+            status: dict,
+            filename: str,
+            url: str,
+            output: str,
+            total_size: int,
+            expected_sha256: str
     ) -> None:
         """
         执行并发分块下载任务，并校验哈希与自动解压。
