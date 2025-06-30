@@ -138,21 +138,6 @@ class Api(object):
             return resp.json()
 
     @staticmethod
-    async def fetch_template_versions() -> dict:
-        """
-        从远程服务器拉取模板版本元信息。
-
-        Returns
-        -------
-        dict
-            远程模板名与版本号及其下载链接的映射。
-        """
-        params = Channel.make_params()
-        async with Messenger() as messenger:
-            resp = await messenger.poke("GET", const.TEMPLATE_META_URL, params=params)
-            return resp.json()
-
-    @staticmethod
     async def fetch_template_file(url: str, template_name: str) -> str:
         """
         异步获取远程模板文件内容。
@@ -177,63 +162,6 @@ class Api(object):
         async with Messenger() as messenger:
             resp = await messenger.poke("GET", url, params=params)
             return resp.text
-
-    @staticmethod
-    async def sync_templates(template_dir: "Path") -> None:
-        """
-        异步同步远程模板文件至本地目录。
-
-        此方法会对比本地与远程的模板版本号，仅下载更新过的模板文件。
-        同步完成后，会更新本地的版本信息文件（通常为 versions.json）。
-
-        Parameters
-        ----------
-        template_dir : Path
-            模板文件的本地保存目录，所有模板及其版本信息将写入此目录。
-
-        Raises
-        ------
-        Exception
-            当远程接口不可达、文件写入失败或解析错误等情况发生时，可能抛出异常。
-        """
-        template_dir.mkdir(parents=True, exist_ok=True)
-        versions_file = template_dir / const.X_TEMPLATE_VERSION
-
-        remote_versions = await Api.fetch_template_versions()
-
-        try:
-            locals_versions = json.loads(versions_file.read_text()) if versions_file.exists() else {}
-        except (FileNotFoundError, json.JSONDecodeError):
-            locals_versions = {}
-
-        updated_local_version = locals_versions.copy()
-
-        # 计算需要更新的模板
-        if locals_versions:
-            download_map = {
-                name: info for name, info in remote_versions.items()
-                if info["version"] > locals_versions.get(name, {}).get("version", "")
-            }
-        else:
-            download_map = remote_versions
-
-        # 更新本地版本记录
-        for k, v in download_map.items():
-            updated_local_version[k] = {"version": v["version"]}
-
-        # 并发拉取模板内容
-        download_list = await asyncio.gather(
-            *(Api.fetch_template_file(v["url"], k) for k, v in download_map.items())
-        )
-
-        # 并发写入模板文件
-        await asyncio.gather(
-            *(FileAssist.describe_text(template_dir / k, content)
-              for content, (k, _) in zip(download_list, download_map.items()))
-        )
-
-        # 写入版本信息文件
-        await FileAssist.dump_parameters(versions_file, updated_local_version)
 
     @staticmethod
     async def synthesize(speak: str, waver: str, src_opera_place: str, allowed_extra: list) -> str:
@@ -326,6 +254,45 @@ class Api(object):
             return logger.debug(e)
 
         return auth_info.get("configuration", {})
+
+    @staticmethod
+    async def online_template_meta() -> typing.Optional[dict]:
+        """
+        获取模版元信息。
+        """
+        try:
+            sign_data = await Api.ask_request_get(const.TEMPLATE_META_URL)
+            auth_info = authorize.verify_signature(sign_data)
+        except Exception as e:
+            return logger.debug(e)
+
+        return auth_info.get("template", {})
+
+    @staticmethod
+    async def online_toolkit_meta(platform: str) -> typing.Optional[dict]:
+        """
+        获取工具元信息。
+        """
+        try:
+            sign_data = await Api.ask_request_get(const.TOOLKIT_META_URL, platform=platform)
+            auth_info = authorize.verify_signature(sign_data)
+        except Exception as e:
+            return logger.debug(e)
+
+        return auth_info.get("toolkit", {})
+
+    @staticmethod
+    async def online_model_meta() -> typing.Optional[dict]:
+        """
+        获取模型元信息。
+        """
+        try:
+            sign_data = await Api.ask_request_get(const.MODEL_META_URL)
+            auth_info = authorize.verify_signature(sign_data)
+        except Exception as e:
+            return logger.debug(e)
+
+        return auth_info.get("models", {})
 
     @staticmethod
     async def proxy_predict() -> typing.Optional[dict]:
@@ -489,16 +456,6 @@ class Api(object):
             Api.background.append(
                 asyncio.create_task(asyncio.to_thread(os.remove, npz_path))
             )
-
-    @staticmethod
-    async def online_model_meta() -> typing.Optional[dict]:
-        try:
-            sign_data = await Api.ask_request_get(const.MODEL_META_URL)
-            auth_info = authorize.verify_signature(sign_data)
-        except Exception as e:
-            return logger.debug(e)
-
-        return auth_info.get("models", {})
 
     @staticmethod
     async def fetch_range(

@@ -254,14 +254,17 @@ class Missions(object):
         bool
             若远程推理服务可用且本地启用，则返回 True；否则返回 False。
         """
+        return self.online.get("available", False) and self.online.get("infer", False)
+
+    # """Online Predict Display"""
+    def infer_display(self) -> None:
         available = self.online.get("available", False)
         tip = self.online.get(
             "message", "Predict service online" if available else "Predict service offline"
         )
         tip += f", Available={available}, Command={self.online.get('infer', False)}"
         logger.debug(tip)
-        self.design.show_panel(tip, Wind.PREDICT)
-        return available and self.infer
+        return self.design.show_panel(tip, Wind.PREDICT)
 
     # """Child Process"""
     def amazing(self, option: "Option", deploy: "Deploy", vision: str, *args) -> "_T":
@@ -352,46 +355,6 @@ class Missions(object):
         )
 
         return loop_complete
-
-    # """Download dependency"""
-    async def dependencies(self, folder: "Path") -> None:
-        """
-        下载并校验依赖项。
-
-        使用 R2 存储元信息动态获取元数据，并执行异步并发下载。
-        所有下载过程通过动画器实时更新进度和状态。
-
-        Parameters
-        ----------
-        folder : Path
-            模型目录根路径，支持传入单个 ZIP 文件或目标文件夹路径。
-        """
-        metadata = await Api.online_model_meta()
-        logger.debug(f"Download: {metadata}")
-
-        # 确定下载目录
-        target = folder.stem if folder.is_file() else folder
-        target.mkdir(parents=True, exist_ok=True)
-
-        # 初始化进度与状态
-        progress = {
-            v["filename"]: {"range": 0, "total": 100} for v in metadata.values()
-        }
-        status = {"status": "Normal"}
-
-        # 启动下载动画并执行下载任务
-        logger.debug(f"Downloading: {progress}")
-        async with AsyncAnimationManager(self.design.creative_download, progress, status) as manager:
-            try:
-                await asyncio.gather(*(
-                    Api.join_range_download(
-                        progress, status, v["filename"], v["url"], str(target / v["filename"]), v["size"], v["hash"]
-                    ) for v in metadata.values()
-                ))
-            except Exception as e:
-                await manager.stop()
-                logger.debug(e)
-                self.design.show_panel(e, Wind.KEEPER)
 
     @staticmethod
     async def enforce(db: "DB", style: str, total: str, title: str, nest: str) -> None:
@@ -718,6 +681,8 @@ class Missions(object):
             分析工具实例，包含模型状态与分析方法。
         """
         looper = asyncio.get_running_loop()
+
+        self.infer_display()
 
         if self.infer_license:
             logger.debug(f"**<* 感知链接 *>**")
@@ -2914,8 +2879,8 @@ class Alynex(object):
             - 本地模型尚未加载
         """
         return (
-            self.online.get("infer", False) and
             self.online.get("available", False) and
+            self.online.get("infer", False) and
             not (self.ks and self.ks.model)
         )
 
@@ -3611,6 +3576,126 @@ class Alynex(object):
         ) if struct else Review(*(await analytics_basic()))
 
 
+class Synchronizer(object):
+    """
+    同步器类：用于同步远程资源（模板、模型、工具）到本地。
+    """
+
+    def __init__(
+            self,
+            template_dir: "Path",
+            toolkit_dir: "Path",
+            model_dir: "Path",
+            platform: str,
+            level: str
+    ):
+
+        self.template_dir = template_dir
+        self.toolkit_dir = toolkit_dir
+        self.model_dir = model_dir
+        self.platform = platform
+        self.design = Design(level)
+
+    async def sync_all(self) -> None:
+        """同步全部资源"""
+        logger.debug("正在同步全部资源 ...")
+
+        await self.sync_templates()
+        await self.sync_toolkits()
+        await self.sync_models()
+
+        logger.debug("资源同步完成")
+
+    async def sync_templates(self) -> None:
+        """同步模板"""
+        logger.debug("正在同步模板文件 ...")
+
+        try:
+            metadata = await Api.online_template_meta()
+            await self.download_templates(metadata, self.template_dir)
+        except Exception as e:
+            raise FramixError(f"同步资源失败: {e}")
+
+        logger.debug("模板同步完成")
+
+    async def sync_toolkits(self) -> None:
+        """同步工具"""
+        logger.debug("正在同步工具文件 ...")
+
+        try:
+            metadata = await Api.online_toolkit_meta(self.platform)
+            await self.download_dependencies(metadata, self.toolkit_dir)
+        except Exception as e:
+            raise FramixError(f"同步资源失败: {e}")
+
+        logger.debug("工具同步完成")
+
+    async def sync_models(self) -> None:
+        """同步模型"""
+        logger.debug("正在同步模型文件 ...")
+
+        try:
+            metadata = await Api.online_model_meta()
+            await self.download_dependencies(metadata, self.model_dir)
+        except Exception as e:
+            raise FramixError(f"同步资源失败: {e}")
+
+        logger.debug("模型同步完成")
+
+    async def download_templates(self, metadata: dict, folder: "Path") -> None:
+        """模版下载器"""
+        if not metadata:
+            raise ValueError("依赖元信息为空，无法下载文件。")
+
+        folder.mkdir(parents=True, exist_ok=True)
+
+        self.design.console.print()
+        for k, v in metadata.items():
+            self.design.Doc.log(f"Download: {k}")
+        self.design.console.print()
+
+        # 并发拉取模板内容
+        download_list = await asyncio.gather(
+            *(Api.fetch_template_file(v["url"], k) for k, v in metadata.items())
+        )
+
+        # 并发写入模板文件
+        await asyncio.gather(
+            *(FileAssist.describe_text(folder / k, content)
+              for content, (k, v) in zip(download_list, metadata.items()))
+        )
+
+    async def download_dependencies(self, metadata: dict, folder: "Path") -> None:
+        """通用下载器"""
+        if not metadata:
+            raise ValueError("依赖元信息为空，无法下载文件。")
+
+        logger.debug(f"Download: {metadata}")
+
+        # 确定下载目录
+        target = folder.stem if folder.is_file() else folder
+        target.mkdir(parents=True, exist_ok=True)
+
+        # 初始化进度与状态
+        progress = {
+            v["filename"]: {"range": 0, "total": 100} for v in metadata.values()
+        }
+        status = {"status": "Normal"}
+
+        # 启动下载动画并执行下载任务
+        logger.debug(f"Downloading: {progress}")
+        async with AsyncAnimationManager(self.design.creative_download, progress, status) as manager:
+            try:
+                await asyncio.gather(*(
+                    Api.join_range_download(
+                        progress, status, v["filename"], v["url"], str(target / v["filename"]), v["size"], v["hash"]
+                    ) for v in metadata.values()
+                ))
+            except Exception as e:
+                await manager.stop()
+                raise e
+
+
 # """Signal Processor"""
 def signal_processor(*_, **__) -> None:
     """
@@ -3769,11 +3854,99 @@ async def main() -> None:
     else:
         raise FramixError(f"{const.DESC} compatible with {const.NAME} command")
 
-    # 设置模板文件源路径
+    # notes: --- 路径初始化 ---
     src_templates = os.path.join(fx_work, const.F_SCHEMATIC, const.F_TEMPLATES).format()
-    # 模板版本文件路径
-    _ = os.path.join(src_templates, const.X_TEMPLATE_VERSION).format()
-    # 设置模板文件路径
+
+    turbo = os.path.join(fx_work, const.F_SCHEMATIC, const.F_SUPPORTS).format()
+
+    if not os.path.exists(
+        initial_source := os.path.join(fx_feasible, const.F_STRUCTURE).format()
+    ):
+        os.makedirs(initial_source, exist_ok=True)
+
+    if not os.path.exists(
+        src_opera_place := os.path.join(initial_source, const.F_SRC_OPERA_PLACE).format()
+    ):
+        os.makedirs(src_opera_place, exist_ok=True)
+
+    if not os.path.exists(
+        src_model_place := os.path.join(initial_source, const.F_SRC_MODEL_PLACE).format()
+    ):
+        os.makedirs(src_model_place, exist_ok=True)
+
+    if not os.path.exists(
+        src_total_place := os.path.join(initial_source, const.F_SRC_TOTAL_PLACE).format()
+    ):
+        os.makedirs(src_total_place, exist_ok=True)
+
+    initial_option = os.path.join(initial_source, const.F_SRC_OPERA_PLACE, const.F_OPTION)
+    initial_deploy = os.path.join(initial_source, const.F_SRC_OPERA_PLACE, const.F_DEPLOY)
+    initial_script = os.path.join(initial_source, const.F_SRC_OPERA_PLACE, const.F_SCRIPT)
+
+    Active.active(level := "DEBUG" if lines.debug else "INFO")
+
+    option, deploy = Option(initial_option), Deploy(initial_deploy)
+
+    if (talks := lines.talks) or lines.rings:
+        if talks:
+            current = deploy, initial_deploy, deploy.deploys
+        else:
+            current = option, initial_option, option.options
+
+        await previewing(*current)
+        return await Design.engine_starburst(level)  # 结尾动画
+
+    # notes: --- 授权流程 ---
+    lic_file = Path(src_opera_place) / const.LIC_FILE
+
+    # 应用激活
+    if apply_code := lines.apply:
+        return await authorize.receive_license(apply_code, lic_file)
+
+    # 授权校验
+    await authorize.verify_license(lic_file)
+
+    # notes: --- 工具路径设置 ---
+    if platform == "win32":
+        supports = os.path.join(turbo, "Windows").format()
+        adb, ffmpeg, ffprobe = "adb.exe", "ffmpeg.exe", "ffprobe.exe"
+    elif platform == "darwin":
+        supports = os.path.join(turbo, "MacOS").format()
+        adb, ffmpeg, ffprobe = "adb", "ffmpeg", "ffprobe"
+    else:
+        raise FramixError(f"{const.DESC} is not supported on this platform: {platform}.")
+
+    adb = os.path.join(supports, "platform-tools", adb)
+    ffmpeg = os.path.join(supports, "ffmpeg", "bin", ffmpeg)
+    ffprobe = os.path.join(supports, "ffmpeg", "bin", ffprobe)
+
+    for tls in (tools := [adb, ffmpeg, ffprobe]):
+        os.environ["PATH"] = os.path.dirname(tls) + env_symbol + os.environ.get("PATH", "")
+
+    # notes: --- 手动同步命令（提前返回）---
+    if lines.syncs:
+        syncer = Synchronizer(
+            template_dir=Path(src_templates),
+            toolkit_dir=Path(supports),
+            model_dir=Path(src_model_place),
+            platform=platform,
+            level=level
+        )
+        sync_map = {
+            "all": syncer.sync_all,
+            "template": syncer.sync_templates,
+            "toolkit": syncer.sync_toolkits,
+            "model": syncer.sync_models
+        }
+
+        if sync_func := sync_map.get(lines.syncs):
+            await sync_func()
+        else:
+            raise FramixError(f"{const.DESC} does not support sync type: {lines.syncs}")
+
+        return await Design.engine_starburst(level)
+
+    # notes: --- 模板与工具检查 ---
     atom_total_temp = os.path.join(src_templates, "template_atom_total.html")
     line_total_temp = os.path.join(src_templates, "template_line_total.html")
     main_share_temp = os.path.join(src_templates, "template_main_share.html")
@@ -3791,81 +3964,12 @@ async def main() -> None:
         tmp_name = os.path.basename(tmp)
         raise FramixError(f"{const.DESC} missing files {tmp_name}")
 
-    # 设置工具源路径
-    turbo = os.path.join(fx_work, const.F_SCHEMATIC, const.F_SUPPORTS).format()
-
-    # 根据平台设置工具路径
-    if platform == "win32":
-        supports = os.path.join(turbo, "Windows").format()
-        adb, ffmpeg, ffprobe = "adb.exe", "ffmpeg.exe", "ffprobe.exe"
-    elif platform == "darwin":
-        supports = os.path.join(turbo, "MacOS").format()
-        adb, ffmpeg, ffprobe = "adb", "ffmpeg", "ffprobe"
-    else:
-        raise FramixError(f"{const.DESC} is not supported on this platform: {platform}.")
-
-    adb = os.path.join(supports, "platform-tools", adb)
-    ffmpeg = os.path.join(supports, "ffmpeg", "bin", ffmpeg)
-    ffprobe = os.path.join(supports, "ffmpeg", "bin", ffprobe)
-
-    # 将工具路径添加到系统 PATH 环境变量中
-    for tls in (tools := [adb, ffmpeg, ffprobe]):
-        os.environ["PATH"] = os.path.dirname(tls) + env_symbol + os.environ.get("PATH", "")
-
     # 检查每个工具是否存在，如果缺失则显示错误信息并退出程序
     for tls in tools:
         if not shutil.which((tls_name := os.path.basename(tls))):
             raise FramixError(f"{const.DESC} missing files {tls_name}")
 
-    # 初始文件夹路径
-    if not os.path.exists(
-        initial_source := os.path.join(fx_feasible, const.F_STRUCTURE).format()
-    ):
-        os.makedirs(initial_source, exist_ok=True)
-
-    # 配置文件夹路径
-    if not os.path.exists(
-        src_opera_place := os.path.join(initial_source, const.F_SRC_OPERA_PLACE).format()
-    ):
-        os.makedirs(src_opera_place, exist_ok=True)
-
-    # 模型文件夹路径
-    if not os.path.exists(
-        src_model_place := os.path.join(initial_source, const.F_SRC_MODEL_PLACE).format()
-    ):
-        os.makedirs(src_model_place, exist_ok=True)
-
-    # 报告文件夹路径
-    if not os.path.exists(
-        src_total_place := os.path.join(initial_source, const.F_SRC_TOTAL_PLACE).format()
-    ):
-        os.makedirs(src_total_place, exist_ok=True)
-
-    Active.active(level := "DEBUG" if lines.debug else "INFO")
-
-    initial_option = os.path.join(initial_source, const.F_SRC_OPERA_PLACE, const.F_OPTION)
-    initial_deploy = os.path.join(initial_source, const.F_SRC_OPERA_PLACE, const.F_DEPLOY)
-    initial_script = os.path.join(initial_source, const.F_SRC_OPERA_PLACE, const.F_SCRIPT)
-
-    option, deploy = Option(initial_option), Deploy(initial_deploy)
-
-    if (talks := lines.talks) or lines.rings:
-        if talks:
-            current = deploy, initial_deploy, deploy.deploys
-        else:
-            current = option, initial_option, option.options
-
-        await previewing(*current)
-        return await Design.engine_starburst(level)  # 结尾动画
-
-    lic_file = Path(src_opera_place) / const.LIC_FILE
-
-    # 应用激活
-    if apply_code := lines.apply:
-        return await authorize.receive_license(apply_code, lic_file)
-
-    # 授权校验
-    await authorize.verify_license(lic_file)
+    # notes: --- 配置与启动 ---
 
     # 远程全局配置
     global_config_task = asyncio.create_task(Api.remote_config())

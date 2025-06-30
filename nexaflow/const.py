@@ -125,6 +125,7 @@ SPEECH_META_URL    = r"https://api.appserverx.com/speech-meta"
 SPEECH_VOICE_URL   = r"https://api.appserverx.com/speech-voice"
 GLOBAL_CF_URL      = r"https://api.appserverx.com/global-configuration"
 PREDICT_URL        = r"https://api.appserverx.com/proxy-predict"
+TOOLKIT_META_URL   = r"https://api.appserverx.com/toolkit-meta"
 MODEL_META_URL     = r"https://api.appserverx.com/model-meta"
 X_TEMPLATE_VERSION = r"x_template_version.json"
 
