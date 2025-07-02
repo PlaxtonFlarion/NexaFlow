@@ -425,20 +425,13 @@ class Player(object):
         ----------
         audio_file : str
             音频文件的本地路径。
-
-        Notes
-        -----
-        - 初始化 pygame.mixer 模块并加载音频资源。
-        - 设置音量为最大值（1.0）。
-        - 进入播放循环，判断播放是否结束。
-        - 使用 `pygame.time.Clock().tick(10)` 控制轮询频率，避免 CPU 占用过高。
         """
         pygame.mixer.init()
         pygame.mixer.music.load(audio_file)
         pygame.mixer.music.set_volume(1.0)
         pygame.mixer.music.play()
         while pygame.mixer.music.get_busy():
-            pygame.time.Clock().tick(10)
+            await asyncio.sleep(0.1)
 
 
 if __name__ == '__main__':
