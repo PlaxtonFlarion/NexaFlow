@@ -3722,7 +3722,7 @@ async def main() -> None:
     命令分发调度器，根据命令行参数执行对应任务模块。
     """
 
-    async def scheduling() -> typing.Coroutine | typing.Any:
+    async def scheduling() -> typing.Any:
         """
         检查 scrcpy 是否已安装，如果未安装则显示安装提示并退出程序。
         """
@@ -3730,15 +3730,17 @@ async def main() -> None:
             return await Terminal.cmd_line([third_party_app, "--version"])
         raise FramixError(f"{const.DESC} requires {third_party_app}. install it first.")
 
-    async def authorized() -> typing.Coroutine | None:
+    async def authorized() -> None:
         """
         检查目录下的所有文件是否具备执行权限，如果文件没有执行权限，则自动添加 +x 权限。
         """
         if platform != "darwin":
             return None
 
+        tools_set = [kit for kit in [adb, ffmpeg, ffprobe] if Path(kit).exists()]
+
         ensure = [
-            kit for kit in [adb, ffmpeg, ffprobe] if not (Path(kit).stat().st_mode & stat.S_IXUSR)
+            kit for kit in tools_set if not (Path(kit).stat().st_mode & stat.S_IXUSR)
         ]
 
         if not ensure:
@@ -3754,7 +3756,7 @@ async def main() -> None:
 
     async def arithmetic(
         function: "typing.Callable", parameters: list[str]
-    ) -> typing.Coroutine | None:
+    ) -> None:
         """
         执行通用异步任务函数，并预处理参数路径。
         """
@@ -3765,7 +3767,7 @@ async def main() -> None:
     # """对话协调器 | 回环注入器"""
     async def previewing(
         series: typing.Union["Deploy", "Option"], file_path: str, view: dict
-    ) -> typing.Coroutine | None:
+    ) -> None:
         """
         执行配置预览流程，导出 → 编辑 → 重新加载 → 可视化打印。
         """
@@ -3779,7 +3781,7 @@ async def main() -> None:
         Design.console.print_json(data=view)
         Design.console.print()
 
-    async def option_init() -> typing.Coroutine | None:
+    async def option_init() -> None:
         """
         初始化分析配置，根据命令行参数动态覆盖配置文件中的字段。
         """
@@ -3803,7 +3805,7 @@ async def main() -> None:
         logger.debug(f"彩色模型名称: {option.color_model}")
         logger.debug(f"{'=' * 15} 配置文件 {'=' * 15}\n")
 
-    async def deploy_init() -> typing.Coroutine | None:
+    async def deploy_init() -> None:
         """
         初始化部署配置，根据命令行参数动态覆盖部署文件中的属性值。
         """
@@ -3923,7 +3925,7 @@ async def main() -> None:
     for tls in (tools := [adb, ffmpeg, ffprobe]):
         os.environ["PATH"] = os.path.dirname(tls) + env_symbol + os.environ.get("PATH", "")
 
-    # notes: --- 手动同步命令（提前返回）---
+    # notes: --- 手动同步命令 ---
     if lines.syncs:
         syncer = Synchronizer(
             template_dir=Path(src_templates),
@@ -3964,6 +3966,9 @@ async def main() -> None:
         tmp_name = os.path.basename(tmp)
         raise FramixError(f"{const.DESC} missing files {tmp_name}")
 
+    # 三方应用以及文件授权
+    await authorized()
+
     # 检查每个工具是否存在，如果缺失则显示错误信息并退出程序
     for tls in tools:
         if not shutil.which((tls_name := os.path.basename(tls))):
@@ -3980,9 +3985,6 @@ async def main() -> None:
 
     # 启动仪式
     await random.choice([Design.engine_topology_wave, Design.stellar_glyph_binding])(level)
-
-    # 三方应用授权
-    await authorized()
 
     logger.debug(f"{'=' * 15} 系统调试 {'=' * 15}")
     logger.debug(f"操作系统: {platform}")
