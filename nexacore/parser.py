@@ -229,7 +229,9 @@ class Parser(object):
         return effective_hook_list
 
     @staticmethod
-    def parse_waves(dim_str: typing.Any, min_v: int | float, max_v: int | float, decimal: int) -> typing.Optional[int]:
+    def parse_waves(
+        dim_str: typing.Any, min_v: typing.Any = None, max_v: typing.Any = None, decimal: int = 0
+    ) -> typing.Optional[int | float]:
         """
         将浮点数参数限定在指定区间并进行小数位数限制，常用于参数校验。
         """
@@ -238,8 +240,13 @@ class Parser(object):
         except (ValueError, TypeError):
             return None
 
-        limited_value = round(max(min_v, min(max_v, value)), decimal)
-        return int(limited_value) if decimal == 0 else limited_value
+        if min_v or min_v == 0:
+            value = max(min_v, value)
+        if max_v or max_v == 0:
+            value = min(max_v, value)
+
+        value = round(value, decimal)
+        return int(value) if decimal == 0 else value
 
 
 if __name__ == '__main__':

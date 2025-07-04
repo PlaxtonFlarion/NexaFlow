@@ -197,9 +197,9 @@ class Deploy(object):
 
     @frate.setter
     def frate(self, value: typing.Any):
-        # Note 取值范围 30 ～ 60
+        # Note 取值范围 30 ～ unlimited
         self.deploys["FST"]["frate"] = Parser.parse_waves(
-            value, min_v=30, max_v=60, decimal=0
+            value, min_v=30, decimal=0
         )
 
     # Notes: ======================== ALS Setter ========================
