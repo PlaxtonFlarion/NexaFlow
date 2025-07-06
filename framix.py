@@ -1684,7 +1684,7 @@ class Missions(object):
         return Design.console.print()
 
     # """循环节拍器 | 脚本驱动者 | 全域执行者"""
-    async def analysis(self, option: "Option", deploy: "Deploy", tp_ver: typing.Any) -> None:
+    async def analysis(self, option: "Option", deploy: "Deploy", version: str, station: str) -> None:
         """
         根据当前执行模式启动视频录制流程或自动化批处理流程，支持速度优先、基础分析、深度模型等多种模式。
 
@@ -1696,16 +1696,11 @@ class Missions(object):
         deploy : Deploy
             部署参数对象，包含所有 CLI 配置项，如滑动窗口大小、权重参数、剪辑规则等。
 
-        tp_ver : typing.Any
+        version : str
             依赖的 scrcpy 三方应用版本。
 
-        Notes
-        -----
-        - 若指定 `--flick` 参数，将启用交互式录制流程（flick_loop），由用户手动控制录制与时间。
-        - 若指定 `--carry` 或 `--fully` 参数，则进入自动化批量执行模式（other_loop），按脚本批量录制与分析。
-        - 若未设置任何运行模式参数，将跳过该方法的主流程，不进行任务分发。
-        - 在初始化过程中会加载分析模型（如 --keras），并确认相关设备状态。
-        - 模型加载失败不会中止主流程，但将不执行 Keras 分析路径。
+        station : str
+            当前操作系统。
         """
 
         async def distributions(
@@ -2521,12 +2516,60 @@ class Missions(object):
 
         ctrl_ = f"静默守护模式" if self.whist else f"{('独立' if self.alone else '全局')}控制模式"
 
-        record = Record(
-            tp_ver, alone=self.alone, whist=self.whist, frate=deploy.frate or const.DF_FRATE
-        )
+        record = Record(version, station, alone=self.alone, whist=self.whist)
         player = Player()
 
         return await flick_loop() if self.flick else await other_loop()
+
+    # """凝滞核心"""
+    async def temporal_offset(self) -> None:
+        """
+        解析时间偏移字符串，并根据配置触发倒计时动画或延时等待。
+
+        Raises
+        ------
+        FramixError
+            当 delay 格式非法或无法解析时抛出异常。
+
+        Notes
+        -----
+        支持的时间格式：
+        - 纯数字：代表秒数，如 "90"
+        - 含单位：支持 `h`（小时）、`m`（分钟）、`s`（秒），如 "1h30m"、"2m15s"、"45s"
+        - 可组合单位，但不支持空格或大小写混杂，如："1h 30m" 为非法，"1H30M" 合法
+        - 所有单位不区分大小写，内部统一解析为秒
+        - 最大支持延时为 864000 秒（即 240 小时）
+        """
+        if not self.delay:
+            return None
+
+        duration, time_str = 0, self.delay.strip().upper()
+
+        # 匹配任意顺序的 H/M/S 片段，允许空格、大小写混用
+        if matches := re.findall(r"(\d+)\s*([HMS])", time_str):
+            for value, unit in matches:
+                val = int(value)
+                if unit == "H":
+                    duration += val * 3600
+                elif unit == "M":
+                    duration += val * 60
+                elif unit == "S":
+                    duration += val
+
+        elif time_str.isdigit():
+            duration = int(time_str)
+
+        else:
+            raise FramixError(f"Invalid time format: {time_str}")
+
+        duration = min(864000, max(duration, 0))
+
+        logger.debug(f"延时: {duration}")
+
+        if self.level != const.SHOW_LEVEL:
+            return await asyncio.sleep(duration)
+
+        return await self.design.countdown_energy_wave(duration)
 
 
 class Clipix(object):
@@ -3821,7 +3864,7 @@ async def main() -> None:
 
         logger.debug(f"{'=' * 15} 部署文件 {'=' * 15}\n")
 
-    # Notes: Start from here
+    # Notes: ========== Start from here ==========
     Design.startup_logo()
 
     # 如果没有提供命令行参数，则显示帮助文档，并退出程序
@@ -3856,7 +3899,7 @@ async def main() -> None:
     else:
         raise FramixError(f"{const.DESC} compatible with {const.NAME} command")
 
-    # notes: --- 路径初始化 ---
+    # Notes: ========== 路径初始化 ==========
     src_templates = os.path.join(fx_work, const.F_SCHEMATIC, const.F_TEMPLATES).format()
 
     turbo = os.path.join(fx_work, const.F_SCHEMATIC, const.F_SUPPORTS).format()
@@ -3898,7 +3941,7 @@ async def main() -> None:
         await previewing(*current)
         return await Design.engine_starburst(level)  # 结尾动画
 
-    # notes: --- 授权流程 ---
+    # Notes: ========== 授权流程 ==========
     lic_file = Path(src_opera_place) / const.LIC_FILE
 
     # 应用激活
@@ -3908,7 +3951,7 @@ async def main() -> None:
     # 授权校验
     await authorize.verify_license(lic_file)
 
-    # notes: --- 工具路径设置 ---
+    # Notes: ========== 工具路径 ==========
     if platform == "win32":
         supports = os.path.join(turbo, "Windows").format()
         adb, ffmpeg, ffprobe = "adb.exe", "ffmpeg.exe", "ffprobe.exe"
@@ -3925,7 +3968,7 @@ async def main() -> None:
     for tls in (tools := [adb, ffmpeg, ffprobe]):
         os.environ["PATH"] = os.path.dirname(tls) + env_symbol + os.environ.get("PATH", "")
 
-    # notes: --- 手动同步命令 ---
+    # Notes: ========== 同步命令 ==========
     if lines.syncs:
         syncer = Synchronizer(
             template_dir=Path(src_templates),
@@ -3948,7 +3991,7 @@ async def main() -> None:
 
         return await Design.engine_starburst(level)
 
-    # notes: --- 模板与工具检查 ---
+    # Notes: ========== 模板与工具检查 ==========
     atom_total_temp = os.path.join(src_templates, "template_atom_total.html")
     line_total_temp = os.path.join(src_templates, "template_line_total.html")
     main_share_temp = os.path.join(src_templates, "template_main_share.html")
@@ -3974,7 +4017,7 @@ async def main() -> None:
         if not shutil.which((tls_name := os.path.basename(tls))):
             raise FramixError(f"{const.DESC} missing files {tls_name}")
 
-    # notes: --- 配置与启动 ---
+    # Notes: ========== 配置与启动 ==========
 
     # 远程全局配置
     global_config_task = asyncio.create_task(Api.remote_config())
@@ -4044,6 +4087,7 @@ async def main() -> None:
         "ffmpeg": ffmpeg,
         "ffprobe": ffprobe
     }
+
     remote = await global_config_task
     # 合并为最终 online 配置
     result = await online_oracle_task if online_oracle_task else {}
@@ -4051,8 +4095,8 @@ async def main() -> None:
 
     missions = Missions(wires, level, power, remote, online, *positions, **keywords)
 
-    # """凝滞核心"""
-    await Design.countdown_energy_wave(level, lines.delay)
+    # 延时任务
+    await missions.temporal_offset()
 
     if video_list := lines.video:
         await arithmetic(missions.video_file_task, video_list)
@@ -4067,8 +4111,8 @@ async def main() -> None:
         await arithmetic(missions.build_model, build_list)
 
     elif lines.flick or lines.carry or lines.fully:
-        tp_ver = await scheduling()
-        await missions.analysis(option, deploy, tp_ver)
+        tp_version = await scheduling()
+        await missions.analysis(option, deploy, tp_version, platform)
 
     elif lines.paint:
         await missions.painting(option, deploy)
@@ -4082,7 +4126,7 @@ async def main() -> None:
     else:
         Design.help_document()
 
-    await Design.engine_starburst(level)  # 结尾动画
+    await Design.engine_starburst(level)
 
 
 # """Test"""

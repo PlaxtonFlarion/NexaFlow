@@ -10,7 +10,6 @@
 
 import os
 import re
-import sys
 import time
 import random
 import typing
@@ -44,40 +43,16 @@ class Record(object):
 
     melody_events : asyncio.Event
         全局录制事件控制器，适用于非独立模式下的统一停止控制。
-
-    Instance Attributes
-    -------------------
-    version : str
-        scrcpy 的版本号信息，用于判断是否支持无窗口录制选项。
-
-    station : str
-        当前操作系统平台，例如 'win32' 或 'linux'。
-
-    alone : bool
-        是否为独立控制模式，如果为 True，则每台设备分别控制录制流程。
-
-    whist : bool
-        是否启用静默录制（无窗口模式），用于降低图形资源消耗。
-
-    frate : int
-        录制时的最大帧率，默认为 `const.FRATE`。
-
-    Notes
-    -----
-    - 支持异步控制多设备录制任务。
-    - 提供全局与局部事件机制，适用于不同的录制调度需求。
-    - 所有录制状态通过事件进行管理与清理。
     """
 
     record_events: dict[str, dict[str, typing.Union[typing.Any, "asyncio.Event"]]] = {}
     melody_events: "asyncio.Event" = asyncio.Event()
 
-    def __init__(self, version: str, **kwargs):
-        self.version, self.station = version, sys.platform
+    def __init__(self, version: str, station: str, **kwargs):
+        self.version, self.station = version, station
 
         self.alone = kwargs.get("alone", False)
         self.whist = kwargs.get("whist", False)
-        self.frate = kwargs.get("frate", const.FRATE)
 
     async def ask_start_record(
             self, device: "Device", dst: str, **kwargs
@@ -104,7 +79,7 @@ class Record(object):
             包含视频文件路径和进程对象。
         """
 
-        async def input_stream() -> typing.Coroutine | None:
+        async def input_stream() -> None:
             async for line in transports.stdout:
                 logger.debug(stream := line.decode(const.CHARSET, "ignore").strip())
                 if "Recording started" in stream:
@@ -114,7 +89,7 @@ class Record(object):
                     bridle.set()
                     return events["done"].set()
 
-        async def error_stream() -> typing.Coroutine | None:
+        async def error_stream() -> None:
             async for line in transports.stderr:
                 logger.debug(stream := line.decode(const.CHARSET, "ignore").strip())
                 if "Could not find" in stream or "connection failed" in stream or "Recorder error" in stream:
@@ -127,7 +102,7 @@ class Record(object):
 
         video_flag = f"{time.strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}.mkv"
 
-        cmd = ["scrcpy", "-s", device.sn, "--no-audio", "--video-bit-rate=8M", f"--max-fps={self.frate}"]
+        cmd = ["scrcpy", "-s", device.sn, "--no-audio", "--video-bit-rate=8M"]
 
         if device.id != 0:
             cmd += [f"--display-id={device.id}"]
