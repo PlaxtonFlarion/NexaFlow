@@ -2397,7 +2397,7 @@ class Missions(object):
                     logger.debug(tip := f"Batch Exec: {script_key}")
                     self.design.show_panel(tip, Wind.EXPLORER)
 
-                    # 根据 script_value_ 中的 parser 参数更新 deploy 配置
+                    # 根据 script_value 中的 parser 参数更新 deploy 配置
                     if (parser := script_value.get("parser", {})) and type(parser) is dict:
                         for deploy_key, deploy_value in deploy.deploys.items():
                             logger.debug(f"Current Key {deploy_key}")
@@ -2409,16 +2409,16 @@ class Missions(object):
                                 setattr(deploy, d_key, parser.get(deploy_key, {}).get(d_key, {}))
                                 logger.debug(f"    Parser Set <{d_key}>  {d_value} -> {getattr(deploy, d_key)}")
 
-                    # 处理 script_value_ 中的 header 参数
+                    # 处理 script_value 中的 header 参数
                     header = header if type(
                         header := script_value.get("header", [])
                     ) is list else ([header] if type(header) is str else [time.strftime("%Y%m%d%H%M%S")])
 
-                    # 处理 script_value_ 中的 change 参数
+                    # 处理 script_value 中的 change 参数
                     change = script_value.get("change", [])
                     change = change if type(change) is list else ([change] if type(change) is str else [str(change)])
 
-                    # 处理 script_value_ 中的 looper 参数
+                    # 处理 script_value 中的 looper 参数
                     try:
                         looper = int(looper) if (looper := script_value.get("looper", None)) else 1
                     except ValueError as e:
