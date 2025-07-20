@@ -90,22 +90,19 @@ class Api(object):
             return resp.json()[key] if key else resp.json()
 
     @staticmethod
-    async def formatting() -> typing.Optional[list]:
+    async def formatting() -> typing.Optional[dict]:
         """
-        获取支持的语音合成格式列表。
-
-        异步从远程服务获取格式信息，若发生异常则返回 None 并记录日志。
+        获取远程 TTS 服务的可用状态及支持的音频格式列表。
 
         Returns
         -------
-        list or None
-            成功时返回格式字符串列表，例如 ["mp3", "ogg", "webm"]；
-            若请求失败则返回 None。
-
-        Raises
-        ------
-        Exception
-            当远程请求或解析失败时捕获并记录日志，返回 None。
+        dict or None
+            {
+                "enabled": bool,       # 服务可用状态
+                "formats": list[str],  # 支持的音频格式列表
+                ...                    # 其他元信息
+            }
+            若服务不可用或请求异常，则返回 None。
         """
         try:
             sign_data = await Api.ask_request_get(const.SPEECH_META_URL)
@@ -113,7 +110,7 @@ class Api(object):
         except Exception as e:
             return logger.debug(e)
 
-        return auth_info.get("formats", [])
+        return auth_info.get("mode", {})
 
     @staticmethod
     async def profession(case: str) -> dict:
@@ -164,69 +161,37 @@ class Api(object):
             return resp.text
 
     @staticmethod
-    async def synthesize(speak: str, waver: str, src_opera_place: str, allowed_extra: list) -> str:
+    async def synthesize(speak: str, allowed_extra: list) -> tuple[str, bytes]:
         """
-        合成语音音频文件。
-
-        根据指定文本与音频格式生成语音文件，若已存在本地缓存则直接返回路径；
-        否则通过远程接口获取下载链接并保存音频至本地。
+        合成文本语音并返回文件名及二进制内容。
 
         Parameters
         ----------
         speak : str
-            要合成的语音内容。
+            待合成的文本内容。可带有扩展名（如 "你好.mp3"），如无扩展名，则自动添加默认扩展名。
 
-        waver : str
-            请求的音频格式后缀（如 'mp3'、'wav'）。
-
-        allowed_extra : list
-            支持的音频格式列表，仅这些格式会触发远程合成逻辑。
-
-        src_opera_place : str
-            本地语音文件根目录（将生成在其下的 VOICES 子目录中）。
+        allowed_extra : list of str
+            支持的音频文件扩展名列表，例如 ["mp3", "wav"]，用于判定输出格式。
 
         Returns
         -------
-        str
-            本地语音文件的绝对路径，或拼接后的默认字符串（当 waver 不被允许时）。
+        tuple of (str, bytes)
+            - 文件名（已去除非法字符和自动拼接扩展名），如 "你好.mp3"
+            - 合成后音频文件的二进制内容
         """
-        allowed_ext = {ext.lower().lstrip('.') for ext in allowed_extra}
+        allowed_ext = {ext.lower().lstrip(".") for ext in allowed_extra}
         logger.debug(f"Allowed ext -> {allowed_ext}")
 
-        # 清洗输入
-        clean_speak = speak.strip()
-        clean_waver = waver.strip().lower().lstrip(".")
+        stem, waver = os.path.splitext((speak or "").strip())
+        waver = waver.lower().lstrip(".")
+        if waver not in allowed_ext or not waver:
+            waver = (next(iter(allowed_ext)) if allowed_ext else const.WAVERS)
 
-        # 检查 speak 中是否包含扩展名
-        match = re.search(r"\.([a-zA-Z0-9]{1,6})$", clean_speak)
-        speak_ext = match.group(1).lower() if match else ""
-        speak_stem = re.sub(r"\.([a-zA-Z0-9]{1,6})$", "", clean_speak)
-
-        # 判断是否为音频请求
-        if clean_waver in allowed_ext:
-            final_speak = speak_stem
-            final_waver = clean_waver
-        elif speak_ext in allowed_ext:
-            final_speak = speak_stem
-            final_waver = speak_ext
-        else:
-            # 非音频请求，直接拼接返回
-            combination = f"{clean_speak}.{clean_waver}" if clean_waver else clean_speak
-            logger.debug(f"Non-audio request, combination -> {combination}")
-            return combination
-
-        # 构建文件名和本地缓存路径
-        audio_name = str(Path(final_speak).with_suffix(f".{final_waver}"))
-
-        if not (voices := Path(src_opera_place) / const.VOICES).exists():
-            voices.mkdir(parents=True, exist_ok=True)
-
-        if (audio_file := voices / audio_name).is_file():
-            logger.debug(f"Local audio file: {audio_file}")
-            return str(audio_file)
+        # 文件名去除非法字符
+        final_speak = re.sub(r"[^a-zA-Z0-9\u4e00-\u9fff]+", "", stem)
 
         # 构建 payload
-        payload = {"speak": final_speak, "waver": final_waver} | Channel.make_params()
+        payload = {"speak": final_speak, "waver": waver} | Channel.make_params()
         logger.debug(f"Remote synthesize: {payload}")
 
         try:
@@ -234,13 +199,12 @@ class Api(object):
                 resp = await messenger.poke("POST", const.SPEECH_VOICE_URL, json=payload)
                 logger.debug(f"Download url: {(download_url := resp.json()['url'])}")
 
-                redis_or_r2_resp = await messenger.poke("GET", download_url)
-                audio_file.write_bytes(redis_or_r2_resp.content)
+                resp = await messenger.poke("GET", download_url)
 
         except Exception as e:
             logger.debug(e)
 
-        return str(audio_file)
+        return final_speak + "." + waver, resp.content
 
     @staticmethod
     async def remote_config() -> typing.Optional[dict]:

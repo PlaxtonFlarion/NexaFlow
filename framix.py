@@ -2383,12 +2383,9 @@ class Missions(object):
             except Exception as e:
                 raise FramixError(e)
 
-            allowed_extra_task = asyncio.create_task(Api.formatting())
-
             await self.design.batch_runner_task_grid()
 
             await manage_.display_device(ctrl_)
-            allowed_extra = await allowed_extra_task or [const.WAVERS]
 
             for script_dict in script_storage:
                 report = Report(option.total_place)
@@ -2417,6 +2414,7 @@ class Missions(object):
                     # 处理 script_value 中的 change 参数
                     change = script_value.get("change", [])
                     change = change if type(change) is list else ([change] if type(change) is str else [str(change)])
+                    change_filtered = [x for x in change if isinstance(x, str) and x.strip()]
 
                     # 处理 script_value 中的 looper 参数
                     try:
@@ -2438,10 +2436,7 @@ class Missions(object):
 
                     # 遍历 header 并执行任务
                     for hd in header:
-                        change_list = [
-                            await Api.synthesize(hd, c, self.src_opera_place, allowed_extra)
-                            for c in change
-                        ] if change else [hd]
+                        change_list = [hd + change_filtered[0]] if change_filtered else [hd]
 
                         report.title = f"{input_title_}_{script_key}_{hd}"
                         extend_task_list = []
@@ -2520,6 +2515,53 @@ class Missions(object):
         player = Player()
 
         return await flick_loop() if self.flick else await other_loop()
+
+    # """星澜织语仪"""
+    async def text_to_speech(self, voice_list: list[str]) -> None:
+        """
+        批量文本转语音并保存为本地音频文件（异步并发）。
+
+        Parameters
+        ----------
+        voice_list : list of str
+            待合成语音的文本字符串列表。列表元素可重复、可含空白项，自动去重和过滤。
+        """
+
+        async def speech_task(speak: str) -> None:
+            async with sem:
+                meta, content = await Api.synthesize(speak, allowed_extra)
+                async with aiofiles.open((audio_file := voices / meta), "wb") as f:
+                    await f.write(content)
+                    logger.debug(f"Audio file saved: {audio_file}")
+                    progress.update(task_id, advance=1)
+
+        tts_mode = await Api.formatting() or {}
+        if not tts_mode.get("enabled", False):
+            raise FramixError(f"TTS service is temporarily unavailable ...")
+
+        allowed_extra = tts_mode.get("formats") or [const.WAVERS]
+
+        if not (voices := Path(self.src_opera_place) / const.VOICES).exists():
+            voices.mkdir(parents=True, exist_ok=True)
+
+        # 去重 + 过滤空白和已存在的文件
+        unique_list = list(dict.fromkeys(voice_list))
+        filtered = [
+            x for x in unique_list if isinstance(x, str) and x.strip() and not (voices / x).is_file()
+        ]
+        if not filtered:
+            raise FramixError("No text available or already exists ...")
+        logger.debug(f"Filtered voice list: {filtered}")
+
+        sem = asyncio.Semaphore(2)
+
+        progress = Design.show_progress()
+        task_id = progress.add_task("TTS", total=len(filtered))
+
+        with progress:
+            await asyncio.gather(*(speech_task(speak) for speak in filtered))
+
+        return Design.console.print()
 
     # """凝滞核心"""
     async def temporal_offset(self) -> None:
@@ -3949,7 +3991,7 @@ async def main() -> None:
         return await authorize.receive_license(apply_code, lic_file)
 
     # 授权校验
-    await authorize.verify_license(lic_file)
+    # await authorize.verify_license(lic_file)
 
     # Notes: ========== 工具路径 ==========
     if platform == "win32":
@@ -4109,6 +4151,9 @@ async def main() -> None:
 
     elif build_list := lines.build:
         await arithmetic(missions.build_model, build_list)
+
+    elif voice_list := lines.voice:
+        await missions.text_to_speech(voice_list)
 
     elif lines.flick or lines.carry or lines.fully:
         tp_version = await scheduling()
