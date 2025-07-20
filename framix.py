@@ -3991,7 +3991,7 @@ async def main() -> None:
         return await authorize.receive_license(apply_code, lic_file)
 
     # 授权校验
-    # await authorize.verify_license(lic_file)
+    await authorize.verify_license(lic_file)
 
     # Notes: ========== 工具路径 ==========
     if platform == "win32":
