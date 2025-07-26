@@ -16,7 +16,6 @@ import typing
 import asyncio
 import colorsys
 from pathlib import Path
-from loguru import logger
 from rich.live import Live
 from rich.tree import Tree
 from rich.text import Text
@@ -53,7 +52,7 @@ class Design(object):
 
     console: typing.Optional["Console"] = Console()
 
-    def __init__(self, design_level: str = "INFO"):
+    def __init__(self, design_level: str = const.SHOW_LEVEL):
         self.design_level = design_level.upper()
 
     class Doc(object):
