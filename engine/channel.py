@@ -30,14 +30,12 @@ class Channel(object):
         -------
         dict[str, typing.Any]
             包含默认参数的字典，字段包括：
-            - `a`: 应用描述常量（const.DESC）
+            - `a`: 应用描述常量
             - `t`: 当前时间戳（秒）
             - `n`: 随机生成的16位十六进制字符串
         """
         return {
-            "a": const.DESC,
-            "t": int(time.time()),
-            "n": secrets.token_hex(8)
+            "a": const.DESC, "t": int(time.time()), "n": secrets.token_hex(8)
         }
 
 
