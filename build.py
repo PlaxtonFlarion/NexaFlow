@@ -40,7 +40,7 @@ compile_log: typing.Any = lambda x: Design.console.print(
 )
 
 
-async def is_virtual_env() -> typing.Coroutine | None:
+async def is_virtual_env() -> None:
     """
     检查当前 Python 运行环境是否为虚拟环境。
     """
@@ -68,7 +68,7 @@ async def check_architecture(ops: str) -> None:
     raise FramixError(f"❌ 当前为 32 位 Python，建议更换为 64 位版本。")
 
 
-async def find_site_packages() -> typing.Coroutine | "Path":
+async def find_site_packages() -> "Path":
     """
     自动查找当前虚拟环境中的 `site-packages` 路径。
     """
@@ -135,7 +135,7 @@ async def find_dumpbin() -> str:
     return str(dumpbin)
 
 
-async def rename_sensitive(src: "Path", dst: "Path") -> typing.Coroutine | None:
+async def rename_sensitive(src: "Path", dst: "Path") -> None:
     """
     执行双重重命名操作以避免系统锁定或覆盖冲突。
     """
@@ -148,27 +148,30 @@ async def rename_sensitive(src: "Path", dst: "Path") -> typing.Coroutine | None:
     compile_log(f"[✓] Rename completed {temporary.name} → {dst.name}")
 
 
-async def sweep_cache_tree(target: "Path") -> typing.Coroutine | None:
+async def sweep_cache_tree(target: "Path") -> None:
     """
     清理指定路径下所有名为 `*build` 的缓存目录。
     """
     compile_log(f"[!] 准备清理删除缓存目录 {target.as_posix()}")
-    if caches := [
+
+    caches = [
         cache for cache in target.iterdir() if cache.is_dir() and cache.name.lower().endswith("build")
-    ]:
-        for cache in await asyncio.gather(
-                *(asyncio.to_thread(
-                    shutil.rmtree, cache, ignore_errors=True) for cache in caches), return_exceptions=True
-        ):
-            if isinstance(cache, Exception):
-                compile_log(f"[✗] 无法清理 {cache}")
-            else:
-                compile_log(f"[✓] 构建缓存已清理 {cache}")
-    else:
-        compile_log(f"[!] 未发现 *.build 跳过清理")
+    ]
+
+    if not caches:
+        return compile_log(f"[!] 未发现 *.build 跳过清理")
+
+    for cache in await asyncio.gather(
+        *(asyncio.to_thread(shutil.rmtree, cache, ignore_errors=True)
+          for cache in caches), return_exceptions=True
+    ):
+        if isinstance(cache, Exception):
+            compile_log(f"[✗] 无法清理 {cache}")
+        else:
+            compile_log(f"[✓] 构建缓存已清理 {cache}")
 
 
-async def rename_so_files(ops: str, target: "Path") -> typing.Coroutine | None:
+async def rename_so_files(ops: str, target: "Path") -> None:
     """
     将 Darwin 系统下编译生成的 *.cpython-XXX-darwin.so 文件统一重命名为 *.so。
     """
@@ -185,7 +188,7 @@ async def rename_so_files(ops: str, target: "Path") -> typing.Coroutine | None:
             compile_log(f"[✓] Renamed {file.name} → {new_name}")
 
 
-async def authorized_tools(ops: str, *args: "Path", **__) -> typing.Coroutine | None:
+async def authorized_tools(ops: str, *args: "Path", **__) -> None:
     """
     检查目录下的所有文件是否具备执行权限，如果文件没有执行权限，则自动添加 +x 权限。
     """
@@ -204,7 +207,7 @@ async def authorized_tools(ops: str, *args: "Path", **__) -> typing.Coroutine | 
         compile_log(f"[!] Authorize resp={resp}")
 
 
-async def edit_plist_fields(ops: str, app: str, updates: dict[str, str]) -> typing.Coroutine | None:
+async def edit_plist_fields(ops: str, app: str, updates: dict[str, str]) -> None:
     """
     编辑 macOS 应用的 Info.plist 文件字段。
     """
@@ -321,26 +324,26 @@ async def packaging() -> tuple[
     return ops, app, site_packages, target, rename, compile_cmd, launch, arch_info, support
 
 
-async def post_build() -> typing.Coroutine | None:
+async def post_build() -> None:
     """
     应用打包后的自动依赖检查与部署流程。
     """
 
-    async def input_stream() -> typing.Coroutine | None:
+    async def input_stream() -> None:
         """
         异步读取终端标准输出流内容，并打印实时构建日志。
         """
         async for line in transports.stdout:
             compile_log(line.decode(const.CHARSET, "ignore").strip())
 
-    async def error_stream() -> typing.Coroutine | None:
+    async def error_stream() -> None:
         """
         异步读取终端错误输出流内容，实时反馈构建异常信息。
         """
         async for line in transports.stderr:
             compile_log(line.decode(const.CHARSET, "ignore").strip())
 
-    async def examine_dependencies() -> typing.Coroutine | None:
+    async def examine_dependencies() -> None:
         """
         检查所有指定依赖是否存在于虚拟环境中。
         """
@@ -356,7 +359,7 @@ async def post_build() -> typing.Coroutine | None:
         if fail_list:
             raise FramixError(f"[!] Incomplete dependencies required {fail_list}")
 
-    async def forward_dependencies() -> typing.Coroutine | None:
+    async def forward_dependencies() -> None:
         """
         拷贝所有依赖文件与目录至编译产物路径，并执行重命名与缓存清理。
         """
@@ -378,11 +381,13 @@ async def post_build() -> typing.Coroutine | None:
                     src, dst, dirs_exist_ok=True) if src.is_dir() else shutil.copy2(src, dst)
                 progress.advance(task)
 
+        # Notes: ==== macOS Only ====
         await authorized_tools(
             ops, target / schematic.name / kit, target / const.NAME, target / launch[0].name
-        )  # Note: macOS Only
+        )
 
-        await rename_so_files(ops, target)  # Note: macOS Only
+        # Notes: ==== macOS Only ====
+        await rename_so_files(ops, target)
 
         await rename_sensitive(*rename)
         await sweep_cache_tree(app)
@@ -396,7 +401,7 @@ async def post_build() -> typing.Coroutine | None:
 
         await edit_plist_fields(ops, rename[-1], {"CFBundleExecutable": launch[0].name})
 
-    # ==== Note: Start from here ====
+    # Notes: ==== Start from here ====
     Design.startup_logo()
     await Design.aurora_cipher_pulse()
 
@@ -433,7 +438,7 @@ async def post_build() -> typing.Coroutine | None:
 
     await examine_dependencies()
 
-    # Note: Start compiling
+    # Notes: ==== Start compiling ====
     transports = await Terminal.cmd_link(compile_cmd)
     await asyncio.gather(
         *(asyncio.create_task(task()) for task in [input_stream, error_stream])
