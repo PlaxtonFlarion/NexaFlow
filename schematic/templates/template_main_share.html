@@ -364,7 +364,7 @@ This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md 
             background-size: 200% 200%;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s ease, box-shadow 0.3s ease, background-position 0.4s;
-        }    
+        }
         /* ===== 配色 + 各自的悬浮高光色 ===== */
         .all-copy {
             background: linear-gradient(135deg, rgba(255,154,0,.75), rgba(255,94,77,.75));
@@ -378,7 +378,7 @@ This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md 
             background-image: linear-gradient(135deg, #667eea, #764ba2);
             --glow: rgba(118,75,162,.40);         /* 蓝紫 */
         }
-        /* ===== 通用悬停动画（不变）但用各自的 --glow ===== */
+        /* ===== 通用悬停动画，用各自的 --glow ===== */
         .all-copy:hover, .all-reselect:hover, .quick-reselect:hover, .ex-info:hover, .linked:hover {
             transform: scale(1.05);
             background-position: right center;
@@ -830,8 +830,8 @@ This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md 
             <div class="options">
                 <div class="option-one">
                     <div class="option-copy-div">
-                        <button class="all-copy" data-mode="horizontal">↔</button>
-                        <button class="all-copy" data-mode="vertical">↕</button>
+                        <button class="all-copy" data-mode="horizontal">^C</button>
+                        <button class="all-copy" data-mode="vertical">^C</button>
                     </div>
                     <button class="all-reselect">全部重选</button>
                     <button class="quick-reselect">快速重选</button>
@@ -1514,7 +1514,7 @@ This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md 
                 copyAction(cleanContent);
             });
         });
-        
+
         // 统一复制逻辑
         document.querySelectorAll('.all-copy').forEach(copyBtn => {
             copyBtn.addEventListener('click', function () {

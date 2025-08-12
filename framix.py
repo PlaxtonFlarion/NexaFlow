@@ -2462,23 +2462,14 @@ class Missions(object):
                                 device_list = await manage_.operate_device()
                             await record.clean_event()
 
-                            # suffix 提交后置任务
-                            suffix_task_list = []
-                            if suffix_list:
-                                suffix_task_list.append(
-                                    asyncio.create_task(
-                                        exec_commands(device_list, suffix_list), name="suffix"
-                                    )
-                                )
+                            # suffix 后置任务
+                            await exec_commands(device_list, suffix_list)
 
                             # 根据参数判断是否分析视频以及使用哪种方式分析
                             if self.shine:
                                 extend_task_list.extend(task_list)
                             else:
                                 await anything_well(task_list, report)
-
-                            # 等待后置任务完成
-                            await asyncio.gather(*suffix_task_list)
 
                         # finish 后置任务
                         await exec_commands(device_list, finish_list)
@@ -2631,7 +2622,7 @@ class Clipix(object):
     """
 
     def __init__(self, ffmpeg: str, ffprobe: str):
-        self.ffmpeg = ffmpeg  # 表示 ffmpeg 的路径
+        self.ffmpeg = ffmpeg    # 表示 ffmpeg 的路径
         self.ffprobe = ffprobe  # 表示 ffprobe 的路径
 
     async def vision_content(
@@ -4013,11 +4004,7 @@ async def main() -> None:
     # Notes: ========== 同步命令 ==========
     if lines.syncs:
         syncer = Synchronizer(
-            template_dir=Path(src_templates),
-            toolkit_dir=Path(supports),
-            model_dir=Path(src_model_place),
-            platform=platform,
-            level=level
+            Path(src_templates), Path(supports), Path(src_model_place), platform, level
         )
         sync_map = {
             "all": syncer.sync_all,
