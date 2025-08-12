@@ -113,12 +113,25 @@ This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md 
 
         /* 团队标识 */
         .team {
-            color: #0f172a;
-            background: #f3f5f8;
-            border: 1px solid #e6e8ee;
+            background: linear-gradient(135deg,
+              rgba(247, 243, 235, .82) 0%,
+              rgba(243, 238, 228, .68) 100%);
+            color: #4a4033;                    /* 暖棕灰，和冷调区分 */
+            border: 1px solid rgba(160, 140, 110, .28);
+            box-shadow: 0 4px 12px rgba(0,0,0,.05), inset 0 1px 0 rgba(255,255,255,.35);
+            backdrop-filter: blur(2px) saturate(108%);
+            -webkit-backdrop-filter: blur(2px) saturate(108%);
+            transition: box-shadow .2s ease, border-color .2s ease, background .2s ease;
             font-weight: 700;
             border-radius: 10px;
             padding: 6px 10px;
+        }
+        .team:hover {
+            background: linear-gradient(135deg,
+              rgba(251, 247, 238, .90) 0%,
+              rgba(246, 241, 232, .78) 100%);
+            border-color: rgba(160, 140, 110, .40);
+            box-shadow: 0 6px 16px rgba(0,0,0,.08), inset 0 1px 0 rgba(255,255,255,.45);
         }
 
         /* ===== 指标列表 ===== */
@@ -130,17 +143,25 @@ This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md 
 
         /* 单项 cost 标签 */
         .cost {
-            background: #f7f9fc;
-            color: #0f172a;
-            border: 1px solid #e6e8ee;
+            background: linear-gradient(135deg,
+              rgba(236, 249, 246, .78) 0%,
+              rgba(230, 240, 255, .62) 100%);
+            color: #123a4a;                    /* 深海蓝绿，冷感更清晰 */
+            border: 1px solid rgba(32, 126, 255, .20);
+            box-shadow: 0 4px 12px rgba(15,23,42,.06), inset 0 1px 0 rgba(255,255,255,.35);
+            backdrop-filter: blur(2px) saturate(112%);
+            -webkit-backdrop-filter: blur(2px) saturate(112%);
+            transition: transform .15s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease;
             padding: 6px 12px;
             border-radius: 10px;
             font-weight: 700;
-            transition: transform .15s ease, box-shadow .2s ease, border-color .2s ease;
         }
         .cost:hover {
-            box-shadow: 0 4px 12px rgba(15, 23, 42, .06);
-            border-color: rgba(32, 126, 255, .22);
+            background: linear-gradient(135deg,
+              rgba(226, 244, 241, .88) 0%,
+              rgba(222, 235, 255, .78) 100%);
+            border-color: rgba(32, 126, 255, .30);
+            box-shadow: 0 6px 16px rgba(15,23,42,.10), inset 0 1px 0 rgba(255,255,255,.45);
             transform: translateY(-1px);
         }
 
