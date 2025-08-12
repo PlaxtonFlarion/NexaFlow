@@ -67,7 +67,7 @@ This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md 
             align-items: center;
             gap: 10px;
             padding: 0 4px 10px;
-            margin-left: 0;
+            margin-left: 0 0 10px 0;
             border-bottom: 1px dashed #e5e7eb;
         }
         .case h3 {
@@ -135,14 +135,14 @@ This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md 
 
         /* 单项 cost 标签 */
         .cost{
-            display:inline-block;
+            display: inline-block;
             padding: 6px 12px;
-            margin-left:0;
+            margin-left: 0;
             border-radius: 10px;
             background: #f8fafc;
             color: #0f172a;
-            border:1px solid #e5e7eb;
-            font-weight:700;
+            border: 1px solid #e5e7eb;
+            font-weight: 700;
             transition: transform .15s ease, box-shadow .2s ease, border-color .2s ease;
         }
         .cost:hover{
@@ -220,8 +220,8 @@ This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md 
 
         /* 分隔线：更轻的渐隐线 */
         .line {
-            border:none; 
-            height:1px; 
+            border: none; 
+            height: 1px; 
             margin: 10px 0;
             background: linear-gradient(90deg, transparent 0, #e5e7eb 20%, #e5e7eb 80%, transparent 100%);
         }
@@ -232,10 +232,23 @@ This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md 
             color: #ffffff !important;
         }
         .finish {
-            pointer-events:none;
+            pointer-events: none;
             color: #0f172a;
             background: #eef2ff;
-            background-image:none;
+            background-image: none;
+        }
+
+        #notification {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 15px;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            border-radius: 5px;
+            z-index: 9999;
         }
 
         /* ===== Loading：更柔和动画与隐藏态 ===== */
@@ -249,7 +262,8 @@ This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md 
             transition: opacity .35s ease;
         }
         .loading.hidden { 
-            opacity:0; pointer-events:none; 
+            opacity: 0; 
+            pointer-events: none; 
         }
         .bar {
             background: linear-gradient(180deg, #c7d2fe 0%, #93c5fd 100%);
