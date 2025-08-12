@@ -18,119 +18,119 @@ This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ app_desc }} - Main - Total</title>
     <style>
-        /* ===== 页面基础（更现代的默认字体与留白） ===== */
-        body{
+        /* ===== 页面基础 ===== */
+        body {
             font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans";
             margin: 32px;
-            color:#111827;
-            background:#f6f7f9;
+            color: #111827;
+            background: #f6f7f9;
         }
 
         /* ===== 顶部 Header ===== */
-        .header{
-            background: linear-gradient(135deg,#eef2ff 0%,#e0f2fe 100%);
-            color:#0f172a;
+        .header {
+            background: linear-gradient(135deg, #eef2ff 0%,#e0f2fe 100%);
+            color: #0f172a;
             padding: 24px;
-            text-align:center;
+            text-align: center;
             font-size: 18px;
             border-radius: 16px;
             margin-bottom: 24px;
             box-shadow: 0 8px 24px rgba(0,0,0,.08);
-         }
-         h1{
-             margin:0 0 6px 0;
-             font-size: 28px;
-             color:#0f172a;
-             text-shadow:none;
-             letter-spacing:.2px;
+        }
+        h1 {
+            margin:0 0 6px 0;
+            font-size: 28px;
+            color: #0f172a;
+            text-shadow: none;
+            letter-spacing: .2px;
         }
 
-         /* ===== 信息盒（分组卡片） ===== */
-         .info-box{
-             border: 1px solid #e5e7eb;
-             background: #ffffff;
-             border-radius: 16px;
-             padding: 16px 18px 10px;
-             margin-bottom: 20px;
-             box-shadow: 0 4px 12px rgba(0,0,0,.06);
-             transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+        /* ===== 信息盒（分组卡片） ===== */
+        .info-box {
+            border: 1px solid #e5e7eb;
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 16px 18px 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.06);
+            transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
         }
-        .info-box:hover{
+        .info-box:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 24px rgba(0,0,0,.08);
             border-color: rgba(37,99,235,.18);
         }
 
         /* 分组标题行 */
-        .case{
-            display:flex;
-            align-items:center;
-            gap:10px;
+        .case {
+            display: flex;
+            align-items: center;
+            gap: 10px;
             padding: 0 4px 10px;
-            margin-left:0;
+            margin-left: 0;
             border-bottom: 1px dashed #e5e7eb;
         }
-        .case h3{
-            margin:0;
-            color:#0f172a;
-            font-size:18px;
-            font-weight:700;
+        .case h3 {
+            margin: 0;
+            color: #0f172a;
+            font-size: 18px;
+            font-weight: 700;
         }
 
         /* ===== 单个设备卡片 ===== */
-        .device{
-            background:#fff;
-            border:1px solid #e5e7eb;
+        .device {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
             border-radius: 12px;
             box-shadow: 0 2px 8px rgba(0,0,0,.05);
             margin-bottom: 16px;
             padding: 12px 14px;
             transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
         }
-        .device:hover{
+        .device:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 24px rgba(0,0,0,.08);
             border-color: rgba(37,99,235,.18);
             background: linear-gradient(160deg,#f9fbff,#f4f9ff);
-         }
-         /* 完成态 hover：轻微绿色强调 */
-         .device.complete:hover{
-             border-color: rgba(16,185,129,.35);
-             box-shadow: 0 10px 28px rgba(16,185,129,.18);
-         }
-
-         /* 卡片头部与结果区 */
-         .case-other{
-             display:flex;
-             justify-content:space-between;
-             align-items:center;
-             padding: 6px 0 10px;
-             gap: 12px;
         }
-        .device-info, .device-result{
-            display:flex;
-            align-items:center;
+        /* 完成态 hover：轻微绿色强调 */
+        .device.complete:hover {
+            border-color: rgba(16,185,129,.35);
+            box-shadow: 0 10px 28px rgba(16,185,129,.18);
+        }
+
+        /* 卡片头部与结果区 */
+        .case-other {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0 10px;
+            gap: 12px;
+        }
+        .device-info, .device-result {
+            display: flex;
+            align-items: center;
             gap: 10px;
         }
 
         /* 团队标识 Chip */
-        .team{
-             margin-left:0;
-             font-size:12px;
-             font-weight:700;
-             color:#0f172a;
-             background:#f3f4f6;
-             border:1px solid #e5e7eb;
-             border-radius:999px;
+        .team {
+             margin-left: 0;
+             font-size: 12px;
+             font-weight: 700;
+             color: #0f172a;
+             background: #f3f4f6;
+             border: 1px solid #e5e7eb;
+             border-radius: 999px;
              padding: 6px 10px;
         }
 
         /* ===== 费用/指标列表 ===== */
         .cost-div{
-             display:flex;
-             flex-wrap:wrap;
-             gap:10px;
-             padding-bottom:8px;
+             display: flex;
+             flex-wrap: wrap;
+             gap: 10px;
+             padding-bottom: 8px;
         }
 
         /* 单项 cost 标签 */
@@ -139,120 +139,132 @@ This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md 
             padding: 6px 12px;
             margin-left:0;
             border-radius: 10px;
-            background:#f8fafc;
-            color:#0f172a;
+            background: #f8fafc;
+            color: #0f172a;
             border:1px solid #e5e7eb;
             font-weight:700;
             transition: transform .15s ease, box-shadow .2s ease, border-color .2s ease;
-         }
-         .cost:hover{
-             transform: translateY(-1px);
-             box-shadow: 0 4px 12px rgba(0,0,0,.06);
-             border-color: rgba(37,99,235,.18);
-          }
+        }
+        .cost:hover{
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,.06);
+            border-color: rgba(37,99,235,.18);
+        }
 
-          /* 平均值突出但克制 */
-          .cost-avg{
-              padding: 8px 12px;
-              margin-right:0;
-              font-size:18px;
-              border-radius: 10px;
-              background: linear-gradient(135deg,#dbeafe 0%, #bfdbfe 100%);
-              color:#0f172a;
-              box-shadow: 0 4px 12px rgba(0,0,0,.06);
-              font-weight:700;
-              transition: transform .15s ease, box-shadow .2s ease, filter .2s ease;
-          }
-          .cost-avg:hover{
-              transform: translateY(-1px);
-              box-shadow: 0 8px 20px rgba(0,0,0,.10);
-              filter: saturate(1.05);
-          }
+        /* 平均值突出但克制 */
+        .cost-avg{
+            padding: 8px 12px;
+            margin-right: 0;
+            font-size: 18px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            color: #0f172a;
+            box-shadow: 0 4px 12px rgba(0,0,0,.06);
+            font-weight: 700;
+            transition: transform .15s ease, box-shadow .2s ease, filter .2s ease;
+        }
+        .cost-avg:hover{
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(0,0,0,.10);
+            filter: saturate(1.05);
+        }
 
-          /* ===== 按钮（复制 / 链接） ===== */
-          .copy{
-               margin-right: 0;
-               cursor: pointer;
-               padding: 8px 14px;
-               border: none;
-               border-radius: 10px;
-               font-weight: 700;
-               font-size: 14px;
-               background: #2563eb;
-               color: #fff;
-               box-shadow: 0 6px 14px rgba(37,99,235,.25);
-               transition: transform .15s ease, box-shadow .2s ease, background .2s ease;
-            }
-            .copy:hover{
-                 background:#1d4ed8;
-                 box-shadow: 0 10px 24px rgba(29,78,216,.28);
-                 transform: translateY(-1px);
-            }
-            .copy:active{ transform: scale(.98); }
+        /* ===== 按钮（复制 / 链接） ===== */
+        .copy {
+            margin-right: 0;
+            cursor: pointer;
+            padding: 8px 14px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 14px;
+            background: #2563eb;
+            color: #ffffff;
+            box-shadow: 0 6px 14px rgba(37,99,235,.25);
+            transition: transform .15s ease, box-shadow .2s ease, background .2s ease;
+        }
+        .copy:hover {
+            background: #1d4ed8;
+            box-shadow: 0 10px 24px rgba(29,78,216,.28);
+            transform: translateY(-1px);
+        }
+        .copy:active { 
+            transform: scale(.98); 
+        }
 
-            /* 次按钮风格的链接 */
-            .link{
-                margin-right: 0;
-                padding: 8px 14px;
-                border-radius: 10px;
-                color:#0f172a;
-                text-decoration: none;
-                font-weight:700;
-                background:#f3f4f6;
-                border:1px solid #e5e7eb;
-  transition: transform .15s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease;
-  display:inline-flex; align-items:center; gap:8px;
-}
-.link:hover{
-  background:#eef2ff;
-  border-color: rgba(37,99,235,.18);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0,0,0,.06);
-}
-.link:active{ transform: scale(.98); }
-.link:visited{ color:#0f172a; }
+        /* 次按钮风格的链接 */
+        .link{
+            margin-right: 0;
+            padding: 8px 14px;
+            border-radius: 10px;
+            color: #0f172a;
+            text-decoration: none;
+            font-weight:700;
+            background: #f3f4f6;
+            border:1px solid #e5e7eb;
+            transition: transform .15s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease;
+            display:inline-flex; align-items:center; gap:8px;
+        }
+        .link:hover {
+            background: #eef2ff;
+            border-color: rgba(37,99,235,.18);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,.06);
+        }
+        .link:active { 
+            transform: scale(.98);
+        }
+        .link:visited { 
+            color: #0f172a; 
+        }
 
-/* 分隔线：更轻的渐隐线 */
-.line{
-  border:none; height:1px; margin: 10px 0;
-  background: linear-gradient(90deg, transparent 0, #e5e7eb 20%, #e5e7eb 80%, transparent 100%);
-}
+        /* 分隔线：更轻的渐隐线 */
+        .line {
+            border:none; 
+            height:1px; 
+            margin: 10px 0;
+            background: linear-gradient(90deg, transparent 0, #e5e7eb 20%, #e5e7eb 80%, transparent 100%);
+        }
 
-/* 状态标记（复制完成/条目完成） */
-.done{
-  background:#10b981 !important; color:#fff !important;
-}
-.finish{
-  pointer-events:none;
-  color:#0f172a;
-  background:#eef2ff;
-  background-image:none;
-}
+        /* 状态标记（复制完成/条目完成） */
+        .done {
+            background: #10b981 !important; 
+            color: #ffffff !important;
+        }
+        .finish {
+            pointer-events:none;
+            color: #0f172a;
+            background: #eef2ff;
+            background-image:none;
+        }
 
-/* ===== Loading：更柔和动画与隐藏态 ===== */
-.loading{
-  position:fixed; inset:0;
-  background-color: rgba(255,255,255,.82);
-  display:flex; justify-content:center; align-items:center;
-  z-index: 9999;
-  backdrop-filter: blur(2px);
-  transition: opacity .35s ease;
-}
-.loading.hidden{ opacity:0; pointer-events:none; }
-.bar{
-  background: linear-gradient(180deg,#c7d2fe 0%, #93c5fd 100%);
-  height: 72px; width: 12px; margin: 0 5px; border-radius: 8px;
-  animation: wave 900ms ease-in-out infinite;
-  box-shadow: 0 4px 12px rgba(0,0,0,.06);
-}
-.bar:nth-child(2){ animation-delay:.08s }
-.bar:nth-child(3){ animation-delay:.16s }
-.bar:nth-child(4){ animation-delay:.24s }
-.bar:nth-child(5){ animation-delay:.32s }
-@keyframes wave{
-  0%,100%{ transform: translateY(0) scaleY(1); opacity:.7 }
-  50%{ transform: translateY(-8px) scaleY(1.2); opacity:1 }
-}
+        /* ===== Loading：更柔和动画与隐藏态 ===== */
+        .loading {
+            position:fixed; inset:0;
+            background-color: rgba(255,255,255,.82);
+            display:flex; justify-content:center; 
+            align-items:center;
+            z-index: 9999;
+            backdrop-filter: blur(2px);
+            transition: opacity .35s ease;
+        }
+        .loading.hidden { 
+            opacity:0; pointer-events:none; 
+        }
+        .bar {
+            background: linear-gradient(180deg, #c7d2fe 0%, #93c5fd 100%);
+            height: 72px; width: 12px; margin: 0 5px; border-radius: 8px;
+            animation: wave 900ms ease-in-out infinite;
+            box-shadow: 0 4px 12px rgba(0,0,0,.06);
+        }
+        .bar:nth-child(2) { animation-delay:.08s }
+        .bar:nth-child(3) { animation-delay:.16s }
+        .bar:nth-child(4) { animation-delay:.24s }
+        .bar:nth-child(5) { animation-delay:.32s }
+        @keyframes wave {
+            0%,100% { transform: translateY(0) scaleY(1); opacity:.7 }
+            50% { transform: translateY(-8px) scaleY(1.2); opacity:1 }
+        }
     </style>
 </head>
 <body>
