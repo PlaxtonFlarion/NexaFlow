@@ -26,7 +26,22 @@ This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md 
             background: #f6f7f9;
         }
 
-        /* ===== 顶部 Header ===== */
+        /* ===== 顶部标题 ===== */
+        .header {
+            background-image: linear-gradient(0deg, #fc940a, #e3a965, #bdbda5, #72d0e6);
+            color: #ffffff;
+            padding: 20px;
+            text-align: center;
+            font-size: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.8);
+        }
+        h1 {
+            font-size: 36px;
+            color: #EAECEF;
+            text-shadow: 1px 5px 2px rgba(0, 0, 0, 0.3);
+        }
         .header {
             background: linear-gradient(135deg, #eef2ff 0%,#e0f2fe 100%);
             color: #0f172a;
@@ -113,10 +128,8 @@ This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md 
             gap: 10px;
         }
 
-        /* 团队标识 Chip */
+        /* 团队标识 */
         .team {
-             margin-left: 0;
-             font-size: 12px;
              font-weight: 700;
              color: #0f172a;
              background: #f3f4f6;
@@ -125,19 +138,16 @@ This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md 
              padding: 6px 10px;
         }
 
-        /* ===== 费用/指标列表 ===== */
-        .cost-div{
+        /* ===== 指标列表 ===== */
+        .cost-div {
              display: flex;
              flex-wrap: wrap;
              gap: 10px;
-             padding-bottom: 8px;
         }
 
         /* 单项 cost 标签 */
-        .cost{
-            display: inline-block;
+        .cost {
             padding: 6px 12px;
-            margin-left: 0;
             border-radius: 10px;
             background: #f8fafc;
             color: #0f172a;
@@ -145,16 +155,15 @@ This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md 
             font-weight: 700;
             transition: transform .15s ease, box-shadow .2s ease, border-color .2s ease;
         }
-        .cost:hover{
+        .cost:hover {
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(0,0,0,.06);
             border-color: rgba(37,99,235,.18);
         }
 
         /* 平均值突出但克制 */
-        .cost-avg{
+        .cost-avg {
             padding: 8px 12px;
-            margin-right: 0;
             font-size: 18px;
             border-radius: 10px;
             background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
@@ -163,7 +172,7 @@ This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md 
             font-weight: 700;
             transition: transform .15s ease, box-shadow .2s ease, filter .2s ease;
         }
-        .cost-avg:hover{
+        .cost-avg:hover {
             transform: translateY(-1px);
             box-shadow: 0 8px 20px rgba(0,0,0,.10);
             filter: saturate(1.05);
