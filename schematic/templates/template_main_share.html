@@ -364,11 +364,18 @@ This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md 
             background-size: 200% 200%;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s ease, box-shadow 0.3s ease, background-position 0.4s;
-        }
-        /* 单独的 ALL COPY 按钮：青绿渐变 */
+        }     
+        /* ===== ALL COPY 专属色（独立配色）===== */
         .all-copy {
-            background-image: linear-gradient(135deg, #06beb6, #48b1bf); /* 比原来更雾面清爽 */
-        }        
+            background-image: linear-gradient(135deg, #ff758c, #ff7eb3); /* 柔粉+玫红雾面渐变 */
+        }
+        /* ===== ALL COPY 独立 hover 动画 ===== */
+        .all-copy:hover {
+            transform: scale(1.05);
+            background-position: right center;
+            box-shadow: 0 6px 20px rgba(255, 117, 140, 0.45); /* 匹配按钮主色的高光 */
+            color: #ffffff;
+        }
         /* 主功能按钮：绿蓝渐变 */
         .all-reselect, .quick-reselect {
             background-image: linear-gradient(135deg, #00c9ff, #92fe9d);
@@ -378,7 +385,7 @@ This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md 
             background-image: linear-gradient(135deg, #667eea, #764ba2);
         }
         /* 悬停高光动画 */
-        .all-copy:hover, .all-reselect:hover, .quick-reselect:hover, .ex-info:hover, .linked:hover {
+        .all-reselect:hover, .quick-reselect:hover, .ex-info:hover, .linked:hover {
             transform: scale(1.05);
             background-position: right center;
             box-shadow: 0 6px 20px rgba(0, 201, 255, 0.4);
@@ -829,8 +836,8 @@ This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md 
             <div class="options">
                 <div class="option-one">
                     <div class="option-copy-div">
-                        <button class="all-copy" data-mode="horizontal">➡️⬅️</button>
-                        <button class="all-copy" data-mode="vertical">⬆️⬇️</button>
+                        <button class="all-copy" data-mode="horizontal">H</button>
+                        <button class="all-copy" data-mode="vertical">V</button>
                     </div>
                     <button class="all-reselect">全部重选</button>
                     <button class="quick-reselect">快速重选</button>
