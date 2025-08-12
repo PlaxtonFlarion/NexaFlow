@@ -364,24 +364,25 @@ This file is licensed under the Framix :: 画帧秀 License. See the LICENSE.md 
             background-size: 200% 200%;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s ease, box-shadow 0.3s ease, background-position 0.4s;
-        }     
-        /* ===== ALL COPY 专属 ===== */
+        }    
+        /* ===== 配色 + 各自的悬浮高光色 ===== */
         .all-copy {
-            background: linear-gradient(135deg, rgba(255, 154, 0, 0.75), rgba(255, 94, 77, 0.75));
+            background: linear-gradient(135deg, rgba(255,154,0,.75), rgba(255,94,77,.75));
+            --glow: rgba(255,94,77,.40);          /* 橙红 */
         }
-        /* 主功能按钮：绿蓝渐变 */
         .all-reselect, .quick-reselect {
             background-image: linear-gradient(135deg, #00c9ff, #92fe9d);
+            --glow: rgba(0,201,255,.40);          /* 青蓝 */
         }
-        /* 次要信息按钮 & 链接：蓝紫渐变 */
         .ex-info, .linked {
             background-image: linear-gradient(135deg, #667eea, #764ba2);
+            --glow: rgba(118,75,162,.40);         /* 蓝紫 */
         }
-        /* 悬停高光动画 */
+        /* ===== 通用悬停动画（不变）但用各自的 --glow ===== */
         .all-copy:hover, .all-reselect:hover, .quick-reselect:hover, .ex-info:hover, .linked:hover {
             transform: scale(1.05);
             background-position: right center;
-            box-shadow: 0 6px 20px rgba(0, 201, 255, 0.4);
+            box-shadow: 0 6px 20px var(--glow);
             color: #ffffff;
         }
         /* 点击反馈 */
