@@ -959,7 +959,7 @@ class Missions(object):
         5. 渲染最终分析报告并完成任务。
         """
 
-        # Notes: Start from here
+        # Notes: ==== Start from here ====
         if not (video_file_list := [
             video_file for video_file in video_file_list if os.path.isfile(video_file)]
         ):
@@ -970,7 +970,7 @@ class Missions(object):
         report = Report(option.total_place)
         report.title = f"{const.DESC}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
 
-        # Notes: Profession
+        # Notes: ==== Profession ====
         task_list = []
         for video_file in video_file_list:
             report.query = f"{os.path.basename(video_file).split('.')[0]}_{time.strftime('%Y%m%d%H%M%S')}"
@@ -981,7 +981,7 @@ class Missions(object):
                  report.query, report.frame_path, report.extra_path, report.proto_path]
             )
 
-        # Notes: Analyzer
+        # Notes: ==== Analyzer ====
         if self.speed:
             await self.als_speed(deploy, clipix, report, task_list)
         else:
@@ -994,7 +994,7 @@ class Missions(object):
                     self.design.show_panel(e, Wind.KEEPER)
             await self.als_mixer(deploy, clipix, report, task_list, option, alynex)
 
-        # Notes: Create Report
+        # Notes: ==== Create Report ====
         await self.combine(report)
 
     # """影像堆叠导航"""
@@ -1043,11 +1043,11 @@ class Missions(object):
                     continue
                 yield search_result[0]
 
-        # Notes: Start from here
+        # Notes: ==== Start from here ====
         search = Search()
         clipix = Clipix(self.ffmpeg, self.ffprobe)
 
-        # Notes: Profession
+        # Notes: ==== Profession ====
         async for entries in load_entries():
             if entries:
                 report = Report(option.total_place)
@@ -1065,7 +1065,7 @@ class Missions(object):
                              report.query, report.frame_path, report.extra_path, report.proto_path]
                         )
 
-                    # Notes: Analyzer
+                    # Notes: ==== Analyzer ====
                     if self.speed:
                         await self.als_speed(deploy, clipix, report, task_list)
                     else:
@@ -1078,7 +1078,7 @@ class Missions(object):
                                 self.design.show_panel(e, Wind.KEEPER)
                         await self.als_mixer(deploy, clipix, report, task_list, option, alynex)
 
-                # Notes: Create Report
+                # Notes: ==== Create Report ====
                 await self.combine(report)
 
     # """模型训练大师"""
@@ -1116,7 +1116,7 @@ class Missions(object):
         5. 分析结束后清除中间产物，记录训练日志。
         """
 
-        # Notes: Start from here
+        # Notes: ==== Start from here ====
         if not (video_file_list := [
             video_file for video_file in video_file_list if os.path.isfile(video_file)]
         ):
@@ -1128,7 +1128,7 @@ class Missions(object):
         clipix = Clipix(self.ffmpeg, self.ffprobe)
         report = Report(option.total_place)
 
-        # Notes: Profession
+        # Notes: ==== Profession ====
         task_list = []
         for video_file in video_file_list:
             report.title = f"Model_{uuid.uuid4()}"
@@ -1187,7 +1187,7 @@ class Missions(object):
 
         futures: list[typing.Any | Exception] = []
 
-        # Notes: Analyzer
+        # Notes: ==== Analyzer ====
         if len(task_list) == 1:
             task = [
                 alynex.ask_exercise(target, query_path, src_size)
@@ -1262,7 +1262,7 @@ class Missions(object):
         5. 构建完成后输出成功信息或错误报告。
         """
 
-        # Notes: Start from here
+        # Notes: ==== Start from here ====
         if not (video_data_list := [
             video_data for video_data in video_data_list if os.path.isdir(video_data)]
         ):
@@ -1367,7 +1367,7 @@ class Missions(object):
         alynex = Alynex(option, deploy, self.design, self.online)
         report = Report(option.total_place)
 
-        # Notes: Profession
+        # Notes: ==== Profession ====
         task_list = []
         for video_data in video_data_list:
             logger.debug(tip := f"搜索文件夹: {os.path.basename(video_data)}")
@@ -1415,7 +1415,7 @@ class Missions(object):
 
         futures: list[typing.Any | Exception] = []
 
-        # Notes: Analyzer
+        # Notes: ==== Analyzer ====
         if len(task_list) == 1:
             task = [
                 looper.run_in_executor(None, alynex.ks.build, c, s, a, *cmp_data)
@@ -1651,7 +1651,7 @@ class Missions(object):
             logger.debug(tip := f"保存图片: {pic_path.name}")
             self.design.show_panel(tip, Wind.DRAWER)
 
-        # Notes: Start from here
+        # Notes: ==== Start from here ====
         await self.design.pixel_bloom()
 
         manage = Manage(self.adb)
@@ -1906,7 +1906,7 @@ class Missions(object):
                 logger.debug(tip := f"没有有效任务")
                 return self.design.show_panel(tip, Wind.KEEPER)
 
-            # Notes: Analyzer
+            # Notes: ==== Analyzer ====
             if self.speed:
                 await self.als_speed(deploy, clipix, report, task_list)
             elif self.basic or self.keras or self.infer:
@@ -2484,7 +2484,7 @@ class Missions(object):
 
             Design.console.print()
 
-        # Notes: Start from here
+        # Notes: ==== Start from here ====
         manage_ = Manage(self.adb)
 
         if any((self.speed, self.basic, self.keras, self.infer)):

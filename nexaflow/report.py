@@ -48,14 +48,22 @@ class Report(object):
     报告内容来源于 `ClassifierResult` 结构，帧图像来源于保存路径或 Base64 格式处理。
     """
 
-    def __init__(self, total_path: str):
+    def __init__(self, total_path: str, label: typing.Optional[str] = None):
         """
-        初始化 Report 实例并创建目录结构与日志文件。
+        初始化实例并构建报告的目录结构与必要属性。
 
         Parameters
         ----------
         total_path : str
-            指定的根目录路径，用于存放分析报告的总目录。
+            分析报告的根目录路径，用于存放所有生成的报告及相关文件。
+
+        label : str, optional
+            报告的标签标识，如果未提供则自动生成时间戳与进程号的唯一标识。
+
+        Notes
+        -----
+        该方法会初始化多个路径属性（查询目录、视频目录、帧目录、附加目录）并
+        准备存储范围数据和汇总数据的列表结构。同时会生成用于区分不同报告的唯一标签。
         """
         self.__title: str = ""
         self.__query: str = ""
@@ -68,21 +76,18 @@ class Report(object):
         self.range_list: list = []
         self.total_list: list = []
 
-        _tms, _pid = time.strftime("%Y%m%d%H%M%S"), os.getpid()
+        tag: str = f"{time.strftime('%Y%m%d%H%M%S')}_{os.getpid()}"
+        tender: str = const.R_TOTAL_TAG + "_" + (label or tag)
 
-        self.total_path = os.path.join(
-            total_path, f"{const.R_TOTAL_TAG}_{_tms}_{_pid}", const.R_COLLECTION
-        )
-        os.makedirs(self.total_path, exist_ok=True)
+        self.total_path: str = os.path.join(total_path, tender, const.R_COLLECTION)
+        if not (total_path := Path(self.total_path)).exists():
+            total_path.mkdir(parents=True, exist_ok=True)
 
-        self.reset_path = os.path.join(
-            os.path.dirname(self.total_path), const.R_RECOVERY
-        )
-        os.makedirs(self.reset_path, exist_ok=True)
+        self.reset_path: str = os.path.join(os.path.dirname(self.total_path), const.R_RECOVERY)
+        if not (reset_path := Path(self.reset_path)).exists():
+            reset_path.mkdir(parents=True, exist_ok=True)
 
-        log_papers = os.path.join(
-            self.reset_path, const.R_LOG_FILE
-        )
+        log_papers: str = os.path.join(self.reset_path, const.R_LOG_FILE)
         logger.add(log_papers, level=const.NOTE_LEVEL, format=const.WRITE_FORMAT)
 
     @property
