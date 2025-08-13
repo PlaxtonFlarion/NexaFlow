@@ -160,11 +160,11 @@ class Report(object):
 
     @staticmethod
     async def ask_create_report(
-            total: "Path",
-            title: str,
-            serial: str,
-            parts_list: list,
-            style_loc: str
+        total: "Path",
+        title: str,
+        serial: str,
+        parts_list: list,
+        style_loc: str
     ) -> typing.Optional[dict]:
         """
         生成单个分析报告的 HTML 文件。
@@ -306,10 +306,12 @@ class Report(object):
 
     @staticmethod
     async def ask_create_total_report(
-            file_name: str,
-            group: bool,
-            style_loc: str,
-            total_loc: str
+        file_name: str,
+        group: bool,
+        style_loc: str,
+        total_loc: str,
+        *_,
+        **kwargs
     ) -> typing.Union[typing.Any, str]:
         """
         汇总多个单项分析报告，生成最终总报告 HTML。
@@ -330,10 +332,20 @@ class Report(object):
         total_loc : str
             总报告模板路径，用于渲染最终的 HTML 汇总文件。
 
+        *_
+            位置参数占位符，用于保持调用接口一致性，实际不使用。
+
+        **kwargs
+            关键字参数：
+            - generate : bool
+              是否启用组合模式。若为 False，将跳过组合逻辑。
+
         Returns
         -------
-        str
-            返回最终生成的总报告 HTML 文件路径。
+        Union[Any, str]
+            返回值可能是任意类型（`Any`）或字符串（`str`）：
+            - **Any**：当函数的具体逻辑允许返回非字符串的其他类型数据时（例如对象、数值、字典等）。
+            - **str**：当函数执行成功并返回文件路径、消息或其他字符串结果时。
 
         Raises
         ------
@@ -342,25 +354,6 @@ class Report(object):
             - 当未能提取出任何有效数据或报告内容为空；
             - 当报告渲染过程中发生异常。
         """
-
-        # 从日志文件中读取数据
-        # try:
-        #     log_file = const.R_RECOVERY, const.R_LOG_FILE
-        #     async with aiofiles.open(os.path.join(file_name, *log_file), "r", encoding=const.CHARSET) as f:
-        #         open_file = await f.read()
-        # except FileNotFoundError as e:
-        #     raise FramixError(e)
-        #
-        # if match_speeder_list := re.findall(r"(?<=Speeder: ).*}", open_file):
-        #     match_list = match_speeder_list
-        # elif match_restore_list := re.findall(r"(?<=Restore: ).*}", open_file):
-        #     match_list = match_restore_list
-        # else:
-        #     raise FramixError(f"没有符合条件的数据 ...")
-        #
-        # parts_list: list[dict] = [
-        #     json.loads(file) for file in match_list if file
-        # ]
 
         # Notes: 从数据库文件中读取数据
         try:
@@ -430,6 +423,9 @@ class Report(object):
         except Exception as e:
             raise FramixError(e)
 
+        if kwargs.get("generate") is False:
+            return None
+
         merged_list = await format_merged([c for c in create_result if c])
 
         for i in merged_list:
@@ -460,10 +456,10 @@ class Report(object):
 
     @staticmethod
     async def ask_line(
-            extra_path: str,
-            proto_path: str,
-            template_file: str,
-            rp_timestamp: str
+        extra_path: str,
+        proto_path: str,
+        template_file: str,
+        rp_timestamp: str
     ) -> typing.Union[typing.Any, str]:
         """
         生成包含帧图列表的 HTML 报告页面，用于比对额外帧结构内容。
@@ -517,12 +513,12 @@ class Report(object):
 
     @staticmethod
     async def ask_draw(
-            scores: dict,
-            struct_result: "ClassifierResult",
-            proto_path: str,
-            template_file: str,
-            boost: bool,
-            rp_timestamp: str
+        scores: dict,
+        struct_result: "ClassifierResult",
+        proto_path: str,
+        template_file: str,
+        boost: bool,
+        rp_timestamp: str
     ) -> typing.Union[typing.Any, str]:
         """
         绘制阶段图像摘要报告，生成 HTML 格式的图像展示页面。
@@ -551,8 +547,10 @@ class Report(object):
 
         Returns
         -------
-        str
-            返回 HTML 报告文件的保存路径。
+        Union[Any, str]
+            返回值可能是任意类型（`Any`）或字符串（`str`）：
+            - **Any**：当函数的具体逻辑允许返回非字符串的其他类型数据时（例如对象、数值、字典等）。
+            - **str**：当函数执行成功并返回文件路径、消息或其他字符串结果时。
 
         Raises
         ------

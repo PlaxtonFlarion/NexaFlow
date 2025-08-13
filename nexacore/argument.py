@@ -22,6 +22,22 @@ class Args(object):
 
     # 核心操控
     GROUP_MAJOR = {
+        "--frame": {
+            "args": {"nargs": "?", "const": None, "type": str},
+            "view": ["一次", " '{}'"],
+            "help": "帧序协议传输",
+            "func": """- 该参数用于通过 **单一 JSON 载荷** 向系统批量注入视频分析任务的核心元信息，包括任务标签、标题及视频文件路径。
+                - 其设计旨在将多参数输入统一封装，减少命令行冗余，提升自动化调用与后续扩展的可维护性。
+                - 推荐结构
+                    {
+                        "label": "任务标签",
+                        "title": "任务标题",
+                        "video": ["/abs/path/a.mp4", "~/video/b.mov"]
+                    }
+                - 解析规范
+                    * Root 必须为对象；"video" 必须为字符串数组；"label"/"title" 必须为字符串。
+                    * 路径将按顺序 **expanduser → resolve → 去重**，并过滤不存在的文件。"""
+        },
         "--video": {
             "args": {"action": "append"},
             "view": ["多次", " /path/to/file"],

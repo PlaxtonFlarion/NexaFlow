@@ -41,6 +41,7 @@ import aiofiles
 
 # ====[ from: 内置模块 ]====
 from pathlib import Path
+from datetime import datetime
 from functools import partial
 from concurrent.futures import ProcessPoolExecutor
 
@@ -824,17 +825,30 @@ class Missions(object):
             )
             logger.debug(f"DB: {render_result}")
 
-    async def combine(self, report: "Report") -> None:
+    async def combine(self, report: "Report", *_, **kwargs) -> None:
         """
-        异步生成组合报告。
+        异步生成组合型分析报告。
 
-        根据报告对象中提供的数据范围与配置参数，动态选择合适的合并方法生成综合分析报告。
-        支持多场景对比与汇总视图，适用于复杂测试或多源视频任务。
+        根据输入的报告对象及配置参数，动态选择适用的合并逻辑，
+        将多个数据源或分析结果整合为统一的可视化输出。
+        常用于多场景对比、跨任务汇总或多源视频分析等复杂测试场景，
+        以便在单一视图中呈现完整的分析全貌。
 
         Parameters
         ----------
         report : Report
-            报告引擎对象，包含报告路径、数据范围以及合并配置。
+            报告处理引擎实例，包含报告路径、数据范围列表及相关合并配置。
+
+        *_
+            位置参数占位符，用于保持调用接口一致性，实际不使用。
+
+        **kwargs
+            关键字参数。
+
+        Notes
+        -----
+        1. 生成路径会根据报告总目录或标签进行动态适配，确保输出结构一致性。
+        2. 若无可用数据范围，则会记录调试日志并通过面板提示无报告可生成。
         """
         if report.range_list:
             function = getattr(self, "combine_view" if self.speed else "combine_main")
@@ -842,12 +856,12 @@ class Missions(object):
                 const.R_TOTAL_TAG
             ) else os.path.dirname(rtp)
 
-            return await function([final_path])
+            return await function([final_path], *_, **kwargs)
 
         logger.debug(tip := f"没有可以生成的报告")
         return self.design.show_panel(tip, Wind.KEEPER)
 
-    async def combine_crux(self, share_temp: str, total_temp: str, merge: list) -> None:
+    async def combine_crux(self, share_temp: str, total_temp: str, merge: list, *_, **kwargs) -> None:
         """
         异步生成汇总报告。
 
@@ -863,6 +877,12 @@ class Missions(object):
 
         merge : list of str
             子报告路径列表，所有待整合的报告资源将统一纳入汇总流程中。
+
+        *_
+            位置参数占位符，用于保持调用接口一致性，实际不使用。
+
+        **kwargs
+            关键字参数。
 
         Notes
         -----
@@ -892,7 +912,8 @@ class Missions(object):
 
         resp_state: list[typing.Any | Exception] = await asyncio.gather(
             *(Report.ask_create_total_report(
-                m, self.group, share_form, total_form) for m in merge), return_exceptions=True
+                m, self.group, share_form, total_form, *_, **kwargs) for m in merge
+            ), return_exceptions=True
         )
 
         await self.animation.stop()
@@ -901,74 +922,160 @@ class Missions(object):
             logger.debug(resp)
             if isinstance(resp, Exception):
                 self.design.show_panel(resp, Wind.KEEPER)
-            else:
+            elif isinstance(resp, str):
                 self.design.show_panel(f"成功生成汇总报告 {(state := Path(resp)).name}", Wind.REPORTER)
                 self.design.show_files(state)
 
     # """时空纽带分析系统"""
-    async def combine_view(self, merge: list) -> None:
+    async def combine_view(self, merge: list, *_, **kwargs) -> None:
         """
         合并视图数据。
         """
         await self.combine_crux(
-            self.view_share_temp, self.view_total_temp, merge
+            self.view_share_temp, self.view_total_temp, merge, *_, **kwargs
         )
 
     # """时序融合分析系统"""
-    async def combine_main(self, merge: list) -> None:
+    async def combine_main(self, merge: list, *_, **kwargs) -> None:
         """
         合并视图数据。
         """
         await self.combine_crux(
-            self.main_share_temp, self.main_total_temp, merge
+            self.main_share_temp, self.main_total_temp, merge, *_, **kwargs
         )
 
-    # """视频解析探索"""
-    async def video_file_task(self, video_file_list: list, option: "Option", deploy: "Deploy") -> None:
+    # """帧序协议传输"""
+    async def intake_manifest(self, payload: typing.Optional[str], option: "Option", deploy: "Deploy") -> None:
         """
-        异步处理视频文件任务，并根据配置选项执行相应的分析流程。
+        解析并校验外部输入的 JSON 清单数据，提取视频文件列表及相关元信息，
+        并将其转交至视频处理任务执行。
 
-        通过分析视频列表，执行基本或深度学习分析操作，并最终生成分析报告。
+        Parameters
+        ----------
+        payload : str or None
+            包含任务元数据的 JSON 字符串。内容需包含视频文件路径列表、标签(label) 和标题(title) 等字段。
+
+        option : Option
+            控制视频分析执行选项的配置对象。
+
+        deploy : Deploy
+            控制执行流程、任务分发及资源管理的部署对象。
+
+        Raises
+        ------
+        FramixError
+            - 当 payload 缺失时抛出。
+            - 当 JSON 格式解析失败时抛出。
+            - 当根元素不是字典类型时抛出。
+            - 当视频列表字段缺失、类型错误或不存在有效文件时抛出。
+            - 当 label 或 title 字段类型错误时抛出。
+            - 当 label 不符合 YYYYMMDDhhmmss 格式或日期无效时抛出。
+
+        Notes
+        -----
+        该方法会对输入进行多级校验：
+        1. JSON 格式与根对象类型校验；
+        2. 视频文件路径列表的类型与有效性去重校验；
+        3. 元数据字段(label/title)类型与格式检查；
+        4. 校验通过后调用视频任务处理函数进行后续分析。
+        """
+        if not payload:
+            raise FramixError("Missing JSON payload.")
+
+        try:
+            data = json.loads(payload)
+        except json.JSONDecodeError as e:
+            raise FramixError(f"Invalid JSON format: {e}")
+
+        logger.debug(f"JSON: {data}")
+
+        if not isinstance(data, dict):
+            raise FramixError("Root element must be an object.")
+
+        video_list = data.get("video", [])
+        if not isinstance(video_list, list) or any(not isinstance(v, str) for v in video_list):
+            raise FramixError("Field 'video' must be a list of strings.")
+
+        absolute = [Path(v).expanduser().resolve() for v in video_list]
+
+        if not (video_file_list := list(dict.fromkeys(p for p in absolute if p.is_file()))):
+            raise FramixError("No valid video files found.")
+
+        label, title = data.get("label", ""), data.get("title", "")
+        if not isinstance(label, str) or not isinstance(title, str):
+            raise FramixError("'label' and 'title' must be strings.")
+
+        if not re.fullmatch(r"\d{14}", label):
+            raise FramixError("Field 'label' must be in compressed datetime format 'YYYYMMDDhhmmss'.")
+
+        try:
+            datetime.strptime(label, "%Y%m%d%H%M%S")
+        except ValueError:
+            raise FramixError("Field 'label' contains an invalid datetime value.")
+
+        kwargs = {"label": label, "title": title, "generate": False}
+
+        return await self.video_file_task(video_file_list, option, deploy, **kwargs)
+
+    # """视频解析探索"""
+    async def video_file_task(self, video_file_list: list, option: "Option", deploy: "Deploy", *_, **kwargs) -> None:
+        """
+        异步处理视频文件任务，并根据运行配置执行相应的分析与报告生成流程。
+
+        该方法接收一组视频文件路径，先进行有效性验证与资源拷贝，
+        再根据模式选择快速分析或基于深度学习模型的精细化分析，
+        最终生成对应的可视化报告及汇总结果，适用于批量视频处理与多场景对比分析。
 
         Parameters
         ----------
         video_file_list : list of str
-            视频文件路径列表，包含所有待分析的原始视频资源。
+            待分析的视频文件绝对路径列表，支持多个源文件输入。
 
         option : Option
-            配置选项对象，定义任务运行的各类参数与模型选型策略。
+            任务配置对象，包含运行参数、模型选型与输出策略等信息。
 
         deploy : Deploy
-            部署配置对象，提供具体的处理规则，如帧率、剪辑时长、输出格式等。
+            部署规则对象，定义视频处理参数，如帧率限制、截取时长、输出格式等。
+
+        *_
+            位置参数占位符，用于保持接口一致性，实际不会使用。
+
+        **kwargs
+            关键字参数：
+            - label : str，可选
+              报告标签，支持压缩时间格式标识，用于唯一化输出路径。
+            - title : str，可选
+              报告标题，若未提供则自动生成。
 
         Notes
         -----
-        - 若视频列表为空，函数将直接中止并记录日志信息。
-        - 分析模式由 `option.speed` 控制：
-            - 若启用，执行快速分析路径（als_speed）。
-            - 否则使用 Keras 模型进行深度分析（als_keras）。
-        - 所有模型加载及处理操作均封装为异步任务。
-        - 支持异常捕获与错误日志打印，确保运行稳定性。
+        1. 视频文件会在处理前复制到报告专用目录中，避免修改原始文件。
+        2. 若启用快速模式（speed），将调用轻量分析流程以提升执行效率；
+           否则会创建深度学习分析器并加载 Keras 模型进行推理。
+        3. 所有步骤均为异步执行，确保在批量任务中保持高并发处理能力。
+        4. 异常会被捕获并记录，防止单个文件处理失败中断整个流程。
 
         Workflow
         --------
-        1. 过滤并验证视频文件有效性。
-        2. 初始化 Clipix 和 Report 对象，用于处理与结果管理。
-        3. 将视频复制到报告路径中，生成任务队列。
-        4. 根据配置执行快速分析或 Keras 深度分析。
-        5. 渲染最终分析报告并完成任务。
+        1. 过滤无效或不存在的视频文件路径。
+        2. 初始化视频剪辑工具（Clipix）与报告管理器（Report）。
+        3. 将有效视频文件复制到任务目录并构建任务队列。
+        4. 根据运行模式执行快速分析或 Keras 模型分析。
+        5. 调用组合报告生成器合并结果，输出最终可视化报告。
         """
 
         # Notes: ==== Start from here ====
         if not (video_file_list := [
-            video_file for video_file in video_file_list if os.path.isfile(video_file)]
-        ):
+            video_file for video_file in video_file_list if os.path.isfile(video_file)
+        ]):
             logger.debug(tip := f"没有有效任务")
             return self.design.show_panel(tip, Wind.KEEPER)
 
+        kw_label, kw_title = kwargs.get("label"), kwargs.get("title")
+
         clipix = Clipix(self.ffmpeg, self.ffprobe)
-        report = Report(option.total_place)
-        report.title = f"{const.DESC}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
+        report = Report(option.total_place, kw_label)
+        report.title = kw_title or f"{const.DESC}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}"
 
         # Notes: ==== Profession ====
         task_list = []
@@ -995,7 +1102,7 @@ class Missions(object):
             await self.als_mixer(deploy, clipix, report, task_list, option, alynex)
 
         # Notes: ==== Create Report ====
-        await self.combine(report)
+        await self.combine(report, *_, **kwargs)
 
     # """影像堆叠导航"""
     async def video_data_task(self, video_data_list: list, option: "Option", deploy: "Deploy") -> None:
@@ -4127,7 +4234,10 @@ async def main() -> None:
     # 延时任务
     await missions.temporal_offset()
 
-    if video_list := lines.video:
+    if frame_sequential := lines.frame:
+        await missions.intake_manifest(frame_sequential, option, deploy)
+
+    elif video_list := lines.video:
         await arithmetic(missions.video_file_task, video_list)
 
     elif stack_list := lines.stack:
