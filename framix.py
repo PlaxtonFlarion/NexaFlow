@@ -386,7 +386,7 @@ class Missions(object):
         await db.insert(column_list, [style, total, title, nest])
 
     async def fst_track(
-            self, deploy: "Deploy", clipix: "Clipix", task_list: list[list]
+        self, deploy: "Deploy", clipix: "Clipix", task_list: list[list]
     ) -> tuple[list, list]:
         """
         异步执行视频处理与追踪，包括内容提取与长度平衡操作。
@@ -478,7 +478,7 @@ class Missions(object):
         return originals, indicates
 
     async def fst_waves(
-            self, deploy: "Deploy", clipix: "Clipix", task_list: list[list], originals: list
+        self, deploy: "Deploy", clipix: "Clipix", task_list: list[list], originals: list
     ) -> list:
         """
         异步执行视频的过滤与改进操作。
@@ -541,7 +541,10 @@ class Missions(object):
         return video_filter_list
 
     async def als_speed(
-            self, deploy: "Deploy", clipix: "Clipix", report: "Report", task_list: list[list]
+        self, deploy: "Deploy",
+        clipix: "Clipix",
+        report: "Report",
+        task_list: list[list]
     ) -> None:
         """
         异步执行视频的内容优化与速度适配处理。
@@ -647,13 +650,13 @@ class Missions(object):
             logger.debug(f"DB: {render_result}")
 
     async def als_mixer(
-            self,
-            deploy: "Deploy",
-            clipix: "Clipix",
-            report: "Report",
-            task_list: list[list],
-            option: "Option",
-            alynex: "Alynex",
+        self,
+        deploy: "Deploy",
+        clipix: "Clipix",
+        report: "Report",
+        task_list: list[list],
+        option: "Option",
+        alynex: "Alynex",
     ) -> None:
         """
         异步执行视频的模型分析或基础模式分析任务。
@@ -945,7 +948,9 @@ class Missions(object):
         )
 
     # """帧序协议传输"""
-    async def intake_manifest(self, payload: typing.Optional[str], option: "Option", deploy: "Deploy") -> None:
+    async def intake_manifest(
+        self, payload: typing.Optional[str], option: "Option", deploy: "Deploy"
+    ) -> None:
         """
         解析并校验外部输入的 JSON 清单数据，提取视频文件列表及相关元信息，
         并将其转交至视频处理任务执行。
@@ -1018,7 +1023,9 @@ class Missions(object):
         return await self.video_file_task(video_file_list, option, deploy, **kwargs)
 
     # """视频解析探索"""
-    async def video_file_task(self, video_file_list: list, option: "Option", deploy: "Deploy", *_, **kwargs) -> None:
+    async def video_file_task(
+        self, video_file_list: list, option: "Option", deploy: "Deploy", *_, **kwargs
+    ) -> None:
         """
         异步处理视频文件任务，并根据运行配置执行相应的分析与报告生成流程。
 
@@ -1105,7 +1112,9 @@ class Missions(object):
         await self.combine(report, *_, **kwargs)
 
     # """影像堆叠导航"""
-    async def video_data_task(self, video_data_list: list, option: "Option", deploy: "Deploy") -> None:
+    async def video_data_task(
+        self, video_data_list: list, option: "Option", deploy: "Deploy"
+    ) -> None:
         """
         异步处理视频数据任务，并根据配置执行快速或深度分析流程。
 
@@ -1811,7 +1820,7 @@ class Missions(object):
         """
 
         async def distributions(
-                device_list: list["Device"]
+            device_list: list["Device"]
         ) -> typing.AsyncGenerator[tuple["Device", tuple], None]:
             """
             设备布局与位置分配。
@@ -1888,9 +1897,9 @@ class Missions(object):
                 window_x += device_w + margin_x  # 横向排列推进
 
         async def anything_film(
-                device_list: list["Device"],
-                report: "Report",
-                amount: typing.Optional[int] = None
+            device_list: list["Device"],
+            report: "Report",
+            amount: typing.Optional[int] = None
         ) -> tuple[typing.Optional["asyncio.Task"], list[list]]:
             """
             启动所有设备的录制任务，并初始化事件队列与 UI 显示任务。
@@ -2096,25 +2105,30 @@ class Missions(object):
 
                 file_list = data["command"]
 
-                return {
-                    file_key: {
-                        **({"parser": cmds["parser"]} if cmds.get("parser") else {}),
-                        **({"header": cmds["header"]} if cmds.get("header") else {}),
-                        **({"change": cmds["change"]} if cmds.get("change") else {}),
-                        **({"looper": cmds["looper"]} if cmds.get("looper") else {}),
-                        **({"origin": [c for c in cmds.get("origin", []) if c["cmds"]]} if any(
-                            c["cmds"] for c in cmds.get("origin", [])) else {}),
-                        **({"prefix": [c for c in cmds.get("prefix", []) if c["cmds"]]} if any(
-                            c["cmds"] for c in cmds.get("prefix", [])) else {}),
-                        **({"action": [c for c in cmds.get("action", []) if c["cmds"]]} if any(
-                            c["cmds"] for c in cmds.get("action", [])) else {}),
-                        **({"suffix": [c for c in cmds.get("suffix", []) if c["cmds"]]} if any(
-                            c["cmds"] for c in cmds.get("suffix", [])) else {}),
-                        **({"finish": [c for c in cmds.get("finish", []) if c["cmds"]]} if any(
-                            c["cmds"] for c in cmds.get("finish", [])) else {}),
-                    } for file_dict in file_list for file_key, cmds in file_dict.items()
-                    if any(c["cmds"] for c in cmds.get("action", []))
-                } if file_list else {}
+                scalars = ("parser", "header", "change", "looper")
+                list_blocks = ("origin", "prefix", "action", "suffix", "finish")
+
+                out: dict[str, dict[str, typing.Any]] = {}
+
+                for file_dict in file_list:
+                    for file_key, cmds in file_dict.items():
+
+                        if not any(item.get("cmds") for item in cmds.get("action", [])):
+                            continue
+
+                        block: dict[str, typing.Any] = {}
+
+                        for k in scalars:
+                            if v := cmds.get(k):
+                                block[k] = v
+
+                        for k in list_blocks:
+                            if filtered := [c for c in cmds.get(k, []) if c.get("cmds")]:
+                                block[k] = filtered
+
+                        out[file_key] = block
+
+                return out
 
             except (FileNotFoundError, KeyError, TypeError, ValueError, json.JSONDecodeError) as e:
                 raise FramixError(e)
@@ -2180,12 +2194,12 @@ class Missions(object):
             return exec_pairs_list
 
         async def call_commands(
-                bean: typing.Any,
-                live_devices: dict,
-                exec_func: str,
-                exec_vals: list,
-                exec_args: list,
-                exec_kwds: dict
+            bean: typing.Any,
+            live_devices: dict,
+            exec_func: str,
+            exec_vals: list,
+            exec_args: list,
+            exec_kwds: dict
         ) -> typing.Any:
             """
             执行指定对象的指令函数（异步或同步），并捕获运行结果与异常。
@@ -2733,11 +2747,11 @@ class Clipix(object):
         self.ffprobe = ffprobe  # 表示 ffprobe 的路径
 
     async def vision_content(
-            self,
-            video_temp: str,
-            start: typing.Optional[str],
-            close: typing.Optional[str],
-            limit: typing.Optional[str],
+        self,
+        video_temp: str,
+        start: typing.Optional[str],
+        close: typing.Optional[str],
+        limit: typing.Optional[str]
     ) -> tuple[str, str, float, tuple, dict]:
         """
         异步提取视频的关键内容信息，并计算可视时间点。
@@ -2812,7 +2826,7 @@ class Clipix(object):
         return rlt, avg, duration, original, vision_point
 
     async def vision_balance(
-            self, duration: float, standard: float, src: str, frate: float
+        self, duration: float, standard: float, src: str, frate: float
     ) -> tuple[str, str]:
         """
         异步调整视频时长以匹配指定的标准时长，通过裁剪视频的起始和结束时间。
@@ -2874,7 +2888,7 @@ class Clipix(object):
 
     @staticmethod
     async def vision_improve(
-            deploy: "Deploy", original: tuple, filters: list
+        deploy: "Deploy", original: tuple, filters: list
     ) -> list:
         """
         异步方法，用于改进视频的视觉效果，通过调整尺寸并组合过滤器列表。
@@ -2925,9 +2939,7 @@ class Clipix(object):
         return video_filter_list
 
     async def pixels(
-            self,
-            function: "typing.Callable",
-            video_filter: list, src: str, dst: str, **kwargs
+        self, function: "typing.Callable", video_filter: list, src: str, dst: str, **kwargs
     ) -> tuple[str]:
         """
         执行视频过滤处理函数，应用指定的过滤器列表，将源视频转换为目标视频。
@@ -3000,7 +3012,7 @@ class Alynex(object):
     __ks: typing.Optional["KerasStruct"] = KerasStruct()
 
     def __init__(
-            self, option: "Option", deploy: "Deploy", design: "Design", online: dict
+        self, option: "Option", deploy: "Deploy", design: "Design", online: dict
     ) -> None:
 
         self.option = option  # Workflow: 程序运行选项
@@ -3765,12 +3777,12 @@ class Synchronizer(object):
     """
 
     def __init__(
-            self,
-            template_dir: "Path",
-            toolkit_dir: "Path",
-            model_dir: "Path",
-            platform: str,
-            level: str
+        self,
+        template_dir: "Path",
+        toolkit_dir: "Path",
+        model_dir: "Path",
+        platform: str,
+        level: str
     ):
 
         self.template_dir = template_dir
