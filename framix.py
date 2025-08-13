@@ -919,7 +919,7 @@ class Missions(object):
         await self.animation.stop()
 
         for resp in resp_state:
-            logger.debug(resp)
+            logger.debug(f"Combine: {resp}")
             if isinstance(resp, Exception):
                 self.design.show_panel(resp, Wind.KEEPER)
             elif isinstance(resp, str):
