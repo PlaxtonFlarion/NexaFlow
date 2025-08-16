@@ -845,16 +845,21 @@ class Missions(object):
         accord : bool
             是否跳过组合模式。若为 True，将跳过组合逻辑。
 
+        **__ : dict, optional
+            预留的扩展参数，用于未来接口升级时的兼容性支持。
+
         Notes
         -----
         1. 生成路径会根据报告总目录或标签进行动态适配，确保输出结构一致性。
         2. 若无可用数据范围，则会记录调试日志并通过面板提示无报告可生成。
         """
         if accord:
-            return Design.console.print()
-            
+            logger.debug(tip := f"跳过组合模式")
+            return self.design.show_panel(tip, Wind.REPORTER)
+
         if report.range_list:
             function = getattr(self, "combine_view" if self.speed else "combine_main")
+
             final_path = rtp if (rtp := report.total_path).startswith(
                 const.R_TOTAL_TAG
             ) else os.path.dirname(rtp)

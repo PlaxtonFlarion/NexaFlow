@@ -344,8 +344,6 @@ class Report(object):
             - 当未能提取出任何有效数据或报告内容为空；
             - 当报告渲染过程中发生异常。
         """
-
-        # Notes: 从数据库文件中读取数据
         try:
             async with DB(Path(file_name) / const.R_RECOVERY / const.DB_FILES_NAME) as db:
                 match_list = [nest[0] for nest in await db.demand()]
