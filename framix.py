@@ -828,7 +828,7 @@ class Missions(object):
             )
             logger.debug(f"DB: {render_result}")
 
-    async def combine(self, report: "Report", *_, **kwargs) -> None:
+    async def combine(self, report: "Report", accord: bool = False, **__) -> None:
         """
         异步生成组合型分析报告。
 
@@ -842,29 +842,29 @@ class Missions(object):
         report : Report
             报告处理引擎实例，包含报告路径、数据范围列表及相关合并配置。
 
-        *_
-            位置参数占位符，用于保持调用接口一致性，实际不使用。
-
-        **kwargs
-            关键字参数。
+        accord : bool
+            是否跳过组合模式。若为 True，将跳过组合逻辑。
 
         Notes
         -----
         1. 生成路径会根据报告总目录或标签进行动态适配，确保输出结构一致性。
         2. 若无可用数据范围，则会记录调试日志并通过面板提示无报告可生成。
         """
+        if accord:
+            return Design.console.print()
+            
         if report.range_list:
             function = getattr(self, "combine_view" if self.speed else "combine_main")
             final_path = rtp if (rtp := report.total_path).startswith(
                 const.R_TOTAL_TAG
             ) else os.path.dirname(rtp)
 
-            return await function([final_path], *_, **kwargs)
+            return await function([final_path])
 
         logger.debug(tip := f"没有可以生成的报告")
         return self.design.show_panel(tip, Wind.KEEPER)
 
-    async def combine_crux(self, share_temp: str, total_temp: str, merge: list, *_, **kwargs) -> None:
+    async def combine_crux(self, share_temp: str, total_temp: str, merge: list) -> None:
         """
         异步生成汇总报告。
 
@@ -880,12 +880,6 @@ class Missions(object):
 
         merge : list of str
             子报告路径列表，所有待整合的报告资源将统一纳入汇总流程中。
-
-        *_
-            位置参数占位符，用于保持调用接口一致性，实际不使用。
-
-        **kwargs
-            关键字参数。
 
         Notes
         -----
@@ -915,7 +909,7 @@ class Missions(object):
 
         resp_state: list[typing.Any | Exception] = await asyncio.gather(
             *(Report.ask_create_total_report(
-                m, self.group, share_form, total_form, *_, **kwargs) for m in merge
+                m, self.group, share_form, total_form) for m in merge
             ), return_exceptions=True
         )
 
@@ -930,21 +924,21 @@ class Missions(object):
                 self.design.show_files(state)
 
     # """时空纽带分析系统"""
-    async def combine_view(self, merge: list, *_, **kwargs) -> None:
+    async def combine_view(self, merge: list) -> None:
         """
         合并视图数据。
         """
         await self.combine_crux(
-            self.view_share_temp, self.view_total_temp, merge, *_, **kwargs
+            self.view_share_temp, self.view_total_temp, merge
         )
 
     # """时序融合分析系统"""
-    async def combine_main(self, merge: list, *_, **kwargs) -> None:
+    async def combine_main(self, merge: list) -> None:
         """
         合并视图数据。
         """
         await self.combine_crux(
-            self.main_share_temp, self.main_total_temp, merge, *_, **kwargs
+            self.main_share_temp, self.main_total_temp, merge
         )
 
     # """帧序协议传输"""
@@ -1018,13 +1012,13 @@ class Missions(object):
         except ValueError:
             raise FramixError("Field 'label' contains an invalid datetime value.")
 
-        kwargs = {"label": label, "title": title, "generate": False}
+        accord, kwargs = True, {"label": label, "title": title}
 
-        return await self.video_file_task(video_file_list, option, deploy, **kwargs)
+        return await self.video_file_task(video_file_list, option, deploy, accord, **kwargs)
 
     # """视频解析探索"""
     async def video_file_task(
-        self, video_file_list: list, option: "Option", deploy: "Deploy", *_, **kwargs
+        self, video_file_list: list, option: "Option", deploy: "Deploy", *args, **kwargs
     ) -> None:
         """
         异步处理视频文件任务，并根据运行配置执行相应的分析与报告生成流程。
@@ -1044,8 +1038,8 @@ class Missions(object):
         deploy : Deploy
             部署规则对象，定义视频处理参数，如帧率限制、截取时长、输出格式等。
 
-        *_
-            位置参数占位符，用于保持接口一致性，实际不会使用。
+        *args
+            位置参数。
 
         **kwargs
             关键字参数：
@@ -1109,7 +1103,7 @@ class Missions(object):
             await self.als_mixer(deploy, clipix, report, task_list, option, alynex)
 
         # Notes: ==== Create Report ====
-        await self.combine(report, *_, **kwargs)
+        await self.combine(report, *args, **kwargs)
 
     # """影像堆叠导航"""
     async def video_data_task(
