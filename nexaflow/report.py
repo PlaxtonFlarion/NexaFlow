@@ -309,9 +309,7 @@ class Report(object):
         file_name: str,
         group: bool,
         style_loc: str,
-        total_loc: str,
-        *_,
-        **kwargs
+        total_loc: str
     ) -> typing.Union[typing.Any, str]:
         """
         汇总多个单项分析报告，生成最终总报告 HTML。
@@ -331,14 +329,6 @@ class Report(object):
 
         total_loc : str
             总报告模板路径，用于渲染最终的 HTML 汇总文件。
-
-        *_
-            位置参数占位符，用于保持调用接口一致性，实际不使用。
-
-        **kwargs
-            关键字参数：
-            - generate : bool
-              是否启用组合模式。若为 False，将跳过组合逻辑。
 
         Returns
         -------
@@ -422,9 +412,6 @@ class Report(object):
             )
         except Exception as e:
             raise FramixError(e)
-
-        if kwargs.get("generate") is False:
-            return None
 
         merged_list = await format_merged([c for c in create_result if c])
 
