@@ -3950,13 +3950,13 @@ async def main() -> None:
 
     async def arithmetic(
         function: "typing.Callable", parameters: list[str]
-    ) -> None:
+    ) -> typing.Any:
         """
         执行通用异步任务函数，并预处理参数路径。
         """
         parameters = [(await Craft.revise_path(param)) for param in parameters]
         parameters = list(dict.fromkeys(parameters))
-        await function(parameters, option, deploy)
+        return await function(parameters, option, deploy)
 
     # """对话协调器 | 回环注入器"""
     async def previewing(
