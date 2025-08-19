@@ -3988,7 +3988,7 @@ async def main() -> None:
 
         for attr_key, attribute_value in option.options.items():
             logger.debug(f"{option.__class__.__name__} Current Key {attr_key}")
-            # Notes: 如果命令行中包含配置参数，无论是否存在配置文件，都将覆盖配置文件，以命令行参数为第一优先级
+            # 如果命令行中包含配置参数，无论是否存在配置文件，都将覆盖配置文件，以命令行参数为第一优先级
             if any(line.lower().startswith(f"--{(attr_adapt := attr_key.split('_')[0])}") for line in wires):
                 setattr(option, attr_key, getattr(lines, attr_adapt))
                 logger.debug(f"  Set <{attr_key}> {attribute_value} -> {getattr(option, attr_key)}")
@@ -4008,7 +4008,7 @@ async def main() -> None:
         for attr_key, attribute_value in deploy.deploys.items():
             logger.debug(f"{deploy.__class__.__name__} Current Key {attr_key}")
             for attr, attribute in attribute_value.items():
-                # Notes: 如果命令行中包含部署参数，无论是否存在部署文件，都将覆盖部署文件，以命令行参数为第一优先级
+                # 如果命令行中包含部署参数，无论是否存在部署文件，都将覆盖部署文件，以命令行参数为第一优先级
                 if any(line.lower().startswith(f"--{attr}") for line in wires):
                     setattr(deploy, attr, getattr(lines, attr))
                     logger.debug(f"  {attr_key} Set <{attr}> {attribute} -> {getattr(deploy, attr)}")
