@@ -3622,8 +3622,8 @@ class Alynex(object):
                     os.remove(os.path.join(extra_path, file))
 
             # 依次绘制裁剪图片文件的网格辅助线
-            for draw in toolbox.show_progress(items=os.listdir(extra_path), color=146):
-                toolbox.draw_line(os.path.join(extra_path, draw).format())
+            for grid in os.listdir(extra_path):
+                toolbox.draw_line(os.path.join(extra_path, grid).format())
 
             try:
                 if self.is_locals_predict:
