@@ -185,7 +185,7 @@ class Api(object):
         stem, waver = os.path.splitext((speak or "").strip())
         waver = waver.lower().lstrip(".")
         if waver not in allowed_ext or not waver:
-            waver = (next(iter(allowed_ext)) if allowed_ext else const.WAVERS)
+            waver = (next(iter(allowed_ext)) if allowed_ext else const.WAVER_FMT)
 
         # 文件名去除非法字符
         final_speak = re.sub(r"[^a-zA-Z0-9\u4e00-\u9fff]+", "", stem)

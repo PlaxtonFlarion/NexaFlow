@@ -1246,7 +1246,7 @@ class Missions(object):
         # Notes: ==== Profession ====
         task_list = []
         for video_file in video_file_list:
-            report.title = f"Model_{uuid.uuid4()}"
+            report.title = f"{const.TRAIN_DIR}_{uuid.uuid4()}"
             new_video_path = os.path.join(report.video_path, os.path.basename(video_file))
             shutil.copy(video_file, new_video_path.format())
             task_list.append(
@@ -2628,7 +2628,8 @@ class Missions(object):
         return await flick_loop() if self.flick else await other_loop()
 
     # """星澜织语仪"""
-    async def text_to_speech(self, voice_list: list[str]) -> None:
+    @staticmethod
+    async def text_to_speech(voice_list: list[str], option: "Option", deploy: "Deploy") -> None:
         """
         批量文本转语音并保存为本地音频文件（异步并发）。
 
@@ -2636,6 +2637,12 @@ class Missions(object):
         ----------
         voice_list : list of str
             待合成语音的文本字符串列表。列表元素可重复、可含空白项，自动去重和过滤。
+
+        option : Option
+            选项配置对象，包含运行时选项设置，如模型路径、输出控制等。
+
+        deploy : Deploy
+            绘图部署配置对象，包含颜色模式、图像尺寸、裁剪方式以及保存选项等参数。
         """
 
         async def speech_task(speak: str) -> None:
@@ -2650,10 +2657,11 @@ class Missions(object):
         if not tts_mode.get("enabled", False):
             raise FramixError(f"TTS service is temporarily unavailable ...")
 
-        allowed_extra = tts_mode.get("formats") or [const.WAVERS]
+        allowed_extra = tts_mode.get("formats") or [const.WAVER_FMT]
 
-        if not (voices := Path(self.src_opera_place) / const.VOICES).exists():
-            voices.mkdir(parents=True, exist_ok=True)
+        report = Report(option.total_place)
+        report.title = f"{const.VOICE_DIR}_{uuid.uuid4()}"
+        voices, _ = Path(report.query_path), deploy
 
         # 去重 + 过滤空白和已存在的文件
         unique_list = list(dict.fromkeys(voice_list))
@@ -4261,7 +4269,7 @@ async def main() -> None:
         await arithmetic(missions.build_model, build_list)
 
     elif voice_list := lines.voice:
-        await missions.text_to_speech(voice_list)
+        await missions.text_to_speech(voice_list, option, deploy)
 
     elif lines.flick or lines.carry or lines.fully:
         tp_version = await scheduling()
